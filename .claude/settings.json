@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install:*)",
+      "Bash(where npm:*)",
+      "Read(//c/Program Files/**)",
+      "Bash(cmd.exe /c \"npm --version\")",
+      "Bash(cmd.exe /c \"npm --version && echo OK\")"
+    ]
+  }
+}

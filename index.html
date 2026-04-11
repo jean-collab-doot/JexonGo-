@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>JEXONGO</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- MENU SCREEN -->
+  <div id="s-menu" class="screen">
+    <div class="menu-logo">JEXONGO</div>
+    <div class="menu-subtitle">AERIAL MATH COMBAT</div>
+    <div id="menu-score-card">
+      <div class="menu-score-row">
+        <span class="menu-score-label">XP</span>
+        <span id="menu-xp">0</span>
+      </div>
+      <div class="menu-score-row">
+        <span class="menu-score-label">LEVELS CLEARED</span>
+        <span id="menu-levels">0</span>
+      </div>
+      <div class="menu-score-row">
+        <span class="menu-score-label">STARS</span>
+        <span id="menu-stars">0</span>
+      </div>
+    </div>
+    <button id="btn-play" class="btn btn-primary">PLAY</button>
+    <button id="btn-hangar" class="btn btn-secondary">HANGAR</button>
+    <button id="btn-practice" class="btn btn-secondary">PRACTICE</button>
+  </div>
+
+  <!-- LEVEL MAP SCREEN -->
+  <div id="s-levelmap" class="screen hidden">
+    <div class="top-bar">
+      <button id="btn-map-back" class="btn-icon">&#8592;</button>
+      <span class="top-bar-title">SELECT MISSION</span>
+      <span id="map-xp-display" class="xp-badge">0 XP</span>
+    </div>
+    <div id="levelmap-scroll">
+      <div id="levelmap-nodes"></div>
+    </div>
+  </div>
+
+  <!-- GAME SCREEN -->
+  <div id="s-game" class="screen hidden">
+    <div id="game-hud">
+      <div id="hud-lives"></div>
+      <div id="hud-level">Level 1</div>
+      <div id="hud-streak"></div>
+    </div>
+    <div id="timer-bar-wrap"><div id="timer-bar"></div></div>
+    <canvas id="game-canvas"></canvas>
+    <div id="question-box">
+      <div id="question-text"></div>
+      <div id="answer-buttons"></div>
+    </div>
+  </div>
+
+  <!-- HANGAR SCREEN -->
+  <div id="s-hangar" class="screen hidden">
+    <div class="top-bar">
+      <button id="btn-hangar-back" class="btn-icon">&#8592;</button>
+      <span class="top-bar-title">HANGAR</span>
+      <span id="hangar-xp" class="xp-badge">0 XP</span>
+    </div>
+    <div id="hangar-grid"></div>
+  </div>
+
+  <!-- RESULT SCREEN -->
+  <div id="s-result" class="screen hidden">
+    <div id="result-title">MISSION COMPLETE</div>
+    <div id="result-stars"></div>
+    <div id="result-xp"></div>
+    <div id="result-correct"></div>
+    <button id="btn-result-continue" class="btn btn-primary">CONTINUE</button>
+    <button id="btn-result-retry" class="btn btn-secondary">RETRY</button>
+  </div>
+
+  <!-- CHEST SCREEN -->
+  <div id="s-chest" class="screen hidden">
+    <div id="chest-title">CHEST REWARD</div>
+    <div id="chest-tier-label"></div>
+    <div id="chest-box">&#x1F4E6;</div>
+    <div id="chest-reward-text"></div>
+    <button id="btn-chest-open" class="btn btn-primary">OPEN CHEST</button>
+    <button id="btn-chest-continue" class="btn btn-secondary hidden">CONTINUE</button>
+  </div>
+
+  <!-- GAME OVER SCREEN -->
+  <div id="s-gameover" class="screen hidden">
+    <div id="gameover-title">GAME OVER</div>
+    <div id="gameover-score"></div>
+    <button id="btn-retry" class="btn btn-primary">RETRY</button>
+    <button id="btn-go-map" class="btn btn-secondary">LOBBY</button>
+  </div>
+
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>
