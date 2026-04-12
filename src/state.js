@@ -4,7 +4,7 @@ export const G = {
   // --- Persisted ---
   xp: 0,
   levelStars: {},           // { levelNum: starCount }
-  unlockedAircraft: ['f22', 't6'],
+  unlockedAircraft: ['t6'],
   activeAircraft: 't6',
 
   // --- Session ---

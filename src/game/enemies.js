@@ -12,8 +12,9 @@ export function spawnEnemy(canvasW, type) {
     y:         -def.size - 10,
     currentHp: def.hp,
     maxHp:     def.hp,
-    active:    true,
-    shakeTick: 0,
+    active:      true,
+    shakeTick:   0,
+    fireCooldown: def.fireRate + Math.floor(Math.random() * 60), // stagger first shot
   };
 }
 

@@ -1,15 +1,26 @@
 function rnd(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
 
-function makeQuestion(ops, level) {
-  const op  = ops[rnd(0, ops.length - 1)];
-  const cap = level <= 10 ? 10 : level <= 25 ? 20 : 12;
+function makeQuestion(ops, cap, multCap) {
+  const op = ops[rnd(0, ops.length - 1)];
   let a, b, answer;
 
   switch (op) {
-    case '+': a = rnd(1, cap);  b = rnd(1, cap);  answer = a + b;     break;
-    case '-': a = rnd(2, cap);  b = rnd(1, a);    answer = a - b;     break;
-    case '*': a = rnd(2, Math.min(cap, 12)); b = rnd(2, Math.min(cap, 12)); answer = a * b; break;
-    default:  b = rnd(2, 12);   answer = rnd(1, 12); a = b * answer;  break; // '/'
+    case '+':
+      a = rnd(1, cap);  b = rnd(1, cap);  answer = a + b;
+      break;
+    case '-':
+      a = rnd(2, cap);  b = rnd(1, a);    answer = a - b;
+      break;
+    case '*': {
+      const mc = multCap || 12;
+      a = rnd(2, mc);   b = rnd(2, mc);   answer = a * b;
+      break;
+    }
+    default: { // '/'  — always yields whole-number results
+      const mc = multCap || 12;
+      b = rnd(2, mc);   answer = rnd(1, mc);  a = b * answer;
+      break;
+    }
   }
 
   const sym = op === '*' ? '×' : op === '/' ? '÷' : op;
@@ -17,7 +28,7 @@ function makeQuestion(ops, level) {
 }
 
 function makeChoices(answer) {
-  const set = new Set([answer]);
+  const set  = new Set([answer]);
   const pool = [-3,-2,-1,1,2,3,-4,4,-5,5,6,-6,7,-7].sort(() => Math.random() - 0.5);
   for (const off of pool) {
     if (set.size >= 4) break;
@@ -28,8 +39,8 @@ function makeChoices(answer) {
   return [...set].sort(() => Math.random() - 0.5);
 }
 
-export function newQuestion(ops, level) {
-  const q = makeQuestion(ops, level);
+export function newQuestion(ops, cap, multCap) {
+  const q = makeQuestion(ops, cap, multCap);
   q.choices = makeChoices(q.answer);
   return q;
 }
