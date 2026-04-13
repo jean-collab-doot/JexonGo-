@@ -1,48 +1,57 @@
+// ── SPRITE-BASED PARTICLES ────────────────────────────────────────────────────
+// All particle effects use spritesheet animations from the Legacy Collection.
+// No canvas dot/circle primitives remain.
+
+import { drawFrame } from './sprites.js';
+
+// ── SPAWN ─────────────────────────────────────────────────────────────────────
+
+/**
+ * Spawn an explosion at (x, y).
+ * Uses the enemy-death sheet (7 frames). `count` is repurposed as a size hint.
+ */
 export function spawnExplosion(particles, x, y, color, count = 14) {
-  for (let i = 0; i < count; i++) {
-    const angle = (Math.PI * 2 * i / count) + (Math.random() - 0.5) * 0.6;
-    const spd   = 1.8 + Math.random() * 3.2;
-    particles.push({
-      x, y,
-      vx: Math.cos(angle) * spd,
-      vy: Math.sin(angle) * spd,
-      life: 1, decay: 0.028 + Math.random() * 0.025,
-      size: 3 + Math.random() * 4, color,
-    });
-  }
+  particles.push({
+    spriteKey:   'enemy-death',
+    x, y,
+    frame:       0,
+    frameRate:   0.35,   // 7 frames over ~20 ticks
+    totalFrames: 7,
+    size:        Math.max(44, count * 3.5),
+  });
 }
 
+/**
+ * Spawn a small hit spark at (x, y).
+ * Uses explosion-a (8 frames).
+ */
 export function spawnHitSpark(particles, x, y) {
-  for (let i = 0; i < 6; i++) {
-    const a = Math.random() * Math.PI * 2;
-    particles.push({
-      x, y,
-      vx: Math.cos(a) * (1 + Math.random() * 2.5),
-      vy: Math.sin(a) * (1 + Math.random() * 2.5),
-      life: 1, decay: 0.09, size: 2 + Math.random() * 2.5, color: '#ff6b35',
-    });
-  }
+  particles.push({
+    spriteKey:   'spark',
+    x, y,
+    frame:       0,
+    frameRate:   0.55,   // 8 frames over ~14 ticks
+    totalFrames: 8,
+    size:        32,
+  });
 }
+
+// ── UPDATE ────────────────────────────────────────────────────────────────────
 
 export function updateParticles(particles) {
   for (let i = particles.length - 1; i >= 0; i--) {
     const p = particles[i];
-    p.x  += p.vx;
-    p.y  += p.vy;
-    p.vy += 0.06;
-    p.life -= p.decay;
-    if (p.life <= 0) particles.splice(i, 1);
+    p.frame += p.frameRate;
+    if (p.frame >= p.totalFrames) particles.splice(i, 1);
   }
 }
 
+// ── DRAW ──────────────────────────────────────────────────────────────────────
+
 export function drawParticles(ctx, particles) {
+  ctx.imageSmoothingEnabled = false;
   for (const p of particles) {
-    ctx.save();
-    ctx.globalAlpha = Math.max(0, p.life);
-    ctx.fillStyle = p.color;
-    ctx.beginPath();
-    ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
+    drawFrame(ctx, p.spriteKey, p.frame, p.x, p.y, p.size, p.size);
   }
+  ctx.imageSmoothingEnabled = true;
 }

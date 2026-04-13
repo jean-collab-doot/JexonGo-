@@ -7,6 +7,7 @@ import { initGame } from './screens/game.js';
 import { initResult, showResult } from './screens/result.js';
 import { initChest, showChest } from './screens/chest.js';
 import { initGameover, showGameover } from './screens/gameover.js';
+import { preloadShips } from './game/sprites.js';
 
 // ── NAVIGATION ──────────────────────────────────────────────────────────────
 let _cleanup = null;
@@ -65,5 +66,9 @@ initGameover(nav);
 
 // ── BOOT ──────────────────────────────────────────────────────────────────────
 loadSave();
+
+// Start loading ship sprites immediately so the hangar looks good right away
+preloadShips();
+
 renderMenu();
 showScreen('s-menu');

@@ -10,25 +10,28 @@
 
   <!-- MENU SCREEN -->
   <div id="s-menu" class="screen">
-    <div class="menu-logo">JEXONGO</div>
-    <div class="menu-subtitle">AERIAL MATH COMBAT</div>
-    <div id="menu-score-card">
-      <div class="menu-score-row">
-        <span class="menu-score-label">XP</span>
-        <span id="menu-xp">0</span>
+    <canvas id="menu-canvas"></canvas>
+    <div class="menu-content">
+      <div class="menu-logo">JEXON<span class="logo-go">GO</span></div>
+      <div class="menu-subtitle">AERIAL MATH COMBAT</div>
+      <div id="menu-score-card">
+        <div class="menu-score-row">
+          <span class="menu-score-label">XP</span>
+          <span id="menu-xp">0</span>
+        </div>
+        <div class="menu-score-row">
+          <span class="menu-score-label">LEVELS CLEARED</span>
+          <span id="menu-levels">0</span>
+        </div>
+        <div class="menu-score-row">
+          <span class="menu-score-label">STARS</span>
+          <span id="menu-stars">0</span>
+        </div>
       </div>
-      <div class="menu-score-row">
-        <span class="menu-score-label">LEVELS CLEARED</span>
-        <span id="menu-levels">0</span>
-      </div>
-      <div class="menu-score-row">
-        <span class="menu-score-label">STARS</span>
-        <span id="menu-stars">0</span>
-      </div>
+      <button id="btn-play" class="btn btn-primary">▶ PLAY</button>
+      <button id="btn-hangar" class="btn btn-secondary">✈ HANGAR</button>
+      <button id="btn-practice" class="btn btn-secondary">⚡ PRACTICE</button>
     </div>
-    <button id="btn-play" class="btn btn-primary">PLAY</button>
-    <button id="btn-hangar" class="btn btn-secondary">HANGAR</button>
-    <button id="btn-practice" class="btn btn-secondary">PRACTICE</button>
   </div>
 
   <!-- LEVEL MAP SCREEN -->
