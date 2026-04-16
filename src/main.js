@@ -64,6 +64,17 @@ initResult(nav);
 initChest(nav);
 initGameover(nav);
 
+// ── DEV BOOST ────────────────────────────────────────────────────────────────
+(function devBoost() {
+  const stars = {};
+  for (let i = 1; i <= 50; i++) stars[i] = 3;
+  localStorage.setItem('jexongo_xp',           JSON.stringify(50000));
+  localStorage.setItem('jexongo_levelStars',   JSON.stringify(stars));
+  localStorage.setItem('jexongo_unlockedAircraft', JSON.stringify(
+    ['t6','pc21','c130','a10','f16','f18','f22','f35','b2','sr71']
+  ));
+})();
+
 // ── BOOT ──────────────────────────────────────────────────────────────────────
 loadSave();
 

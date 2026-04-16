@@ -5,11 +5,17 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>JEXONGO</title>
   <link rel="stylesheet" href="style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
 </head>
 <body>
 
   <!-- MENU SCREEN -->
   <div id="s-menu" class="screen">
+    <video id="menu-bg-video" autoplay loop muted playsinline poster="/public/assets/menu/lobby-bg.png">
+      <source src="/public/assets/menu/bg-motion-2.mp4" type="video/mp4">
+      <source src="/public/assets/menu/bg-motion-1.mp4" type="video/mp4">
+    </video>
     <canvas id="menu-canvas"></canvas>
     <div class="menu-content">
       <div class="menu-logo">JEXON<span class="logo-go">GO</span></div>

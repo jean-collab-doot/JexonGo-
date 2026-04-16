@@ -5,43 +5,35 @@
 import { drawFrame, AIRCRAFT_SPRITE } from './sprites.js';
 
 // ── CONSTANTS ─────────────────────────────────────────────────────────────────
-const PLAYER_SIZE  = 64;   // px — player ship draw size (width = height)
-const ENEMY_SCALE  = 2.1;  // multiplier on enemy.size for draw dimensions
+const PLAYER_SIZE  = 130;  // px — player ship draw size
+const ENEMY_SCALE  = 3.2;  // multiplier on enemy.size for draw dimensions
 
 // ── PLAYER AIRCRAFT ───────────────────────────────────────────────────────────
 
 /**
  * Draw the player ship sprite centred at (cx, cy).
- *
- * @param {CanvasRenderingContext2D} ctx
- * @param {string} aircraftId   key from AIRCRAFT data (e.g. 't6', 'f22')
- * @param {number} cx           centre X
- * @param {number} cy           centre Y
- * @param {number} frame        animation frame (float; floored internally)
- * @param {number} [alpha=1]    opacity — used for invincibility flash
- * @param {number} [bankAngle=0] rotation in radians for banking left/right
+ * Uses 'screen' blend so the built-in dark vignette becomes transparent.
  */
 export function drawAircraftSprite(ctx, aircraftId, cx, cy, frame, alpha = 1, bankAngle = 0) {
-  ctx.imageSmoothingEnabled = false;
-  const key = AIRCRAFT_SPRITE[aircraftId] ?? 'ship-y1';
-  drawFrame(ctx, key, frame, cx, cy, PLAYER_SIZE, PLAYER_SIZE, { rotate: bankAngle, alpha });
+  const key = AIRCRAFT_SPRITE[aircraftId] ?? 'ship-t6';
+  ctx.save();
   ctx.imageSmoothingEnabled = true;
+  if (alpha !== 1) ctx.globalAlpha = alpha;
+  drawFrame(ctx, key, frame, cx, cy, PLAYER_SIZE, PLAYER_SIZE, { rotate: bankAngle });
+  ctx.restore();
 }
 
 /**
  * Draw a static first-frame ship sprite for the hangar preview.
- *
- * @param {CanvasRenderingContext2D} ctx
- * @param {string} aircraftId
- * @param {number} cx  centre X on the preview canvas
- * @param {number} cy  centre Y on the preview canvas
- * @param {number} size  width and height to draw
+ * Uses 'screen' blend so the dark vignette disappears over the card background.
  */
 export function drawAircraftPreview(ctx, aircraftId, cx, cy, size) {
-  ctx.imageSmoothingEnabled = false;
-  const key = AIRCRAFT_SPRITE[aircraftId] ?? 'ship-y1';
-  drawFrame(ctx, key, 0, cx, cy, size, size);
+  const key = AIRCRAFT_SPRITE[aircraftId] ?? 'ship-t6';
+  ctx.save();
   ctx.imageSmoothingEnabled = true;
+  ctx.globalCompositeOperation = 'screen';
+  drawFrame(ctx, key, 0, cx, cy, size, size);
+  ctx.restore();
 }
 
 // ── ENEMIES ───────────────────────────────────────────────────────────────────
@@ -54,12 +46,17 @@ export function drawAircraftPreview(ctx, aircraftId, cx, cy, size) {
  * @param {object} enemy  full enemy object from G.enemies
  */
 export function drawEnemySprite(ctx, enemy) {
-  ctx.imageSmoothingEnabled = false;
-
   const size = enemy.size * ENEMY_SCALE;
-  drawFrame(ctx, enemy.spriteKey, enemy.animFrame, enemy.x, enemy.y, size, size);
 
-  // HP bar (drawn over the sprite for tank / boss enemies with multiple HP)
+  // Rotate 180° so the plane faces downward (enemies fly top→bottom).
+  // 'screen' blend removes the built-in dark vignette background.
+  ctx.save();
+  ctx.imageSmoothingEnabled = true;
+  drawFrame(ctx, enemy.spriteKey, enemy.animFrame, enemy.x, enemy.y, size, size,
+    { rotate: Math.PI });
+  ctx.restore();
+
+  // HP bar for tank / boss enemies
   if (enemy.maxHp > 1) {
     const bw = enemy.size * 1.6;
     const bh = 4;
@@ -69,6 +66,4 @@ export function drawEnemySprite(ctx, enemy) {
     ctx.fillStyle = enemy.color;
     ctx.fillRect(bx, by, bw * (enemy.currentHp / enemy.maxHp), bh);
   }
-
-  ctx.imageSmoothingEnabled = true;
 }

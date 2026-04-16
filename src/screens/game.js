@@ -171,10 +171,13 @@ function frame() {
     if (!e.active) continue;
 
     e.fireCooldown--;
-    if (e.fireCooldown <= 0) {
+    const inFireZone = e.y > canvas.height * 0.25 && e.y < canvas.height * 0.78;
+    if (e.fireCooldown <= 0 && inFireZone) {
       e.fireCooldown = e.fireRate;
       G.enemyMissiles.push(createMissile(e.x, e.y, G.player.x, G.player.y, 2.5, null, '#ef4444'));
       SFX.missile();
+    } else if (e.fireCooldown <= 0) {
+      e.fireCooldown = e.fireRate;
     }
 
     const ox = e.shakeTick > 0 ? (Math.random() - 0.5) * 5 : 0;
@@ -215,7 +218,7 @@ function frame() {
     if (m.trail.length > 8) m.trail.shift();
     m.x += m.vx;
     m.y += m.vy;
-    m.boltFrame = ((m.boltFrame ?? 0) + 0.25) % 4;
+    m.boltFrame = 0;
   }
   drawMissiles(ctx, G.enemyMissiles, true);
 
@@ -352,7 +355,7 @@ function handleAnswer(choice, btn) {
     const target   = nearestEnemy();
     if (target) {
       if (aircraft.ability === 'multiShot') {
-        [-18, 0, 18].forEach(offset => {
+        [-14, 14].forEach(offset => {
           G.missiles.push(createMissile(G.player.x + offset, G.player.y, target.x, target.y, speed, target.id));
         });
       } else {

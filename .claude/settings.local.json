@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cp \"d:/Desktop/JexonGo visuel/START/19.png\" \"d:/Desktop/JexonGo V1/public/assets/menu/anim-1.png\")",
+      "Bash(cp \"d:/Desktop/JexonGo visuel/START/20.png\" \"d:/Desktop/JexonGo V1/public/assets/menu/anim-2.png\")",
+      "Bash(cp \"d:/Desktop/JexonGo visuel/START/21.png\" \"d:/Desktop/JexonGo V1/public/assets/menu/anim-3.png\")",
+      "Bash(cp \"d:/Desktop/JexonGo visuel/START/22.png\" \"d:/Desktop/JexonGo V1/public/assets/menu/anim-4.png\")"
+    ]
+  }
+}

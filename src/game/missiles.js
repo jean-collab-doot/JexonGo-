@@ -1,16 +1,18 @@
 // ── SPRITE-BASED MISSILES ─────────────────────────────────────────────────────
-// Uses the Warped Bolt spritesheet (4 frames) for all missiles.
-// Player missiles travel upward  → bolt rotated +π/2 (tip points up).
-// Enemy  missiles travel downward → bolt rotated −π/2 (tip points down).
+// Uses the pixel-art rocket sprite (single frame, white background → multiply blend).
+// Rocket image points upper-left (~135° in canvas), so offset rotation by -π*0.75
+// to align nose upward for player missiles, downward for enemy missiles.
 
-import { drawFrame } from './sprites.js';
+import { drawFrame, getImage } from './sprites.js';
 
-const BOLT_ROT_UP   =  Math.PI / 2;
-const BOLT_ROT_DOWN = -Math.PI / 2;
+// Rocket image points NW (~225° canvas CW). Offset to point straight up (-90°):
+const ROCKET_ANGLE   = (3 * Math.PI) / 4;  // image native angle from +X axis
+const BOLT_ROT_UP    = -Math.PI / 2 - ROCKET_ANGLE + Math.PI * 2; // nose up
+const BOLT_ROT_DOWN  = BOLT_ROT_UP + Math.PI;                      // nose down
 
-const BOLT_W          = 20;    // draw width  (px along travel axis after rotation)
-const BOLT_H          = 10;    // draw height (px)
-const BOLT_FRAME_RATE = 0.25;  // frames advanced per game-tick (4 frames)
+const BOLT_W          = 38;    // draw width
+const BOLT_H          = 38;    // draw height (square — rocket is diagonal)
+const BOLT_FRAME_RATE = 0;
 
 // ── FACTORY ───────────────────────────────────────────────────────────────────
 
@@ -46,10 +48,11 @@ export function updateMissiles(missiles, onHit) {
 // ── DRAW ──────────────────────────────────────────────────────────────────────
 
 export function drawMissiles(ctx, missiles, isEnemy = false) {
-  ctx.imageSmoothingEnabled = false;
   const rot = isEnemy ? BOLT_ROT_DOWN : BOLT_ROT_UP;
+  ctx.save();
+  ctx.imageSmoothingEnabled = false;
   for (const m of missiles) {
-    drawFrame(ctx, 'bolt', m.boltFrame, m.x, m.y, BOLT_W, BOLT_H, { rotate: rot });
+    drawFrame(ctx, 'bolt', 0, m.x, m.y, BOLT_W, BOLT_H, { rotate: rot });
   }
-  ctx.imageSmoothingEnabled = true;
+  ctx.restore();
 }
