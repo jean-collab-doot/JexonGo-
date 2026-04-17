@@ -5,8 +5,8 @@
 import { drawFrame, AIRCRAFT_SPRITE } from './sprites.js';
 
 // ── CONSTANTS ─────────────────────────────────────────────────────────────────
-const PLAYER_SIZE  = 130;  // px — player ship draw size
-const ENEMY_SCALE  = 3.2;  // multiplier on enemy.size for draw dimensions
+const PLAYER_SIZE  = 180;  // px — player ship draw size
+const ENEMY_SCALE  = 4.8;  // multiplier on enemy.size for draw dimensions
 
 // ── PLAYER AIRCRAFT ───────────────────────────────────────────────────────────
 

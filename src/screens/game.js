@@ -151,6 +151,10 @@ function frame() {
   updateBackground();
   drawBackground(ctx, canvas);
 
+  // ── Speed lines ────────────────────────────────────────────────────────
+  if (_speedLines.length === 0) initSpeedLines(canvas.width, canvas.height);
+  drawSpeedLines(ctx, canvas.width, canvas.height);
+
   // ── Enemy spawn ────────────────────────────────────────────────────────
   spawnTimer--;
   if (spawnTimer <= 0 && G.enemies.filter(e => e.active).length < maxEnemies) {
@@ -237,12 +241,6 @@ function frame() {
 
   drawAircraftSprite(ctx, G.activeAircraft, G.player.x, G.player.y, _shipFrame, flashAlpha, bankAngle);
 
-  // Engine glow — sits just below the ship's exhaust nozzle
-  const glow = 4 + Math.sin(tick * 0.22) * 2;
-  ctx.beginPath();
-  ctx.arc(G.player.x, G.player.y + 22, glow, 0, Math.PI * 2);
-  ctx.fillStyle = `rgba(255,140,0,${0.55 + Math.sin(tick * 0.3) * 0.2})`;
-  ctx.fill();
   ctx.globalAlpha = 1;
 
   if (shaking) ctx.restore();
@@ -436,12 +434,43 @@ function endLevel(won) {
 }
 
 // ── PUBLIC API ───────────────────────────────────────────────────────────────
+// Speed lines — initialised per session, used in frame()
+let _speedLines = [];
+function initSpeedLines(cw, ch) {
+  _speedLines = Array.from({ length: 28 }, () => ({
+    x:      Math.random() * cw,
+    y:      Math.random() * ch,
+    len:    30 + Math.random() * 80,
+    speed:  8  + Math.random() * 10,
+    alpha:  0.08 + Math.random() * 0.14,
+    width:  0.5 + Math.random() * 1.0,
+  }));
+}
+
+function drawSpeedLines(ctx, cw, ch) {
+  ctx.save();
+  ctx.strokeStyle = '#ffffff';
+  ctx.lineCap = 'round';
+  for (const l of _speedLines) {
+    l.y += l.speed;
+    if (l.y > ch + l.len) { l.y = -l.len; l.x = Math.random() * cw; }
+    ctx.globalAlpha = l.alpha;
+    ctx.lineWidth   = l.width;
+    ctx.beginPath();
+    ctx.moveTo(l.x, l.y);
+    ctx.lineTo(l.x, l.y + l.len);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
 export function initGame(levelNum, onComplete) {
   _sessionId++;
   _invincible = 0;
   shakeFrames = 0;
   tick        = 0;
   _shipFrame  = 0;
+  _speedLines = [];
   resetLevel();
   G.currentLevel = levelNum;
   levelCfg       = getLevel(levelNum);

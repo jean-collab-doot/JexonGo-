@@ -11,14 +11,11 @@ import { getImage } from './sprites.js';
 
 // ── LAYER CONFIG ─────────────────────────────────────────────────────────────
 const LAYER_DEFS = {
-  ocean: [
-    // sky — scrolls very slowly; the cloud silhouettes give subtle depth
-    { key: 'ocean-back',   speed: 0.35 },
-    // floating clouds — medium scroll
-    { key: 'ocean-clouds', speed: 0.75 },
-    // ocean surface — fastest layer, most "grounded" feel
-    { key: 'ocean-middle', speed: 1.40 },
-  ],
+  ocean:  [{ key: 'ocean-bg',  speed: 1.2 }],
+  desert: [{ key: 'desert-bg', speed: 1.2 }],
+  city:   [{ key: 'city-bg',   speed: 1.2 }],
+  arctic: [{ key: 'arctic-bg', speed: 1.2 }],
+  space:  [{ key: 'space-bg',  speed: 1.2 }],
 };
 
 // ── STATE ─────────────────────────────────────────────────────────────────────

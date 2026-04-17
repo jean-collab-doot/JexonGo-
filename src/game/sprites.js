@@ -36,10 +36,16 @@ export const SPRITE_DEFS = {
   // FX
   'bolt':  { path: '/public/assets/fx/rocket.png',      frames: 1 },
   'spark': { path: '/public/assets/fx/explosion-a.png', frames: 8 },
-  // Ocean backgrounds (Day variant)
+  // Ocean backgrounds
   'ocean-back':   { path: '/public/assets/bg/ocean/back.png',   frames: 1 },
   'ocean-clouds': { path: '/public/assets/bg/ocean/clouds.png', frames: 1 },
   'ocean-middle': { path: '/public/assets/bg/ocean/middle.png', frames: 1 },
+  // Pack biome — single top-down illustrations per biome
+  'ocean-bg':  { path: '/public/assets/bg/ocean/bg.png',  frames: 1 },
+  'desert-bg': { path: '/public/assets/bg/desert/bg.png', frames: 1 },
+  'city-bg':   { path: '/public/assets/bg/city/bg.png',   frames: 1 },
+  'arctic-bg': { path: '/public/assets/bg/arctic/bg.png', frames: 1 },
+  'space-bg':  { path: '/public/assets/bg/space/bg.png',  frames: 1 },
 };
 
 // Aircraft ID → sprite key
@@ -65,14 +71,16 @@ export const ENEMY_SPRITE = {
 };
 
 // Biome → sprite keys required before gameplay starts
+const SHIP_KEYS   = ['ship-t6','ship-pc21','ship-c130','ship-a10','ship-f16','ship-f18','ship-f22','ship-f35','ship-b2','ship-sr71'];
+const ENEMY_KEYS  = ['enemy-f15','enemy-t38','enemy-f117','enemy-death'];
+const FX_KEYS     = ['bolt','spark'];
+
 export const BIOME_SPRITES = {
-  ocean: [
-    'ship-t6','ship-pc21','ship-c130','ship-a10',
-    'ship-f16','ship-f18','ship-f22','ship-f35','ship-b2','ship-sr71',
-    'enemy-f15','enemy-t38','enemy-f117','enemy-death',
-    'bolt','spark',
-    'ocean-back','ocean-clouds','ocean-middle',
-  ],
+  ocean:  [...SHIP_KEYS, ...ENEMY_KEYS, ...FX_KEYS, 'ocean-bg'],
+  desert: [...SHIP_KEYS, ...ENEMY_KEYS, ...FX_KEYS, 'desert-bg'],
+  city:   [...SHIP_KEYS, ...ENEMY_KEYS, ...FX_KEYS, 'city-bg'],
+  arctic: [...SHIP_KEYS, ...ENEMY_KEYS, ...FX_KEYS, 'arctic-bg'],
+  space:  [...SHIP_KEYS, ...ENEMY_KEYS, ...FX_KEYS, 'space-bg'],
 };
 
 // ── LOADING ──────────────────────────────────────────────────────────────────
