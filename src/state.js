@@ -3,13 +3,19 @@ import { load } from './utils/storage.js';
 export const G = {
   // --- Persisted ---
   xp: 0,
+  coins: 500,
+  blueprints: {},           // { aircraftId: pieceCount }
+  chestsWithoutEpic: 0,
   levelStars: {},           // { levelNum: starCount }
   unlockedAircraft: ['t6'],
   activeAircraft: 't6',
+  ownedSkins: [],
+  activeSkin: null,
 
   // --- Session ---
   currentLevel: 1,
   practiceMode: false,
+  continueState: null,   // saved snapshot for the Continue button
 
   // --- In-game (reset each level) ---
   lives: 3,
@@ -31,9 +37,14 @@ export const G = {
 
 export function loadSave() {
   G.xp                = load('xp', 0);
+  G.coins             = load('coins', 500);
+  G.blueprints        = load('blueprints', {});
+  G.chestsWithoutEpic = load('chestsWithoutEpic', 0);
   G.levelStars        = load('levelStars', {});
   G.unlockedAircraft  = load('unlockedAircraft', ['t6']);
   G.activeAircraft    = load('activeAircraft', 't6');
+  G.ownedSkins        = load('ownedSkins', []);
+  G.activeSkin        = load('activeSkin', null);
 }
 
 export function resetLevel() {

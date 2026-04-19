@@ -24,7 +24,7 @@ function makeQuestion(ops, cap, multCap) {
   }
 
   const sym = op === '*' ? '×' : op === '/' ? '÷' : op;
-  return { text: `${a} ${sym} ${b} = ?`, answer };
+  return { text: `${a} ${sym} ${b} = ?`, answer, a, b, op };
 }
 
 function makeChoices(answer) {

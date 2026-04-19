@@ -7,6 +7,7 @@ import { initGame } from './screens/game.js';
 import { initResult, showResult } from './screens/result.js';
 import { initChest, showChest } from './screens/chest.js';
 import { initGameover, showGameover } from './screens/gameover.js';
+import { initShop, renderShop } from './screens/shop.js';
 import { preloadShips } from './game/sprites.js';
 
 // ── NAVIGATION ──────────────────────────────────────────────────────────────
@@ -47,6 +48,11 @@ const nav = {
     showChest(reward);
     showScreen('s-chest');
   },
+  toShop() {
+    cleanup();
+    renderShop();
+    showScreen('s-shop');
+  },
 };
 
 function cleanup() {
@@ -63,13 +69,16 @@ initHangar(nav);
 initResult(nav);
 initChest(nav);
 initGameover(nav);
+initShop(nav);
 
 // ── DEV BOOST ────────────────────────────────────────────────────────────────
 (function devBoost() {
   const stars = {};
   for (let i = 1; i <= 50; i++) stars[i] = 3;
-  localStorage.setItem('jexongo_xp',           JSON.stringify(50000));
-  localStorage.setItem('jexongo_levelStars',   JSON.stringify(stars));
+  localStorage.setItem('jexongo_xp',            JSON.stringify(50000));
+  localStorage.setItem('jexongo_coins',         JSON.stringify(9999));
+  localStorage.setItem('jexongo_blueprints',    JSON.stringify({}));
+  localStorage.setItem('jexongo_levelStars',    JSON.stringify(stars));
   localStorage.setItem('jexongo_unlockedAircraft', JSON.stringify(
     ['t6','pc21','c130','a10','f16','f18','f22','f35','b2','sr71']
   ));

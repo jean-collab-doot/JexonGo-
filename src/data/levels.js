@@ -34,13 +34,9 @@ function mathRangeForLevel(n) {
 
 // Seconds to answer — shrinks with level
 function timeLimitForLevel(n) {
-  if (n <= 5)  return 12;
-  if (n <= 10) return 10;
-  if (n <= 15) return 9;
-  if (n <= 20) return 8;
-  if (n <= 25) return 7;
-  if (n <= 30) return 6;
-  if (n <= 40) return 5;
+  if (n <= 10) return 15;
+  if (n <= 25) return 12;
+  if (n <= 50) return 10;
   return 4;
 }
 
@@ -58,6 +54,11 @@ function enemyTypesForLevel(n) {
 
 // Maximum enemies on screen at once — grows with level
 function maxEnemiesForLevel(n) {
+  if (n % 10 === 0) {
+    // Boss count scales: 1 → 1 → 2 → 2 → 3
+    const milestone = n / 10;
+    return milestone <= 2 ? 1 : milestone <= 4 ? 2 : 3;
+  }
   if (n <= 10) return 3;
   if (n <= 20) return 4;
   if (n <= 30) return 5;
@@ -84,7 +85,15 @@ function enemySpeedMultForLevel(n) {
 
 // Enemy fire-rate multiplier — lower = fires faster
 function enemyFireRateMultForLevel(n) {
-  return Math.max(0.45, 1 - (n - 1) * 0.011); // 1.00 → ~0.47 at lv50
+  const base = Math.max(0.45, 1 - (n - 1) * 0.011); // 1.00 → ~0.47 at lv50
+  if (n % 10 === 0) {
+    // Boss levels: bonus shrinks each milestone so later bosses fire faster
+    // lvl10 +0.40, lvl20 +0.32, lvl30 +0.24, lvl40 +0.16, lvl50 +0.08
+    const milestone = n / 10; // 1..5
+    const bonus = 0.40 - (milestone - 1) * 0.08;
+    return Math.min(base + bonus, 1.0);
+  }
+  return base;
 }
 
 export function getLevel(n) {

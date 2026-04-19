@@ -6,10 +6,12 @@ const PLANE_PATH  = '/public/assets/menu/anim-3.png';
 const FIRE_PATH   = '/public/assets/menu/engine-fire.png';
 const FIRE_FRAMES = 4;
 
-let _planeImg = null;
-let _fireImg  = null;
-let _raf      = null;
-let _tick     = 0;
+let _planeImg    = null;
+let _fireImg     = null;
+let _raf         = null;
+let _tick        = 0;
+let _activeVid   = 'v1'; // which video is currently primary
+let _xfadeT      = -1;   // -1 = idle, 0..1 = crossfade progress
 
 function loadAssets() {
   if (_planeImg) return;
@@ -18,14 +20,19 @@ function loadAssets() {
 
   const vid = document.getElementById('menu-bg-video');
   if (vid) {
-    const reveal = () => {
-      vid.classList.add('ready');
-      vid.addEventListener('transitionend', () => {
-        vid.style.transition = 'none';
-      }, { once: true });
-    };
-    vid.addEventListener('canplaythrough', reveal, { once: true });
-    vid.addEventListener('playing',        reveal, { once: true });
+    // Clone for crossfade — both loop independently
+    const vid2 = vid.cloneNode(true);
+    vid2.id = 'menu-bg-video2';
+    vid2.style.opacity = '0';
+    vid2.removeAttribute('loop');
+    vid.parentNode.insertBefore(vid2, vid.nextSibling);
+    vid.removeAttribute('loop');
+
+    vid.style.opacity  = '1';
+    vid2.style.opacity = '0';
+    vid.play().catch(() => {});
+    _activeVid = 'v1';
+    _xfadeT    = -1;
   }
 }
 
@@ -148,6 +155,42 @@ function drawTick() {
   ctx.clearRect(0, 0, dW, dH);
   _tick++;
 
+  // 0. Video crossfade — fully RAF-driven, no timeupdate, no black flash
+  const vid  = document.getElementById('menu-bg-video');
+  const vid2 = document.getElementById('menu-bg-video2');
+  const FADE_DUR  = 1.5;
+  const FADE_STEP = 1 / (FADE_DUR * 60);
+
+  if (vid && vid2) {
+    const primary   = _activeVid === 'v1' ? vid  : vid2;
+    const secondary = _activeVid === 'v1' ? vid2 : vid;
+
+    if (_xfadeT < 0) {
+      // Idle — watch for near-end of primary
+      const dur = primary.duration;
+      const cur = primary.currentTime;
+      if (dur > 0 && !isNaN(dur) && cur > 0 && (dur - cur) <= FADE_DUR) {
+        secondary.currentTime = 0;
+        secondary.play().catch(() => {});
+        _xfadeT = 0;
+      }
+    } else {
+      // Crossfade in progress: primary fades out, secondary fades in
+      _xfadeT = Math.min(1, _xfadeT + FADE_STEP);
+      primary.style.opacity   = 1 - _xfadeT;
+      secondary.style.opacity = _xfadeT;
+
+      if (_xfadeT >= 1) {
+        // Secondary is now fully visible — make it the new primary
+        _activeVid = _activeVid === 'v1' ? 'v2' : 'v1';
+        primary.pause();
+        primary.currentTime = 0;
+        primary.style.opacity = '0';
+        _xfadeT = -1;
+      }
+    }
+  }
+
   // 1. Drifting clouds (right → left)
   updateDrawClouds(ctx, dW, dH);
 
@@ -162,7 +205,13 @@ function drawTick() {
 
       if (p.y === null) p.y = dH + drawH + p.startOffset;
       p.y -= p.speed;
-      if (p.y < -drawH) { p.y = dH + drawH; p.smoke = []; }
+      if (p.y < -drawH * 2) { p.y = dH + drawH; p.smoke = []; }
+
+      // Accelerate smoke fade as plane nears the top
+      const fadeRatio = p.y < 0 ? Math.max(0, 1 + p.y / drawH) : 1;
+      if (fadeRatio < 1) {
+        for (const s of p.smoke) s.alpha -= 0.04 * (1 - fadeRatio);
+      }
 
       const engineY  = p.y + drawH * 0.79;
       const engineLX = bx + drawW * 0.47;
@@ -198,18 +247,22 @@ export function initMenu(nav) {
   loadAssets();
   $('btn-play').onclick     = () => nav.toMap();
   $('btn-hangar').onclick   = () => nav.toHangar();
+  $('btn-shop').onclick     = () => nav.toShop();
   $('btn-practice').onclick = () => nav.toGame(1, true);
 }
 
 export function renderMenu() {
-  $('menu-xp').textContent     = G.xp.toLocaleString();
-  $('menu-levels').textContent = Object.keys(G.levelStars).length;
-  const totalStars             = Object.values(G.levelStars).reduce((s, v) => s + v, 0);
-  $('menu-stars').textContent  = totalStars;
-
   for (const p of PLANES) { p.y = null; p.smoke = []; }
-  _cloudXs = null;
-  _tick = 0;
+  _cloudXs   = null;
+  _tick      = 0;
+  _activeVid = 'v1';
+  _xfadeT    = -1;
+
+  // Restart primary video from the top; hide and stop secondary
+  const vid  = document.getElementById('menu-bg-video');
+  const vid2 = document.getElementById('menu-bg-video2');
+  if (vid)  { vid.style.opacity  = '1'; vid.currentTime  = 0; vid.play().catch(() => {}); }
+  if (vid2) { vid2.style.opacity = '0'; vid2.currentTime = 0; vid2.pause(); }
 
   if (_raf) { cancelAnimationFrame(_raf); _raf = null; }
   _raf = requestAnimationFrame(drawTick);

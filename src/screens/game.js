@@ -6,6 +6,7 @@ import { createMissile, updateMissiles, drawMissiles } from '../game/missiles.js
 import { spawnExplosion, spawnHitSpark, updateParticles, drawParticles } from '../game/particles.js';
 import { drawAircraftSprite, drawEnemySprite } from '../game/aircraft-draw.js';
 import { AIRCRAFT } from '../data/aircraft.js';
+import { SKINS } from '../data/skins.js';
 import { getLevel } from '../data/levels.js';
 import { SFX } from '../audio/sound.js';
 import { preloadBiome } from '../game/sprites.js';
@@ -18,8 +19,11 @@ let _onComplete = null;
 let spawnTimer  = 0;
 let spawnRate   = 150;
 let maxEnemies  = 5;
-let _sessionId  = 0;
-let _invincible = 0;
+let _sessionId    = 0;
+let _invincible   = 0;
+let _revealTimer  = null;
+let _skipHandler  = null;
+let _transitioning = false;
 let _shipFrame  = 0;   // player ship animation (0–4, cycled every tick)
 
 // ── INPUT ───────────────────────────────────────────────────────────────────
@@ -51,9 +55,10 @@ function canvasPointer(e) {
 function clearPointer() { pointerTarget = null; }
 
 function updatePlayerMovement() {
-  const margin = 32;
-  const minY   = canvas.height * 0.4;
-  const maxY   = canvas.height - 18;
+  const margin  = 32;
+  const minY    = canvas.height * 0.4;
+  const qboxH   = $('question-box').offsetHeight || 180;
+  const maxY    = canvas.height - qboxH - 24;
 
   if (pointerTarget) {
     velX = 0; velY = 0;
@@ -83,10 +88,6 @@ function attachInputListeners() {
   canvas.addEventListener('touchstart', canvasPointer, { passive: true });
   canvas.addEventListener('touchmove',  canvasPointer, { passive: true });
   canvas.addEventListener('touchend',   clearPointer);
-  canvas.addEventListener('mousedown',  canvasPointer);
-  canvas.addEventListener('mousemove',  canvasPointer);
-  canvas.addEventListener('mouseup',    clearPointer);
-  canvas.addEventListener('mouseleave', clearPointer);
 }
 
 function detachInputListeners() {
@@ -95,10 +96,6 @@ function detachInputListeners() {
   canvas.removeEventListener('touchstart', canvasPointer);
   canvas.removeEventListener('touchmove',  canvasPointer);
   canvas.removeEventListener('touchend',   clearPointer);
-  canvas.removeEventListener('mousedown',  canvasPointer);
-  canvas.removeEventListener('mousemove',  canvasPointer);
-  canvas.removeEventListener('mouseup',    clearPointer);
-  canvas.removeEventListener('mouseleave', clearPointer);
 }
 
 // ── RESIZE ─────────────────────────────────────────────────────────────────
@@ -108,12 +105,14 @@ function resize() {
   canvas.width  = w;
   canvas.height = h;
   G.player.x = Math.max(32, Math.min(w - 32,  G.player.x || w / 2));
-  G.player.y = Math.max(h * 0.4, Math.min(h - 18, G.player.y || h - 60));
+  const qH = $('question-box').offsetHeight || 180;
+  G.player.y = Math.max(h * 0.4, Math.min(h - qH - 24, G.player.y || h - qH - 60));
 }
 
 function placePlayer() {
   G.player.x = canvas.width  / 2;
-  G.player.y = canvas.height - 60;
+  const qboxHeight = $('question-box').offsetHeight || 180;
+  G.player.y = canvas.height - qboxHeight - 160;
 }
 
 // ── LOADING SCREEN ──────────────────────────────────────────────────────────
@@ -170,7 +169,7 @@ function frame() {
   G.enemies = G.enemies.filter(e => e.y < canvas.height + 80);
 
   // ── Enemies ────────────────────────────────────────────────────────────
-  updateEnemies(G.enemies);
+  updateEnemies(G.enemies, canvas.width);
   for (const e of G.enemies) {
     if (!e.active) continue;
 
@@ -187,7 +186,8 @@ function frame() {
     const ox = e.shakeTick > 0 ? (Math.random() - 0.5) * 5 : 0;
     const origX = e.x;
     e.x += ox;
-    drawEnemySprite(ctx, e);
+    const bankAngle = (e.vx || 0) * 0.13;
+    drawEnemySprite(ctx, e, bankAngle);
     e.x = origX;
 
     if (e.label) {
@@ -239,7 +239,10 @@ function frame() {
     ? (Math.floor(_invincible / 6) % 2 === 0 ? 1.0 : 0.25)
     : 1.0;
 
-  drawAircraftSprite(ctx, G.activeAircraft, G.player.x, G.player.y, _shipFrame, flashAlpha, bankAngle);
+  const activeSkinData = SKINS.find(s => s.id === G.activeSkin);
+  const skinFilter = activeSkinData?.filter || '';
+  const skinAircraft = activeSkinData?.aircraft ?? G.activeAircraft;
+  drawAircraftSprite(ctx, skinAircraft, G.player.x, G.player.y, _shipFrame, flashAlpha, bankAngle, skinFilter);
 
   ctx.globalAlpha = 1;
 
@@ -291,21 +294,54 @@ function onMissileHit(enemy) {
 
 // ── QUESTION CYCLE ───────────────────────────────────────────────────────────
 function nextQuestion() {
+  if (_transitioning) return;
   if (G.questionsAnswered >= levelCfg.questionCount) { endLevel(true); return; }
+  _transitioning = true;
   G.answerLocked = false;
-  G.question     = newQuestion(levelCfg.ops, levelCfg.mathCap, levelCfg.mathMultCap);
 
-  $('question-text').textContent = G.question.text;
-  const btns = $('answer-buttons');
-  btns.innerHTML = '';
-  G.question.choices.forEach(c => {
-    const btn = document.createElement('button');
-    btn.className = 'answer-btn';
-    btn.textContent = c;
-    btn.addEventListener('click', () => handleAnswer(c, btn));
-    btns.appendChild(btn);
-  });
-  startTimer();
+  // Remove any pending skip listener
+  if (_skipHandler) {
+    $('game-canvas-wrap').removeEventListener('click', _skipHandler, true);
+    _skipHandler = null;
+  }
+  clearTimeout(_revealTimer);
+  _revealTimer = null;
+
+  // Undim and resume game loop
+  const overlay = $('game-pause-overlay');
+  overlay.classList.remove('dimmed');
+  if (!G.animFrame) G.animFrame = requestAnimationFrame(frame);
+
+  const reveal = $('correct-answer-reveal');
+  const qbox   = $('question-box');
+
+  qbox.classList.add('fading');
+
+  setTimeout(() => {
+
+    // Hide reveal banner
+    reveal.classList.add('hidden');
+    reveal.classList.remove('hiding');
+
+    // Swap in new question
+    G.question = newQuestion(levelCfg.ops, levelCfg.mathCap, levelCfg.mathMultCap);
+    $('question-text').textContent = G.question.text;
+    const btns = $('answer-buttons');
+    btns.innerHTML = '';
+    G.question.choices.forEach(c => {
+      const btn = document.createElement('button');
+      btn.className = 'answer-btn';
+      btn.textContent = c;
+      btn.addEventListener('click', () => handleAnswer(c, btn));
+      btns.appendChild(btn);
+    });
+
+    // Fade back in
+    qbox.classList.remove('fading');
+    qbox.classList.add('appearing');
+    setTimeout(() => { qbox.classList.remove('appearing'); _transitioning = false; }, 730);
+    startTimer();
+  }, 620);
 }
 
 function startTimer() {
@@ -366,14 +402,81 @@ function handleAnswer(choice, btn) {
     G.questionsAnswered++;
     G.streak = 0;
     updateStreakHUD();
-    fireEnemyMissile();
+    revealCorrectAnswer();
   }
 
   const sid = _sessionId;
-  setTimeout(() => {
+  const delay = correct ? 600 : 10000;
+  _revealTimer = setTimeout(() => {
     if (_sessionId !== sid) return;
-    if (G.questionsAnswered < levelCfg.questionCount) nextQuestion();
-    else endLevel(true);
+    if (correct) {
+      if (G.questionsAnswered < levelCfg.questionCount) nextQuestion();
+      else endLevel(true);
+    } else {
+      loseLife();
+    }
+  }, delay);
+
+  if (!correct) {
+    const wrap = $('game-canvas-wrap');
+    _skipHandler = () => {
+      wrap.removeEventListener('click', _skipHandler, true);
+      _skipHandler = null;
+      clearTimeout(_revealTimer);
+      _revealTimer = null;
+      if (_sessionId !== sid) return;
+      loseLife();
+    };
+    setTimeout(() => { if (_skipHandler) wrap.addEventListener('click', _skipHandler, true); }, 700);
+  }
+}
+
+function buildExplanation(q) {
+  const { a, b, op, answer } = q;
+  const sym = op === '*' ? '×' : op === '/' ? '÷' : op;
+  switch (op) {
+    case '+': return `Start at ${a}, then add ${b}  →  ${a} + ${b} = ${answer}`;
+    case '-': return `Start at ${a}, then subtract ${b}  →  ${a} − ${b} = ${answer}`;
+    case '*': return `${a} groups of ${b}  →  ${a} × ${b} = ${answer}`;
+    case '/': return `How many ${b}s fit in ${a}?  →  ${a} ÷ ${b} = ${answer}`;
+    default:  return `${a} ${sym} ${b} = ${answer}`;
+  }
+}
+
+function revealCorrectAnswer() {
+  const correct = String(G.question.answer).trim();
+  document.querySelectorAll('.answer-btn').forEach(b => {
+    b.disabled = false;
+    if (b.textContent.trim() === correct) {
+      b.classList.remove('wrong');
+      b.classList.add('correct');
+    }
+    b.disabled = true;
+  });
+
+  const banner = $('correct-answer-reveal');
+  banner.classList.remove('hidden', 'hiding');
+
+  const s1 = $('car-step1'), s2 = $('car-step2'), s3 = $('car-step3');
+  s1.className = 'car-step car-step-wrong';
+  s2.className = 'car-step car-step-how';
+  s3.className = 'car-step car-step-answer';
+
+  s1.textContent = `✗ Wrong — let's see how to solve it`;
+  s2.textContent = buildExplanation(G.question);
+  s3.textContent = `✓ Answer: ${correct}`;
+
+  [s1, s2, s3].forEach(s => s.classList.remove('visible'));
+  setTimeout(() => s1.classList.add('visible'), 80);
+  setTimeout(() => s2.classList.add('visible'), 340);
+  setTimeout(() => s3.classList.add('visible'), 620);
+
+  // Smoothly dim + freeze the game
+  const overlay = $('game-pause-overlay');
+  overlay.classList.add('dimmed');
+  setTimeout(() => {
+    cancelAnimationFrame(G.animFrame);
+    G.animFrame = null;
   }, 600);
 }
 
@@ -385,8 +488,9 @@ function handleTimeout() {
   updateStreakHUD();
   SFX.wrong();
   document.querySelectorAll('.answer-btn').forEach(b => { b.classList.add('wrong'); b.disabled = true; });
+  revealCorrectAnswer();
   const sid = _sessionId;
-  setTimeout(() => { if (_sessionId === sid) loseLife(); }, 400);
+  setTimeout(() => { if (_sessionId === sid) loseLife(); }, 10000);
 }
 
 // ── LIVES ────────────────────────────────────────────────────────────────────
@@ -398,6 +502,12 @@ function loseLife() {
   shakeFrames = 12;
   const sid = _sessionId;
   if (G.lives <= 0) {
+    G.continueState = {
+      lives:             1,
+      correctAnswers:    G.correctAnswers,
+      questionsAnswered: G.questionsAnswered,
+      streak:            G.streak,
+    };
     setTimeout(() => { if (_sessionId === sid) endLevel(false); }, 700);
     return;
   }
@@ -413,7 +523,8 @@ function loseLife() {
 
 // ── HUD ──────────────────────────────────────────────────────────────────────
 function updateLivesHUD() {
-  $('hud-lives').innerHTML = [0,1,2].map(i =>
+  const maxSlots = Math.max(3, G.lives);
+  $('hud-lives').innerHTML = Array.from({ length: maxSlots }, (_, i) =>
     `<span style="opacity:${i < G.lives ? '1' : '0.2'}">&#10084;&#65039;</span>`
   ).join('');
 }
@@ -471,9 +582,17 @@ export function initGame(levelNum, onComplete) {
   tick        = 0;
   _shipFrame  = 0;
   _speedLines = [];
+  const snap = G.continueState;
+  G.continueState = null;
   resetLevel();
   G.currentLevel = levelNum;
   levelCfg       = getLevel(levelNum);
+  if (snap) {
+    G.lives             = snap.lives;
+    G.correctAnswers    = snap.correctAnswers;
+    G.questionsAnswered = snap.questionsAnswered;
+    G.streak            = snap.streak;
+  }
   _onComplete    = onComplete;
 
   canvas = $('game-canvas');
@@ -497,6 +616,11 @@ export function initGame(levelNum, onComplete) {
   spawnTimer = 60;
 
   attachInputListeners();
+
+  const quitBtn = $('btn-quit-game');
+  quitBtn.onclick = () => endLevel(false);
+
+
 
   const sid = _sessionId;
 

@@ -48,10 +48,12 @@ export function updateMissiles(missiles, onHit) {
 // ── DRAW ──────────────────────────────────────────────────────────────────────
 
 export function drawMissiles(ctx, missiles, isEnemy = false) {
-  const rot = isEnemy ? BOLT_ROT_DOWN : BOLT_ROT_UP;
   ctx.save();
   ctx.imageSmoothingEnabled = false;
   for (const m of missiles) {
+    // Rotate sprite to match actual travel direction
+    const travelAngle = Math.atan2(m.vy, m.vx);
+    const rot = travelAngle - ROCKET_ANGLE + Math.PI;
     drawFrame(ctx, 'bolt', 0, m.x, m.y, BOLT_W, BOLT_H, { rotate: rot });
   }
   ctx.restore();

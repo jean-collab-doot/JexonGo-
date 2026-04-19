@@ -20,22 +20,9 @@
     <div class="menu-content">
       <div class="menu-logo">JEXON<span class="logo-go">GO</span></div>
       <div class="menu-subtitle">AERIAL MATH COMBAT</div>
-      <div id="menu-score-card">
-        <div class="menu-score-row">
-          <span class="menu-score-label">XP</span>
-          <span id="menu-xp">0</span>
-        </div>
-        <div class="menu-score-row">
-          <span class="menu-score-label">LEVELS CLEARED</span>
-          <span id="menu-levels">0</span>
-        </div>
-        <div class="menu-score-row">
-          <span class="menu-score-label">STARS</span>
-          <span id="menu-stars">0</span>
-        </div>
-      </div>
       <button id="btn-play" class="btn btn-primary">▶ PLAY</button>
       <button id="btn-hangar" class="btn btn-secondary">✈ HANGAR</button>
+      <button id="btn-shop" class="btn btn-secondary">🛍 SHOP</button>
       <button id="btn-practice" class="btn btn-secondary">⚡ PRACTICE</button>
     </div>
   </div>
@@ -58,12 +45,21 @@
       <div id="hud-lives"></div>
       <div id="hud-level">Level 1</div>
       <div id="hud-streak"></div>
+      <button id="btn-quit-game" class="btn-quit-game">&#x2715; QUIT</button>
     </div>
     <div id="timer-bar-wrap"><div id="timer-bar"></div></div>
-    <canvas id="game-canvas"></canvas>
-    <div id="question-box">
-      <div id="question-text"></div>
-      <div id="answer-buttons"></div>
+    <div id="game-canvas-wrap">
+      <canvas id="game-canvas"></canvas>
+      <div id="game-pause-overlay"></div>
+      <div id="question-box">
+        <div id="question-text"></div>
+        <div id="answer-buttons"></div>
+        <div id="correct-answer-reveal" class="hidden">
+          <div class="car-step" id="car-step1"></div>
+          <div class="car-step" id="car-step2"></div>
+          <div class="car-step" id="car-step3"></div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -91,10 +87,40 @@
   <div id="s-chest" class="screen hidden">
     <div id="chest-title">CHEST REWARD</div>
     <div id="chest-tier-label"></div>
-    <div id="chest-box">&#x1F4E6;</div>
-    <div id="chest-reward-text"></div>
+    <div id="chest-box"><img id="chest-img" src="" alt="chest"></div>
+    <div id="chest-rewards" class="hidden"></div>
     <button id="btn-chest-open" class="btn btn-primary">OPEN CHEST</button>
     <button id="btn-chest-continue" class="btn btn-secondary hidden">CONTINUE</button>
+  </div>
+
+  <!-- SHOP SCREEN -->
+  <div id="s-shop" class="screen hidden">
+
+    <!-- Top bar -->
+    <div class="shop-topbar">
+      <button id="btn-shop-back" class="shop-back-btn">&#8592;</button>
+      <span class="shop-topbar-title">SHOP</span>
+      <div class="shop-currencies">
+        <span id="shop-coins" class="shop-currency-badge shop-currency-coins">🪙 <span id="shop-coins-val">0</span></span>
+      </div>
+    </div>
+
+    <!-- Scrollable content -->
+    <div id="shop-content" class="shop-content"></div>
+    <div id="shop-error" class="shop-error-bar"></div>
+
+    <!-- Bottom tab bar -->
+    <div class="shop-tabbar">
+      <button class="shop-tab shop-tab-active" data-tab="offers">
+        <span class="shop-tab-icon">🎁</span><span class="shop-tab-label">OFFERS</span>
+      </button>
+      <button class="shop-tab" data-tab="skins">
+        <span class="shop-tab-icon">✈</span><span class="shop-tab-label">SKINS</span>
+      </button>
+      <button class="shop-tab" data-tab="more">
+        <span class="shop-tab-icon">⋯</span><span class="shop-tab-label">MORE</span>
+      </button>
+    </div>
   </div>
 
   <!-- GAME OVER SCREEN -->

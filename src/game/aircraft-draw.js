@@ -14,11 +14,12 @@ const ENEMY_SCALE  = 4.8;  // multiplier on enemy.size for draw dimensions
  * Draw the player ship sprite centred at (cx, cy).
  * Uses 'screen' blend so the built-in dark vignette becomes transparent.
  */
-export function drawAircraftSprite(ctx, aircraftId, cx, cy, frame, alpha = 1, bankAngle = 0) {
+export function drawAircraftSprite(ctx, aircraftId, cx, cy, frame, alpha = 1, bankAngle = 0, skinFilter = '') {
   const key = AIRCRAFT_SPRITE[aircraftId] ?? 'ship-t6';
   ctx.save();
   ctx.imageSmoothingEnabled = true;
-  if (alpha !== 1) ctx.globalAlpha = alpha;
+  if (alpha !== 1)  ctx.globalAlpha = alpha;
+  if (skinFilter)   ctx.filter = skinFilter;
   drawFrame(ctx, key, frame, cx, cy, PLAYER_SIZE, PLAYER_SIZE, { rotate: bankAngle });
   ctx.restore();
 }
@@ -45,15 +46,12 @@ export function drawAircraftPreview(ctx, aircraftId, cx, cy, size) {
  * @param {CanvasRenderingContext2D} ctx
  * @param {object} enemy  full enemy object from G.enemies
  */
-export function drawEnemySprite(ctx, enemy) {
+export function drawEnemySprite(ctx, enemy, bankAngle = 0) {
   const size = enemy.size * ENEMY_SCALE;
-
-  // Rotate 180° so the plane faces downward (enemies fly top→bottom).
-  // 'screen' blend removes the built-in dark vignette background.
   ctx.save();
   ctx.imageSmoothingEnabled = true;
   drawFrame(ctx, enemy.spriteKey, enemy.animFrame, enemy.x, enemy.y, size, size,
-    { rotate: Math.PI });
+    { rotate: Math.PI + bankAngle });
   ctx.restore();
 
   // HP bar for tank / boss enemies
