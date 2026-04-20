@@ -52,6 +52,22 @@ function enemyTypesForLevel(n) {
   return                    ['tank',  'fast', 'boss'];
 }
 
+// Regular companion enemies that appear alongside the boss
+function bossCompanionTypesForLevel(n) {
+  const m = n / 10;
+  if (m === 1) return ['basic'];
+  if (m === 2) return ['basic', 'fast'];
+  if (m === 3) return ['fast',  'tank'];
+  if (m === 4) return ['fast',  'tank'];
+  return               ['tank',  'fast'];
+}
+
+// How many companion enemies can be on screen at once (not counting the boss)
+function bossCompanionCountForLevel(n) {
+  const m = n / 10;
+  return m; // 1, 2, 3, 4, 5 for lv10→50
+}
+
 // Maximum enemies on screen at once — grows with level
 function maxEnemiesForLevel(n) {
   if (n % 10 === 0) {
@@ -115,6 +131,8 @@ export function getLevel(n) {
     enemyFireRateMult: enemyFireRateMultForLevel(n),
     isBossLevel:       n % 10 === 0,
     isChestLevel:      n % 10 === 0,
+    bossCompanionTypes: n % 10 === 0 ? bossCompanionTypesForLevel(n) : [],
+    bossCompanionMax:   n % 10 === 0 ? bossCompanionCountForLevel(n) : 0,
   };
 }
 

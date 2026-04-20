@@ -61,7 +61,7 @@ export const SKINS = [
     id: 'legendary',
     name: 'Legendary Skin',
     rarity: 'legendary',
-    price: 1000,
+    price: 5000,
     aircraft: 'f22',
     filter: 'hue-rotate(268deg) saturate(5) brightness(1.35)',
     offerImg: '/public/assets/skins/offer-legendary.png',

@@ -156,8 +156,8 @@ function frame() {
 
   // ── Enemy spawn ────────────────────────────────────────────────────────
   spawnTimer--;
-  if (spawnTimer <= 0 && G.enemies.filter(e => e.active).length < maxEnemies) {
-    const types = levelCfg.enemyTypes;
+  if (spawnTimer <= 0 && G.enemies.filter(e => e.type !== 'boss' && e.active).length < maxEnemies) {
+    const types = levelCfg.isBossLevel ? levelCfg.bossCompanionTypes : levelCfg.enemyTypes;
     const type  = types[Math.floor(Math.random() * types.length)];
     const e     = spawnEnemy(canvas.width, type);
     e.speed        *= levelCfg.enemySpeedMult;
@@ -166,21 +166,45 @@ function frame() {
     G.enemies.push(e);
     spawnTimer = spawnRate;
   }
-  G.enemies = G.enemies.filter(e => e.y < canvas.height + 80);
+  G.enemies = G.enemies.filter(e => e.type === 'boss' || e.y < canvas.height + 80);
 
   // ── Enemies ────────────────────────────────────────────────────────────
   updateEnemies(G.enemies, canvas.width);
   for (const e of G.enemies) {
     if (!e.active) continue;
 
-    e.fireCooldown--;
-    const inFireZone = e.y > canvas.height * 0.25 && e.y < canvas.height * 0.78;
-    if (e.fireCooldown <= 0 && inFireZone) {
-      e.fireCooldown = e.fireRate;
-      G.enemyMissiles.push(createMissile(e.x, e.y, G.player.x, G.player.y, 2.5, null, '#ef4444'));
-      SFX.missile();
-    } else if (e.fireCooldown <= 0) {
-      e.fireCooldown = e.fireRate;
+    if (e.type === 'boss') {
+      // Boss fires in bursts then pauses 5 s
+      if (e.bossPhase === 'pause') {
+        e.bossPauseTimer--;
+        if (e.bossPauseTimer <= 0) {
+          e.bossPhase    = 'burst';
+          e.bossBurstFired = 0;
+          e.bossBurstTimer = 0;
+        }
+      } else {
+        e.bossBurstTimer--;
+        if (e.bossBurstTimer <= 0 && e.bossBurstFired < e.bossBurstMax) {
+          G.enemyMissiles.push(createMissile(e.x, e.y, G.player.x, G.player.y, 2.5, null, '#ef4444'));
+          SFX.missile();
+          e.bossBurstFired++;
+          e.bossBurstTimer = 28; // ~0.5 s between shots in burst
+        }
+        if (e.bossBurstFired >= e.bossBurstMax) {
+          e.bossPhase      = 'pause';
+          e.bossPauseTimer = 300; // 5 s at 60 fps
+        }
+      }
+    } else {
+      e.fireCooldown--;
+      const inFireZone = e.y > canvas.height * 0.25 && e.y < canvas.height * 0.78 && e.y < G.player.y;
+      if (e.fireCooldown <= 0 && inFireZone) {
+        e.fireCooldown = e.fireRate;
+        G.enemyMissiles.push(createMissile(e.x, e.y, G.player.x, G.player.y, 2.5, null, '#ef4444'));
+        SFX.missile();
+      } else if (e.fireCooldown <= 0) {
+        e.fireCooldown = e.fireRate;
+      }
     }
 
     const ox = e.shakeTick > 0 ? (Math.random() - 0.5) * 5 : 0;
@@ -240,9 +264,26 @@ function frame() {
     : 1.0;
 
   const activeSkinData = SKINS.find(s => s.id === G.activeSkin);
-  const skinFilter = activeSkinData?.filter || '';
+  const skinFilter  = activeSkinData?.filter || '';
   const skinAircraft = activeSkinData?.aircraft ?? G.activeAircraft;
-  drawAircraftSprite(ctx, skinAircraft, G.player.x, G.player.y, _shipFrame, flashAlpha, bankAngle, skinFilter);
+
+  if (activeSkinData?.offerImg) {
+    // Draw the skin artwork image directly as the player plane
+    const cached = _skinImgCache[activeSkinData.offerImg];
+    if (cached?.complete) {
+      const sz = 180;
+      ctx.save();
+      if (flashAlpha !== 1) ctx.globalAlpha = flashAlpha;
+      ctx.translate(G.player.x, G.player.y);
+      if (bankAngle) ctx.rotate(bankAngle);
+      ctx.drawImage(cached, -sz / 2, -sz / 2, sz, sz);
+      ctx.restore();
+    } else {
+      drawAircraftSprite(ctx, skinAircraft, G.player.x, G.player.y, _shipFrame, flashAlpha, bankAngle, skinFilter);
+    }
+  } else {
+    drawAircraftSprite(ctx, skinAircraft, G.player.x, G.player.y, _shipFrame, flashAlpha, bankAngle, skinFilter);
+  }
 
   ctx.globalAlpha = 1;
 
@@ -287,6 +328,10 @@ function onMissileHit(enemy) {
     enemy.active = false;
     shakeFrames  = 6;
     G.enemies    = G.enemies.filter(e => e.active);
+    // Boss killed → win the boss level immediately
+    if (enemy.type === 'boss' && levelCfg.isBossLevel) {
+      setTimeout(() => endLevel(true), 800);
+    }
   } else {
     spawnHitSpark(G.particles, enemy.x, enemy.y);
   }
@@ -295,7 +340,7 @@ function onMissileHit(enemy) {
 // ── QUESTION CYCLE ───────────────────────────────────────────────────────────
 function nextQuestion() {
   if (_transitioning) return;
-  if (G.questionsAnswered >= levelCfg.questionCount) { endLevel(true); return; }
+  if (!levelCfg.isBossLevel && G.questionsAnswered >= levelCfg.questionCount) { endLevel(true); return; }
   _transitioning = true;
   G.answerLocked = false;
 
@@ -324,7 +369,10 @@ function nextQuestion() {
     reveal.classList.remove('hiding');
 
     // Swap in new question
-    G.question = newQuestion(levelCfg.ops, levelCfg.mathCap, levelCfg.mathMultCap);
+    const ops    = G.practiceMode ? G.practiceOps : levelCfg.ops;
+    const cap    = G.practiceMode ? 20 : levelCfg.mathCap;
+    const mCap   = G.practiceMode ? 12 : levelCfg.mathMultCap;
+    G.question = newQuestion(ops, cap, mCap);
     $('question-text').textContent = G.question.text;
     const btns = $('answer-buttons');
     btns.innerHTML = '';
@@ -410,7 +458,7 @@ function handleAnswer(choice, btn) {
   _revealTimer = setTimeout(() => {
     if (_sessionId !== sid) return;
     if (correct) {
-      if (G.questionsAnswered < levelCfg.questionCount) nextQuestion();
+      if (levelCfg.isBossLevel || G.questionsAnswered < levelCfg.questionCount) nextQuestion();
       else endLevel(true);
     } else {
       loseLife();
@@ -495,6 +543,16 @@ function handleTimeout() {
 
 // ── LIVES ────────────────────────────────────────────────────────────────────
 function loseLife() {
+  // Practice without hearts — just clear missiles, shake, next question
+  if (G.practiceMode && !G.practiceHearts) {
+    G.enemyMissiles = [];
+    shakeFrames = 8;
+    G.streak = 0;
+    updateStreakHUD();
+    const sid = _sessionId;
+    setTimeout(() => { if (_sessionId === sid) nextQuestion(); }, 900);
+    return;
+  }
   if (G.lives <= 0) return;
   G.lives--;
   G.enemyMissiles = [];
@@ -512,11 +570,12 @@ function loseLife() {
     return;
   }
   _invincible = 120;
-  G.enemies   = [];
+  // On boss levels keep the boss alive; on normal levels clear all enemies
+  G.enemies   = levelCfg.isBossLevel ? G.enemies.filter(e => e.type === 'boss') : [];
   spawnTimer  = spawnRate;
   setTimeout(() => {
     if (_sessionId !== sid) return;
-    if (G.questionsAnswered < levelCfg.questionCount) nextQuestion();
+    if (levelCfg.isBossLevel || G.questionsAnswered < levelCfg.questionCount) nextQuestion();
     else endLevel(true);
   }, 900);
 }
@@ -546,7 +605,8 @@ function endLevel(won) {
 
 // ── PUBLIC API ───────────────────────────────────────────────────────────────
 // Speed lines — initialised per session, used in frame()
-let _speedLines = [];
+let _speedLines   = [];
+const _skinImgCache = {};
 function initSpeedLines(cw, ch) {
   _speedLines = Array.from({ length: 28 }, () => ({
     x:      Math.random() * cw,
@@ -603,13 +663,18 @@ export function initGame(levelNum, onComplete) {
   const ro = new ResizeObserver(resize);
   ro.observe(canvas);
 
-  $('hud-level').textContent = G.practiceMode ? 'PRACTICE' : `LEVEL ${levelNum}`;
-  updateLivesHUD();
-  updateStreakHUD();
+  $('hud-level').textContent = G.practiceMode ? 'PRACTICE'
+    : levelCfg.isBossLevel ? `⚠ BOSS LV${levelNum}` : `LEVEL ${levelNum}`;
 
-  const aircraft = AIRCRAFT[G.activeAircraft] || AIRCRAFT.t6;
-  if (aircraft.ability === 'extraLife') G.lives = Math.min(G.lives + 1, 5);
-  updateLivesHUD();
+  if (G.practiceMode && !G.practiceHearts) {
+    $('hud-lives').innerHTML = '<span style="opacity:0.3">∞</span>';
+  } else {
+    updateLivesHUD();
+    const aircraft = AIRCRAFT[G.activeAircraft] || AIRCRAFT.t6;
+    if (aircraft.ability === 'extraLife') G.lives = Math.min(G.lives + 1, 5);
+    updateLivesHUD();
+  }
+  updateStreakHUD();
 
   spawnRate  = levelCfg.spawnRate;
   maxEnemies = levelCfg.maxEnemies;
@@ -644,6 +709,36 @@ export function initGame(levelNum, onComplete) {
       if (_sessionId !== sid) return;
       initBackground(levelCfg.biome);
       placePlayer();
+
+      // Pre-load skin artwork if needed
+      const _skinData = SKINS.find(s => s.id === G.activeSkin);
+      if (_skinData?.offerImg && !_skinImgCache[_skinData.offerImg]) {
+        const _img = new Image();
+        _img.src = _skinData.offerImg;
+        _skinImgCache[_skinData.offerImg] = _img;
+      }
+
+      // Boss level: spawn one static boss centred near top, infinite questions
+      if (levelCfg.isBossLevel) {
+        maxEnemies = 0; // prevent re-spawning via timer
+        const boss = spawnEnemy(canvas.width, 'boss');
+        const milestone = levelNum / 10;
+        boss.hp       = 4 + milestone * 4;   // 8, 12, 16, 20, 24 for lv10-50
+        boss.currentHp = boss.hp;
+        boss.maxHp     = boss.hp;
+        boss.x         = canvas.width / 2;
+        boss.y         = canvas.height * 0.18;
+        boss.speed        = 0;
+        boss.bossPhase      = 'pause';
+        boss.bossPauseTimer = 150;
+        boss.bossBurstMax   = 2 + milestone;
+        boss.bossBurstFired = 0;
+        boss.bossBurstTimer = 0;
+        G.enemies.push(boss);
+        // Companions spawn via normal timer — set maxEnemies to companion count
+        maxEnemies = levelCfg.bossCompanionMax;
+      }
+
       G.animFrame = requestAnimationFrame(frame);
       nextQuestion();
     });

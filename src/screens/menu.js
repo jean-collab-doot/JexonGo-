@@ -245,10 +245,86 @@ function drawTick() {
 // ── PUBLIC API ────────────────────────────────────────────────────────────────
 export function initMenu(nav) {
   loadAssets();
-  $('btn-play').onclick     = () => nav.toMap();
-  $('btn-hangar').onclick   = () => nav.toHangar();
-  $('btn-shop').onclick     = () => nav.toShop();
-  $('btn-practice').onclick = () => nav.toGame(1, true);
+  $('btn-play').onclick    = () => nav.toMap();
+  $('btn-hangar').onclick  = () => nav.toHangar();
+  $('btn-shop').onclick    = () => nav.toShop();
+  $('btn-practice').onclick = () => openPracticeSelect(nav);
+
+  $('btn-login-google').onclick = () => _handleLogin('google');
+  $('btn-login-apple').onclick  = () => _handleLogin('apple');
+}
+
+let _toastTimer = null;
+function _showToast(msg) {
+  const el = document.getElementById('login-toast');
+  if (!el) return;
+  el.textContent = msg;
+  el.classList.add('toast-show');
+  if (_toastTimer) clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => el.classList.remove('toast-show'), 2200);
+}
+
+function _handleLogin(provider) {
+  const btn = document.getElementById('btn-login-' + provider);
+  if (btn) {
+    btn.classList.remove('login-tapped');
+    void btn.offsetWidth; // force reflow to restart animation
+    btn.classList.add('login-tapped');
+    btn.addEventListener('animationend', () => btn.classList.remove('login-tapped'), { once: true });
+  }
+  const label = provider === 'google' ? 'Google' : 'Apple';
+  _showToast('🔒 ' + label + ' sign-in\nCOMING SOON');
+}
+
+function openPracticeSelect(nav) {
+  const panel = $('practice-select');
+  panel.classList.remove('hidden');
+
+  // Sync buttons to current G.practiceOps
+  panel.querySelectorAll('.practice-op-btn').forEach(btn => {
+    const on = G.practiceOps.includes(btn.dataset.op);
+    btn.classList.toggle('pob-active', on);
+  });
+
+  // Op toggle
+  panel.querySelectorAll('.practice-op-btn').forEach(btn => {
+    btn.onclick = () => {
+      const op  = btn.dataset.op;
+      const idx = G.practiceOps.indexOf(op);
+      if (idx === -1) {
+        G.practiceOps.push(op);
+        btn.classList.add('pob-active');
+      } else {
+        if (G.practiceOps.length === 1) return; // keep at least one
+        G.practiceOps.splice(idx, 1);
+        btn.classList.remove('pob-active');
+      }
+    };
+  });
+
+  $('btn-practice-all').onclick = () => {
+    G.practiceOps = ['+', '-', '*', '/'];
+    panel.querySelectorAll('.practice-op-btn').forEach(b => b.classList.add('pob-active'));
+  };
+
+  // Hearts toggle
+  const heartsBtn = $('btn-practice-hearts');
+  const syncHearts = () => {
+    heartsBtn.textContent = G.practiceHearts ? 'ON' : 'OFF';
+    heartsBtn.classList.toggle('poh-active',  G.practiceHearts);
+    heartsBtn.classList.toggle('poh-inactive', !G.practiceHearts);
+  };
+  syncHearts();
+  heartsBtn.onclick = () => { G.practiceHearts = !G.practiceHearts; syncHearts(); };
+
+  $('btn-practice-close').onclick = () => panel.classList.add('hidden');
+  panel.onclick = e => { if (e.target === panel) panel.classList.add('hidden'); };
+
+  $('btn-practice-start').onclick = () => {
+    if (G.practiceOps.length === 0) return;
+    panel.classList.add('hidden');
+    nav.toGame(1, true);
+  };
 }
 
 export function renderMenu() {

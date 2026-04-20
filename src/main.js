@@ -8,6 +8,7 @@ import { initResult, showResult } from './screens/result.js';
 import { initChest, showChest } from './screens/chest.js';
 import { initGameover, showGameover } from './screens/gameover.js';
 import { initShop, renderShop } from './screens/shop.js';
+import { initSettings, loadSettings } from './screens/settings.js';
 import { preloadShips } from './game/sprites.js';
 
 // ── NAVIGATION ──────────────────────────────────────────────────────────────
@@ -70,6 +71,7 @@ initResult(nav);
 initChest(nav);
 initGameover(nav);
 initShop(nav);
+initSettings();
 
 // ── DEV BOOST ────────────────────────────────────────────────────────────────
 (function devBoost() {
@@ -86,6 +88,7 @@ initShop(nav);
 
 // ── BOOT ──────────────────────────────────────────────────────────────────────
 loadSave();
+loadSettings();
 
 // Start loading ship sprites immediately so the hangar looks good right away
 preloadShips();

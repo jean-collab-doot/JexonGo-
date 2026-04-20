@@ -15,6 +15,8 @@ export const G = {
   // --- Session ---
   currentLevel: 1,
   practiceMode: false,
+  practiceOps:    ['+', '-', '*', '/'],
+  practiceHearts: true,
   continueState: null,   // saved snapshot for the Continue button
 
   // --- In-game (reset each level) ---
