@@ -9,7 +9,12 @@ import { initChest, showChest } from './screens/chest.js';
 import { initGameover, showGameover } from './screens/gameover.js';
 import { initShop, renderShop } from './screens/shop.js';
 import { initSettings, loadSettings } from './screens/settings.js';
+import { initRanked, renderRankedLobby } from './screens/ranked.js';
+import { initBriefing, showBriefing } from './screens/briefing.js';
+import { initClassroom, renderClassroom } from './screens/classroom.js';
 import { preloadShips } from './game/sprites.js';
+import { checkDailyLogin } from './systems/daily.js';
+import { showDailyReward } from './screens/menu.js';
 
 // ── NAVIGATION ──────────────────────────────────────────────────────────────
 let _cleanup = null;
@@ -54,6 +59,21 @@ const nav = {
     renderShop();
     showScreen('s-shop');
   },
+  toRanked() {
+    cleanup();
+    renderRankedLobby();
+    showScreen('s-ranked');
+  },
+  toBriefing(levelNum) {
+    cleanup();
+    showBriefing(levelNum);
+    showScreen('s-briefing');
+  },
+  toClassroom() {
+    cleanup();
+    renderClassroom();
+    showScreen('s-classroom');
+  },
 };
 
 function cleanup() {
@@ -72,6 +92,9 @@ initChest(nav);
 initGameover(nav);
 initShop(nav);
 initSettings();
+initRanked(nav);
+initBriefing(nav);
+initClassroom(nav);
 
 // ── DEV BOOST ────────────────────────────────────────────────────────────────
 (function devBoost() {
@@ -89,9 +112,13 @@ initSettings();
 // ── BOOT ──────────────────────────────────────────────────────────────────────
 loadSave();
 loadSettings();
-
-// Start loading ship sprites immediately so the hangar looks good right away
 preloadShips();
 
 renderMenu();
 showScreen('s-menu');
+
+// Show daily reward popup after a short delay so menu renders first
+const _daily = checkDailyLogin();
+if (_daily.isNewDay) {
+  setTimeout(() => showDailyReward(_daily.reward, _daily.streak), 600);
+}

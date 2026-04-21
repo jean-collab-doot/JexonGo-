@@ -1,4 +1,5 @@
 import { SFX } from '../audio/sound.js';
+import { t } from '../i18n.js';
 
 const KEY = 'jexongo_settings';
 
@@ -31,7 +32,7 @@ function _refresh() {
 
   const eff = document.getElementById('sett-effects');
   if (eff) {
-    eff.textContent = settings.effects ? 'ON' : 'OFF';
+    eff.textContent = settings.effects ? t('on') : t('off');
     eff.classList.toggle('sett-on',  settings.effects);
     eff.classList.toggle('sett-off', !settings.effects);
   }

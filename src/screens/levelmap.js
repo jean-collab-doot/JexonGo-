@@ -60,7 +60,7 @@ export function renderLevelMap() {
     if (node.state !== 'locked') {
       el.style.borderColor = BIOME_META[biome].accent;
       if (node.state === 'available') el.style.boxShadow = `0 0 14px ${BIOME_META[biome].accent}66`;
-      el.addEventListener('click', () => window._nav.toGame(node.num, false));
+      el.addEventListener('click', () => window._nav.toBriefing(node.num));
     }
 
     container.appendChild(el);

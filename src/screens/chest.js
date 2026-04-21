@@ -4,6 +4,7 @@ import { save } from '../utils/storage.js';
 import { SFX } from '../audio/sound.js';
 import { RARITIES, BLUEPRINT_COST, applyRewards } from '../systems/chest.js';
 import { AIRCRAFT } from '../data/aircraft.js';
+import { t } from '../i18n.js';
 
 // ── REWARD CARD BUILDER ───────────────────────────────────────────────────────
 
@@ -44,8 +45,8 @@ function buildCard(reward) {
     const have   = G.blueprints?.[reward.aircraft] || 0;
 
     if (reward._converted) {
-      valEl.textContent = 'CONVERTED TO COINS';
-      subEl.textContent = `${ac?.name || reward.aircraft} DUPLICATE`;
+      valEl.textContent = t('convertedToCoins');
+      subEl.textContent = `${ac?.name || reward.aircraft} ${t('duplicate')}`;
       subEl.style.color = '#94a3b8';
     } else {
       valEl.textContent = ac?.name || reward.aircraft;
@@ -74,8 +75,8 @@ export function initChest(nav) {
 export function showChest(chestData) {
   const { chestName, chestColor, chestImg, rewards } = chestData;
 
-  $('chest-title').textContent      = 'CHEST REWARD';
-  $('chest-tier-label').textContent = chestName + ' CHEST';
+  $('chest-title').textContent      = t('chestReward');
+  $('chest-tier-label').textContent = chestName + ' ' + t('chestSuffix');
   $('chest-tier-label').style.color = chestColor;
 
   const box = $('chest-box');
@@ -89,7 +90,9 @@ export function showChest(chestData) {
 
   $('btn-chest-open').disabled = false;
   $('btn-chest-open').classList.remove('hidden');
+  $('btn-chest-open').textContent = t('openChest');
   $('btn-chest-continue').classList.add('hidden');
+  $('btn-chest-continue').textContent = t('continueBtn');
 
   $('btn-chest-open').onclick = () => {
     $('btn-chest-open').disabled = true;
@@ -135,7 +138,7 @@ export function showChest(chestData) {
         const banner = document.createElement('div');
         banner.className   = 'chest-unlock-banner';
         banner.textContent =
-          `✈ UNLOCKED: ${newlyUnlocked.map(id => AIRCRAFT[id]?.name || id).join(' + ')}`;
+          `${t('unlocked')} ${newlyUnlocked.map(id => AIRCRAFT[id]?.name || id).join(' + ')}`;
         rewardsEl.appendChild(banner);
       }, doneAt + 200);
     }

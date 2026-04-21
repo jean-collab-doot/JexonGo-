@@ -4,6 +4,7 @@ import { SFX } from '../audio/sound.js';
 import { calcXP, calcStars } from '../systems/xp.js';
 import { saveProgress } from '../systems/progression.js';
 import { rollChest } from '../systems/chest.js';
+import { t } from '../i18n.js';
 
 export function initResult(nav) {
   $('btn-result-continue').onclick = () => {
@@ -32,11 +33,11 @@ export function showResult(won) {
     window._currentLevelCfg = { isChestLevel: G.currentLevel % 10 === 0 };
   }
 
-  $('result-title').textContent   = G.practiceMode ? 'PRACTICE COMPLETE' : 'MISSION COMPLETE';
+  $('result-title').textContent   = G.practiceMode ? t('practiceComplete') : t('missionComplete');
   $('result-stars').innerHTML =
     [...Array(3)].map((_, i) =>
       `<span style="color:${i < stars ? '#fbbf24' : '#334155'};font-size:44px">★</span>`
     ).join('');
-  $('result-xp').textContent      = G.practiceMode ? 'No XP in practice' : `+ ${xp} XP`;
-  $('result-correct').textContent = `${G.correctAnswers} / 10 correct`;
+  $('result-xp').textContent      = G.practiceMode ? t('noXpPractice') : `+ ${xp} XP`;
+  $('result-correct').textContent = `${G.correctAnswers} / 10 ${t('correct')}`;
 }

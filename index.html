@@ -10,41 +10,66 @@
 </head>
 <body>
 
+  <!-- DAILY LOGIN REWARD -->
+  <div id="daily-reward-overlay" class="sett-backdrop hidden">
+    <div class="daily-panel">
+      <div class="daily-header">
+        <span class="daily-title" data-i18n="dailyReward">🎁 DAILY REWARD</span>
+        <span id="daily-streak-label" class="daily-streak-label">DAY 1</span>
+      </div>
+      <div class="daily-days-row" id="daily-days-row"></div>
+      <div class="daily-reward-showcase" id="daily-reward-showcase"></div>
+      <button id="btn-daily-claim" class="btn btn-primary daily-claim-btn" data-i18n="claimReward">CLAIM REWARD</button>
+    </div>
+  </div>
+
+  <!-- MISSIONS PANEL -->
+  <div id="missions-panel" class="sett-backdrop hidden">
+    <div class="missions-inner">
+      <div class="sett-header">
+        <span class="sett-title" data-i18n="dailyMissions">⚡ DAILY MISSIONS</span>
+        <button id="btn-missions-close" class="sett-close">✕</button>
+      </div>
+      <div id="missions-timer" class="missions-timer"></div>
+      <div id="missions-list" class="missions-list"></div>
+    </div>
+  </div>
+
   <!-- PRACTICE MODE SELECTOR -->
   <div id="practice-select" class="sett-backdrop hidden">
     <div class="practice-panel">
       <div class="sett-header">
-        <span class="sett-title">⚡ PRACTICE</span>
+        <span class="sett-title" data-i18n="practice">⚡ PRACTICE</span>
         <button id="btn-practice-close" class="sett-close">✕</button>
       </div>
       <div class="practice-body">
-        <div class="practice-subtitle">CHOOSE OPERATIONS</div>
+        <div class="practice-subtitle" data-i18n="chooseOps">CHOOSE OPERATIONS</div>
         <div class="practice-ops-grid">
           <button class="practice-op-btn pob-active" data-op="+" style="--op-color:#00e84b">
             <span class="pob-symbol">+</span>
-            <span class="pob-label">ADD</span>
+            <span class="pob-label" data-i18n="add">ADD</span>
           </button>
           <button class="practice-op-btn pob-active" data-op="-" style="--op-color:#60a5fa">
             <span class="pob-symbol">−</span>
-            <span class="pob-label">SUB</span>
+            <span class="pob-label" data-i18n="sub">SUB</span>
           </button>
           <button class="practice-op-btn pob-active" data-op="*" style="--op-color:#ff8c00">
             <span class="pob-symbol">×</span>
-            <span class="pob-label">MUL</span>
+            <span class="pob-label" data-i18n="mul">MUL</span>
           </button>
           <button class="practice-op-btn pob-active" data-op="/" style="--op-color:#a855f7">
             <span class="pob-symbol">÷</span>
-            <span class="pob-label">DIV</span>
+            <span class="pob-label" data-i18n="div">DIV</span>
           </button>
         </div>
-        <button id="btn-practice-all" class="practice-all-btn">SELECT ALL</button>
+        <button id="btn-practice-all" class="practice-all-btn" data-i18n="selectAll">SELECT ALL</button>
 
         <div class="practice-hearts-row">
-          <span class="practice-hearts-label">❤ LIVES</span>
+          <span class="practice-hearts-label" data-i18n="heartsLives">❤ LIVES</span>
           <button id="btn-practice-hearts" class="practice-hearts-btn poh-active">ON</button>
         </div>
 
-        <button id="btn-practice-start" class="btn btn-primary practice-start-btn">▶ START</button>
+        <button id="btn-practice-start" class="btn btn-primary practice-start-btn" data-i18n="start">▶ START</button>
       </div>
     </div>
   </div>
@@ -53,14 +78,14 @@
   <div id="settings-panel" class="sett-backdrop hidden">
     <div class="sett-panel">
       <div class="sett-header">
-        <span class="sett-title">⚙ SETTINGS</span>
+        <span class="sett-title" data-i18n="settings">⚙ SETTINGS</span>
         <button id="btn-settings-close" class="sett-close">✕</button>
       </div>
 
       <div class="sett-row sett-row-volume">
         <div class="sett-row-left">
           <span class="sett-icon" id="sett-vol-icon">🔊</span>
-          <span class="sett-label">VOLUME</span>
+          <span class="sett-label" data-i18n="volume">VOLUME</span>
         </div>
         <div class="sett-slider-wrap">
           <input type="range" id="sett-volume-slider" class="sett-slider" min="0" max="100" value="80">
@@ -71,19 +96,19 @@
       <div class="sett-row">
         <div class="sett-row-left">
           <span class="sett-icon">✨</span>
-          <span class="sett-label">EFFECTS</span>
+          <span class="sett-label" data-i18n="effects">EFFECTS</span>
         </div>
         <button id="sett-effects" class="sett-toggle sett-on">ON</button>
       </div>
 
       <div class="sett-divider"></div>
 
-      <div class="sett-controls-title">🕹 CONTROLS</div>
+      <div class="sett-controls-title" data-i18n="controls">🕹 CONTROLS</div>
       <div class="sett-controls-grid">
-        <div class="sett-key-row"><span class="sett-key">← →</span><span class="sett-key-desc">MOVE</span></div>
-        <div class="sett-key-row"><span class="sett-key">↑ ↓</span><span class="sett-key-desc">MOVE</span></div>
-        <div class="sett-key-row"><span class="sett-key">WASD</span><span class="sett-key-desc">MOVE</span></div>
-        <div class="sett-key-row"><span class="sett-key">TAP</span><span class="sett-key-desc">MOVE</span></div>
+        <div class="sett-key-row"><span class="sett-key">← →</span><span class="sett-key-desc" data-i18n="move">MOVE</span></div>
+        <div class="sett-key-row"><span class="sett-key">↑ ↓</span><span class="sett-key-desc" data-i18n="move">MOVE</span></div>
+        <div class="sett-key-row"><span class="sett-key">WASD</span><span class="sett-key-desc" data-i18n="move">MOVE</span></div>
+        <div class="sett-key-row"><span class="sett-key">TAP</span><span class="sett-key-desc" data-i18n="move">MOVE</span></div>
       </div>
     </div>
   </div>
@@ -95,6 +120,7 @@
       <source src="/public/assets/menu/bg-motion-1.mp4" type="video/mp4">
     </video>
     <canvas id="menu-canvas"></canvas>
+    <button id="btn-lang" class="lang-toggle-btn" aria-label="Toggle language">🇬🇧 EN</button>
     <button id="btn-settings" class="settings-gear-btn" aria-label="Settings">
       <svg viewBox="0 0 24 24" fill="currentColor" width="22" height="22">
         <path d="M12 15.5A3.5 3.5 0 0 1 8.5 12 3.5 3.5 0 0 1 12 8.5a3.5 3.5 0 0 1 3.5 3.5 3.5 3.5 0 0 1-3.5 3.5m7.43-2.92c.04-.34.07-.69.07-1.08s-.03-.74-.07-1.08l2.32-1.82c.21-.17.27-.46.14-.7l-2.2-3.82c-.13-.24-.42-.31-.66-.22l-2.73 1.1c-.57-.44-1.18-.8-1.86-1.09l-.41-2.9A.54.54 0 0 0 14 2h-4a.54.54 0 0 0-.54.46l-.41 2.9c-.68.29-1.29.65-1.86 1.09l-2.73-1.1c-.24-.09-.53-.02-.66.22L1.6 9.49c-.13.24-.07.53.14.7l2.32 1.82C4.03 12.35 4 12.69 4 13s.03.65.07.99L1.74 15.8c-.21.17-.27.46-.14.7l2.2 3.82c.13.24.42.31.66.22l2.73-1.1c.57.44 1.18.8 1.86 1.09l.41 2.9c.06.28.28.46.54.46h4c.26 0 .48-.18.54-.46l.41-2.9c.68-.29 1.29-.65 1.86-1.09l2.73 1.1c.24.09.53.02.66-.22l2.2-3.82c.13-.24.07-.53-.14-.7l-2.32-1.81z"/>
@@ -102,11 +128,15 @@
     </button>
     <div class="menu-content">
       <div class="menu-logo">JEXON<span class="logo-go">GO</span></div>
-      <div class="menu-subtitle">AERIAL MATH COMBAT</div>
-      <button id="btn-play" class="btn btn-primary">▶ PLAY</button>
-      <button id="btn-hangar" class="btn btn-secondary">✈ HANGAR</button>
-      <button id="btn-shop" class="btn btn-secondary">🛍 SHOP</button>
-      <button id="btn-practice" class="btn btn-secondary">⚡ PRACTICE</button>
+      <div class="menu-subtitle" data-i18n="subtitle">AERIAL MATH COMBAT</div>
+      <div id="menu-rank-badge" class="menu-rank-badge"></div>
+      <button id="btn-play" class="btn btn-primary" data-i18n="play">▶ PLAY</button>
+      <button id="btn-hangar" class="btn btn-secondary" data-i18n="hangar">✈ HANGAR</button>
+      <button id="btn-shop" class="btn btn-secondary" data-i18n="shop">🛍 SHOP</button>
+      <button id="btn-practice" class="btn btn-secondary" data-i18n="practice">⚡ PRACTICE</button>
+      <button id="btn-missions" class="btn btn-secondary btn-missions-menu">📋 MISSIONS</button>
+      <button id="btn-ranked"   class="btn btn-secondary btn-ranked-menu" data-i18n="ranked">⚔ RANKED</button>
+      <button id="btn-classroom" class="btn btn-secondary" data-i18n="classroom">👩‍🏫 CLASSROOM</button>
 
       <div class="login-divider"><span>— SIGN IN —</span></div>
 
@@ -117,14 +147,14 @@
           <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>
           <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
         </svg>
-        <span class="login-btn-text">SIGN IN WITH GOOGLE</span>
+        <span class="login-btn-text" data-i18n="signInGoogle">SIGN IN WITH GOOGLE</span>
       </button>
 
       <button class="login-btn login-apple" id="btn-login-apple" aria-label="Sign in with Apple">
         <svg class="login-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="currentColor">
           <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.7 9.05 7.42c1.29.07 2.18.77 2.93.8.98-.2 1.94-.92 3.21-.99 1.37-.08 2.6.52 3.33 1.4-3.02 1.83-2.5 5.85.41 7.08-.51 1.46-1.2 2.91-1.88 3.57zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
         </svg>
-        <span class="login-btn-text">SIGN IN WITH APPLE</span>
+        <span class="login-btn-text" data-i18n="signInApple">SIGN IN WITH APPLE</span>
       </button>
     </div>
   </div>
@@ -133,7 +163,7 @@
   <div id="s-levelmap" class="screen hidden">
     <div class="top-bar">
       <button id="btn-map-back" class="btn-icon">&#8592;</button>
-      <span class="top-bar-title">SELECT MISSION</span>
+      <span class="top-bar-title" data-i18n="selectMission">SELECT MISSION</span>
       <span id="map-xp-display" class="xp-badge">0 XP</span>
     </div>
     <div id="levelmap-scroll">
@@ -147,7 +177,7 @@
       <div id="hud-lives"></div>
       <div id="hud-level">Level 1</div>
       <div id="hud-streak"></div>
-      <button id="btn-quit-game" class="btn-quit-game">&#x2715; QUIT</button>
+      <button id="btn-quit-game" class="btn-quit-game" data-i18n="quit">&#x2715; QUIT</button>
     </div>
     <div id="timer-bar-wrap"><div id="timer-bar"></div></div>
     <div id="game-canvas-wrap">
@@ -169,7 +199,7 @@
   <div id="s-hangar" class="screen hidden">
     <div class="top-bar">
       <button id="btn-hangar-back" class="btn-icon">&#8592;</button>
-      <span class="top-bar-title">HANGAR</span>
+      <span class="top-bar-title" data-i18n="hangarTitle">HANGAR</span>
       <span id="hangar-xp" class="xp-badge">0 XP</span>
     </div>
     <div id="hangar-grid"></div>
@@ -182,18 +212,18 @@
     <div id="result-stars"></div>
     <div id="result-xp"></div>
     <div id="result-correct"></div>
-    <button id="btn-result-continue" class="btn btn-primary">CONTINUE</button>
-    <button id="btn-result-retry" class="btn btn-secondary">RETRY</button>
+    <button id="btn-result-continue" class="btn btn-primary" data-i18n="continueBtn">CONTINUE</button>
+    <button id="btn-result-retry" class="btn btn-secondary" data-i18n="retry">RETRY</button>
   </div>
 
   <!-- CHEST SCREEN -->
   <div id="s-chest" class="screen hidden">
-    <div id="chest-title">CHEST REWARD</div>
+    <div id="chest-title" data-i18n="chestReward">CHEST REWARD</div>
     <div id="chest-tier-label"></div>
     <div id="chest-box"><img id="chest-img" src="" alt="chest"></div>
     <div id="chest-rewards" class="hidden"></div>
-    <button id="btn-chest-open" class="btn btn-primary">OPEN CHEST</button>
-    <button id="btn-chest-continue" class="btn btn-secondary hidden">CONTINUE</button>
+    <button id="btn-chest-open" class="btn btn-primary" data-i18n="openChest">OPEN CHEST</button>
+    <button id="btn-chest-continue" class="btn btn-secondary hidden" data-i18n="continueBtn">CONTINUE</button>
   </div>
 
   <!-- SHOP SCREEN -->
@@ -202,7 +232,7 @@
     <!-- Top bar -->
     <div class="shop-topbar">
       <button id="btn-shop-back" class="shop-back-btn">&#8592;</button>
-      <span class="shop-topbar-title">SHOP</span>
+      <span class="shop-topbar-title" data-i18n="shop_title">SHOP</span>
       <div class="shop-currencies">
         <span id="shop-coins" class="shop-currency-badge shop-currency-coins">🪙 <span id="shop-coins-val">0</span></span>
       </div>
@@ -215,14 +245,171 @@
     <!-- Bottom tab bar -->
     <div class="shop-tabbar">
       <button class="shop-tab shop-tab-active" data-tab="offers">
-        <span class="shop-tab-icon">🎁</span><span class="shop-tab-label">OFFERS</span>
+        <span class="shop-tab-icon">🎁</span><span class="shop-tab-label" data-i18n="offers">OFFERS</span>
       </button>
       <button class="shop-tab" data-tab="skins">
-        <span class="shop-tab-icon">✈</span><span class="shop-tab-label">SKINS</span>
+        <span class="shop-tab-icon">✈</span><span class="shop-tab-label" data-i18n="skins">SKINS</span>
       </button>
       <button class="shop-tab" data-tab="more">
-        <span class="shop-tab-icon">⋯</span><span class="shop-tab-label">MORE</span>
+        <span class="shop-tab-icon">⋯</span><span class="shop-tab-label" data-i18n="more">MORE</span>
       </button>
+    </div>
+  </div>
+
+  <!-- RANKED LOBBY -->
+  <div id="s-ranked" class="screen hidden">
+    <div class="top-bar">
+      <button id="btn-ranked-back" class="btn-icon">&#8592;</button>
+      <span class="top-bar-title" style="color:#ff2277;text-shadow:0 0 10px #ff2277">⚔ RANKED</span>
+      <span id="ranked-season-timer" class="rk-season-timer"></span>
+    </div>
+    <div class="ranked-lobby-body">
+      <div id="ranked-badge-wrap" class="ranked-badge-wrap"></div>
+      <div class="ranked-lp-bar-wrap">
+        <div id="ranked-lp-bar" class="ranked-lp-bar"></div>
+      </div>
+      <div id="ranked-stats" class="ranked-stats"></div>
+      <div id="ranked-streak" class="ranked-win-streak"></div>
+      <div id="ranked-firstwin" class="ranked-firstwin"></div>
+      <button id="btn-ranked-play" class="btn btn-primary ranked-play-btn" data-i18n="findMatch">⚔ FIND MATCH</button>
+      <button id="btn-ranked-history" class="btn btn-secondary ranked-hist-btn" data-i18n="matchHistory">📋 MATCH HISTORY</button>
+    </div>
+  </div>
+
+  <!-- RANKED FIND MATCH -->
+  <div id="s-ranked-find" class="screen hidden">
+    <div class="ranked-find-wrap">
+      <div class="ranked-find-title" data-i18n="findingOpp">FINDING OPPONENT</div>
+      <div class="ranked-find-spinner"></div>
+      <div class="ranked-find-sub"><span data-i18n="searching">SEARCHING FOR MATCH</span><span id="ranked-find-dots"></span></div>
+    </div>
+  </div>
+
+  <!-- RANKED VS INTRO -->
+  <div id="s-ranked-intro" class="screen hidden">
+    <div class="intro-vs-wrap">
+      <div class="intro-side intro-side-left">
+        <div class="intro-avatar intro-avatar-player">✈</div>
+        <div id="intro-player-name" class="intro-name">YOU</div>
+        <div id="intro-player-rank" class="intro-rank"></div>
+      </div>
+      <div class="intro-vs-badge">VS</div>
+      <div class="intro-side intro-side-right">
+        <div class="intro-avatar intro-avatar-opp">✈</div>
+        <div id="intro-opp-name" class="intro-name"></div>
+        <div id="intro-opp-rank" class="intro-rank"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RANKED DUEL -->
+  <div id="s-ranked-duel" class="screen hidden">
+    <div class="duel-hud">
+      <div class="duel-hud-player">
+        <span class="duel-hud-label" data-i18n="you">YOU</span>
+        <span id="duel-player-score" class="duel-score">0</span>
+        <span id="duel-player-feedback" class="duel-feedback"></span>
+      </div>
+      <div class="duel-hud-center">
+        <div id="duel-q-num" class="duel-q-num">Q 1 / 10</div>
+        <div id="duel-timer" class="duel-timer">10</div>
+      </div>
+      <div class="duel-hud-opp">
+        <span id="duel-opp-feedback" class="duel-feedback"></span>
+        <span id="duel-opp-score" class="duel-score">0</span>
+        <span class="duel-hud-label" data-i18n="opp">OPP</span>
+      </div>
+    </div>
+    <div id="duel-round-banner" class="duel-round-banner hidden">
+      <div id="duel-round-banner-text" class="duel-round-banner-text">ROUND 1</div>
+      <div id="duel-round-score-text" class="duel-round-score-text">0 — 0</div>
+    </div>
+    <div class="duel-question-wrap">
+      <div id="duel-question" class="duel-question"></div>
+      <div id="duel-answers" class="duel-answers-grid"></div>
+    </div>
+  </div>
+
+  <!-- RANKED RESULT -->
+  <div id="s-ranked-result" class="screen hidden">
+    <div id="rr-promo-banner" class="rr-promo-banner"></div>
+    <div id="rr-outcome" class="rr-outcome"></div>
+    <div id="rr-score" class="rr-score"></div>
+    <div id="rr-rank-badge" class="rr-rank-badge-wrap"></div>
+    <div id="rr-lp-change" class="rr-lp-change"></div>
+    <div class="rr-lp-bar-wrap"><div id="rr-lp-bar" class="rr-lp-bar"></div></div>
+    <div id="rr-breakdown" class="rr-breakdown"></div>
+    <button id="btn-rr-rematch" class="btn btn-primary" data-i18n="rematch">⚔ REMATCH</button>
+    <button id="btn-rr-lobby"   class="btn btn-secondary" data-i18n="lobby">LOBBY</button>
+  </div>
+
+  <!-- MISSION BRIEFING -->
+  <div id="s-briefing" class="screen hidden">
+    <div class="briefing-topbar">
+      <button id="btn-briefing-back" class="btn-icon">&#8592;</button>
+      <span class="briefing-topbar-title" data-i18n="briefingTitle">MISSION BRIEFING</span>
+    </div>
+    <div class="briefing-pilot-row">
+      <span id="briefing-pilot-avatar" class="briefing-pilot-avatar">🪖</span>
+      <div class="briefing-pilot-info">
+        <div id="briefing-pilot-name" class="briefing-pilot-name">CADET</div>
+        <div id="briefing-pilot-desc" class="briefing-pilot-desc"></div>
+      </div>
+    </div>
+    <div class="briefing-card">
+      <div id="briefing-mission-title" class="briefing-mission-title">MISSION 1</div>
+      <div id="briefing-story" class="briefing-story"></div>
+    </div>
+    <div class="briefing-conditions">
+      <div class="briefing-condition-row">
+        <span id="briefing-weather-icon" class="briefing-cond-icon">☀</span>
+        <div class="briefing-cond-body">
+          <div id="briefing-weather-label" class="briefing-cond-label">CLEAR SKIES</div>
+          <div id="briefing-weather-desc"  class="briefing-cond-desc">+25% coins</div>
+        </div>
+      </div>
+      <div class="briefing-condition-row">
+        <span class="briefing-cond-icon">⏱</span>
+        <div class="briefing-cond-body">
+          <div class="briefing-cond-label" data-i18n="timeLimit" data-key="timeLimit">TIME LIMIT</div>
+          <div id="briefing-time" class="briefing-cond-desc">20s per question</div>
+        </div>
+      </div>
+      <div class="briefing-condition-row">
+        <span class="briefing-cond-icon">🔢</span>
+        <div class="briefing-cond-body">
+          <div class="briefing-cond-label" data-i18n="mathType" data-key="mathType">MATH TYPE</div>
+          <div id="briefing-ops" class="briefing-cond-desc">Addition</div>
+        </div>
+      </div>
+    </div>
+    <button id="btn-briefing-fly" class="briefing-fly-btn" data-i18n="fly">✈ FLY!</button>
+  </div>
+
+  <!-- CLASSROOM -->
+  <div id="s-classroom" class="screen hidden">
+    <div class="top-bar">
+      <button id="btn-classroom-back" class="btn-icon">&#8592;</button>
+      <span class="top-bar-title" style="color:#00d4ff" data-i18n="classroomTitle">👩‍🏫 CLASSROOM</span>
+      <button id="btn-classroom-refresh" class="btn-icon" style="font-size:14px">↺</button>
+    </div>
+    <div id="classroom-landing" class="classroom-landing">
+      <div class="classroom-landing-title" data-i18n="joinYourClass">JOIN YOUR CLASS</div>
+      <input id="classroom-code-input" class="classroom-input" data-i18n-placeholder="enterCode" placeholder="ENTER CODE" maxlength="6" />
+      <button id="btn-classroom-join" class="classroom-btn classroom-btn-join" data-i18n="joinClass">JOIN CLASS</button>
+      <div class="classroom-divider">— OR —</div>
+      <input id="classroom-name-input" class="classroom-input" data-i18n-placeholder="teacherName" placeholder="TEACHER NAME" maxlength="20" />
+      <button id="btn-classroom-create" class="classroom-btn classroom-btn-create" data-i18n="createClass">CREATE CLASSROOM</button>
+      <div id="classroom-error" class="classroom-error"></div>
+      <div id="classroom-my-rooms" class="classroom-my-rooms"></div>
+    </div>
+    <div id="classroom-board" class="classroom-board hidden">
+      <div class="classroom-code-row">
+        <span class="classroom-code-label" data-i18n="classCode">CLASS CODE</span>
+        <span id="classroom-code-display" class="classroom-code-display">——————</span>
+      </div>
+      <div id="classroom-leaderboard" class="classroom-leaderboard-list"></div>
+      <button id="btn-classroom-leave" class="classroom-btn classroom-btn-leave" data-i18n="leaveClass">LEAVE CLASS</button>
     </div>
   </div>
 
@@ -230,8 +417,8 @@
   <div id="s-gameover" class="screen hidden">
     <div id="gameover-title">GAME OVER</div>
     <div id="gameover-score"></div>
-    <button id="btn-retry" class="btn btn-primary">RETRY</button>
-    <button id="btn-go-map" class="btn btn-secondary">LOBBY</button>
+    <button id="btn-retry" class="btn btn-primary" data-i18n="retry">RETRY</button>
+    <button id="btn-go-map" class="btn btn-secondary" data-i18n="backToMenu">LOBBY</button>
   </div>
 
   <div id="login-toast"></div>

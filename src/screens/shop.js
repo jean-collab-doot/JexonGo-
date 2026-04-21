@@ -4,6 +4,7 @@ import { save } from '../utils/storage.js';
 import { SKINS, RARITY_META } from '../data/skins.js';
 import { drawFrame } from '../game/sprites.js';
 import { AIRCRAFT_SPRITE } from '../game/sprites.js';
+import { t } from '../i18n.js';
 
 // Card gradient backgrounds per rarity (skins grid)
 const CARD_GRAD = {
@@ -73,11 +74,11 @@ function makePriceBtn(skin, onBuy, onEquip) {
   btn.className = 'sc-price-btn';
 
   if (active) {
-    btn.textContent      = '✓ EQUIPPED';
+    btn.textContent      = t('equipped');
     btn.classList.add('sc-btn-equipped');
     btn.disabled         = true;
   } else if (owned) {
-    btn.textContent      = 'EQUIP';
+    btn.textContent      = t('equip').replace(' ▶', '');
     btn.classList.add('sc-btn-equip');
     btn.onclick          = () => onEquip(skin);
   } else {
@@ -106,7 +107,7 @@ function makeCard(skin, size = 'small', onBuy, onEquip, offerMode = false) {
   // "SPECIAL OFFER" banner
   const banner = document.createElement('div');
   banner.className   = 'sc-banner';
-  banner.textContent = owned ? 'OWNED' : 'SPECIAL OFFER';
+  banner.textContent = owned ? t('owned') : t('specialOffer');
   banner.style.color = meta.color;
 
   // Aircraft preview — larger for featured card
@@ -157,7 +158,7 @@ function makePixelCard(skin, size, onBuy, onEquip) {
   // "BEST VALUE!" / rarity badge top-left
   const badge = document.createElement('div');
   badge.className = 'sc-px-badge';
-  badge.textContent = isFeat ? 'BEST VALUE!' : meta.label + '!';
+  badge.textContent = isFeat ? t('bestValue') : meta.label + '!';
   if (!isFeat) badge.style.background = 'linear-gradient(135deg,' + meta.color + ',' + meta.color + '99)';
   card.appendChild(badge);
 
@@ -187,11 +188,11 @@ function makePixelCard(skin, size, onBuy, onEquip) {
   btn.className = 'sc-px-price-btn';
 
   if (active) {
-    btn.textContent = '✓ EQUIPPED';
+    btn.textContent = t('equipped');
     btn.classList.add('sc-px-equipped');
     btn.onclick = () => { G.activeSkin = null; save('activeSkin', null); redrawContent(); };
   } else if (owned) {
-    btn.textContent = 'EQUIP ▶';
+    btn.textContent = t('equip');
     btn.classList.add('sc-px-equip');
     btn.onclick = () => onEquip(skin);
   } else {
@@ -213,7 +214,7 @@ function makeHandlers() {
   function onBuy(skin) {
     const errEl = $('shop-error');
     if (G.coins < skin.price) {
-      errEl.textContent = `✗ NEED ${(skin.price - G.coins).toLocaleString()} MORE COINS`;
+      errEl.textContent = `${t('needMoreCoins')} ${(skin.price - G.coins).toLocaleString()} ${t('moreCoins')}`;
       errEl.classList.remove('shop-err-anim');
       requestAnimationFrame(() => errEl.classList.add('shop-err-anim'));
       return;
@@ -282,13 +283,70 @@ function renderSkins(content, handlers) {
   content.appendChild(grid);
 }
 
+const BUYABLE_CHESTS = [
+  { name: 'BRONZE',    emoji: '📦', color: '#cd7f32', price: 100,  desc: 'Common\ndrops',    tier: 0 },
+  { name: 'SILVER',    emoji: '🎁', color: '#c0c0c0', price: 400,  desc: 'Rare\ndrops',      tier: 1 },
+  { name: 'GOLD',      emoji: '🏆', color: '#fbbf24', price: 1200, desc: 'Epic\nchance',     tier: 2 },
+  { name: 'LEGENDARY', emoji: '👑', color: '#a855f7', price: 3500, desc: 'Best\ndrops',      tier: 4 },
+];
+
 function renderMore(content) {
   _resetContentStyle(content);
-  const wrap = document.createElement('div');
-  wrap.className = 'sc-more';
-  wrap.innerHTML = `<div class="sc-more-icon">🔒</div><div class="sc-more-text">MORE CONTENT<br>COMING SOON</div>`;
-  content.appendChild(wrap);
+
+  const title = document.createElement('div');
+  title.className   = 'sc-more-section-title';
+  title.textContent = t('buyChests');
+  content.appendChild(title);
+
+  const grid = document.createElement('div');
+  grid.className = 'sc-chest-shop-grid';
+
+  BUYABLE_CHESTS.forEach(ch => {
+    const card = document.createElement('div');
+    card.className = 'sc-chest-shop-card';
+    card.style.borderColor = ch.color;
+    card.style.boxShadow   = `0 0 0 1px #5a3200, 0 0 16px ${ch.color}33, 0 6px 18px rgba(0,0,0,0.7)`;
+
+    card.innerHTML = `
+      <div class="csc-img" style="filter:drop-shadow(0 0 8px ${ch.color})">${ch.emoji}</div>
+      <div class="csc-name" style="color:${ch.color}">${ch.name}</div>
+      <div class="csc-desc">${ch.desc.replace('\n', '<br>')}</div>
+    `;
+
+    const btn = document.createElement('button');
+    btn.className   = 'csc-buy-btn';
+    btn.innerHTML   = `🪙 ${ch.price.toLocaleString()}`;
+    btn.onclick = () => {
+      const errEl = $('shop-error');
+      if (G.coins < ch.price) {
+        errEl.textContent = `${t('needMoreCoins')} ${(ch.price - G.coins).toLocaleString()} ${t('moreCoins')}`;
+        errEl.classList.remove('shop-err-anim');
+        requestAnimationFrame(() => errEl.classList.add('shop-err-anim'));
+        return;
+      }
+      G.coins -= ch.price;
+      save('coins', G.coins);
+      updateCoinDisplay();
+      // Redirect to chest screen with tier-appropriate rewards
+      const savedLevel   = G.currentLevel;
+      G.currentLevel     = (ch.tier + 1) * 10;
+      const { rollChest } = _chestSystem;
+      const chestData    = rollChest();
+      G.currentLevel     = savedLevel;
+      window._nav?.toChest(chestData);
+    };
+
+    card.appendChild(btn);
+    grid.appendChild(card);
+  });
+
+  content.appendChild(grid);
 }
+
+// Lazy-imported to avoid circular dep — resolved at call time
+const _chestSystem = { get rollChest() { return _rollChest; } };
+let _rollChest = null;
+import('../systems/chest.js').then(m => { _rollChest = m.rollChest; });
 
 // ── PUBLIC API ────────────────────────────────────────────────────────────────
 

@@ -4,13 +4,33 @@ export const G = {
   // --- Persisted ---
   xp: 0,
   coins: 500,
-  blueprints: {},           // { aircraftId: pieceCount }
+  blueprints: {},
   chestsWithoutEpic: 0,
-  levelStars: {},           // { levelNum: starCount }
+  levelStars: {},
   unlockedAircraft: ['t6'],
   activeAircraft: 't6',
   ownedSkins: [],
   activeSkin: null,
+
+  // --- Daily economy ---
+  dailyLastLogin:   null,
+  dailyStreak:      0,
+  dailyMissions:    null,
+  dailyMissionDate: null,
+  claimedRanks:     [],
+
+  // --- Ranked ---
+  rankedLP:            0,
+  rankedWins:          0,
+  rankedLosses:        0,
+  rankedWinStreak:     0,
+  rankedGamesPlayed:   0,
+  rankedSeasonStart:   null,
+  rankedFirstWinToday: null,
+
+  // --- Profile ---
+  playerName: 'PILOT',
+  currentWeather: null,
 
   // --- Session ---
   currentLevel: 1,
@@ -47,6 +67,19 @@ export function loadSave() {
   G.activeAircraft    = load('activeAircraft', 't6');
   G.ownedSkins        = load('ownedSkins', []);
   G.activeSkin        = load('activeSkin', null);
+  G.playerName        = load('playerName', 'PILOT');
+  G.dailyLastLogin    = load('dailyLastLogin', null);
+  G.dailyStreak       = load('dailyStreak', 0);
+  G.dailyMissions     = load('dailyMissions', null);
+  G.dailyMissionDate  = load('dailyMissionDate', null);
+  G.claimedRanks      = load('claimedRanks', []);
+  G.rankedLP            = load('rankedLP', 0);
+  G.rankedWins          = load('rankedWins', 0);
+  G.rankedLosses        = load('rankedLosses', 0);
+  G.rankedWinStreak     = load('rankedWinStreak', 0);
+  G.rankedGamesPlayed   = load('rankedGamesPlayed', 0);
+  G.rankedSeasonStart   = load('rankedSeasonStart', null);
+  G.rankedFirstWinToday = load('rankedFirstWinToday', null);
 }
 
 export function resetLevel() {

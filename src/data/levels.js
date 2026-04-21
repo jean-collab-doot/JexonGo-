@@ -1,3 +1,5 @@
+import { getWeatherForLevel } from './weather.js';
+
 export const BIOMES = ['ocean', 'desert', 'city', 'arctic', 'space'];
 
 export const BIOME_META = {
@@ -10,34 +12,34 @@ export const BIOME_META = {
 
 function biomeForLevel(n) { return BIOMES[Math.min(Math.floor((n - 1) / 10), 4)]; }
 
-// Operations unlocked progressively
+// Operations unlocked progressively — gentler for kids 6–12
 function opsForLevel(n) {
-  if (n <= 10) return ['+'];
-  if (n <= 20) return ['+', '-'];
-  if (n <= 30) return ['+', '-', '*'];
+  if (n <= 15) return ['+'];
+  if (n <= 25) return ['+', '-'];
+  if (n <= 35) return ['+', '-', '*'];
   return ['+', '-', '*', '/'];
 }
 
-// Number range for arithmetic — grows with level
+// Number range — small, friendly numbers throughout
 function mathRangeForLevel(n) {
-  if (n <= 5)  return { cap: 10,  multCap: 0  };
-  if (n <= 10) return { cap: 15,  multCap: 0  };
-  if (n <= 15) return { cap: 18,  multCap: 0  };
-  if (n <= 20) return { cap: 20,  multCap: 0  };
-  if (n <= 25) return { cap: 20,  multCap: 10 };
-  if (n <= 30) return { cap: 25,  multCap: 12 };
-  if (n <= 35) return { cap: 30,  multCap: 12 };
-  if (n <= 40) return { cap: 40,  multCap: 15 };
-  if (n <= 45) return { cap: 50,  multCap: 15 };
-  return               { cap: 99,  multCap: 20 };
+  if (n <= 5)  return { cap: 8,   multCap: 0  };
+  if (n <= 10) return { cap: 10,  multCap: 0  };
+  if (n <= 15) return { cap: 12,  multCap: 0  };
+  if (n <= 20) return { cap: 15,  multCap: 0  };
+  if (n <= 25) return { cap: 15,  multCap: 5  };
+  if (n <= 30) return { cap: 20,  multCap: 6  };
+  if (n <= 35) return { cap: 20,  multCap: 8  };
+  if (n <= 40) return { cap: 25,  multCap: 10 };
+  if (n <= 45) return { cap: 30,  multCap: 10 };
+  return               { cap: 40,  multCap: 12 };
 }
 
-// Seconds to answer — shrinks with level
+// Seconds to answer — generous time for young players
 function timeLimitForLevel(n) {
-  if (n <= 10) return 15;
-  if (n <= 25) return 12;
-  if (n <= 50) return 10;
-  return 4;
+  if (n <= 10) return 20;
+  if (n <= 25) return 18;
+  if (n <= 40) return 15;
+  return 12;
 }
 
 // Enemy type pool — harder mix at higher levels
@@ -68,46 +70,43 @@ function bossCompanionCountForLevel(n) {
   return m; // 1, 2, 3, 4, 5 for lv10→50
 }
 
-// Maximum enemies on screen at once — grows with level
+// Maximum enemies on screen at once — fewer for kids
 function maxEnemiesForLevel(n) {
   if (n % 10 === 0) {
-    // Boss count scales: 1 → 1 → 2 → 2 → 3
     const milestone = n / 10;
     return milestone <= 2 ? 1 : milestone <= 4 ? 2 : 3;
   }
-  if (n <= 10) return 3;
-  if (n <= 20) return 4;
-  if (n <= 30) return 5;
-  if (n <= 40) return 6;
-  return 7;
+  if (n <= 10) return 2;
+  if (n <= 20) return 3;
+  if (n <= 30) return 4;
+  if (n <= 40) return 5;
+  return 6;
 }
 
-// Frames between enemy spawns — shrinks with level (faster = harder)
+// Frames between enemy spawns — slower pacing for kids
 function spawnRateForLevel(n) {
-  if (n <= 5)  return 220;
-  if (n <= 10) return 180;
-  if (n <= 15) return 150;
-  if (n <= 20) return 130;
-  if (n <= 25) return 110;
-  if (n <= 30) return 90;
-  if (n <= 40) return 70;
-  return 50;
+  if (n <= 5)  return 300;
+  if (n <= 10) return 260;
+  if (n <= 15) return 220;
+  if (n <= 20) return 190;
+  if (n <= 25) return 160;
+  if (n <= 30) return 130;
+  if (n <= 40) return 110;
+  return 90;
 }
 
-// Enemy movement speed multiplier — grows with level
+// Enemy movement speed — slower start, gentler ramp
 function enemySpeedMultForLevel(n) {
-  return Math.round((1 + (n - 1) * 0.012) * 100) / 100; // 1.00 → ~1.59 at lv50
+  return Math.round((0.7 + (n - 1) * 0.008) * 100) / 100; // 0.70 → ~1.09 at lv50
 }
 
-// Enemy fire-rate multiplier — lower = fires faster
+// Enemy fire-rate multiplier — fires less often overall
 function enemyFireRateMultForLevel(n) {
-  const base = Math.max(0.45, 1 - (n - 1) * 0.011); // 1.00 → ~0.47 at lv50
+  const base = Math.max(0.6, 1.2 - (n - 1) * 0.012); // 1.20 → ~0.62 at lv50
   if (n % 10 === 0) {
-    // Boss levels: bonus shrinks each milestone so later bosses fire faster
-    // lvl10 +0.40, lvl20 +0.32, lvl30 +0.24, lvl40 +0.16, lvl50 +0.08
-    const milestone = n / 10; // 1..5
+    const milestone = n / 10;
     const bonus = 0.40 - (milestone - 1) * 0.08;
-    return Math.min(base + bonus, 1.0);
+    return Math.min(base + bonus, 1.4);
   }
   return base;
 }
@@ -133,6 +132,7 @@ export function getLevel(n) {
     isChestLevel:      n % 10 === 0,
     bossCompanionTypes: n % 10 === 0 ? bossCompanionTypesForLevel(n) : [],
     bossCompanionMax:   n % 10 === 0 ? bossCompanionCountForLevel(n) : 0,
+    weather:           getWeatherForLevel(n),
   };
 }
 

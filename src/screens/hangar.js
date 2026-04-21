@@ -3,6 +3,7 @@ import { G } from '../state.js';
 import { save } from '../utils/storage.js';
 import { AIRCRAFT, AIRCRAFT_ORDER } from '../data/aircraft.js';
 import { SKINS } from '../data/skins.js';
+import { t } from '../i18n.js';
 
 export function initHangar(nav) {
   $('btn-hangar-back').onclick = () => {
@@ -29,7 +30,7 @@ function showLiveryPanel(id) {
 
   const title = document.createElement('div');
   title.className   = 'hlp-title';
-  title.textContent = plane.name + ' — LIVERIES';
+  title.textContent = plane.name + ' — ' + t('liveries');
   panel.appendChild(title);
 
   const grid = document.createElement('div');
@@ -119,7 +120,7 @@ export function renderHangar() {
 
     const cost = document.createElement('div');
     cost.className = 'plane-cost';
-    if (plane.starter)  cost.textContent = 'STARTER';
+    if (plane.starter)  cost.textContent = t('starter');
     else if (unlocked)  cost.textContent = `${plane.xpCost.toLocaleString()} XP ✓`;
     else                cost.textContent = `${plane.xpCost.toLocaleString()} XP`;
     card.appendChild(cost);
@@ -134,7 +135,7 @@ export function renderHangar() {
     if (active) {
       const badge = document.createElement('div');
       badge.className   = 'active-badge';
-      badge.textContent = 'ACTIVE';
+      badge.textContent = t('active');
       card.appendChild(badge);
     }
 
@@ -152,7 +153,7 @@ export function renderHangar() {
       card.style.cursor      = 'pointer';
       card.style.borderColor = 'var(--yellow)';
       cost.style.color       = 'var(--green)';
-      cost.textContent       = `UNLOCK (${plane.xpCost} XP)`;
+      cost.textContent       = `${t('unlock')} (${plane.xpCost} XP)`;
       card.addEventListener('click', () => {
         G.xp -= plane.xpCost;
         G.unlockedAircraft.push(id);

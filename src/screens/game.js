@@ -11,6 +11,8 @@ import { getLevel } from '../data/levels.js';
 import { SFX } from '../audio/sound.js';
 import { preloadBiome } from '../game/sprites.js';
 import { initBackground, updateBackground, drawBackground } from '../game/background.js';
+import { trackMission } from '../systems/daily.js';
+import { t } from '../i18n.js';
 
 let canvas, ctx, levelCfg;
 let tick        = 0;
@@ -127,7 +129,7 @@ function drawLoadingScreen() {
   ctx.font         = 'bold 18px monospace';
   ctx.textAlign    = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText('LOADING...', cw / 2, ch / 2);
+  ctx.fillText(t('loading'), cw / 2, ch / 2);
   ctx.restore();
 }
 
@@ -149,6 +151,12 @@ function frame() {
   // ── Background ─────────────────────────────────────────────────────────
   updateBackground();
   drawBackground(ctx, canvas);
+
+  // ── Weather overlay ────────────────────────────────────────────────────
+  if (levelCfg.weather?.overlay) {
+    ctx.fillStyle = levelCfg.weather.overlay;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  }
 
   // ── Speed lines ────────────────────────────────────────────────────────
   if (_speedLines.length === 0) initSpeedLines(canvas.width, canvas.height);
@@ -394,7 +402,7 @@ function nextQuestion() {
 
 function startTimer() {
   if (G.timerInterval) clearInterval(G.timerInterval);
-  G.timeLeft = levelCfg.timeLimit;
+  G.timeLeft = Math.max(5, levelCfg.timeLimit + (levelCfg.weather?.timeMod || 0));
   const total    = G.timeLeft;
   const bar      = $('timer-bar');
   const timerSid = _sessionId;
@@ -431,6 +439,8 @@ function handleAnswer(choice, btn) {
     G.streak++;
     updateStreakHUD();
     if (G.streak === 3 || G.streak === 5) SFX.streak();
+    trackMission('correct_answers', 1);
+    trackMission('max_streak', G.streak);
 
     const aircraft = AIRCRAFT[G.activeAircraft] || AIRCRAFT.t6;
     const speed    = aircraft.ability === 'fastMissile' ? 13 : 8;
@@ -510,9 +520,9 @@ function revealCorrectAnswer() {
   s2.className = 'car-step car-step-how';
   s3.className = 'car-step car-step-answer';
 
-  s1.textContent = `✗ Wrong — let's see how to solve it`;
+  s1.textContent = t('wrongReveal');
   s2.textContent = buildExplanation(G.question);
-  s3.textContent = `✓ Answer: ${correct}`;
+  s3.textContent = `${t('answerReveal')} ${correct}`;
 
   [s1, s2, s3].forEach(s => s.classList.remove('visible'));
   setTimeout(() => s1.classList.add('visible'), 80);
@@ -600,6 +610,7 @@ function endLevel(won) {
   G.timerInterval = null;
   G.animFrame     = null;
   if (ctx) { ctx.setTransform(1,0,0,1,0,0); ctx.globalAlpha = 1; }
+  if (won) trackMission('levels_won', 1);
   if (_onComplete) _onComplete(won);
 }
 
@@ -642,6 +653,7 @@ export function initGame(levelNum, onComplete) {
   tick        = 0;
   _shipFrame  = 0;
   _speedLines = [];
+  trackMission('games_played', 1);
   const snap = G.continueState;
   G.continueState = null;
   resetLevel();
@@ -654,6 +666,7 @@ export function initGame(levelNum, onComplete) {
     G.streak            = snap.streak;
   }
   _onComplete    = onComplete;
+  G.currentWeather = levelCfg.weather || null;
 
   canvas = $('game-canvas');
   ctx    = canvas.getContext('2d');
@@ -663,8 +676,8 @@ export function initGame(levelNum, onComplete) {
   const ro = new ResizeObserver(resize);
   ro.observe(canvas);
 
-  $('hud-level').textContent = G.practiceMode ? 'PRACTICE'
-    : levelCfg.isBossLevel ? `⚠ BOSS LV${levelNum}` : `LEVEL ${levelNum}`;
+  $('hud-level').textContent = G.practiceMode ? t('practice_label')
+    : levelCfg.isBossLevel ? `${t('bossLevel')}${levelNum}` : `${t('level')} ${levelNum}`;
 
   if (G.practiceMode && !G.practiceHearts) {
     $('hud-lives').innerHTML = '<span style="opacity:0.3">∞</span>';

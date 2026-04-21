@@ -1,5 +1,10 @@
 import { $ } from '../utils/dom.js';
 import { G } from '../state.js';
+import { LOGIN_REWARDS, claimDailyReward, getMissions, claimMission,
+         hasPendingMissionClaim, getPlayerRank } from '../systems/daily.js';
+import { save } from '../utils/storage.js';
+import { getPilotInfo } from '../data/pilots.js';
+import { t, getLang, setLang, applyI18n } from '../i18n.js';
 
 // ── ASSETS ────────────────────────────────────────────────────────────────────
 const PLANE_PATH  = '/public/assets/menu/anim-3.png';
@@ -242,6 +247,45 @@ function drawTick() {
   _raf = requestAnimationFrame(drawTick);
 }
 
+// ── LANGUAGE ─────────────────────────────────────────────────────────────────
+function _applyLang() {
+  const lang = getLang();
+  const btn  = $('btn-lang');
+  if (btn) btn.textContent = lang === 'fr' ? '🇫🇷 FR' : '🇬🇧 EN';
+
+  const sub = document.querySelector('.menu-subtitle');
+  if (sub) sub.textContent = t('subtitle');
+
+  const map = {
+    'btn-play':      'play',
+    'btn-hangar':    'hangar',
+    'btn-shop':      'shop',
+    'btn-practice':  'practice',
+    'btn-ranked':    'ranked',
+    'btn-classroom': 'classroom',
+  };
+  for (const [id, key] of Object.entries(map)) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = t(key);
+  }
+
+  // Missions button preserves its badge child
+  const missionsBtn = $('btn-missions');
+  if (missionsBtn) {
+    const badge = missionsBtn.querySelector('.missions-badge');
+    missionsBtn.textContent = t('missions');
+    if (badge) missionsBtn.appendChild(badge);
+  }
+
+  const dividerSpan = document.querySelector('.login-divider span');
+  if (dividerSpan) dividerSpan.textContent = t('signIn');
+
+  const googleText = document.querySelector('#btn-login-google .login-btn-text');
+  if (googleText) googleText.textContent = t('signInGoogle');
+  const appleText  = document.querySelector('#btn-login-apple .login-btn-text');
+  if (appleText)  appleText.textContent  = t('signInApple');
+}
+
 // ── PUBLIC API ────────────────────────────────────────────────────────────────
 export function initMenu(nav) {
   loadAssets();
@@ -250,8 +294,26 @@ export function initMenu(nav) {
   $('btn-shop').onclick    = () => nav.toShop();
   $('btn-practice').onclick = () => openPracticeSelect(nav);
 
-  $('btn-login-google').onclick = () => _handleLogin('google');
-  $('btn-login-apple').onclick  = () => _handleLogin('apple');
+  $('btn-login-google').onclick  = () => _handleLogin('google');
+  $('btn-login-apple').onclick   = () => _handleLogin('apple');
+  $('btn-ranked').onclick        = () => nav.toRanked();
+  $('btn-missions').onclick      = () => openMissionsPanel();
+  const classroomBtn = document.getElementById('btn-classroom');
+  if (classroomBtn) classroomBtn.onclick = () => nav.toClassroom();
+  $('btn-missions-close').onclick = () => $('missions-panel').classList.add('hidden');
+  $('missions-panel').addEventListener('click', e => {
+    if (e.target === $('missions-panel')) $('missions-panel').classList.add('hidden');
+  });
+
+  const langBtn = $('btn-lang');
+  if (langBtn) {
+    langBtn.onclick = () => {
+      setLang(getLang() === 'en' ? 'fr' : 'en'); // setLang calls applyI18n() automatically
+      _applyLang();
+    };
+  }
+  applyI18n();
+  _applyLang();
 }
 
 let _toastTimer = null;
@@ -310,7 +372,7 @@ function openPracticeSelect(nav) {
   // Hearts toggle
   const heartsBtn = $('btn-practice-hearts');
   const syncHearts = () => {
-    heartsBtn.textContent = G.practiceHearts ? 'ON' : 'OFF';
+    heartsBtn.textContent = G.practiceHearts ? t('on') : t('off');
     heartsBtn.classList.toggle('poh-active',  G.practiceHearts);
     heartsBtn.classList.toggle('poh-inactive', !G.practiceHearts);
   };
@@ -334,7 +396,6 @@ export function renderMenu() {
   _activeVid = 'v1';
   _xfadeT    = -1;
 
-  // Restart primary video from the top; hide and stop secondary
   const vid  = document.getElementById('menu-bg-video');
   const vid2 = document.getElementById('menu-bg-video2');
   if (vid)  { vid.style.opacity  = '1'; vid.currentTime  = 0; vid.play().catch(() => {}); }
@@ -342,4 +403,157 @@ export function renderMenu() {
 
   if (_raf) { cancelAnimationFrame(_raf); _raf = null; }
   _raf = requestAnimationFrame(drawTick);
+
+  _updateRankBadge();
+  _updateMissionsBadge();
+  _applyLang();
+}
+
+function _updateRankBadge() {
+  const el = document.getElementById('menu-rank-badge');
+  if (!el) return;
+  const { tier, pct } = getPilotInfo(G.xp || 0);
+  el.innerHTML = `
+    <span class="mrb-avatar" style="color:${tier.color};text-shadow:0 0 10px ${tier.color}">${tier.avatar}</span>
+    <span style="color:${tier.color}">${tier.name}</span>
+    <div class="mrb-xp-bar-wrap"><div class="mrb-xp-bar" style="width:${pct}%;background:${tier.color}"></div></div>
+    <span class="mrb-rank">${(G.xp || 0).toLocaleString()} XP</span>
+  `;
+}
+
+function _updateMissionsBadge() {
+  const btn = document.getElementById('btn-missions');
+  if (!btn) return;
+  const old = btn.querySelector('.missions-badge');
+  if (old) old.remove();
+  if (hasPendingMissionClaim()) {
+    const badge = document.createElement('span');
+    badge.className   = 'missions-badge';
+    badge.textContent = '!';
+    btn.appendChild(badge);
+  }
+}
+
+// ── DAILY REWARD POPUP ────────────────────────────────────────────────────────
+export function showDailyReward(reward, streak) {
+  const overlay  = $('daily-reward-overlay');
+  const daysRow  = $('daily-days-row');
+  const showcase = $('daily-reward-showcase');
+
+  $('daily-streak-label').textContent = getLang() === 'fr' ? `JOUR ${streak}` : `DAY ${streak}`;
+
+  // Build 7-day cards
+  daysRow.innerHTML = '';
+  LOGIN_REWARDS.forEach((r, i) => {
+    const day  = i + 1;
+    const card = document.createElement('div');
+    card.className = 'daily-day-card';
+    if (day < streak)      card.classList.add('ddc-claimed');
+    else if (day === streak) card.classList.add('ddc-today');
+    else                     card.classList.add('ddc-future');
+
+    card.innerHTML = `
+      <span class="ddc-num">D${day}</span>
+      <span class="ddc-icon">${r.icon}</span>
+      ${day < streak ? '<span class="ddc-check">✓</span>' : ''}
+    `;
+    daysRow.appendChild(card);
+  });
+
+  // Showcase today's reward
+  showcase.innerHTML = `
+    <span class="drs-label">${t('todayReward')}</span>
+    <span class="drs-icon">${reward.icon}</span>
+    <span class="drs-value">${reward.desc}</span>
+  `;
+
+  overlay.classList.remove('hidden');
+
+  $('btn-daily-claim').textContent = t('claimReward');
+  $('btn-daily-claim').onclick = () => {
+    claimDailyReward(reward);
+    overlay.classList.add('hidden');
+    _updateRankBadge();
+  };
+  overlay.addEventListener('click', e => {
+    if (e.target === overlay) overlay.classList.add('hidden');
+  }, { once: true });
+}
+
+// ── MISSIONS PANEL ────────────────────────────────────────────────────────────
+let _missionsTimerInterval = null;
+
+function openMissionsPanel() {
+  const panel = $('missions-panel');
+  panel.classList.remove('hidden');
+  _renderMissions();
+  _startMissionsTimer();
+}
+
+function _startMissionsTimer() {
+  if (_missionsTimerInterval) clearInterval(_missionsTimerInterval);
+  const el = $('missions-timer');
+  const tick = () => {
+    const now      = new Date();
+    const midnight = new Date(now);
+    midnight.setHours(24, 0, 0, 0);
+    const diff = midnight - now;
+    const h = String(Math.floor(diff / 3600000)).padStart(2, '0');
+    const m = String(Math.floor((diff % 3600000) / 60000)).padStart(2, '0');
+    const s = String(Math.floor((diff % 60000) / 1000)).padStart(2, '0');
+    if (el) el.textContent = `${t('resetsIn')}  ${h}:${m}:${s}`;
+  };
+  tick();
+  _missionsTimerInterval = setInterval(tick, 1000);
+
+  $('missions-panel').addEventListener('click', function cleanup(e) {
+    if (e.target === $('missions-panel') || e.target.id === 'btn-missions-close') {
+      clearInterval(_missionsTimerInterval);
+      $('missions-panel').removeEventListener('click', cleanup);
+    }
+  });
+}
+
+function _renderMissions() {
+  const list     = $('missions-list');
+  const missions = getMissions();
+  list.innerHTML = '';
+
+  missions.forEach(m => {
+    const pct  = Math.min(100, Math.round((m.progress / m.target) * 100));
+    const done = m.progress >= m.target;
+
+    const missionLabel = getLang() === 'fr' ? (m.labelFr || m.label) : m.label;
+    const claimBtnText = m.claimed ? t('claimed') : done ? t('claim') : t('locked');
+
+    const card = document.createElement('div');
+    card.className = 'mission-card' + (m.claimed ? ' mc-claimed' : '');
+    card.innerHTML = `
+      <div class="mission-label">${missionLabel}</div>
+      <div class="mission-progress-row">
+        <div class="mission-bar-wrap">
+          <div class="mission-bar-fill ${done ? 'mbf-done' : ''}" style="width:${pct}%"></div>
+        </div>
+        <span class="mission-count">${m.progress}/${m.target}</span>
+      </div>
+      <div class="mission-reward-row">
+        <span class="mission-reward-text">🪙 ${m.coins}  ⚡ ${m.xp} XP</span>
+        <button class="mission-claim-btn ${m.claimed ? 'mcb-claimed' : done ? 'mcb-ready' : 'mcb-locked'}"
+                data-id="${m.id}" ${!done || m.claimed ? 'disabled' : ''}>
+          ${claimBtnText}
+        </button>
+      </div>
+    `;
+    list.appendChild(card);
+  });
+
+  list.querySelectorAll('.mission-claim-btn:not([disabled])').forEach(btn => {
+    btn.onclick = () => {
+      if (claimMission(btn.dataset.id)) {
+        _renderMissions();
+        _updateMissionsBadge();
+        _updateRankBadge();
+      }
+    };
+  });
 }
