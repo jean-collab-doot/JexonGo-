@@ -2,6 +2,7 @@ import { $ } from '../utils/dom.js';
 import { G } from '../state.js';
 import { save } from '../utils/storage.js';
 import { SKINS, RARITY_META } from '../data/skins.js';
+import { AIRCRAFT } from '../data/aircraft.js';
 import { drawFrame } from '../game/sprites.js';
 import { AIRCRAFT_SPRITE } from '../game/sprites.js';
 import { t } from '../i18n.js';
@@ -68,9 +69,10 @@ function makePreview(skin, size, offerMode = false) {
 
 // ── PRICE BUTTON (skins grid) ─────────────────────────────────────────────────
 function makePriceBtn(skin, onBuy, onEquip) {
-  const owned  = G.ownedSkins.includes(skin.id);
-  const active = G.activeSkin === skin.id;
-  const btn    = document.createElement('button');
+  const owned       = G.ownedSkins.includes(skin.id);
+  const active      = G.activeSkin === skin.id;
+  const planeOwned  = G.unlockedAircraft.includes(skin.aircraft);
+  const btn         = document.createElement('button');
   btn.className = 'sc-price-btn';
 
   if (active) {
@@ -81,6 +83,12 @@ function makePriceBtn(skin, onBuy, onEquip) {
     btn.textContent      = t('equip').replace(' ▶', '');
     btn.classList.add('sc-btn-equip');
     btn.onclick          = () => onEquip(skin);
+  } else if (!planeOwned) {
+    const planeName = AIRCRAFT[skin.aircraft]?.name ?? skin.aircraft;
+    btn.textContent = `🔒 ${planeName}`;
+    btn.classList.add('sc-btn-locked');
+    btn.disabled    = true;
+    btn.title       = `Unlock ${planeName} first`;
   } else {
     btn.innerHTML        = `🪙 <strong>${skin.price}</strong>`;
     btn.classList.add('sc-btn-buy');
@@ -213,6 +221,13 @@ function makePixelCard(skin, size, onBuy, onEquip) {
 function makeHandlers() {
   function onBuy(skin) {
     const errEl = $('shop-error');
+    if (!G.unlockedAircraft.includes(skin.aircraft)) {
+      const planeName = AIRCRAFT[skin.aircraft]?.name ?? skin.aircraft;
+      errEl.textContent = `🔒 Unlock ${planeName} first`;
+      errEl.classList.remove('shop-err-anim');
+      requestAnimationFrame(() => errEl.classList.add('shop-err-anim'));
+      return;
+    }
     if (G.coins < skin.price) {
       errEl.textContent = `${t('needMoreCoins')} ${(skin.price - G.coins).toLocaleString()} ${t('moreCoins')}`;
       errEl.classList.remove('shop-err-anim');

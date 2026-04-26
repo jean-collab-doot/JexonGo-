@@ -1046,6 +1046,7 @@ body::after {
 .sc-btn-buy     { color: #000; font-weight: 700; }
 .sc-btn-equip   { background: rgba(255,255,255,0.15); border: 2px solid rgba(255,255,255,0.3); }
 .sc-btn-equipped{ background: rgba(0,232,75,0.2); border: 2px solid #00e84b; color: #00e84b; cursor: default; }
+.sc-btn-locked  { background: rgba(0,0,0,0.4); border: 2px solid #555; color: #888; cursor: not-allowed; font-size: 8px; }
 
 /* ── CHEST SCREEN ── */
 #s-chest {
