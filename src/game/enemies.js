@@ -62,12 +62,14 @@ export function updateEnemies(enemies, canvasW = 400) {
     e.sinPhase += e.sinFreq;
     e.vx = Math.sin(e.sinPhase) * e.sinAmp;
 
-    if (e.x + e.vx < margin || e.x + e.vx > canvasW - margin) {
-      e.sinPhase = Math.PI - e.sinPhase;
-      e.vx = Math.sin(e.sinPhase) * e.sinAmp;
+    const nextX = e.x + e.vx;
+    if (nextX < margin || nextX > canvasW - margin) {
+      // Reverse oscillation direction AND current velocity so the enemy
+      // immediately moves away from the wall instead of staying clamped
+      e.sinFreq = -e.sinFreq;
+      e.vx      = -e.vx;
     }
     e.x += e.vx;
-    // Hard clamp so enemies can never escape the safe zone regardless of amplitude
     e.x = Math.max(margin, Math.min(canvasW - margin, e.x));
 
     e.y += e.speed;
