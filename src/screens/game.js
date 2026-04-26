@@ -12,7 +12,32 @@ import { SFX } from '../audio/sound.js';
 import { preloadBiome } from '../game/sprites.js';
 import { initBackground, updateBackground, drawBackground } from '../game/background.js';
 import { trackMission } from '../systems/daily.js';
+import { getPilotGrade } from '../data/pilots.js';
+import { save } from '../utils/storage.js';
 import { t } from '../i18n.js';
+
+// ── GRADE-BASED MATH FILTER ───────────────────────────────────────────────────
+// Each grade has its own ops, number cap, and multiplication cap.
+// Level config values are clamped DOWN to the grade ceiling — never up.
+const GRADE_PROFILES = {
+  1: { ops: ['+'],              cap: 10,  mCap: 0  },  // 1+9, simple addition
+  2: { ops: ['+', '-'],         cap: 20,  mCap: 0  },  // 15-7, add/sub to 20
+  3: { ops: ['+', '-', '*'],    cap: 50,  mCap: 5  },  // ×2–×5 times tables
+  4: { ops: ['+', '-', '*', '/'], cap: 100, mCap: 10 }, // full ×10 tables
+  5: { ops: ['+', '-', '*', '/'], cap: 200, mCap: 12 }, // ×12 tables, bigger sums
+  6: { ops: ['+', '-', '*', '/'], cap: 500, mCap: 15 }, // challenge level
+};
+
+function applyGradeToQuestion(ops, cap, mCap, grade) {
+  if (!grade) return { ops, cap, mCap };
+  const p = GRADE_PROFILES[grade] || GRADE_PROFILES[6];
+  const allowedOps = ops.filter(o => p.ops.includes(o));
+  return {
+    ops:  allowedOps.length ? allowedOps : ['+'],
+    cap:  Math.min(cap,  p.cap),
+    mCap: Math.min(mCap, p.mCap),
+  };
+}
 
 let canvas, ctx, levelCfg;
 let _timerTotal = 10;
@@ -246,7 +271,7 @@ function frame() {
       } else {
         e.bossBurstTimer--;
         if (e.bossBurstTimer <= 0 && e.bossBurstFired < e.bossBurstMax) {
-          G.enemyMissiles.push(createMissile(e.x, e.y, G.player.x, G.player.y, 2.5, null, '#ef4444'));
+          { const em = createMissile(e.x, e.y, G.player.x, G.player.y, 2.5, null, '#ef4444'); em.guideTick = 300; G.enemyMissiles.push(em); }
           SFX.missile();
           e.bossBurstFired++;
           e.bossBurstTimer = 28; // ~0.5 s between shots in burst
@@ -261,7 +286,7 @@ function frame() {
       const inFireZone = e.y > canvas.height * 0.25 && e.y < canvas.height * 0.78 && e.y < G.player.y;
       if (e.fireCooldown <= 0 && inFireZone && !_stealthActive) {
         e.fireCooldown = e.fireRate;
-        G.enemyMissiles.push(createMissile(e.x, e.y, G.player.x, G.player.y, 2.5, null, '#ef4444'));
+        { const em = createMissile(e.x, e.y, G.player.x, G.player.y, 2.5, null, '#ef4444'); em.guideTick = 300; G.enemyMissiles.push(em); }
         SFX.missile();
       } else if (e.fireCooldown <= 0) {
         e.fireCooldown = e.fireRate;
@@ -284,14 +309,29 @@ function frame() {
     }
   }
 
-  // ── Player missiles ────────────────────────────────────────────────────
+  // ── Player missiles — re-aim at enemy's current position each frame ────────
+  for (const m of G.missiles) {
+    const enemy = G.enemies.find(e => e.id === m.enemyId && e.active);
+    if (enemy) {
+      const dx  = enemy.x - m.x, dy = enemy.y - m.y;
+      const d   = Math.sqrt(dx * dx + dy * dy) || 1;
+      const spd = Math.sqrt(m.vx * m.vx + m.vy * m.vy);
+      m.tx = enemy.x; m.ty = enemy.y;
+      m.vx = (dx / d) * spd;
+      m.vy = (dy / d) * spd;
+    }
+  }
   updateMissiles(G.missiles, m => {
     const e = G.enemies.find(en => en.id === m.enemyId);
     if (e && e.active) onMissileHit(e, m);
   });
   drawMissiles(ctx, G.missiles, false);
 
-  // ── Enemy missiles ─────────────────────────────────────────────────────
+  // ── Enemy missiles (with level-based guidance) ─────────────────────────
+  const _guideF = G.currentLevel >= 50 ? 0.10
+                : G.currentLevel >= 26 ? 0.05
+                : G.currentLevel >= 11 ? 0.02
+                : 0;
   for (let i = G.enemyMissiles.length - 1; i >= 0; i--) {
     const m  = G.enemyMissiles[i];
     const dx = m.x - G.player.x, dy = m.y - G.player.y;
@@ -302,6 +342,17 @@ function frame() {
     }
     if (m.y > canvas.height + 40 || m.x < -60 || m.x > canvas.width + 60) {
       G.enemyMissiles.splice(i, 1); continue;
+    }
+    // Guidance: steer toward player for up to 5 s (300 frames)
+    if (_guideF > 0 && m.guideTick > 0) {
+      m.guideTick--;
+      const tdx = G.player.x - m.x, tdy = G.player.y - m.y;
+      const td  = Math.sqrt(tdx * tdx + tdy * tdy) || 1;
+      const spd = Math.sqrt(m.vx * m.vx + m.vy * m.vy);
+      m.vx = m.vx * (1 - _guideF) + (tdx / td) * spd * _guideF;
+      m.vy = m.vy * (1 - _guideF) + (tdy / td) * spd * _guideF;
+      const ns = Math.sqrt(m.vx * m.vx + m.vy * m.vy) || 1;
+      m.vx = (m.vx / ns) * spd; m.vy = (m.vy / ns) * spd;
     }
     m.trail.push({ x: m.x, y: m.y });
     if (m.trail.length > 8) m.trail.shift();
@@ -496,6 +547,7 @@ function applyNuke() {
 
 function onEnemyMissileHit() {
   if (G.lives <= 0 || _invincible > 0) return;
+  G.missileHitsReceived = (G.missileHitsReceived || 0) + 1;
   spawnExplosion(G.particles, G.player.x, G.player.y, '#ef4444', 14);
   SFX.explode();
   shakeFrames = 14;
@@ -551,10 +603,11 @@ function nextQuestion() {
     reveal.classList.add('hidden');
     reveal.classList.remove('hiding');
 
-    // Swap in new question
-    const ops    = G.practiceMode ? G.practiceOps : levelCfg.ops;
-    const cap    = G.practiceMode ? 20 : levelCfg.mathCap;
-    const mCap   = G.practiceMode ? 12 : levelCfg.mathMultCap;
+    // Swap in new question — apply grade filter
+    const rawOps  = G.practiceMode ? G.practiceOps : levelCfg.ops;
+    const rawCap  = G.practiceMode ? 20 : levelCfg.mathCap;
+    const rawMCap = G.practiceMode ? 12 : levelCfg.mathMultCap;
+    const { ops, cap, mCap } = applyGradeToQuestion(rawOps, rawCap, rawMCap, G.playerGrade);
     G.question = newQuestion(ops, cap, mCap);
     $('question-text').textContent = G.question.text;
     const btns = $('answer-buttons');
@@ -577,7 +630,12 @@ function nextQuestion() {
 
 function startTimer() {
   if (G.timerInterval) clearInterval(G.timerInterval);
-  G.timeLeft  = Math.max(5, levelCfg.timeLimit + (levelCfg.weather?.timeMod || 0));
+  const aircraft   = AIRCRAFT[G.activeAircraft] || AIRCRAFT.t6;
+  const baseTime   = levelCfg.timeLimit + (levelCfg.weather?.timeMod || 0);
+  const timerLimit = aircraft.timerOverride != null
+    ? Math.min(aircraft.timerOverride, baseTime)
+    : baseTime;
+  G.timeLeft  = Math.max(3, timerLimit);
   _timerTotal = G.timeLeft;
   $('timer-bar').style.width      = '100%';
   $('timer-bar').style.background = 'var(--accent)';
@@ -656,10 +714,11 @@ function handleAnswer(choice, btn) {
       }
     }
 
-    const speed    = aircraft.ability === 'fastMissile' ? 13 : 8;
-    const damage   = aircraft.ability === 'heavyMissile' ? 1.4
-                   : aircraft.ability === 'tripleShot'  ? 1.25
-                   : 1;
+    const baseSpeed = aircraft.ability === 'fastMissile' ? 13 : 8;
+    const speed     = baseSpeed * (aircraft.missileSpdMult ?? 1);
+    const damage    = aircraft.ability === 'heavyMissile' ? 1.4
+                    : aircraft.ability === 'tripleShot'  ? 1.25
+                    : 1;
     const target   = nearestEnemy();
     if (target) {
       if (aircraft.ability === 'multiShot' || aircraft.ability === 'multiStealth') {

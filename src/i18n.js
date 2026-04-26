@@ -157,6 +157,22 @@ const STRINGS = {
     classCode:       'CLASS CODE',
     myClassrooms:    'MY CLASSROOMS',
     noStudents:      'NO STUDENTS YET',
+
+    // Grade selection
+    gradeSelectTitle:  'WELCOME, PILOT!',
+    gradeSelectSub:    'SELECT YOUR SCHOOL GRADE',
+    gradeSelectHint:   'Math difficulty adapts to your grade',
+    gradeLabel:        'GRADE',
+
+    // Pilot grades
+    pilotCadet:        'CADET',
+    pilot2ndLt:        '2ND LIEUTENANT',
+    pilotLt:           'LIEUTENANT',
+    pilotCaptain:      'CAPTAIN',
+    pilotMajor:        'MAJOR',
+    pilotColonel:      'COLONEL',
+    pilotGeneral:      'GENERAL',
+    pilotAirAce:       'AIR ACE',
   },
 
   fr: {
@@ -317,6 +333,22 @@ const STRINGS = {
     classCode:       'CODE DE CLASSE',
     myClassrooms:    'MES CLASSES',
     noStudents:      'AUCUN ÉLÈVE',
+
+    // Grade selection
+    gradeSelectTitle:  'BIENVENUE, PILOTE !',
+    gradeSelectSub:    'CHOISISSEZ VOTRE NIVEAU SCOLAIRE',
+    gradeSelectHint:   'La difficulté s\'adapte à votre niveau',
+    gradeLabel:        'NIVEAU',
+
+    // Pilot grades
+    pilotCadet:        'CADET',
+    pilot2ndLt:        '2E LIEUTENANT',
+    pilotLt:           'LIEUTENANT',
+    pilotCaptain:      'CAPITAINE',
+    pilotMajor:        'COMMANDANT',
+    pilotColonel:      'COLONEL',
+    pilotGeneral:      'GÉNÉRAL',
+    pilotAirAce:       'AS DE L\'AIR',
   },
 };
 

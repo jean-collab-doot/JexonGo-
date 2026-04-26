@@ -7,8 +7,8 @@ import { getPilotInfo } from '../data/pilots.js';
 import { t, getLang, setLang, applyI18n } from '../i18n.js';
 
 // ── ASSETS ────────────────────────────────────────────────────────────────────
-const PLANE_PATH  = '/assets/menu/anim-3.png';
-const FIRE_PATH   = '/assets/menu/engine-fire.png';
+const PLANE_PATH  = '/public/assets/menu/anim-3.png';
+const FIRE_PATH   = '/public/assets/menu/engine-fire.png';
 const FIRE_FRAMES = 4;
 
 let _planeImg    = null;

@@ -11,6 +11,8 @@ export const G = {
   activeAircraft: 't6',
   ownedSkins: [],
   activeSkin: null,
+  playerGrade: 0,       // 0 = not selected, 1-6 = school grade
+  highestLevel: 0,      // highest level beaten (drives pilot grade)
 
   // --- Daily economy ---
   dailyLastLogin:   null,
@@ -37,7 +39,7 @@ export const G = {
   practiceMode: false,
   practiceOps:    ['+', '-', '*', '/'],
   practiceHearts: true,
-  continueState: null,   // saved snapshot for the Continue button
+  continueState: null,
 
   // --- In-game (reset each level) ---
   lives: 3,
@@ -48,6 +50,7 @@ export const G = {
   timerInterval: null,
   animFrame: null,
   answerLocked: false,
+  missileHitsReceived: 0,   // counts enemy missile hits this level (for 3-star)
 
   // --- Entities ---
   player: { x: 0, y: 0 },
@@ -68,6 +71,8 @@ export function loadSave() {
   G.ownedSkins        = load('ownedSkins', []);
   G.activeSkin        = load('activeSkin', null);
   G.playerName        = load('playerName', 'PILOT');
+  G.playerGrade       = load('playerGrade', 0);
+  G.highestLevel      = load('highestLevel', 0);
   G.dailyLastLogin    = load('dailyLastLogin', null);
   G.dailyStreak       = load('dailyStreak', 0);
   G.dailyMissions     = load('dailyMissions', null);
@@ -83,16 +88,17 @@ export function loadSave() {
 }
 
 export function resetLevel() {
-  G.lives           = 3;
-  G.questionsAnswered = 0;
-  G.correctAnswers  = 0;
-  G.streak          = 0;
-  G.timeLeft        = 10;
-  G.answerLocked    = false;
-  G.enemies         = [];
-  G.missiles        = [];
-  G.enemyMissiles   = [];
-  G.particles       = [];
+  G.lives              = 3;
+  G.questionsAnswered  = 0;
+  G.correctAnswers     = 0;
+  G.streak             = 0;
+  G.timeLeft           = 10;
+  G.answerLocked       = false;
+  G.missileHitsReceived = 0;
+  G.enemies            = [];
+  G.missiles           = [];
+  G.enemyMissiles      = [];
+  G.particles          = [];
   if (G.timerInterval) { clearInterval(G.timerInterval); G.timerInterval = null; }
   if (G.animFrame)     { cancelAnimationFrame(G.animFrame); G.animFrame = null; }
 }

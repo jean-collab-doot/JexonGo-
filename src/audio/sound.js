@@ -3,7 +3,6 @@ let _sfxVol   = 1;
 let _musicVol = 0.45;
 
 // ── WEB AUDIO CONTEXT ─────────────────────────────────────────────────────────
-// Always called from inside a user-gesture handler so the context starts RUNNING.
 let _actx = null;
 function _ac() {
   if (!_actx) _actx = new (window.AudioContext || window.webkitAudioContext)();
@@ -13,7 +12,7 @@ function _ac() {
 
 // ── BUFFER CACHE ──────────────────────────────────────────────────────────────
 const _bufs    = {};
-const _offsets = {};  // per-file: seconds to skip (trims MP3 encoding silence)
+const _offsets = {};
 
 function _loadBuf(url) {
   if (_bufs[url]) return;
@@ -21,7 +20,6 @@ function _loadBuf(url) {
     .then(r => r.arrayBuffer())
     .then(ab => _ac().decodeAudioData(ab))
     .then(b  => {
-      // Find first non-silent sample so playback starts instantly
       const data = b.getChannelData(0);
       let i = 0;
       while (i < data.length && Math.abs(data[i]) < 0.002) i++;
@@ -33,7 +31,7 @@ function _loadBuf(url) {
 
 // ── SFX CANCELLATION ──────────────────────────────────────────────────────────
 const _timers  = [];
-const _sources = [];   // active BufferSource nodes
+const _sources = [];
 
 function _after(ms, fn) {
   const id = setTimeout(() => { fn(); _timers.splice(_timers.indexOf(id), 1); }, ms);
@@ -99,37 +97,75 @@ function _noise(ctx, dur, vol = 0.35) {
 }
 
 // ── BACKGROUND MUSIC ─────────────────────────────────────────────────────────
-// Single persistent element — browser gesture tracking works best on one element
 const _bgEl = new Audio();
 _bgEl.loop = true;
 let _bgCurrent = '';
-const _positions = {};   // per-src saved playback position
+const _positions = {};
+let _fadeInterval = null;
 
-function _playMusic(src) {
-  if (_bgEl.src.endsWith(src) && !_bgEl.paused) return;
-  // Save outgoing track position so we can resume it later
-  if (_bgCurrent) _positions[_bgCurrent] = _bgEl.currentTime;
-  _bgEl.pause();
-  _bgCurrent   = src;
-  _bgEl.src    = src;
-  _bgEl.volume = _musicVol;
-  _bgEl.loop   = true;
+const GAME_PLAYBACK_RATE = 0.72;  // ~30% slower for gameplay music
+
+function _clearFade() {
+  if (_fadeInterval) { clearInterval(_fadeInterval); _fadeInterval = null; }
+}
+
+function _fadeTo(targetVol, durationMs, onDone) {
+  _clearFade();
+  const startVol = _bgEl.volume;
+  const steps    = 20;
+  const stepMs   = durationMs / steps;
+  const stepAmt  = (targetVol - startVol) / steps;
+  let count = 0;
+  _fadeInterval = setInterval(() => {
+    count++;
+    _bgEl.volume = Math.max(0, Math.min(1, startVol + stepAmt * count));
+    if (count >= steps) {
+      _bgEl.volume = targetVol;
+      _clearFade();
+      if (onDone) onDone();
+    }
+  }, stepMs);
+}
+
+function _startTrack(src) {
+  const isGame = src.includes('music-play1');
+  _bgCurrent    = src;
+  _bgEl.src     = src;
+  _bgEl.volume  = 0;
+  _bgEl.loop    = true;
+  _bgEl.playbackRate = isGame ? GAME_PLAYBACK_RATE : 1.0;
   _bgEl.load();
   const resume = _positions[src] || 0;
   if (resume > 0) {
     _bgEl.addEventListener('canplay', () => { _bgEl.currentTime = resume; }, { once: true });
   }
   _bgEl.play().catch(e => console.warn('Music blocked:', e.message));
+  _fadeTo(_musicVol, 1500);
+}
+
+function _playMusic(src) {
+  if (_bgEl.src.endsWith(src) && !_bgEl.paused) return;
+  if (_bgCurrent) _positions[_bgCurrent] = _bgEl.currentTime;
+
+  if (!_bgEl.paused && _bgEl.src) {
+    // Fade out current, then switch
+    _fadeTo(0, 800, () => {
+      _bgEl.pause();
+      _startTrack(src);
+    });
+  } else {
+    _startTrack(src);
+  }
 }
 
 function _stopMusic() {
+  _clearFade();
   if (_bgCurrent) _positions[_bgCurrent] = _bgEl.currentTime;
   _bgEl.pause();
   _bgEl.src    = '';
   _bgCurrent   = '';
 }
 
-// Backup: resume on next click if play() was blocked
 document.addEventListener('click', () => {
   if (_bgEl.src && _bgEl.paused) _bgEl.play().catch(() => {});
   if (_actx && _actx.state === 'suspended') _actx.resume();
@@ -141,11 +177,10 @@ export const SFX = {
   getVolume()       { return _sfxVol; },
   setMusicVolume(v) {
     _musicVol = Math.max(0, Math.min(1, v));
-    _bgEl.volume = _musicVol;
+    if (!_fadeInterval) _bgEl.volume = _musicVol;
   },
   getMusicVolume()  { return _musicVol; },
 
-  // Call this inside the first user-click handler to guarantee audio unlock
   unlock() {
     const ctx = _ac();
     const buf = ctx.createBuffer(1, 1, ctx.sampleRate);
@@ -153,7 +188,6 @@ export const SFX = {
     src.buffer = buf;
     src.connect(ctx.destination);
     src.start();
-    // Preload all SFX so real MP3s are ready before the user reaches them
     [
       'assets/music/click.mp3',
       'assets/music/correct.mp3',
@@ -223,6 +257,11 @@ export const SFX = {
         _after(i * 110, () => _tone(_ac(), f, 'sine', 0.3, 0.35)));
     });
   },
+  rouletteWin() {
+    // Rising arpeggio for roulette landing
+    [440, 550, 660, 880, 1100].forEach((f, i) =>
+      _after(i * 60, () => _tone(_ac(), f, 'sine', 0.2, 0.32)));
+  },
   gameOver() {
     _playBuf('assets/music/gameover.mp3', 0.9, ctx => {
       [400, 300, 200].forEach((f, i) =>
@@ -230,12 +269,14 @@ export const SFX = {
     });
   },
   quitGame() {
+    _clearFade();
     if (_bgCurrent) _positions[_bgCurrent] = _bgEl.currentTime;
     _bgEl.pause();
-    _bgCurrent   = 'assets/music/gameover2.mp3';
-    _bgEl.src    = 'assets/music/gameover2.mp3';
-    _bgEl.volume = _musicVol;
-    _bgEl.loop   = false;
+    _bgCurrent        = 'assets/music/gameover2.mp3';
+    _bgEl.src         = 'assets/music/gameover2.mp3';
+    _bgEl.volume      = _musicVol;
+    _bgEl.loop        = false;
+    _bgEl.playbackRate = 1.0;
     _bgEl.load();
     _bgEl.play().catch(e => console.warn('Music blocked:', e.message));
   },
@@ -247,5 +288,15 @@ export const SFX = {
   },
   timerWarn() {
     _tone(_ac(), 880, 'triangle', 0.07, 0.18);
+  },
+  noMoney() {
+    // Low thud + descending tones = "error / denied"
+    _tone(_ac(), 110, 'sawtooth', 0.35, 0.45);
+    _after(80,  () => _tone(_ac(), 90, 'sawtooth', 0.25, 0.3));
+  },
+  promoted() {
+    // Fanfare for pilot grade promotion
+    [523, 659, 784, 1047, 1319, 1568].forEach((f, i) =>
+      _after(i * 55, () => _tone(_ac(), f, 'triangle', 0.22, 0.36)));
   },
 };

@@ -17,35 +17,35 @@ function _load(path) {
 // ── SPRITE DEFINITIONS ───────────────────────────────────────────────────────
 export const SPRITE_DEFS = {
   // Player ships — new top-down artwork (single frame each)
-  'ship-t6':   { path: '/assets/ships/player/t6.png',   frames: 1 },
-  'ship-pc21': { path: '/assets/ships/player/pc21.png', frames: 1 },
-  'ship-c130': { path: '/assets/ships/player/c130.png', frames: 1 },
-  'ship-a10':  { path: '/assets/ships/player/a10.png',  frames: 1 },
-  'ship-f16':  { path: '/assets/ships/player/f16.png',  frames: 1 },
-  'ship-f18':  { path: '/assets/ships/player/f18.png',  frames: 1 },
-  'ship-f22':  { path: '/assets/ships/player/f22.png',  frames: 1 },
-  'ship-f35':  { path: '/assets/ships/player/f35.png',  frames: 1 },
-  'ship-b2':   { path: '/assets/ships/player/b2.png',   frames: 1 },
-  'ship-sr71': { path: '/assets/ships/player/sr71.png', frames: 1 },
+  'ship-t6':   { path: '/public/assets/ships/player/t6.png',   frames: 1 },
+  'ship-pc21': { path: '/public/assets/ships/player/pc21.png', frames: 1 },
+  'ship-c130': { path: '/public/assets/ships/player/c130.png', frames: 1 },
+  'ship-a10':  { path: '/public/assets/ships/player/a10.png',  frames: 1 },
+  'ship-f16':  { path: '/public/assets/ships/player/f16.png',  frames: 1 },
+  'ship-f18':  { path: '/public/assets/ships/player/f18.png',  frames: 1 },
+  'ship-f22':  { path: '/public/assets/ships/player/f22.png',  frames: 1 },
+  'ship-f35':  { path: '/public/assets/ships/player/f35.png',  frames: 1 },
+  'ship-b2':   { path: '/public/assets/ships/player/b2.png',   frames: 1 },
+  'ship-sr71': { path: '/public/assets/ships/player/sr71.png', frames: 1 },
   // Enemies — plane artwork
-  'enemy-f15':   { path: '/assets/enemies/planes/f15.png',  frames: 1 },
-  'enemy-t38':   { path: '/assets/enemies/planes/t38.png',  frames: 1 },
-  'enemy-f117':  { path: '/assets/enemies/planes/f117.png', frames: 1 },
+  'enemy-f15':   { path: '/public/assets/enemies/planes/f15.png',  frames: 1 },
+  'enemy-t38':   { path: '/public/assets/enemies/planes/t38.png',  frames: 1 },
+  'enemy-f117':  { path: '/public/assets/enemies/planes/f117.png', frames: 1 },
   // FX — death / hit
-  'enemy-death': { path: '/assets/enemies/enemy-explosion.png', frames: 7 },
+  'enemy-death': { path: '/public/assets/enemies/enemy-explosion.png', frames: 7 },
   // FX
-  'bolt':  { path: '/assets/fx/rocket.png',      frames: 1 },
-  'spark': { path: '/assets/fx/explosion-a.png', frames: 8 },
+  'bolt':  { path: '/public/assets/fx/rocket.png',      frames: 1 },
+  'spark': { path: '/public/assets/fx/explosion-a.png', frames: 8 },
   // Ocean backgrounds
-  'ocean-back':   { path: '/assets/bg/ocean/back.png',   frames: 1 },
-  'ocean-clouds': { path: '/assets/bg/ocean/clouds.png', frames: 1 },
-  'ocean-middle': { path: '/assets/bg/ocean/middle.png', frames: 1 },
+  'ocean-back':   { path: '/public/assets/bg/ocean/back.png',   frames: 1 },
+  'ocean-clouds': { path: '/public/assets/bg/ocean/clouds.png', frames: 1 },
+  'ocean-middle': { path: '/public/assets/bg/ocean/middle.png', frames: 1 },
   // Pack biome — single top-down illustrations per biome
-  'ocean-bg':  { path: '/assets/bg/ocean/bg.png',  frames: 1 },
-  'desert-bg': { path: '/assets/bg/desert/bg.png', frames: 1 },
-  'city-bg':   { path: '/assets/bg/city/bg.png',   frames: 1 },
-  'arctic-bg': { path: '/assets/bg/arctic/bg.png', frames: 1 },
-  'space-bg':  { path: '/assets/bg/space/bg.png',  frames: 1 },
+  'ocean-bg':  { path: '/public/assets/bg/ocean/bg.png',  frames: 1 },
+  'desert-bg': { path: '/public/assets/bg/desert/bg.png', frames: 1 },
+  'city-bg':   { path: '/public/assets/bg/city/bg.png',   frames: 1 },
+  'arctic-bg': { path: '/public/assets/bg/arctic/bg.png', frames: 1 },
+  'space-bg':  { path: '/public/assets/bg/space/bg.png',  frames: 1 },
 };
 
 // Aircraft ID → sprite key

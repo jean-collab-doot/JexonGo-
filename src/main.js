@@ -1,4 +1,5 @@
 import { G, loadSave } from './state.js';
+import { save } from './utils/storage.js';
 import { showScreen } from './utils/dom.js';
 import { SFX } from './audio/sound.js';
 import { initMenu, renderMenu } from './screens/menu.js';
@@ -6,7 +7,7 @@ import { initLevelMap, renderLevelMap } from './screens/levelmap.js';
 import { initHangar, renderHangar } from './screens/hangar.js';
 import { initGame } from './screens/game.js';
 import { initResult, showResult } from './screens/result.js';
-import { initChest, showChest } from './screens/chest.js';
+import { initChest, showChest, setChestReturn } from './screens/chest.js';
 import { initGameover, showGameover } from './screens/gameover.js';
 import { initShop, renderShop } from './screens/shop.js';
 import { initSettings, loadSettings } from './screens/settings.js';
@@ -40,7 +41,7 @@ const nav = {
     showScreen('s-game');
     SFX.playMusic('game');
     _cleanup = initGame(levelNum, (won) => {
-      cleanup();                         // stop game loop and all timers immediately
+      cleanup();
       if (won) {
         showResult(true);
         showScreen('s-result');
@@ -59,8 +60,9 @@ const nav = {
     showScreen('s-hangar');
     SFX.playMusic('menu');
   },
-  toChest(reward) {
+  toChest(reward, returnTo = 'map') {
     cleanup();
+    setChestReturn(returnTo);
     showChest(reward);
     showScreen('s-chest');
     SFX.playMusic('menu');
@@ -92,7 +94,11 @@ const nav = {
   toArena() {
     cleanup();
     showScreen('s-arena');
-    enterArena();   // handles music internally via SFX.playMusic('arena')
+    enterArena();
+  },
+  toGradeSelect() {
+    cleanup();
+    showScreen('s-grade');
   },
 };
 
@@ -100,8 +106,20 @@ function cleanup() {
   if (_cleanup) { _cleanup(); _cleanup = null; }
 }
 
-// Expose nav globally for levelmap node clicks
 window._nav = nav;
+
+// ── GRADE SELECTION SCREEN ───────────────────────────────────────────────────
+function initGradeScreen() {
+  document.querySelectorAll('.grade-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const grade = parseInt(btn.dataset.grade, 10);
+      G.playerGrade = grade;
+      save('playerGrade', grade);
+      nav.toMenu();
+      SFX.playMusic('menu');
+    });
+  });
+}
 
 // ── INIT ALL SCREENS ─────────────────────────────────────────────────────────
 initMenu(nav);
@@ -116,6 +134,7 @@ initRanked(nav);
 initBriefing(nav);
 initClassroom(nav);
 initArena(nav);
+initGradeScreen();
 
 // ── GLOBAL BUTTON CLICK SOUND ─────────────────────────────────────────────────
 document.addEventListener('click', e => {
@@ -128,15 +147,26 @@ loadSave();
 loadSettings();
 preloadShips();
 
-// Audio splash — must be clicked first to satisfy browser autoplay policy
 document.getElementById('btn-audio-start').addEventListener('click', () => {
-  SFX.unlock();                          // warm up AudioContext inside gesture
-  SFX.playMusic('menu');                 // start music NOW — still inside gesture
+  SFX.unlock();
+  SFX.playMusic('menu');
   document.getElementById('audio-splash').classList.add('hidden');
-  renderMenu();
-  showScreen('s-menu');
-  const _daily = checkDailyLogin();
-  if (_daily.isNewDay) {
-    setTimeout(() => showDailyReward(_daily.reward, _daily.streak), 600);
+
+  // Show grade selection if not yet chosen
+  if (!G.playerGrade) {
+    showScreen('s-grade');
+    // Grade buttons handled by initGradeScreen above
+  } else {
+    renderMenu();
+    showScreen('s-menu');
+    const _daily = checkDailyLogin();
+    if (_daily.isNewDay) {
+      setTimeout(() => showDailyReward(_daily.reward, _daily.streak), 600);
+    }
   }
+});
+
+// Patch shop's chest button to return to shop
+import('./screens/shop.js').then(() => {
+  // shop.js already patches via window._nav.toChest(data, 'shop')
 });

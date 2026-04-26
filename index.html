@@ -237,6 +237,8 @@
     <div id="result-stars"></div>
     <div id="result-xp"></div>
     <div id="result-correct"></div>
+    <div id="result-star-detail" class="result-star-detail"></div>
+    <div id="result-promo-banner" class="result-promo-banner hidden"></div>
     <button id="btn-result-continue" class="btn btn-primary" data-i18n="continueBtn">CONTINUE</button>
     <button id="btn-result-retry" class="btn btn-secondary" data-i18n="retry">RETRY</button>
   </div>
@@ -246,6 +248,8 @@
     <div id="chest-title" data-i18n="chestReward">CHEST REWARD</div>
     <div id="chest-tier-label"></div>
     <div id="chest-box"><img id="chest-img" src="" alt="chest"></div>
+    <div id="chest-roulette-area" class="chest-roulette-area hidden"></div>
+    <div id="chest-result-area" class="chest-result-area hidden"></div>
     <div id="chest-rewards" class="hidden"></div>
     <button id="btn-chest-open" class="btn btn-primary" data-i18n="openChest">OPEN CHEST</button>
     <button id="btn-chest-continue" class="btn btn-secondary hidden" data-i18n="continueBtn">CONTINUE</button>
@@ -457,6 +461,7 @@
         </div>
       </div>
     </div>
+    <div id="briefing-star-criteria" class="briefing-star-criteria"></div>
     <button id="btn-briefing-fly" class="briefing-fly-btn" data-i18n="fly">✈ FLY!</button>
   </div>
 
@@ -493,6 +498,21 @@
     <div id="gameover-score"></div>
     <button id="btn-retry" class="btn btn-primary" data-i18n="retry">RETRY</button>
     <button id="btn-go-map" class="btn btn-secondary" data-i18n="backToMenu">LOBBY</button>
+  </div>
+
+  <!-- GRADE SELECTION SCREEN -->
+  <div id="s-grade" class="screen hidden">
+    <div class="grade-screen-title">WELCOME, PILOT!</div>
+    <div class="grade-screen-sub">SELECT YOUR SCHOOL GRADE</div>
+    <div class="grade-grid">
+      <button class="grade-btn" data-grade="1">GRADE<br>1</button>
+      <button class="grade-btn" data-grade="2">GRADE<br>2</button>
+      <button class="grade-btn" data-grade="3">GRADE<br>3</button>
+      <button class="grade-btn" data-grade="4">GRADE<br>4</button>
+      <button class="grade-btn" data-grade="5">GRADE<br>5</button>
+      <button class="grade-btn" data-grade="6">GRADE<br>6</button>
+    </div>
+    <div class="grade-screen-hint">Math difficulty adapts to your grade</div>
   </div>
 
   <div id="login-toast"></div>

@@ -1,6 +1,7 @@
 import { $ } from '../utils/dom.js';
 import { G } from '../state.js';
 import { save } from '../utils/storage.js';
+import { SFX } from '../audio/sound.js';
 import { SKINS, RARITY_META } from '../data/skins.js';
 import { AIRCRAFT } from '../data/aircraft.js';
 import { drawFrame } from '../game/sprites.js';
@@ -232,6 +233,13 @@ function makeHandlers() {
       errEl.textContent = `${t('needMoreCoins')} ${(skin.price - G.coins).toLocaleString()} ${t('moreCoins')}`;
       errEl.classList.remove('shop-err-anim');
       requestAnimationFrame(() => errEl.classList.add('shop-err-anim'));
+      SFX.noMoney?.();
+      // Flash coin counter red
+      const coinBadge = $('shop-coins');
+      if (coinBadge) {
+        coinBadge.classList.add('coins-insufficient');
+        setTimeout(() => coinBadge.classList.remove('coins-insufficient'), 700);
+      }
       return;
     }
     errEl.textContent = '';
@@ -337,6 +345,12 @@ function renderMore(content) {
         errEl.textContent = `${t('needMoreCoins')} ${(ch.price - G.coins).toLocaleString()} ${t('moreCoins')}`;
         errEl.classList.remove('shop-err-anim');
         requestAnimationFrame(() => errEl.classList.add('shop-err-anim'));
+        SFX.noMoney?.();
+        const coinBadge = $('shop-coins');
+        if (coinBadge) {
+          coinBadge.classList.add('coins-insufficient');
+          setTimeout(() => coinBadge.classList.remove('coins-insufficient'), 700);
+        }
         return;
       }
       G.coins -= ch.price;
@@ -348,7 +362,7 @@ function renderMore(content) {
       const { rollChest } = _chestSystem;
       const chestData    = rollChest();
       G.currentLevel     = savedLevel;
-      window._nav?.toChest(chestData);
+      window._nav?.toChest(chestData, 'shop');
     };
 
     card.appendChild(btn);

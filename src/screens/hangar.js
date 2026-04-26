@@ -3,6 +3,7 @@ import { G } from '../state.js';
 import { save } from '../utils/storage.js';
 import { AIRCRAFT, AIRCRAFT_ORDER } from '../data/aircraft.js';
 import { SKINS } from '../data/skins.js';
+import { getPilotGrade } from '../data/pilots.js';
 import { t } from '../i18n.js';
 
 export function initHangar(nav) {
@@ -13,7 +14,6 @@ export function initHangar(nav) {
 }
 
 // ── LIVERY PANEL ──────────────────────────────────────────────────────────────
-
 let _selectedAircraft = null;
 
 function hideLiveryPanel() {
@@ -36,14 +36,12 @@ function showLiveryPanel(id) {
   const grid = document.createElement('div');
   grid.className = 'hlp-grid';
 
-  // Default livery
-  grid.appendChild(makeLiveryCard('Default', `/assets/hangar/${id}.png`, null, id));
+  grid.appendChild(makeLiveryCard('Default', `/public/assets/hangar/${id}.png`, null, id));
 
-  // Owned skins for this aircraft
   SKINS
     .filter(s => s.aircraft === id && G.ownedSkins.includes(s.id))
     .forEach(skin => {
-      const imgSrc = skin.offerImg || `/assets/hangar/${id}.png`;
+      const imgSrc = skin.offerImg || `/public/assets/hangar/${id}.png`;
       grid.appendChild(makeLiveryCard(skin.name, imgSrc, skin, id));
     });
 
@@ -89,10 +87,18 @@ function makeLiveryCard(label, imgSrc, skin, aircraftId) {
   return card;
 }
 
-// ── HANGAR GRID ───────────────────────────────────────────────────────────────
+// ── PILOT GRADE ───────────────────────────────────────────────────────────────
+function meetsGradeRequirement(plane) {
+  if (!plane.gradeRequired) return true;
+  return (G.highestLevel || 0) >= plane.gradeRequired;
+}
 
+// ── HANGAR GRID ───────────────────────────────────────────────────────────────
 export function renderHangar() {
-  $('hangar-xp').textContent = `${G.xp} XP`;
+  const grade = getPilotGrade(G.highestLevel || 0);
+  const xpEl  = $('hangar-xp');
+  if (xpEl) xpEl.textContent = `${G.xp} XP  |  ${grade.emoji} ${grade.name}`;
+
   const grid = $('hangar-grid');
   grid.innerHTML = '';
 
@@ -101,6 +107,7 @@ export function renderHangar() {
     const unlocked = G.unlockedAircraft.includes(id);
     const active   = G.activeAircraft === id;
     const selected = _selectedAircraft === id;
+    const gradeOk  = meetsGradeRequirement(plane);
 
     const card = document.createElement('div');
     card.className = 'hangar-card '
@@ -108,7 +115,7 @@ export function renderHangar() {
       + (selected ? 'selected' : '');
 
     const img = document.createElement('img');
-    img.src       = `/assets/hangar/${id}.png`;
+    img.src       = `/public/assets/hangar/${id}.png`;
     img.className = 'hangar-livery';
     if (!unlocked) img.style.opacity = '0.35';
     card.appendChild(img);
@@ -118,18 +125,52 @@ export function renderHangar() {
     name.textContent = plane.name;
     card.appendChild(name);
 
+    // Buff row
+    if (plane.abilityDesc) {
+      const buff = document.createElement('div');
+      buff.className   = 'plane-ability';
+      buff.textContent = `⬆ ${plane.abilityDesc}`;
+      card.appendChild(buff);
+    }
+
+    // Debuff row
+    if (plane.debuffDesc && plane.debuffDesc !== 'Standard — no debuff') {
+      const debuff = document.createElement('div');
+      debuff.className   = 'plane-debuff';
+      debuff.textContent = `⬇ ${plane.debuffDesc}`;
+      card.appendChild(debuff);
+    }
+
     const cost = document.createElement('div');
     cost.className = 'plane-cost';
-    if (plane.starter)  cost.textContent = t('starter');
-    else if (unlocked)  cost.textContent = `${plane.xpCost.toLocaleString()} XP ✓`;
-    else                cost.textContent = `${plane.xpCost.toLocaleString()} XP`;
+
+    if (plane.starter) {
+      cost.textContent = t('starter');
+    } else if (unlocked) {
+      cost.textContent = `${plane.xpCost.toLocaleString()} XP ✓`;
+    } else if (plane.gradeRequired && !gradeOk) {
+      // Locked by grade requirement
+      const reqGrade = plane.gradeLabel || 'CAPTAIN';
+      cost.textContent = `🔒 ${reqGrade} + ${plane.xpCost.toLocaleString()} XP`;
+      cost.style.color = '#ef4444';
+    } else {
+      cost.textContent = `${plane.xpCost.toLocaleString()} XP`;
+    }
     card.appendChild(cost);
 
-    if (plane.abilityDesc) {
-      const ab = document.createElement('div');
-      ab.className   = 'plane-ability';
-      ab.textContent = plane.abilityDesc;
-      card.appendChild(ab);
+    // Grade requirement hint
+    if (!unlocked && plane.gradeRequired) {
+      const hint = document.createElement('div');
+      hint.className = 'plane-grade-req';
+      const lvlsLeft = Math.max(0, plane.gradeRequired - (G.highestLevel || 0));
+      if (!gradeOk) {
+        hint.textContent = `Need ${plane.gradeLabel} (reach lv ${plane.gradeRequired})`;
+        hint.style.color = '#ef4444';
+      } else {
+        hint.textContent = `Grade: ${plane.gradeLabel} ✓`;
+        hint.style.color = '#00e84b';
+      }
+      card.appendChild(hint);
     }
 
     if (active) {
@@ -141,15 +182,10 @@ export function renderHangar() {
 
     if (unlocked) {
       card.addEventListener('click', () => {
-        if (_selectedAircraft === id) {
-          hideLiveryPanel();
-          renderHangar();
-        } else {
-          showLiveryPanel(id);
-          renderHangar();
-        }
+        if (_selectedAircraft === id) { hideLiveryPanel(); renderHangar(); }
+        else { showLiveryPanel(id); renderHangar(); }
       });
-    } else if (G.xp >= plane.xpCost) {
+    } else if (gradeOk && G.xp >= plane.xpCost) {
       card.style.cursor      = 'pointer';
       card.style.borderColor = 'var(--yellow)';
       cost.style.color       = 'var(--green)';
