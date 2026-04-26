@@ -20,14 +20,17 @@ const MOVE_PROFILE = {
 function randFloat(a, b) { return a + Math.random() * (b - a); }
 
 export function spawnEnemy(canvasW, type) {
-  const def = ENEMY_DEFS[type] || ENEMY_DEFS.basic;
-  const mp  = MOVE_PROFILE[type] || MOVE_PROFILE.basic;
-  const margin = 60;
+  const def    = ENEMY_DEFS[type] || ENEMY_DEFS.basic;
+  const mp     = MOVE_PROFILE[type] || MOVE_PROFILE.basic;
+  // Wider margin on narrow (phone) screens so enemies stay away from corners
+  const margin = canvasW < 500 ? Math.round(canvasW * 0.22) : 60;
+  // Reduce lateral amplitude on mobile so fast enemies don't dart to corners
+  const sinAmp = canvasW < 500 ? Math.min(mp.amp, 1.5) : mp.amp;
   return {
     ...def,
     id:           'e' + (++_eid),
     type,
-    x:            margin + Math.random() * (canvasW - margin * 2),
+    x:            margin + Math.random() * Math.max(1, canvasW - margin * 2),
     y:            -def.size - 10,
     currentHp:    def.hp,
     maxHp:        def.hp,
@@ -40,12 +43,12 @@ export function spawnEnemy(canvasW, type) {
     vx:       0,
     sinPhase: Math.random() * Math.PI * 2,
     sinFreq:  randFloat(mp.freqMin, mp.freqMax),
-    sinAmp:   mp.amp,
+    sinAmp,
   };
 }
 
 export function updateEnemies(enemies, canvasW = 400) {
-  const margin = 50;
+  const margin = canvasW < 500 ? Math.round(canvasW * 0.22) : 50;
   for (const e of enemies) {
     if (!e.active) continue;
 
@@ -64,6 +67,8 @@ export function updateEnemies(enemies, canvasW = 400) {
       e.vx = Math.sin(e.sinPhase) * e.sinAmp;
     }
     e.x += e.vx;
+    // Hard clamp so enemies can never escape the safe zone regardless of amplitude
+    e.x = Math.max(margin, Math.min(canvasW - margin, e.x));
 
     e.y += e.speed;
     if (e.shakeTick > 0) e.shakeTick--;

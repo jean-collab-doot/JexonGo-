@@ -137,6 +137,10 @@ body::after {
 }
 
 
+.menu-logo-wrap {
+  position: relative;
+  display: inline-block;
+}
 .menu-logo {
   font-size: clamp(28px, 8vw, 52px);
   font-weight: 400;
@@ -148,6 +152,28 @@ body::after {
     3px 3px 0 rgba(0,0,0,0.80);
   font-family: 'Press Start 2P', monospace;
   line-height: 1.3;
+}
+
+/* ── Minecraft-style splash badge ── */
+.mc-splash {
+  position: absolute;
+  bottom: -6px;
+  right: -18px;
+  font-family: 'Press Start 2P', monospace;
+  font-size: clamp(11px, 2.8vw, 18px);
+  color: #FFFF55;
+  text-shadow:
+    2px 2px 0 #3f3f00,
+    4px 4px 0 rgba(0,0,0,0.55);
+  transform: rotate(-18deg);
+  transform-origin: left center;
+  white-space: nowrap;
+  animation: mc-bounce 0.9s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+@keyframes mc-bounce {
+  from { transform: rotate(-18deg) scale(1);    }
+  to   { transform: rotate(-18deg) scale(1.12); }
 }
 .logo-go {
   color: #ffb347;
@@ -2697,6 +2723,10 @@ body::after {
 .audio-splash.hidden { display: none; }
 .audio-splash-inner {
   display: flex; flex-direction: column; align-items: center; gap: 28px;
+}
+.audio-splash-logo-wrap {
+  position: relative;
+  display: inline-block;
 }
 .audio-splash-logo {
   font-family: 'Press Start 2P', monospace;

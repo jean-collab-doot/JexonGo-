@@ -44,12 +44,17 @@ const keys = {
   ArrowLeft: false, ArrowRight: false, ArrowUp: false, ArrowDown: false,
   a: false, d: false, w: false, s: false,
 };
-let pointerTarget = null;
+let pointerTarget  = null;   // desktop mouse follow
+let _jsOrigin      = null;   // virtual joystick: touch-start position
+let _jsCurrent     = null;   // virtual joystick: current touch position
+let _jsVelX        = 0;
+let _jsVelY        = 0;
 let velX = 0, velY = 0;
-const MOVE_SPEED = 3.5;
-const ACCEL      = 0.4;
-const FRICTION   = 0.80;
-const LERP       = 0.08;
+const MOVE_SPEED   = 3.5;
+const ACCEL        = 0.4;
+const FRICTION     = 0.80;
+const LERP         = 0.12;
+const JS_RADIUS    = 72;     // max joystick drag radius (px on screen)
 
 function normaliseKey(k) { return k.length === 1 ? k.toLowerCase() : k; }
 function onKeyDown(e) {
@@ -60,16 +65,44 @@ function onKeyUp(e) {
   const k = normaliseKey(e.key);
   if (k in keys) keys[k] = false;
 }
+
 function canvasPointer(e) {
-  const r      = canvas.getBoundingClientRect();
-  const src    = e.touches ? e.touches[0] : e;
-  const touchOffset = e.touches ? 90 : 0; // lift plane above finger so it stays visible
-  pointerTarget = {
-    x: src.clientX - r.left,
-    y: Math.max(40, src.clientY - r.top - touchOffset),
-  };
+  const r   = canvas.getBoundingClientRect();
+  const src = e.touches ? e.touches[0] : e;
+  const x   = src.clientX - r.left;
+  const y   = src.clientY - r.top;
+
+  if (e.touches) {
+    // ── Virtual joystick ────────────────────────────────────────────────
+    if (e.type === 'touchstart') {
+      _jsOrigin  = { x, y };
+      _jsCurrent = { x, y };
+      _jsVelX = _jsVelY = 0;
+      pointerTarget = null;
+    } else if (_jsOrigin) {
+      _jsCurrent = { x, y };
+      const dx   = x - _jsOrigin.x;
+      const dy   = y - _jsOrigin.y;
+      const dist = Math.hypot(dx, dy);
+      if (dist > 4) {
+        const ratio = Math.min(dist, JS_RADIUS) / JS_RADIUS;
+        _jsVelX = (dx / dist) * ratio * MOVE_SPEED;
+        _jsVelY = (dy / dist) * ratio * MOVE_SPEED;
+      } else {
+        _jsVelX = _jsVelY = 0;
+      }
+    }
+  } else {
+    // Desktop mouse — direct follow (unchanged)
+    pointerTarget = { x, y };
+  }
 }
-function clearPointer() { pointerTarget = null; }
+
+function clearPointer() {
+  pointerTarget = null;
+  _jsOrigin = _jsCurrent = null;
+  _jsVelX = _jsVelY = 0;
+}
 
 function updatePlayerMovement() {
   const margin  = 32;
@@ -77,7 +110,12 @@ function updatePlayerMovement() {
   const qboxH   = $('question-box').offsetHeight || 180;
   const maxY    = canvas.height - qboxH - 24;
 
-  if (pointerTarget) {
+  if (_jsOrigin) {
+    // Joystick touch: apply velocity directly, no lerp lag
+    G.player.x += _jsVelX;
+    G.player.y += _jsVelY;
+    velX = velY = 0;
+  } else if (pointerTarget) {
     velX = 0; velY = 0;
     G.player.x += (pointerTarget.x - G.player.x) * LERP;
     G.player.y += (pointerTarget.y - G.player.y) * LERP;
@@ -183,7 +221,7 @@ function frame() {
     const types = levelCfg.isBossLevel ? levelCfg.bossCompanionTypes : levelCfg.enemyTypes;
     const type  = types[Math.floor(Math.random() * types.length)];
     const e     = spawnEnemy(canvas.width, type);
-    e.speed        *= levelCfg.enemySpeedMult;
+    e.speed        *= levelCfg.enemySpeedMult * (canvas.width < 500 ? 1.45 : 1);
     e.fireRate      = Math.max(30, Math.floor(e.fireRate * levelCfg.enemyFireRateMult));
     e.fireCooldown  = e.fireRate + Math.floor(Math.random() * 40);
     G.enemies.push(e);
@@ -327,6 +365,26 @@ function frame() {
   ctx.globalAlpha = 1;
 
   if (shaking) ctx.restore();
+
+  // ── Virtual joystick indicator (touch only) ────────────────────────────
+  if (_jsOrigin && _jsCurrent) {
+    const dx   = _jsCurrent.x - _jsOrigin.x;
+    const dy   = _jsCurrent.y - _jsOrigin.y;
+    const dist = Math.min(Math.hypot(dx, dy), JS_RADIUS);
+    const knobX = _jsOrigin.x + (dist > 0 ? (dx / Math.hypot(dx, dy)) * dist : 0);
+    const knobY = _jsOrigin.y + (dist > 0 ? (dy / Math.hypot(dx, dy)) * dist : 0);
+    ctx.save();
+    // Outer ring
+    ctx.globalAlpha = 0.22;
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth   = 2;
+    ctx.beginPath(); ctx.arc(_jsOrigin.x, _jsOrigin.y, JS_RADIUS, 0, Math.PI * 2); ctx.stroke();
+    // Knob
+    ctx.globalAlpha = 0.38;
+    ctx.fillStyle   = '#00d4ff';
+    ctx.beginPath(); ctx.arc(knobX, knobY, 22, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  }
 
   // ── Nuke animation overlay ─────────────────────────────────────────────
   if (_nukeAnim > 0) {
@@ -960,6 +1018,8 @@ export function initGame(levelNum, onComplete) {
     G.animFrame     = null;
     detachInputListeners();
     pointerTarget = null;
+    _jsOrigin = _jsCurrent = null;
+    _jsVelX = _jsVelY = 0;
     velX = 0; velY = 0;
     Object.keys(keys).forEach(k => keys[k] = false);
     if (ctx) { ctx.setTransform(1,0,0,1,0,0); ctx.globalAlpha = 1; }
