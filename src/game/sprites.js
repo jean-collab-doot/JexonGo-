@@ -17,16 +17,16 @@ function _load(path) {
 // ── SPRITE DEFINITIONS ───────────────────────────────────────────────────────
 export const SPRITE_DEFS = {
   // Player ships — new top-down artwork (single frame each)
-  'ship-t6':   { path: '/public/assets/ships/player/t6.png',   frames: 1 },
-  'ship-pc21': { path: '/public/assets/ships/player/pc21.png', frames: 1 },
-  'ship-c130': { path: '/public/assets/ships/player/c130.png', frames: 1 },
-  'ship-a10':  { path: '/public/assets/ships/player/a10.png',  frames: 1 },
-  'ship-f16':  { path: '/public/assets/ships/player/f16.png',  frames: 1 },
-  'ship-f18':  { path: '/public/assets/ships/player/f18.png',  frames: 1 },
-  'ship-f22':  { path: '/public/assets/ships/player/f22.png',  frames: 1 },
-  'ship-f35':  { path: '/public/assets/ships/player/f35.png',  frames: 1 },
-  'ship-b2':   { path: '/public/assets/ships/player/b2.png',   frames: 1 },
-  'ship-sr71': { path: '/public/assets/ships/player/sr71.png', frames: 1 },
+  'ship-t6':   { path: '/assets/ships/player/t6.png',   frames: 1 },
+  'ship-pc21': { path: '/assets/ships/player/pc21.png', frames: 1 },
+  'ship-c130': { path: '/assets/ships/player/c130.png', frames: 1 },
+  'ship-a10':  { path: '/assets/ships/player/a10.png',  frames: 1 },
+  'ship-f16':  { path: '/assets/ships/player/f16.png',  frames: 1 },
+  'ship-f18':  { path: '/assets/ships/player/f18.png',  frames: 1 },
+  'ship-f22':  { path: '/assets/ships/player/f22.png',  frames: 1 },
+  'ship-f35':  { path: '/assets/ships/player/f35.png',  frames: 1 },
+  'ship-b2':   { path: '/assets/ships/player/b2.png',   frames: 1 },
+  'ship-sr71': { path: '/assets/ships/player/sr71.png', frames: 1 },
   // Enemies — plane artwork
   'enemy-f15':   { path: '/public/assets/enemies/planes/f15.png',  frames: 1 },
   'enemy-t38':   { path: '/public/assets/enemies/planes/t38.png',  frames: 1 },
