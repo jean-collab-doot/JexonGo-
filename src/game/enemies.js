@@ -23,9 +23,9 @@ export function spawnEnemy(canvasW, type) {
   const def    = ENEMY_DEFS[type] || ENEMY_DEFS.basic;
   const mp     = MOVE_PROFILE[type] || MOVE_PROFILE.basic;
   // Wider margin on narrow (phone) screens so enemies stay away from corners
-  const margin = canvasW < 500 ? Math.round(canvasW * 0.22) : 60;
+  const margin = canvasW < 500 ? Math.round(canvasW * 0.28) : 85;
   // Reduce lateral amplitude on mobile so fast enemies don't dart to corners
-  const sinAmp = canvasW < 500 ? Math.min(mp.amp, 1.5) : mp.amp;
+  const sinAmp = canvasW < 500 ? Math.min(mp.amp, 1.2) : mp.amp;
   return {
     ...def,
     id:           'e' + (++_eid),
@@ -48,7 +48,7 @@ export function spawnEnemy(canvasW, type) {
 }
 
 export function updateEnemies(enemies, canvasW = 400) {
-  const margin = canvasW < 500 ? Math.round(canvasW * 0.22) : 50;
+  const margin = canvasW < 500 ? Math.round(canvasW * 0.26) : 70;
   for (const e of enemies) {
     if (!e.active) continue;
 

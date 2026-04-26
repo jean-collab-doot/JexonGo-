@@ -528,7 +528,8 @@ function nextQuestion() {
 
   // Remove any pending skip listener
   if (_skipHandler) {
-    $('game-canvas-wrap').removeEventListener('click', _skipHandler, true);
+    document.removeEventListener('touchstart', _skipHandler, true);
+    document.removeEventListener('click',      _skipHandler, true);
     _skipHandler = null;
   }
   clearTimeout(_revealTimer);
@@ -697,16 +698,24 @@ function handleAnswer(choice, btn) {
   }, delay);
 
   if (!correct) {
-    const wrap = $('game-canvas-wrap');
-    _skipHandler = () => {
-      wrap.removeEventListener('click', _skipHandler, true);
+    let _touchPending = false;
+    _skipHandler = (ev) => {
+      if (ev.type === 'touchstart') { _touchPending = true; }
+      else if (ev.type === 'click' && _touchPending) { _touchPending = false; return; }
+      document.removeEventListener('touchstart', _skipHandler, true);
+      document.removeEventListener('click',      _skipHandler, true);
       _skipHandler = null;
       clearTimeout(_revealTimer);
       _revealTimer = null;
       if (_sessionId !== sid) return;
       loseLife();
     };
-    setTimeout(() => { if (_skipHandler) wrap.addEventListener('click', _skipHandler, true); }, 700);
+    setTimeout(() => {
+      if (_skipHandler) {
+        document.addEventListener('touchstart', _skipHandler, true);
+        document.addEventListener('click',      _skipHandler, true);
+      }
+    }, 700);
   }
 }
 
