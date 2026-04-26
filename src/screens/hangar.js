@@ -37,13 +37,13 @@ function showLiveryPanel(id) {
   grid.className = 'hlp-grid';
 
   // Default livery
-  grid.appendChild(makeLiveryCard('Default', `/public/assets/hangar/${id}.png`, null, id));
+  grid.appendChild(makeLiveryCard('Default', `/assets/hangar/${id}.png`, null, id));
 
   // Owned skins for this aircraft
   SKINS
     .filter(s => s.aircraft === id && G.ownedSkins.includes(s.id))
     .forEach(skin => {
-      const imgSrc = skin.offerImg || `/public/assets/hangar/${id}.png`;
+      const imgSrc = skin.offerImg || `/assets/hangar/${id}.png`;
       grid.appendChild(makeLiveryCard(skin.name, imgSrc, skin, id));
     });
 
@@ -108,7 +108,7 @@ export function renderHangar() {
       + (selected ? 'selected' : '');
 
     const img = document.createElement('img');
-    img.src       = `/public/assets/hangar/${id}.png`;
+    img.src       = `/assets/hangar/${id}.png`;
     img.className = 'hangar-livery';
     if (!unlocked) img.style.opacity = '0.35';
     card.appendChild(img);
