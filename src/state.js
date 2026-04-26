@@ -59,7 +59,7 @@ export const G = {
 
 export function loadSave() {
   G.xp                = load('xp', 0);
-  G.coins             = load('coins', 500);
+  G.coins             = load('coins', 0);
   G.blueprints        = load('blueprints', {});
   G.chestsWithoutEpic = load('chestsWithoutEpic', 0);
   G.levelStars        = load('levelStars', {});

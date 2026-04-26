@@ -75,6 +75,7 @@ export async function enterArena() {
   _ctx = _canvas.getContext('2d');
 
   _resetVisuals();
+  SFX.playMusic('arena');
   _startLoop();          // render loop runs immediately — canvas draws even during connect
 
   _showStatus(t('findingOpp'), true);
@@ -795,6 +796,7 @@ function _leaveArena() {
   _session++;
   _stopLoop();
   _stopTimer();
+  SFX.stopMusic();
   wsSend({ type: 'leave' });
   wsDisconnect();
   _nav.toRanked();

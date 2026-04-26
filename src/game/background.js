@@ -68,4 +68,5 @@ export function drawBackground(ctx, canvas) {
       startY += dh;
     }
   }
+
 }

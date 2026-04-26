@@ -261,8 +261,6 @@ function _applyLang() {
     'btn-hangar':    'hangar',
     'btn-shop':      'shop',
     'btn-practice':  'practice',
-    'btn-ranked':    'ranked',
-    'btn-classroom': 'classroom',
   };
   for (const [id, key] of Object.entries(map)) {
     const el = document.getElementById(id);
@@ -296,10 +294,7 @@ export function initMenu(nav) {
 
   $('btn-login-google').onclick  = () => _handleLogin('google');
   $('btn-login-apple').onclick   = () => _handleLogin('apple');
-  $('btn-ranked').onclick        = () => nav.toRanked();
   $('btn-missions').onclick      = () => openMissionsPanel();
-  const classroomBtn = document.getElementById('btn-classroom');
-  if (classroomBtn) classroomBtn.onclick = () => nav.toClassroom();
   $('btn-missions-close').onclick = () => $('missions-panel').classList.add('hidden');
   $('missions-panel').addEventListener('click', e => {
     if (e.target === $('missions-panel')) $('missions-panel').classList.add('hidden');

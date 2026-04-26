@@ -1,6 +1,5 @@
 import { $ } from '../utils/dom.js';
 import { getLevel } from '../data/levels.js';
-import { getWeatherForLevel } from '../data/weather.js';
 import { getStory } from '../data/story.js';
 import { getPilotInfo } from '../data/pilots.js';
 import { G } from '../state.js';
@@ -20,7 +19,6 @@ export function showBriefing(levelNum) {
   _levelNum = levelNum;
 
   const levelCfg = getLevel(levelNum);
-  const weather  = getWeatherForLevel(levelNum);
   const story    = getStory(levelNum);
   const pilotInfo = getPilotInfo(G.xp || 0);
 
@@ -29,17 +27,8 @@ export function showBriefing(levelNum) {
   $('briefing-mission-title').textContent = isFr ? (story.titleFr || story.title) : story.title;
   $('briefing-story').textContent = isFr ? (story.textFr || story.text) : story.text;
 
-  // Weather
-  $('briefing-weather-icon').textContent  = weather.icon;
-  $('briefing-weather-label').textContent = weather.label;
-  $('briefing-weather-desc').textContent  = weather.desc;
-
-  // Apply weather color to icon
-  $('briefing-weather-icon').style.color = weather.color;
-
-  // Time limit (adjusted by weather timeMod)
-  const adjustedTime = Math.max(5, levelCfg.timeLimit + (weather.timeMod || 0));
-  $('briefing-time').textContent = `${adjustedTime}${t('secPerQ')}`;
+  // Time limit
+  $('briefing-time').textContent = `${levelCfg.timeLimit}${t('secPerQ')}`;
 
   // Static condition labels
   const timeLabelEl = document.querySelector('.briefing-cond-label[data-key="timeLimit"]');

@@ -1,56 +1,251 @@
-let _ctx    = null;
-let _volume = 1; // 0..1
-function ac() {
-  if (!_ctx) _ctx = new (window.AudioContext || window.webkitAudioContext)();
-  if (_ctx.state === 'suspended') _ctx.resume();
-  return _ctx;
+// ── VOLUME ────────────────────────────────────────────────────────────────────
+let _sfxVol   = 1;
+let _musicVol = 0.45;
+
+// ── WEB AUDIO CONTEXT ─────────────────────────────────────────────────────────
+// Always called from inside a user-gesture handler so the context starts RUNNING.
+let _actx = null;
+function _ac() {
+  if (!_actx) _actx = new (window.AudioContext || window.webkitAudioContext)();
+  if (_actx.state === 'suspended') _actx.resume();
+  return _actx;
 }
 
-function tone(freq, type, dur, vol = 0.28, sweep = null) {
-  if (_volume === 0) return;
+// ── BUFFER CACHE ──────────────────────────────────────────────────────────────
+const _bufs    = {};
+const _offsets = {};  // per-file: seconds to skip (trims MP3 encoding silence)
+
+function _loadBuf(url) {
+  if (_bufs[url]) return;
+  fetch(url)
+    .then(r => r.arrayBuffer())
+    .then(ab => _ac().decodeAudioData(ab))
+    .then(b  => {
+      // Find first non-silent sample so playback starts instantly
+      const data = b.getChannelData(0);
+      let i = 0;
+      while (i < data.length && Math.abs(data[i]) < 0.002) i++;
+      _offsets[url] = i / b.sampleRate;
+      _bufs[url] = b;
+    })
+    .catch(() => {});
+}
+
+// ── SFX CANCELLATION ──────────────────────────────────────────────────────────
+const _timers  = [];
+const _sources = [];   // active BufferSource nodes
+
+function _after(ms, fn) {
+  const id = setTimeout(() => { fn(); _timers.splice(_timers.indexOf(id), 1); }, ms);
+  _timers.push(id);
+}
+
+function _stopAllSFX() {
+  _timers.forEach(clearTimeout);
+  _timers.length = 0;
+  _sources.forEach(s => { try { s.stop(); } catch (_) {} });
+  _sources.length = 0;
+}
+
+// ── PLAY HELPERS ──────────────────────────────────────────────────────────────
+function _playBuf(url, vol, fallback, maxDur = Infinity) {
+  if (_sfxVol === 0) return;
+  const ctx = _ac();
+  const buf = _bufs[url];
+  if (buf) {
+    const src  = ctx.createBufferSource();
+    const gain = ctx.createGain();
+    src.buffer = buf;
+    gain.gain.value = Math.min(1, vol * _sfxVol);
+    src.connect(gain); gain.connect(ctx.destination);
+    _sources.push(src);
+    src.onended = () => _sources.splice(_sources.indexOf(src), 1);
+    const offset = _offsets[url] || 0;
+    src.start(ctx.currentTime, offset);
+    if (maxDur < Infinity) src.stop(ctx.currentTime + maxDur);
+  } else {
+    fallback(ctx);
+    _loadBuf(url);
+  }
+}
+
+function _tone(ctx, freq, type, dur, vol = 0.28, sweep = null) {
   try {
-    const c = ac();
-    const osc = c.createOscillator();
-    const g   = c.createGain();
-    osc.connect(g); g.connect(c.destination);
+    const osc = ctx.createOscillator();
+    const g   = ctx.createGain();
+    osc.connect(g); g.connect(ctx.destination);
     osc.type = type;
-    const now = c.currentTime;
+    const now = ctx.currentTime;
     osc.frequency.setValueAtTime(sweep ?? freq, now);
     if (sweep) osc.frequency.exponentialRampToValueAtTime(freq, now + dur);
-    g.gain.setValueAtTime(vol * _volume, now);
+    g.gain.setValueAtTime(vol * _sfxVol, now);
     g.gain.exponentialRampToValueAtTime(0.001, now + dur);
     osc.start(now); osc.stop(now + dur);
   } catch (_) {}
 }
 
-function noise(dur, vol = 0.35) {
-  if (_volume === 0) return;
+function _noise(ctx, dur, vol = 0.35) {
   try {
-    const c   = ac();
-    const buf = c.createBuffer(1, c.sampleRate * dur, c.sampleRate);
+    const buf = ctx.createBuffer(1, ctx.sampleRate * dur, ctx.sampleRate);
     const d   = buf.getChannelData(0);
     for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / d.length);
-    const src = c.createBufferSource();
-    const g   = c.createGain();
-    src.buffer = buf; src.connect(g); g.connect(c.destination);
-    g.gain.setValueAtTime(vol * _volume, c.currentTime);
-    g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + dur);
+    const src = ctx.createBufferSource();
+    const g   = ctx.createGain();
+    src.buffer = buf; src.connect(g); g.connect(ctx.destination);
+    g.gain.setValueAtTime(vol * _sfxVol, ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + dur);
     src.start();
   } catch (_) {}
 }
 
+// ── BACKGROUND MUSIC ─────────────────────────────────────────────────────────
+// Single persistent element — browser gesture tracking works best on one element
+const _bgEl = new Audio();
+_bgEl.loop = true;
+let _bgCurrent = '';
+const _positions = {};   // per-src saved playback position
+
+function _playMusic(src) {
+  if (_bgEl.src.endsWith(src) && !_bgEl.paused) return;
+  // Save outgoing track position so we can resume it later
+  if (_bgCurrent) _positions[_bgCurrent] = _bgEl.currentTime;
+  _bgEl.pause();
+  _bgCurrent   = src;
+  _bgEl.src    = src;
+  _bgEl.volume = _musicVol;
+  _bgEl.loop   = true;
+  _bgEl.load();
+  const resume = _positions[src] || 0;
+  if (resume > 0) {
+    _bgEl.addEventListener('canplay', () => { _bgEl.currentTime = resume; }, { once: true });
+  }
+  _bgEl.play().catch(e => console.warn('Music blocked:', e.message));
+}
+
+function _stopMusic() {
+  if (_bgCurrent) _positions[_bgCurrent] = _bgEl.currentTime;
+  _bgEl.pause();
+  _bgEl.src    = '';
+  _bgCurrent   = '';
+}
+
+// Backup: resume on next click if play() was blocked
+document.addEventListener('click', () => {
+  if (_bgEl.src && _bgEl.paused) _bgEl.play().catch(() => {});
+  if (_actx && _actx.state === 'suspended') _actx.resume();
+}, { once: true });
+
+// ── PUBLIC API ────────────────────────────────────────────────────────────────
 export const SFX = {
-  setVolume(v) { _volume = Math.max(0, Math.min(1, v)); },
-  getVolume()  { return _volume; },
-  correct() {
-    tone(660, 'sine', 0.12, 0.28);
-    setTimeout(() => tone(880, 'sine', 0.15, 0.24), 80);
+  setVolume(v)      { _sfxVol   = Math.max(0, Math.min(1, v)); },
+  getVolume()       { return _sfxVol; },
+  setMusicVolume(v) {
+    _musicVol = Math.max(0, Math.min(1, v));
+    _bgEl.volume = _musicVol;
   },
-  wrong()     { tone(200, 'sawtooth', 0.3, 0.3); },
-  missile()   { tone(700, 'square', 0.09, 0.14, 1000); },
-  explode()   { noise(0.28, 0.45); tone(120, 'sawtooth', 0.2, 0.2); },
-  streak()    { [550, 770, 1050].forEach((f, i) => setTimeout(() => tone(f, 'sine', 0.15, 0.3), i * 90)); },
-  chest()     { [523, 659, 784, 1047].forEach((f, i) => setTimeout(() => tone(f, 'sine', 0.28, 0.3), i * 110)); },
-  levelWin()  { [523, 659, 784, 1047, 1319].forEach((f, i) => setTimeout(() => tone(f, 'triangle', 0.22, 0.28), i * 75)); },
-  timerWarn() { tone(440, 'sine', 0.06, 0.12); },
+  getMusicVolume()  { return _musicVol; },
+
+  // Call this inside the first user-click handler to guarantee audio unlock
+  unlock() {
+    const ctx = _ac();
+    const buf = ctx.createBuffer(1, 1, ctx.sampleRate);
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    src.connect(ctx.destination);
+    src.start();
+    // Preload all SFX so real MP3s are ready before the user reaches them
+    [
+      'assets/music/click.mp3',
+      'assets/music/correct.mp3',
+      'assets/music/correct2.mp3',
+      'assets/music/wrong.mp3',
+      'assets/music/shot.mp3',
+      'assets/music/explosion.mp3',
+      'assets/music/purchase.mp3',
+      'assets/music/gameover.mp3',
+    ].forEach(_loadBuf);
+  },
+
+  playMusic(key) {
+    const MAP = {
+      menu:   'assets/music/music-menu.mp3',
+      ranked: 'assets/music/music-ranked.mp3',
+      shop:   'assets/music/music-shop.mp3',
+      game:   'assets/music/music-play1.mp3',
+      arena:  'assets/music/music-arena.mp3',
+    };
+    if (MAP[key]) _playMusic(MAP[key]);
+  },
+  stopMusic() { _stopMusic(); },
+  stopSFX()   { _stopAllSFX(); },
+
+  click() {
+    _playBuf('assets/music/click.mp3', 0.7,
+      ctx => _tone(ctx, 800, 'sine', 0.08, 0.35));
+  },
+  correct() {
+    _playBuf('assets/music/correct.mp3', 0.9, ctx => {
+      _tone(ctx, 660, 'sine', 0.15, 0.35);
+      _after(100, () => _tone(_ac(), 880, 'sine', 0.18, 0.3));
+    });
+  },
+  wrong() {
+    _playBuf('assets/music/wrong.mp3', 0.8,
+      ctx => _tone(ctx, 200, 'sawtooth', 0.4, 0.4));
+  },
+  missile: (() => {
+    let _last = 0;
+    return function missile() {
+      const now = Date.now();
+      if (now - _last < 120) return;
+      _last = now;
+      _playBuf('assets/music/shot.mp3', 0.5,
+        ctx => _tone(ctx, 180, 'sawtooth', 0.15, 0.2, 900), 0.35);
+    };
+  })(),
+  explode() {
+    _playBuf('assets/music/explosion.mp3', 0.8, ctx => {
+      _noise(ctx, 0.4, 0.55);
+      _tone(ctx, 120, 'sawtooth', 0.3, 0.3);
+    });
+  },
+  levelWin() {
+    [523, 659, 784, 1047, 1319].forEach((f, i) =>
+      _after(i * 75, () => _tone(_ac(), f, 'triangle', 0.25, 0.32)));
+  },
+  streak() {
+    [550, 770, 1050].forEach((f, i) =>
+      _after(i * 90, () => _tone(_ac(), f, 'sine', 0.2, 0.35)));
+  },
+  chest() {
+    _playBuf('assets/music/purchase.mp3', 0.9, ctx => {
+      [523, 659, 784, 1047].forEach((f, i) =>
+        _after(i * 110, () => _tone(_ac(), f, 'sine', 0.3, 0.35)));
+    });
+  },
+  gameOver() {
+    _playBuf('assets/music/gameover.mp3', 0.9, ctx => {
+      [400, 300, 200].forEach((f, i) =>
+        _after(i * 200, () => _tone(_ac(), f, 'sawtooth', 0.35, 0.3)));
+    });
+  },
+  quitGame() {
+    if (_bgCurrent) _positions[_bgCurrent] = _bgEl.currentTime;
+    _bgEl.pause();
+    _bgCurrent   = 'assets/music/gameover2.mp3';
+    _bgEl.src    = 'assets/music/gameover2.mp3';
+    _bgEl.volume = _musicVol;
+    _bgEl.loop   = false;
+    _bgEl.load();
+    _bgEl.play().catch(e => console.warn('Music blocked:', e.message));
+  },
+  bonusHeart() {
+    _playBuf('assets/music/correct2.mp3', 0.85, ctx => {
+      [523, 784, 1047, 1319].forEach((f, i) =>
+        _after(i * 65, () => _tone(_ac(), f, 'sine', 0.22, 0.26)));
+    });
+  },
+  timerWarn() {
+    _tone(_ac(), 880, 'triangle', 0.07, 0.18);
+  },
 };

@@ -2550,3 +2550,218 @@ body::after {
   letter-spacing: 4px;
   text-align: center;
 }
+
+/* ── ARENA SCREEN ──────────────────────────────────────────────────────────── */
+#s-arena {
+  position: absolute; inset: 0; overflow: hidden;
+  background: #010408;
+  display: block;       /* override .screen { display:flex } */
+  align-items: unset; justify-content: unset;
+}
+.arena-canvas {
+  position: absolute; inset: 0; width: 100%; height: 100%; display: block;
+}
+.arena-overlay {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column;
+  pointer-events: none;
+}
+
+/* TOP HUD */
+.arena-top-hud {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  padding: 10px 12px 0;
+  pointer-events: none;
+}
+.arena-hud-side {
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  min-width: 90px;
+}
+.arena-hud-right { align-items: center; }
+.arena-hud-center {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+}
+.arena-pname {
+  font-family: 'Press Start 2P', monospace; font-size: 7px;
+  color: #fff; text-align: center; letter-spacing: 0.5px;
+}
+.arena-hearts { display: flex; gap: 4px; }
+.arena-heart {
+  font-size: 14px; color: #ff2277;
+  text-shadow: 0 0 8px #ff2277;
+  transition: opacity 0.25s;
+}
+.arena-qnum {
+  font-family: 'Press Start 2P', monospace; font-size: 6px; color: #888;
+}
+.arena-timer {
+  font-family: 'Press Start 2P', monospace; font-size: 18px;
+  color: #00e84b; text-shadow: 0 0 12px #00e84b;
+  transition: color 0.3s;
+}
+
+/* FEEDBACK FLASHES */
+.arena-fb {
+  position: absolute; top: 38%; font-size: 28px;
+  font-family: 'Press Start 2P', monospace;
+  pointer-events: none; opacity: 0;
+}
+.arena-fb-left  { left: 10%; }
+.arena-fb-right { right: 10%; }
+@keyframes arena-flash-anim {
+  0%   { opacity: 1; transform: scale(1.4); }
+  100% { opacity: 0; transform: scale(0.8); }
+}
+.arena-flash { animation: arena-flash-anim 0.55s ease-out forwards; }
+
+/* QUESTION BOX */
+.arena-question-box {
+  position: absolute; bottom: 24%; left: 50%; transform: translateX(-50%);
+  width: 88%; max-width: 400px;
+  background: rgba(6,12,30,0.92); border: 1px solid #ffffff18;
+  border-radius: 12px; padding: 14px 12px 12px;
+  pointer-events: auto;
+}
+.arena-question {
+  font-family: 'Press Start 2P', monospace; font-size: 13px;
+  color: #fff; text-align: center; margin-bottom: 14px;
+}
+.arena-answers {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+}
+.arena-ans-btn {
+  font-family: 'Press Start 2P', monospace; font-size: 10px;
+  background: #0d1a35; color: #00d4ff;
+  border: 1px solid #00d4ff44; border-radius: 8px;
+  padding: 10px 6px; cursor: pointer; transition: background 0.15s, transform 0.1s;
+}
+.arena-ans-btn:hover:not(:disabled) { background: #112244; transform: scale(1.04); }
+.arena-ans-btn:disabled { opacity: 0.45; cursor: default; }
+
+/* STATUS */
+.arena-status {
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  display: flex; flex-direction: column; align-items: center; gap: 12px;
+  pointer-events: none;
+}
+.arena-spinner {
+  width: 32px; height: 32px;
+  border: 3px solid #ffffff22; border-top-color: #00d4ff;
+  border-radius: 50%; animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.arena-status-text {
+  font-family: 'Press Start 2P', monospace; font-size: 9px; color: #fff;
+}
+.arena-status-dots { font-size: 9px; color: #888; }
+
+/* RESULT */
+.arena-result {
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  width: 86%; max-width: 360px;
+  background: rgba(4,8,20,0.96); border: 1px solid #ffffff18;
+  border-radius: 14px; padding: 22px 18px;
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
+  pointer-events: auto;
+}
+.arena-result-title {
+  font-family: 'Press Start 2P', monospace; font-size: 14px;
+  text-align: center;
+}
+.arena-result-score {
+  font-family: 'Press Start 2P', monospace; font-size: 18px; color: #fff;
+}
+.arena-result-lp {
+  font-family: 'Press Start 2P', monospace; font-size: 11px;
+}
+.arena-result-rank {
+  font-family: 'Press Start 2P', monospace; font-size: 8px; color: #888;
+}
+.arena-rematch-status {
+  font-family: 'Press Start 2P', monospace; font-size: 7px; color: #888;
+  min-height: 14px; text-align: center;
+}
+
+/* BACK BUTTON */
+.arena-back-btn {
+  position: absolute; top: 10px; left: 10px;
+  pointer-events: auto;
+}
+
+/* ── AUDIO SPLASH ────────────────────────────────────────────────────────────── */
+.audio-splash {
+  position: fixed; inset: 0; z-index: 99999;
+  background: #000;
+  display: flex; align-items: center; justify-content: center;
+}
+.audio-splash.hidden { display: none; }
+.audio-splash-inner {
+  display: flex; flex-direction: column; align-items: center; gap: 28px;
+}
+.audio-splash-logo {
+  font-family: 'Press Start 2P', monospace;
+  font-size: clamp(2rem, 8vw, 4rem);
+  color: #00d4ff;
+  text-shadow: 0 0 30px #00d4ff88;
+  letter-spacing: 4px;
+}
+.audio-splash-logo span { color: #ff6b35; }
+.audio-splash-sub {
+  font-family: 'Press Start 2P', monospace;
+  font-size: clamp(0.45rem, 2vw, 0.7rem);
+  color: #888;
+  letter-spacing: 3px;
+}
+.audio-splash-btn {
+  font-family: 'Press Start 2P', monospace;
+  font-size: clamp(0.7rem, 2.5vw, 1rem);
+  background: #00d4ff;
+  color: #000;
+  border: none;
+  padding: 18px 48px;
+  cursor: pointer;
+  border-radius: 4px;
+  letter-spacing: 2px;
+  animation: splash-pulse 1.4s ease-in-out infinite;
+}
+.audio-splash-btn:hover { background: #33ddff; }
+@keyframes splash-pulse {
+  0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 #00d4ff55; }
+  50% { transform: scale(1.04); box-shadow: 0 0 20px 8px #00d4ff22; }
+}
+
+/* ── MOBILE / PHONE ──────────────────────────────────────────────────────────
+   Applied when the screen is phone-width (portrait or small landscape).
+   Goals: bigger tap targets, readable text, more canvas space for gameplay.
+---------------------------------------------------------------------------- */
+@media (max-width: 520px) {
+
+  /* HUD row */
+  #hud-lives  { font-size: 22px; gap: 6px; min-width: 70px; }
+  #hud-level  { font-size: 11px; letter-spacing: 1px; }
+  #hud-streak { font-size: 11px; min-width: 70px; }
+  #game-hud   { padding: 6px 10px; }
+
+  /* Quit button — needs a usable tap area */
+  .btn-quit-game { font-size: 10px; padding: 8px 14px; }
+
+  /* Timer bar — thicker so it's visible at a glance */
+  #timer-bar-wrap { height: 12px; }
+
+  /* Question text */
+  #question-text {
+    font-size: clamp(15px, 5vw, 20px);
+    margin-bottom: 8px;
+  }
+
+  /* Answer buttons — bigger tap area, more gap between them */
+  #answer-buttons { gap: 10px; }
+  .answer-btn {
+    padding: 18px 10px;
+    font-size: clamp(12px, 4vw, 16px);
+    border-width: 3px;
+  }
+
+  /* Question box padding */
+  #question-box { padding: 10px; }
+}

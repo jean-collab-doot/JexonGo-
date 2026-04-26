@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✈</text></svg>">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>JEXONGO</title>
   <link rel="stylesheet" href="style.css">
@@ -9,6 +10,15 @@
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
 </head>
 <body>
+
+  <!-- AUDIO SPLASH (tap-to-start, guarantees audio unlock) -->
+  <div id="audio-splash" class="audio-splash">
+    <div class="audio-splash-inner">
+      <div class="audio-splash-logo">JEXON<span>GO</span></div>
+      <div class="audio-splash-sub">AERIAL MATH COMBAT</div>
+      <button id="btn-audio-start" class="audio-splash-btn">▶ TAP TO START</button>
+    </div>
+  </div>
 
   <!-- DAILY LOGIN REWARD -->
   <div id="daily-reward-overlay" class="sett-backdrop hidden">
@@ -85,11 +95,22 @@
       <div class="sett-row sett-row-volume">
         <div class="sett-row-left">
           <span class="sett-icon" id="sett-vol-icon">🔊</span>
-          <span class="sett-label" data-i18n="volume">VOLUME</span>
+          <span class="sett-label" data-i18n="volume">SFX</span>
         </div>
         <div class="sett-slider-wrap">
           <input type="range" id="sett-volume-slider" class="sett-slider" min="0" max="100" value="80">
           <span id="sett-volume-val" class="sett-vol-val">80%</span>
+        </div>
+      </div>
+
+      <div class="sett-row sett-row-volume">
+        <div class="sett-row-left">
+          <span class="sett-icon" id="sett-music-icon">🎵</span>
+          <span class="sett-label">MUSIC</span>
+        </div>
+        <div class="sett-slider-wrap">
+          <input type="range" id="sett-music-slider" class="sett-slider" min="0" max="100" value="45">
+          <span id="sett-music-val" class="sett-vol-val">45%</span>
         </div>
       </div>
 
@@ -135,8 +156,6 @@
       <button id="btn-shop" class="btn btn-secondary" data-i18n="shop">🛍 SHOP</button>
       <button id="btn-practice" class="btn btn-secondary" data-i18n="practice">⚡ PRACTICE</button>
       <button id="btn-missions" class="btn btn-secondary btn-missions-menu">📋 MISSIONS</button>
-      <button id="btn-ranked"   class="btn btn-secondary btn-ranked-menu" data-i18n="ranked">⚔ RANKED</button>
-      <button id="btn-classroom" class="btn btn-secondary" data-i18n="classroom">👩‍🏫 CLASSROOM</button>
 
       <div class="login-divider"><span>— SIGN IN —</span></div>
 
@@ -343,6 +362,62 @@
     <button id="btn-rr-lobby"   class="btn btn-secondary" data-i18n="lobby">LOBBY</button>
   </div>
 
+  <!-- ARENA (online 1v1 duel) -->
+  <div id="s-arena" class="screen hidden">
+    <canvas id="arena-canvas" class="arena-canvas"></canvas>
+    <div class="arena-overlay">
+      <!-- TOP HUD -->
+      <div class="arena-top-hud">
+        <div class="arena-hud-side arena-hud-left">
+          <div id="arena-my-name" class="arena-pname"></div>
+          <div class="arena-hearts">
+            <span id="arena-my-h0" class="arena-heart">♥</span>
+            <span id="arena-my-h1" class="arena-heart">♥</span>
+            <span id="arena-my-h2" class="arena-heart">♥</span>
+          </div>
+        </div>
+        <div class="arena-hud-center">
+          <div id="arena-q-num" class="arena-qnum"></div>
+          <div id="arena-timer" class="arena-timer">10</div>
+        </div>
+        <div class="arena-hud-side arena-hud-right">
+          <div id="arena-opp-name" class="arena-pname"></div>
+          <div class="arena-hearts">
+            <span id="arena-opp-h0" class="arena-heart">♥</span>
+            <span id="arena-opp-h1" class="arena-heart">♥</span>
+            <span id="arena-opp-h2" class="arena-heart">♥</span>
+          </div>
+        </div>
+      </div>
+      <!-- FEEDBACK FLASHES -->
+      <div id="arena-my-fb"  class="arena-fb arena-fb-left"></div>
+      <div id="arena-opp-fb" class="arena-fb arena-fb-right"></div>
+      <!-- QUESTION BOX -->
+      <div id="arena-question-box" class="arena-question-box hidden">
+        <div id="arena-question" class="arena-question"></div>
+        <div id="arena-answers"  class="arena-answers"></div>
+      </div>
+      <!-- STATUS (searching / connecting) -->
+      <div id="arena-status" class="arena-status">
+        <div class="arena-spinner"></div>
+        <div id="arena-status-text" class="arena-status-text"></div>
+        <div id="arena-status-dots" class="arena-status-dots">...</div>
+      </div>
+      <!-- RESULT -->
+      <div id="arena-result" class="arena-result hidden">
+        <div id="arena-result-title" class="arena-result-title"></div>
+        <div id="arena-result-score" class="arena-result-score"></div>
+        <div id="arena-result-lp"    class="arena-result-lp"></div>
+        <div id="arena-result-rank"  class="arena-result-rank"></div>
+        <div id="arena-rematch-status" class="arena-rematch-status"></div>
+        <button id="btn-arena-rematch" class="btn btn-primary">⚔ REMATCH</button>
+        <button id="btn-arena-lobby"   class="btn btn-secondary">LOBBY</button>
+      </div>
+      <!-- BACK BUTTON -->
+      <button id="btn-arena-back" class="btn-icon arena-back-btn">&#8592;</button>
+    </div>
+  </div>
+
   <!-- MISSION BRIEFING -->
   <div id="s-briefing" class="screen hidden">
     <div class="briefing-topbar">
@@ -361,13 +436,6 @@
       <div id="briefing-story" class="briefing-story"></div>
     </div>
     <div class="briefing-conditions">
-      <div class="briefing-condition-row">
-        <span id="briefing-weather-icon" class="briefing-cond-icon">☀</span>
-        <div class="briefing-cond-body">
-          <div id="briefing-weather-label" class="briefing-cond-label">CLEAR SKIES</div>
-          <div id="briefing-weather-desc"  class="briefing-cond-desc">+25% coins</div>
-        </div>
-      </div>
       <div class="briefing-condition-row">
         <span class="briefing-cond-icon">⏱</span>
         <div class="briefing-cond-body">

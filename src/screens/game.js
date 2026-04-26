@@ -1,10 +1,10 @@
 import { G, resetLevel } from '../state.js';
-import { $ } from '../utils/dom.js';
+import { $, showScreen } from '../utils/dom.js';
 import { newQuestion } from '../game/math-engine.js';
 import { spawnEnemy, updateEnemies, hitEnemy } from '../game/enemies.js';
 import { createMissile, updateMissiles, drawMissiles } from '../game/missiles.js';
 import { spawnExplosion, spawnHitSpark, updateParticles, drawParticles } from '../game/particles.js';
-import { drawAircraftSprite, drawEnemySprite } from '../game/aircraft-draw.js';
+import { drawAircraftSprite, drawEnemySprite, getPlayerSize } from '../game/aircraft-draw.js';
 import { AIRCRAFT } from '../data/aircraft.js';
 import { SKINS } from '../data/skins.js';
 import { getLevel } from '../data/levels.js';
@@ -15,6 +15,7 @@ import { trackMission } from '../systems/daily.js';
 import { t } from '../i18n.js';
 
 let canvas, ctx, levelCfg;
+let _timerTotal = 10;
 let tick        = 0;
 let shakeFrames = 0;
 let _onComplete = null;
@@ -23,6 +24,16 @@ let spawnRate   = 150;
 let maxEnemies  = 5;
 let _sessionId    = 0;
 let _invincible   = 0;
+let _stealthActive  = false;
+let _stealthTicks   = 0;   // 60 ticks = 1 second
+let _stealthAnswers = 0;   // correct-answer counter for stealth trigger
+let _mgActive       = false;
+let _mgTicks        = 0;
+let _mgAnswers      = 0;
+let _mgFireTimer    = 0;   // frames until next machine-gun shot
+let _nukeAnim       = 0;   // counts down from 90 while nuke animation plays
+let _nukeApplied    = false;
+let _nukeAnswers    = 0;
 let _revealTimer  = null;
 let _skipHandler  = null;
 let _transitioning = false;
@@ -50,9 +61,13 @@ function onKeyUp(e) {
   if (k in keys) keys[k] = false;
 }
 function canvasPointer(e) {
-  const r   = canvas.getBoundingClientRect();
-  const src = e.touches ? e.touches[0] : e;
-  pointerTarget = { x: src.clientX - r.left, y: src.clientY - r.top };
+  const r      = canvas.getBoundingClientRect();
+  const src    = e.touches ? e.touches[0] : e;
+  const touchOffset = e.touches ? 90 : 0; // lift plane above finger so it stays visible
+  pointerTarget = {
+    x: src.clientX - r.left,
+    y: Math.max(40, src.clientY - r.top - touchOffset),
+  };
 }
 function clearPointer() { pointerTarget = null; }
 
@@ -206,7 +221,7 @@ function frame() {
     } else {
       e.fireCooldown--;
       const inFireZone = e.y > canvas.height * 0.25 && e.y < canvas.height * 0.78 && e.y < G.player.y;
-      if (e.fireCooldown <= 0 && inFireZone) {
+      if (e.fireCooldown <= 0 && inFireZone && !_stealthActive) {
         e.fireCooldown = e.fireRate;
         G.enemyMissiles.push(createMissile(e.x, e.y, G.player.x, G.player.y, 2.5, null, '#ef4444'));
         SFX.missile();
@@ -234,7 +249,7 @@ function frame() {
   // ── Player missiles ────────────────────────────────────────────────────
   updateMissiles(G.missiles, m => {
     const e = G.enemies.find(en => en.id === m.enemyId);
-    if (e && e.active) onMissileHit(e);
+    if (e && e.active) onMissileHit(e, m);
   });
   drawMissiles(ctx, G.missiles, false);
 
@@ -242,7 +257,7 @@ function frame() {
   for (let i = G.enemyMissiles.length - 1; i >= 0; i--) {
     const m  = G.enemyMissiles[i];
     const dx = m.x - G.player.x, dy = m.y - G.player.y;
-    if (dx * dx + dy * dy < 22 * 22) {
+    if (!_stealthActive && dx * dx + dy * dy < 22 * 22) {
       G.enemyMissiles.splice(i, 1);
       onEnemyMissileHit();
       break;
@@ -258,18 +273,34 @@ function frame() {
   }
   drawMissiles(ctx, G.enemyMissiles, true);
 
+  // ── Machine gun (F/A-18) ───────────────────────────────────────────────
+  if (_mgActive) {
+    if (--_mgTicks <= 0) _mgActive = false;
+    if (--_mgFireTimer <= 0) {
+      const t = nearestEnemy();
+      if (t) {
+        G.missiles.push(createMissile(G.player.x, G.player.y, t.x, t.y, 16, t.id, '#f97316'));
+        SFX.missile();
+      }
+      _mgFireTimer = 8; // ~7 shots/sec at 60 fps
+    }
+  }
+
   // ── Particles ──────────────────────────────────────────────────────────
   updateParticles(G.particles);
   drawParticles(ctx, G.particles);
 
   // ── Player ─────────────────────────────────────────────────────────────
   if (_invincible > 0) _invincible--;
+  if (_stealthActive && --_stealthTicks <= 0) _stealthActive = false;
   const prevX = G.player.x;
   updatePlayerMovement();
   const bankAngle  = (G.player.x - prevX) * 0.06;
   const flashAlpha = _invincible > 0
     ? (Math.floor(_invincible / 6) % 2 === 0 ? 1.0 : 0.25)
-    : 1.0;
+    : _stealthActive
+      ? 0.28 + 0.12 * Math.sin(tick * 0.18)  // slow ghost pulse
+      : 1.0;
 
   const activeSkinData = SKINS.find(s => s.id === G.activeSkin);
   const skinFilter  = activeSkinData?.filter || '';
@@ -279,7 +310,7 @@ function frame() {
     // Draw the skin artwork image directly as the player plane
     const cached = _skinImgCache[activeSkinData.offerImg];
     if (cached?.complete) {
-      const sz = 180;
+      const sz = getPlayerSize();
       ctx.save();
       if (flashAlpha !== 1) ctx.globalAlpha = flashAlpha;
       ctx.translate(G.player.x, G.player.y);
@@ -297,6 +328,61 @@ function frame() {
 
   if (shaking) ctx.restore();
 
+  // ── Nuke animation overlay ─────────────────────────────────────────────
+  if (_nukeAnim > 0) {
+    if (_nukeAnim === 55 && !_nukeApplied) { _nukeApplied = true; applyNuke(); }
+    const t  = 1 - _nukeAnim / 90;          // 0 → 1 over the animation
+    const cx = canvas.width  / 2;
+    const cy = canvas.height / 2;
+
+    // Flash overlay
+    let fl = t < 0.33 ? t / 0.33 : t < 0.55 ? 1 : 1 - (t - 0.55) / 0.25;
+    fl = Math.max(0, Math.min(1, fl)) * 0.85;
+    ctx.fillStyle = `rgba(255,200,60,${fl})`;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Expanding shockwave ring
+    if (t > 0.1 && t < 0.95) {
+      const rt  = (t - 0.1) / 0.85;
+      const r   = Math.hypot(canvas.width, canvas.height) * rt;
+      const ra  = (1 - rt) * 0.9;
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.strokeStyle = `rgba(255,80,0,${ra})`;
+      ctx.lineWidth = 20;
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(cx, cy, r * 0.82, 0, Math.PI * 2);
+      ctx.strokeStyle = `rgba(255,220,0,${ra * 0.55})`;
+      ctx.lineWidth = 9;
+      ctx.stroke();
+    }
+
+    // ☢ NUKE label
+    if (t > 0.04 && t < 0.78) {
+      const ta = t < 0.15 ? t / 0.15 : t > 0.62 ? (0.78 - t) / 0.16 : 1;
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, ta);
+      ctx.textAlign    = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.font = `bold ${Math.round(canvas.height * 0.11)}px sans-serif`;
+      ctx.fillStyle = t < 0.5 ? '#1a0000' : '#ff4400';
+      ctx.fillText('☢ NUKE', cx, cy);
+      ctx.restore();
+    }
+
+    ctx.globalAlpha = 1;
+    _nukeAnim--;
+  }
+
+  // Top-edge fade — drawn last so it overlays all game elements
+  const fadeH = Math.round(canvas.height * 0.13);
+  const topGrad = ctx.createLinearGradient(0, 0, 0, fadeH);
+  topGrad.addColorStop(0, 'rgba(0,0,0,0.82)');
+  topGrad.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = topGrad;
+  ctx.fillRect(0, 0, canvas.width, fadeH);
+
   G.animFrame = requestAnimationFrame(frame);
 }
 
@@ -312,12 +398,42 @@ function nearestEnemy() {
   return best;
 }
 
+function nearestEnemies(n) {
+  return G.enemies
+    .filter(e => e.active)
+    .sort((a, b) => {
+      const da = (a.x - G.player.x) ** 2 + (a.y - G.player.y) ** 2;
+      const db = (b.x - G.player.x) ** 2 + (b.y - G.player.y) ** 2;
+      return da - db;
+    })
+    .slice(0, n);
+}
+
 function fireEnemyMissile() {
   const enemy = nearestEnemy();
   if (!enemy) return;
   const m = createMissile(enemy.x, enemy.y, G.player.x, G.player.y, 2.5, null, '#ef4444');
   G.enemyMissiles.push(m);
   SFX.missile();
+}
+
+function applyNuke() {
+  const toRemove = [];
+  for (const e of G.enemies) {
+    if (!e.active) continue;
+    if (e.type === 'boss') {
+      e.currentHp = Math.max(1, Math.floor(e.currentHp / 2));
+      e.shakeTick  = 30;
+      spawnExplosion(G.particles, e.x, e.y, '#ff6600', 24);
+      SFX.explode();
+    } else {
+      spawnExplosion(G.particles, e.x, e.y, e.color, 22);
+      SFX.explode();
+      toRemove.push(e);
+    }
+  }
+  toRemove.forEach(e => { e.active = false; });
+  G.enemies = G.enemies.filter(e => e.active);
 }
 
 function onEnemyMissileHit() {
@@ -328,9 +444,9 @@ function onEnemyMissileHit() {
   loseLife();
 }
 
-function onMissileHit(enemy) {
+function onMissileHit(enemy, missile) {
   SFX.explode();
-  const destroyed = hitEnemy(enemy);
+  const destroyed = hitEnemy(enemy, missile?.damage ?? 1);
   if (destroyed) {
     spawnExplosion(G.particles, enemy.x, enemy.y, enemy.color, 18);
     enemy.active = false;
@@ -402,18 +518,22 @@ function nextQuestion() {
 
 function startTimer() {
   if (G.timerInterval) clearInterval(G.timerInterval);
-  G.timeLeft = Math.max(5, levelCfg.timeLimit + (levelCfg.weather?.timeMod || 0));
-  const total    = G.timeLeft;
+  G.timeLeft  = Math.max(5, levelCfg.timeLimit + (levelCfg.weather?.timeMod || 0));
+  _timerTotal = G.timeLeft;
+  $('timer-bar').style.width      = '100%';
+  $('timer-bar').style.background = 'var(--accent)';
+  _runTimer();
+}
+
+function _runTimer() {
+  if (G.timerInterval) clearInterval(G.timerInterval);
   const bar      = $('timer-bar');
   const timerSid = _sessionId;
-  bar.style.width      = '100%';
-  bar.style.background = 'var(--accent)';
-
   G.timerInterval = setInterval(() => {
     if (_sessionId !== timerSid) { clearInterval(G.timerInterval); return; }
     if (G.answerLocked) return;
     G.timeLeft -= 0.1;
-    const pct = Math.max(0, G.timeLeft / total) * 100;
+    const pct = Math.max(0, G.timeLeft / _timerTotal) * 100;
     bar.style.width = pct + '%';
     if (pct < 25)      bar.style.background = 'var(--red)';
     else if (pct < 55) bar.style.background = 'var(--yellow)';
@@ -443,17 +563,60 @@ function handleAnswer(choice, btn) {
     trackMission('max_streak', G.streak);
 
     const aircraft = AIRCRAFT[G.activeAircraft] || AIRCRAFT.t6;
+
+    if (aircraft.ability === 'stealth') {
+      _stealthAnswers++;
+      if (_stealthAnswers % 5 === 0) {
+        _stealthActive = true;
+        _stealthTicks  = 600; // 10 s at 60 fps
+      }
+    }
+
+    if (aircraft.ability === 'multiStealth') {
+      _stealthAnswers++;
+      if (_stealthAnswers % 3 === 0) {
+        _stealthActive = true;
+        _stealthTicks  = 600; // 10 s at 60 fps
+      }
+    }
+
+    if (aircraft.ability === 'machineGun') {
+      _mgAnswers++;
+      if (_mgAnswers % 5 === 0) {
+        _mgActive    = true;
+        _mgTicks     = 300; // 5 s at 60 fps
+        _mgFireTimer = 0;
+      }
+    }
+
+    if (aircraft.ability === 'nuke') {
+      _nukeAnswers++;
+      if (_nukeAnswers % 10 === 0) {
+        _nukeAnim    = 90;
+        _nukeApplied = false;
+      }
+    }
+
     const speed    = aircraft.ability === 'fastMissile' ? 13 : 8;
+    const damage   = aircraft.ability === 'heavyMissile' ? 1.4
+                   : aircraft.ability === 'tripleShot'  ? 1.25
+                   : 1;
     const target   = nearestEnemy();
     if (target) {
-      if (aircraft.ability === 'multiShot') {
-        [-14, 14].forEach(offset => {
-          G.missiles.push(createMissile(G.player.x + offset, G.player.y, target.x, target.y, speed, target.id));
+      if (aircraft.ability === 'multiShot' || aircraft.ability === 'multiStealth') {
+        nearestEnemies(2).forEach((t, i) => {
+          G.missiles.push(createMissile(G.player.x, G.player.y, t.x, t.y, speed, t.id, '#00d4ff', damage));
+          setTimeout(() => SFX.missile(), i * 60);
+        });
+      } else if (aircraft.ability === 'tripleShot') {
+        nearestEnemies(3).forEach((t, i) => {
+          G.missiles.push(createMissile(G.player.x, G.player.y, t.x, t.y, speed, t.id, '#00d4ff', damage));
+          setTimeout(() => SFX.missile(), i * 60);
         });
       } else {
-        G.missiles.push(createMissile(G.player.x, G.player.y, target.x, target.y, speed, target.id));
+        G.missiles.push(createMissile(G.player.x, G.player.y, target.x, target.y, speed, target.id, '#00d4ff', damage));
+        SFX.missile();
       }
-      SFX.missile();
     }
   } else {
     SFX.wrong();
@@ -464,7 +627,7 @@ function handleAnswer(choice, btn) {
   }
 
   const sid = _sessionId;
-  const delay = correct ? 600 : 10000;
+  const delay = correct ? (_nukeAnim > 0 ? 2000 : 600) : 10000;
   _revealTimer = setTimeout(() => {
     if (_sessionId !== sid) return;
     if (correct) {
@@ -648,7 +811,17 @@ function drawSpeedLines(ctx, cw, ch) {
 
 export function initGame(levelNum, onComplete) {
   _sessionId++;
-  _invincible = 0;
+  _invincible    = 0;
+  _stealthActive = false;
+  _stealthTicks  = 0;
+  _stealthAnswers = 0;
+  _mgActive    = false;
+  _mgTicks     = 0;
+  _mgAnswers   = 0;
+  _mgFireTimer = 0;
+  _nukeAnim    = 0;
+  _nukeApplied = false;
+  _nukeAnswers = 0;
   shakeFrames = 0;
   tick        = 0;
   _shipFrame  = 0;
@@ -659,6 +832,8 @@ export function initGame(levelNum, onComplete) {
   resetLevel();
   G.currentLevel = levelNum;
   levelCfg       = getLevel(levelNum);
+  const aircraft = AIRCRAFT[G.activeAircraft] || AIRCRAFT.t6;
+  if (!snap && aircraft.lives) G.lives = aircraft.lives;
   if (snap) {
     G.lives             = snap.lives;
     G.correctAnswers    = snap.correctAnswers;
@@ -683,7 +858,6 @@ export function initGame(levelNum, onComplete) {
     $('hud-lives').innerHTML = '<span style="opacity:0.3">∞</span>';
   } else {
     updateLivesHUD();
-    const aircraft = AIRCRAFT[G.activeAircraft] || AIRCRAFT.t6;
     if (aircraft.ability === 'extraLife') G.lives = Math.min(G.lives + 1, 5);
     updateLivesHUD();
   }
@@ -696,7 +870,27 @@ export function initGame(levelNum, onComplete) {
   attachInputListeners();
 
   const quitBtn = $('btn-quit-game');
-  quitBtn.onclick = () => endLevel(false);
+  quitBtn.onclick = () => {
+    clearInterval(G.timerInterval);
+    G.timerInterval = null;
+    cancelAnimationFrame(G.animFrame);
+    G.animFrame = null;
+    SFX.stopSFX();
+    SFX.quitGame();
+    window._gameResume = () => {
+      window._gameResume = null;
+      SFX.stopSFX();
+      showScreen('s-game');
+      SFX.playMusic('game');
+      _runTimer();
+      G.animFrame = requestAnimationFrame(frame);
+    };
+    $('gameover-title').textContent = 'PAUSED';
+    $('gameover-score').textContent = '';
+    $('btn-retry').textContent = 'CONTINUE';
+    $('btn-go-map').textContent = 'LOBBY';
+    showScreen('s-gameover');
+  };
 
 
 

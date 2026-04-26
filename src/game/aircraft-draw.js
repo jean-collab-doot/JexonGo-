@@ -5,8 +5,13 @@
 import { drawFrame, AIRCRAFT_SPRITE } from './sprites.js';
 
 // ── CONSTANTS ─────────────────────────────────────────────────────────────────
-const PLAYER_SIZE  = 180;  // px — player ship draw size
 const ENEMY_SCALE  = 4.8;  // multiplier on enemy.size for draw dimensions
+
+// Smaller on phone so the plane doesn't dominate the narrow screen
+function getPlayerSize() {
+  return window.innerWidth <= 520 ? 110 : 180;
+}
+export { getPlayerSize };
 
 // ── PLAYER AIRCRAFT ───────────────────────────────────────────────────────────
 
@@ -20,7 +25,8 @@ export function drawAircraftSprite(ctx, aircraftId, cx, cy, frame, alpha = 1, ba
   ctx.imageSmoothingEnabled = true;
   if (alpha !== 1)  ctx.globalAlpha = alpha;
   if (skinFilter)   ctx.filter = skinFilter;
-  drawFrame(ctx, key, frame, cx, cy, PLAYER_SIZE, PLAYER_SIZE, { rotate: bankAngle });
+  const sz = getPlayerSize();
+  drawFrame(ctx, key, frame, cx, cy, sz, sz, { rotate: bankAngle });
   ctx.restore();
 }
 

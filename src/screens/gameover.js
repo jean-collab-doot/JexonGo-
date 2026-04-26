@@ -1,10 +1,24 @@
 import { $ } from '../utils/dom.js';
 import { G } from '../state.js';
 import { t } from '../i18n.js';
+import { SFX } from '../audio/sound.js';
 
 export function initGameover(nav) {
-  $('btn-retry').onclick         = () => { G.continueState = null; nav.toGame(G.currentLevel, G.practiceMode); };
-  $('btn-go-map').onclick        = () => nav.toMenu();
+  $('btn-retry').onclick = () => {
+    setTimeout(() => SFX.stopSFX(), 150);
+    if (window._gameResume) {
+      window._gameResume();
+    } else {
+      G.continueState = null;
+      nav.toGame(G.currentLevel, G.practiceMode);
+    }
+  };
+  $('btn-go-map').onclick = () => {
+    SFX.stopSFX();
+    window._gameResume = null;
+    G.continueState = null;
+    nav.toMenu();
+  };
 }
 
 const POSITIVE_KEYS = [

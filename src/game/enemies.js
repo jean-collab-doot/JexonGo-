@@ -72,8 +72,8 @@ export function updateEnemies(enemies, canvasW = 400) {
 }
 
 // Returns true if enemy is destroyed
-export function hitEnemy(enemy) {
-  enemy.currentHp--;
+export function hitEnemy(enemy, damage = 1) {
+  enemy.currentHp -= damage;
   enemy.shakeTick = 7;
   return enemy.currentHp <= 0;
 }

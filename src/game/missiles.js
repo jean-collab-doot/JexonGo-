@@ -16,14 +16,14 @@ const BOLT_FRAME_RATE = 0;
 
 // ── FACTORY ───────────────────────────────────────────────────────────────────
 
-export function createMissile(x, y, tx, ty, speed, enemyId, color = '#00d4ff') {
+export function createMissile(x, y, tx, ty, speed, enemyId, color = '#00d4ff', damage = 1) {
   const dx = tx - x, dy = ty - y;
   const d  = Math.sqrt(dx * dx + dy * dy) || 1;
   return {
     x, y,
     vx: (dx / d) * speed,
     vy: (dy / d) * speed,
-    tx, ty, enemyId, color,
+    tx, ty, enemyId, color, damage,
     trail:     [],
     boltFrame: 0,
   };
