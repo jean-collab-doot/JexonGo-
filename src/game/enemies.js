@@ -64,10 +64,11 @@ export function updateEnemies(enemies, canvasW = 400) {
 
     const nextX = e.x + e.vx;
     if (nextX < margin || nextX > canvasW - margin) {
-      // Reverse oscillation direction AND current velocity so the enemy
-      // immediately moves away from the wall instead of staying clamped
-      e.sinFreq = -e.sinFreq;
-      e.vx      = -e.vx;
+      // sin(-x) = -sin(x): negating sinPhase flips vx permanently.
+      // Just negating vx alone is overwritten next frame by sin(phase).
+      e.sinPhase = -e.sinPhase;
+      e.sinFreq  = -e.sinFreq;
+      e.vx = Math.sin(e.sinPhase) * e.sinAmp;
     }
     e.x += e.vx;
     e.x = Math.max(margin, Math.min(canvasW - margin, e.x));
