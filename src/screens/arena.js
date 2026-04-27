@@ -18,8 +18,8 @@ function _loadImg(src) {
   img.src = src;
   return img;
 }
-const _IMG_MY  = _loadImg('assets/planes/my-plane.png');
-const _IMG_OPP = _loadImg('assets/planes/opp-plane.png');
+const _IMG_MY  = _loadImg('/assets/planes/my-plane.png');
+const _IMG_OPP = _loadImg('/assets/planes/opp-plane.png');
 
 // ── MODULE STATE ──────────────────────────────────────────────────────────────
 let _nav     = null;

@@ -3,11 +3,11 @@ import { AIRCRAFT } from '../data/aircraft.js';
 
 // ── CHEST TIERS (one per 10-level milestone) ──────────────────────────────────
 const CHEST_TIERS = [
-  { level: 10, name: 'BRONZE',    color: '#cd7f32', img: '/public/assets/chest/chest-blue.png',      idx: 0 },
-  { level: 20, name: 'SILVER',    color: '#c0c0c0', img: '/public/assets/chest/chest-blue.png',      idx: 1 },
-  { level: 30, name: 'GOLD',      color: '#fbbf24', img: '/public/assets/chest/chest-purple.png',    idx: 2 },
-  { level: 40, name: 'PLATINUM',  color: '#00d4ff', img: '/public/assets/chest/chest-purple.png',    idx: 3 },
-  { level: 50, name: 'LEGENDARY', color: '#cc44ff', img: '/public/assets/chest/chest-legendary.png', idx: 4 },
+  { level: 10, name: 'BRONZE',    color: '#cd7f32', img: '/assets/chest/chest-blue.png',      idx: 0 },
+  { level: 20, name: 'SILVER',    color: '#c0c0c0', img: '/assets/chest/chest-blue.png',      idx: 1 },
+  { level: 30, name: 'GOLD',      color: '#fbbf24', img: '/assets/chest/chest-purple.png',    idx: 2 },
+  { level: 40, name: 'PLATINUM',  color: '#00d4ff', img: '/assets/chest/chest-purple.png',    idx: 3 },
+  { level: 50, name: 'LEGENDARY', color: '#cc44ff', img: '/assets/chest/chest-legendary.png', idx: 4 },
 ];
 
 // ── RARITIES ──────────────────────────────────────────────────────────────────

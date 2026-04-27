@@ -189,24 +189,24 @@ export const SFX = {
     src.connect(ctx.destination);
     src.start();
     [
-      'assets/music/click.mp3',
-      'assets/music/correct.mp3',
-      'assets/music/correct2.mp3',
-      'assets/music/wrong.mp3',
-      'assets/music/shot.mp3',
-      'assets/music/explosion.mp3',
-      'assets/music/purchase.mp3',
-      'assets/music/gameover.mp3',
+      '/assets/music/click.mp3',
+      '/assets/music/correct.mp3',
+      '/assets/music/correct2.mp3',
+      '/assets/music/wrong.mp3',
+      '/assets/music/shot.mp3',
+      '/assets/music/explosion.mp3',
+      '/assets/music/purchase.mp3',
+      '/assets/music/gameover.mp3',
     ].forEach(_loadBuf);
   },
 
   playMusic(key) {
     const MAP = {
-      menu:   'assets/music/music-menu.mp3',
-      ranked: 'assets/music/music-ranked.mp3',
-      shop:   'assets/music/music-shop.mp3',
-      game:   'assets/music/music-play1.mp3',
-      arena:  'assets/music/music-arena.mp3',
+      menu:   '/assets/music/music-menu.mp3',
+      ranked: '/assets/music/music-ranked.mp3',
+      shop:   '/assets/music/music-shop.mp3',
+      game:   '/assets/music/music-play1.mp3',
+      arena:  '/assets/music/music-arena.mp3',
     };
     if (MAP[key]) _playMusic(MAP[key]);
   },
@@ -214,17 +214,17 @@ export const SFX = {
   stopSFX()   { _stopAllSFX(); },
 
   click() {
-    _playBuf('assets/music/click.mp3', 0.7,
+    _playBuf('/assets/music/click.mp3', 0.7,
       ctx => _tone(ctx, 800, 'sine', 0.08, 0.35));
   },
   correct() {
-    _playBuf('assets/music/correct.mp3', 0.9, ctx => {
+    _playBuf('/assets/music/correct.mp3', 0.9, ctx => {
       _tone(ctx, 660, 'sine', 0.15, 0.35);
       _after(100, () => _tone(_ac(), 880, 'sine', 0.18, 0.3));
     });
   },
   wrong() {
-    _playBuf('assets/music/wrong.mp3', 0.8,
+    _playBuf('/assets/music/wrong.mp3', 0.8,
       ctx => _tone(ctx, 200, 'sawtooth', 0.4, 0.4));
   },
   missile: (() => {
@@ -233,12 +233,12 @@ export const SFX = {
       const now = Date.now();
       if (now - _last < 120) return;
       _last = now;
-      _playBuf('assets/music/shot.mp3', 0.5,
+      _playBuf('/assets/music/shot.mp3', 0.5,
         ctx => _tone(ctx, 180, 'sawtooth', 0.15, 0.2, 900), 0.35);
     };
   })(),
   explode() {
-    _playBuf('assets/music/explosion.mp3', 0.8, ctx => {
+    _playBuf('/assets/music/explosion.mp3', 0.8, ctx => {
       _noise(ctx, 0.4, 0.55);
       _tone(ctx, 120, 'sawtooth', 0.3, 0.3);
     });
@@ -252,7 +252,7 @@ export const SFX = {
       _after(i * 90, () => _tone(_ac(), f, 'sine', 0.2, 0.35)));
   },
   chest() {
-    _playBuf('assets/music/purchase.mp3', 0.9, ctx => {
+    _playBuf('/assets/music/purchase.mp3', 0.9, ctx => {
       [523, 659, 784, 1047].forEach((f, i) =>
         _after(i * 110, () => _tone(_ac(), f, 'sine', 0.3, 0.35)));
     });
@@ -263,7 +263,7 @@ export const SFX = {
       _after(i * 60, () => _tone(_ac(), f, 'sine', 0.2, 0.32)));
   },
   gameOver() {
-    _playBuf('assets/music/gameover.mp3', 0.9, ctx => {
+    _playBuf('/assets/music/gameover.mp3', 0.9, ctx => {
       [400, 300, 200].forEach((f, i) =>
         _after(i * 200, () => _tone(_ac(), f, 'sawtooth', 0.35, 0.3)));
     });
@@ -272,8 +272,8 @@ export const SFX = {
     _clearFade();
     if (_bgCurrent) _positions[_bgCurrent] = _bgEl.currentTime;
     _bgEl.pause();
-    _bgCurrent        = 'assets/music/gameover2.mp3';
-    _bgEl.src         = 'assets/music/gameover2.mp3';
+    _bgCurrent        = '/assets/music/gameover2.mp3';
+    _bgEl.src         = '/assets/music/gameover2.mp3';
     _bgEl.volume      = _musicVol;
     _bgEl.loop        = false;
     _bgEl.playbackRate = 1.0;
@@ -281,7 +281,7 @@ export const SFX = {
     _bgEl.play().catch(e => console.warn('Music blocked:', e.message));
   },
   bonusHeart() {
-    _playBuf('assets/music/correct2.mp3', 0.85, ctx => {
+    _playBuf('/assets/music/correct2.mp3', 0.85, ctx => {
       [523, 784, 1047, 1319].forEach((f, i) =>
         _after(i * 65, () => _tone(_ac(), f, 'sine', 0.22, 0.26)));
     });

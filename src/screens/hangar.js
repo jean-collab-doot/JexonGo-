@@ -36,12 +36,12 @@ function showLiveryPanel(id) {
   const grid = document.createElement('div');
   grid.className = 'hlp-grid';
 
-  grid.appendChild(makeLiveryCard('Default', `/public/assets/hangar/${id}.png`, null, id));
+  grid.appendChild(makeLiveryCard('Default', `/assets/hangar/${id}.png`, null, id));
 
   SKINS
     .filter(s => s.aircraft === id && G.ownedSkins.includes(s.id))
     .forEach(skin => {
-      const imgSrc = skin.offerImg || `/public/assets/hangar/${id}.png`;
+      const imgSrc = skin.offerImg || `/assets/hangar/${id}.png`;
       grid.appendChild(makeLiveryCard(skin.name, imgSrc, skin, id));
     });
 
@@ -115,7 +115,7 @@ export function renderHangar() {
       + (selected ? 'selected' : '');
 
     const img = document.createElement('img');
-    img.src       = `/public/assets/hangar/${id}.png`;
+    img.src       = `/assets/hangar/${id}.png`;
     img.className = 'hangar-livery';
     if (!unlocked) img.style.opacity = '0.35';
     card.appendChild(img);

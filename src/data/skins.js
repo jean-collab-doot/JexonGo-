@@ -46,7 +46,7 @@ export const SKINS = [
     price: 600,
     aircraft: 'b2',
     filter: 'saturate(0) brightness(1.7) contrast(1.35)',
-    offerImg: '/public/assets/skins/offer-epic1.png',
+    offerImg: '/assets/skins/offer-epic1.png',
   },
   {
     id: 'flame',
@@ -55,7 +55,7 @@ export const SKINS = [
     price: 600,
     aircraft: 'f35',
     filter: 'hue-rotate(-18deg) saturate(6) brightness(1.2)',
-    offerImg: '/public/assets/skins/offer-epic2.png',
+    offerImg: '/assets/skins/offer-epic2.png',
   },
   {
     id: 'legendary',
@@ -64,7 +64,7 @@ export const SKINS = [
     price: 5000,
     aircraft: 'f22',
     filter: 'hue-rotate(268deg) saturate(5) brightness(1.35)',
-    offerImg: '/public/assets/skins/offer-legendary.png',
+    offerImg: '/assets/skins/offer-legendary.png',
   },
   {
     id: 'exclusive',
