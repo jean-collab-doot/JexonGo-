@@ -43,17 +43,30 @@ export function renderLevelMap() {
       container.appendChild(conn);
     }
 
+    const isBoss = node.num % 10 === 0;
     const el = document.createElement('div');
-    el.className = `map-node ${node.state}`;
+    el.className = `map-node ${node.state}` + (isBoss ? ' map-node-boss' : '');
     // Zig-zag: alternate left/right offset
     const side = node.num % 2 === 0 ? ZIG : -ZIG;
     el.style.marginLeft = side + 'px';
-    el.textContent = node.num;
+
+    if (isBoss) {
+      const img = document.createElement('img');
+      img.src       = '/assets/fx/JEXONGO.png';
+      img.className = 'boss-skull-img';
+      const num = document.createElement('div');
+      num.className   = 'boss-num';
+      num.textContent = node.num;
+      el.appendChild(img);
+      el.appendChild(num);
+    } else {
+      el.textContent = node.num;
+    }
 
     if (node.state === 'completed') {
       const stars = document.createElement('div');
       stars.className = 'node-stars';
-      stars.textContent = '⭐'.repeat(node.stars);
+      stars.textContent = '★'.repeat(node.stars);
       el.appendChild(stars);
     }
 

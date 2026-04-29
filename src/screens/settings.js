@@ -19,7 +19,7 @@ export function loadSettings() {
 
 function _save()  { localStorage.setItem(KEY, JSON.stringify(settings)); }
 function _apply() {
-  SFX.setVolume(settings.volume / 100);
+  SFX.setVolume(settings.effects ? settings.volume / 100 : 0);
   SFX.setMusicVolume(settings.music / 100);
 }
 
@@ -32,7 +32,7 @@ function _refresh() {
   const sfxVal = document.getElementById('sett-volume-val');
   if (sfxVal) sfxVal.textContent = settings.volume + '%';
   const sfxIcon = document.getElementById('sett-vol-icon');
-  if (sfxIcon) sfxIcon.textContent = settings.volume === 0 ? '🔇' : settings.volume < 50 ? '🔉' : '🔊';
+  if (sfxIcon) sfxIcon.textContent = settings.volume === 0 ? '♩' : settings.volume < 50 ? '♪' : '♪';
 
   const musicSlider = document.getElementById('sett-music-slider');
   if (musicSlider) {
@@ -42,7 +42,7 @@ function _refresh() {
   const musicVal = document.getElementById('sett-music-val');
   if (musicVal) musicVal.textContent = settings.music + '%';
   const musicIcon = document.getElementById('sett-music-icon');
-  if (musicIcon) musicIcon.textContent = settings.music === 0 ? '🔇' : '🎵';
+  if (musicIcon) musicIcon.textContent = settings.music === 0 ? '♩' : '♫';
 
   const eff = document.getElementById('sett-effects');
   if (eff) {
@@ -72,7 +72,7 @@ export function initSettings() {
     document.getElementById('sett-volume-val').textContent = settings.volume + '%';
     e.target.style.setProperty('--pct', settings.volume + '%');
     const icon = document.getElementById('sett-vol-icon');
-    if (icon) icon.textContent = settings.volume === 0 ? '🔇' : settings.volume < 50 ? '🔉' : '🔊';
+    if (icon) icon.textContent = settings.volume === 0 ? '♩' : settings.volume < 50 ? '♪' : '♪';
     _save(); _apply();
   });
 
@@ -82,13 +82,13 @@ export function initSettings() {
     document.getElementById('sett-music-val').textContent = settings.music + '%';
     e.target.style.setProperty('--pct', settings.music + '%');
     const icon = document.getElementById('sett-music-icon');
-    if (icon) icon.textContent = settings.music === 0 ? '🔇' : '🎵';
+    if (icon) icon.textContent = settings.music === 0 ? '♩' : '♫';
     _save(); _apply();
   });
 
   // Effects toggle
   document.getElementById('sett-effects').addEventListener('click', () => {
     settings.effects = !settings.effects;
-    _save(); _refresh();
+    _save(); _refresh(); _apply();
   });
 }

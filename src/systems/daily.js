@@ -7,13 +7,13 @@ function todayStr() {
 
 // ── 7-DAY LOGIN REWARD CYCLE ──────────────────────────────────────────────────
 export const LOGIN_REWARDS = [
-  { day: 1, coins: 150,  xp: 0,    icon: '🪙', desc: '150 COINS' },
-  { day: 2, coins: 300,  xp: 50,   icon: '🪙', desc: '300 COINS + 50 XP' },
-  { day: 3, coins: 500,  xp: 0,    icon: '🪙', desc: '500 COINS' },
+  { day: 1, coins: 150,  xp: 0,    icon: '◎', desc: '150 COINS' },
+  { day: 2, coins: 300,  xp: 50,   icon: '◎', desc: '300 COINS + 50 XP' },
+  { day: 3, coins: 500,  xp: 0,    icon: '◎', desc: '500 COINS' },
   { day: 4, coins: 500,  xp: 200,  icon: '⚡', desc: '500 COINS + 200 XP' },
-  { day: 5, coins: 800,  xp: 0,    icon: '🪙', desc: '800 COINS' },
+  { day: 5, coins: 800,  xp: 0,    icon: '◎', desc: '800 COINS' },
   { day: 6, coins: 1000, xp: 300,  icon: '⚡', desc: '1000 COINS + 300 XP' },
-  { day: 7, coins: 2000, xp: 500,  icon: '🏆', desc: '2000 COINS + 500 XP' },
+  { day: 7, coins: 2000, xp: 500,  icon: '★', desc: '2000 COINS + 500 XP' },
 ];
 
 // ── XP RANK TABLE ─────────────────────────────────────────────────────────────

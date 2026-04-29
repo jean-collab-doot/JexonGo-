@@ -13,6 +13,7 @@ import { preloadBiome } from '../game/sprites.js';
 import { initBackground, updateBackground, drawBackground } from '../game/background.js';
 import { trackMission } from '../systems/daily.js';
 import { getPilotGrade } from '../data/pilots.js';
+import { applyAgeModifiers } from '../systems/age-modifiers.js';
 import { save } from '../utils/storage.js';
 import { t } from '../i18n.js';
 
@@ -260,7 +261,7 @@ function frame() {
     if (!e.active) continue;
 
     if (e.type === 'boss') {
-      // Boss fires in bursts then pauses 5 s
+      // Boss fires in bursts then pauses; timing/speed/color vary by milestone
       if (e.bossPhase === 'pause') {
         e.bossPauseTimer--;
         if (e.bossPauseTimer <= 0) {
@@ -271,14 +272,16 @@ function frame() {
       } else {
         e.bossBurstTimer--;
         if (e.bossBurstTimer <= 0 && e.bossBurstFired < e.bossBurstMax) {
-          { const em = createMissile(e.x, e.y, G.player.x, G.player.y, 2.5, null, '#ef4444'); em.guideTick = 300; G.enemyMissiles.push(em); }
+          const ms = e._missileSpd  ?? 2.5;
+          const mc = e._missileColor ?? '#ef4444';
+          { const em = createMissile(e.x, e.y, G.player.x, G.player.y, ms, null, mc); em.guideTick = 180; G.enemyMissiles.push(em); }
           SFX.missile();
           e.bossBurstFired++;
-          e.bossBurstTimer = 28; // ~0.5 s between shots in burst
+          e.bossBurstTimer = e._burstInterval ?? 28;
         }
         if (e.bossBurstFired >= e.bossBurstMax) {
           e.bossPhase      = 'pause';
-          e.bossPauseTimer = 300; // 5 s at 60 fps
+          e.bossPauseTimer = e._pauseFrames ?? 300;
         }
       }
     } else {
@@ -286,7 +289,7 @@ function frame() {
       const inFireZone = e.y > canvas.height * 0.25 && e.y < canvas.height * 0.78 && e.y < G.player.y;
       if (e.fireCooldown <= 0 && inFireZone && !_stealthActive) {
         e.fireCooldown = e.fireRate;
-        { const em = createMissile(e.x, e.y, G.player.x, G.player.y, 2.5, null, '#ef4444'); em.guideTick = 300; G.enemyMissiles.push(em); }
+        { const em = createMissile(e.x, e.y, G.player.x, G.player.y, 2.5, null, '#ef4444'); em.guideTick = 180; G.enemyMissiles.push(em); }
         SFX.missile();
       } else if (e.fireCooldown <= 0) {
         e.fireCooldown = e.fireRate;
@@ -329,9 +332,9 @@ function frame() {
 
   // ── Enemy missiles (with level-based guidance) ─────────────────────────
   const _guideF = G.currentLevel >= 50 ? 0.10
-                : G.currentLevel >= 26 ? 0.05
-                : G.currentLevel >= 11 ? 0.02
-                : 0;
+                : G.currentLevel >= 26 ? 0.06
+                : G.currentLevel >= 11 ? 0.03
+                : 0.015;
   for (let i = G.enemyMissiles.length - 1; i >= 0; i--) {
     const m  = G.enemyMissiles[i];
     const dx = m.x - G.player.x, dy = m.y - G.player.y;
@@ -359,6 +362,7 @@ function frame() {
     m.x += m.vx;
     m.y += m.vy;
     m.boltFrame = 0;
+
   }
   drawMissiles(ctx, G.enemyMissiles, true);
 
@@ -531,7 +535,7 @@ function applyNuke() {
   for (const e of G.enemies) {
     if (!e.active) continue;
     if (e.type === 'boss') {
-      e.currentHp = Math.max(1, Math.floor(e.currentHp / 2));
+      e.currentHp = Math.max(1, Math.floor((e.maxHp || e.currentHp) / 2));
       e.shakeTick  = 30;
       spawnExplosion(G.particles, e.x, e.y, '#ff6600', 24);
       SFX.explode();
@@ -577,6 +581,7 @@ function nextQuestion() {
   if (!levelCfg.isBossLevel && G.questionsAnswered >= levelCfg.questionCount) { endLevel(true); return; }
   _transitioning = true;
   G.answerLocked = false;
+  const _nqSid = _sessionId; // capture session at start of transition
 
   // Remove any pending skip listener
   if (_skipHandler) {
@@ -598,6 +603,8 @@ function nextQuestion() {
   qbox.classList.add('fading');
 
   setTimeout(() => {
+    // If the level ended while we were transitioning, abort
+    if (_sessionId !== _nqSid) { _transitioning = false; return; }
 
     // Hide reveal banner
     reveal.classList.add('hidden');
@@ -630,8 +637,20 @@ function nextQuestion() {
 
 function startTimer() {
   if (G.timerInterval) clearInterval(G.timerInterval);
+
+  // Practice unlimited mode — freeze timer bar, no countdown
+  if (G.practiceMode && G.practiceTimeLimit === null) {
+    G.timeLeft  = 9999;
+    _timerTotal = 9999;
+    $('timer-bar').style.width      = '100%';
+    $('timer-bar').style.background = 'var(--dim, #334155)';
+    return;
+  }
+
   const aircraft   = AIRCRAFT[G.activeAircraft] || AIRCRAFT.t6;
-  const baseTime   = levelCfg.timeLimit + (levelCfg.weather?.timeMod || 0);
+  const baseTime   = G.practiceMode
+    ? G.practiceTimeLimit
+    : levelCfg.timeLimit + (levelCfg.weather?.timeMod || 0);
   const timerLimit = aircraft.timerOverride != null
     ? Math.min(aircraft.timerOverride, baseTime)
     : baseTime;
@@ -716,7 +735,8 @@ function handleAnswer(choice, btn) {
 
     const baseSpeed = aircraft.ability === 'fastMissile' ? 13 : 8;
     const speed     = baseSpeed * (aircraft.missileSpdMult ?? 1);
-    const damage    = aircraft.ability === 'heavyMissile' ? 1.4
+    const damage    = aircraft.ability === 'doubleDamage' ? 2
+                    : aircraft.ability === 'heavyMissile' ? 1.4
                     : aircraft.ability === 'tripleShot'  ? 1.25
                     : 1;
     const target   = nearestEnemy();
@@ -842,9 +862,8 @@ function handleTimeout() {
 
 // ── LIVES ────────────────────────────────────────────────────────────────────
 function loseLife() {
-  // Practice without hearts — just clear missiles, shake, next question
+  // Practice without hearts — just shake, next question
   if (G.practiceMode && !G.practiceHearts) {
-    G.enemyMissiles = [];
     shakeFrames = 8;
     G.streak = 0;
     updateStreakHUD();
@@ -854,7 +873,7 @@ function loseLife() {
   }
   if (G.lives <= 0) return;
   G.lives--;
-  G.enemyMissiles = [];
+  // Do NOT clear G.enemyMissiles — each missile is independent (invincibility frames protect the player)
   updateLivesHUD();
   shakeFrames = 12;
   const sid = _sessionId;
@@ -888,7 +907,7 @@ function updateLivesHUD() {
 }
 
 function updateStreakHUD() {
-  $('hud-streak').textContent = G.streak >= 3 ? `&#128293; ${G.streak}` : '';
+  $('hud-streak').textContent = '';
 }
 
 // ── LEVEL END ────────────────────────────────────────────────────────────────
@@ -898,6 +917,7 @@ function endLevel(won) {
   cancelAnimationFrame(G.animFrame);
   G.timerInterval = null;
   G.animFrame     = null;
+  G.answerLocked  = true;   // prevent any stale timeout handlers from counting wrong answers
   if (ctx) { ctx.setTransform(1,0,0,1,0,0); ctx.globalAlpha = 1; }
   if (won) trackMission('levels_won', 1);
   if (_onComplete) _onComplete(won);
@@ -957,7 +977,7 @@ export function initGame(levelNum, onComplete) {
   G.continueState = null;
   resetLevel();
   G.currentLevel = levelNum;
-  levelCfg       = getLevel(levelNum);
+  levelCfg       = applyAgeModifiers(getLevel(levelNum), G.playerAge);
   const aircraft = AIRCRAFT[G.activeAircraft] || AIRCRAFT.t6;
   if (!snap && aircraft.lives) G.lives = aircraft.lives;
   if (snap) {
@@ -1067,6 +1087,25 @@ export function initGame(levelNum, onComplete) {
         boss.bossBurstMax   = 2 + milestone;
         boss.bossBurstFired = 0;
         boss.bossBurstTimer = 0;
+
+        // Per-milestone theme: visuals + attack cadence
+        // Difficulty scales via bossBurstMax (more missiles/burst), NOT via speed spam
+        const BOSS_THEMES = [
+          null,
+          { color: '#94a3b8', filter: 'grayscale(80%) brightness(1.1)',                               pauseF: 320, burstI: 32, missileSpd: 2.5, missileColor: '#94a3b8' }, // lv10
+          { color: '#d97706', filter: 'sepia(70%) brightness(1.1)',                                    pauseF: 310, burstI: 31, missileSpd: 2.6, missileColor: '#f59e0b' }, // lv20
+          { color: '#e2e8f0', filter: 'brightness(2.5) saturate(0.15)',                                pauseF: 295, burstI: 30, missileSpd: 2.7, missileColor: '#e2e8f0' }, // lv30
+          { color: '#a855f7', filter: 'hue-rotate(260deg) saturate(180%) brightness(0.75)',            pauseF: 280, burstI: 30, missileSpd: 2.8, missileColor: '#c084fc' }, // lv40
+          { color: '#fbbf24', filter: 'sepia(100%) saturate(500%) brightness(1.3) hue-rotate(-20deg)', pauseF: 260, burstI: 28, missileSpd: 3.0, missileColor: '#fbbf24' }, // lv50
+        ];
+        const theme = BOSS_THEMES[milestone] ?? BOSS_THEMES[1];
+        boss.color         = theme.color;
+        boss.spriteFilter  = theme.filter;
+        boss._pauseFrames  = theme.pauseF;
+        boss._burstInterval = theme.burstI;
+        boss._missileSpd   = theme.missileSpd;
+        boss._missileColor = theme.missileColor;
+
         G.enemies.push(boss);
         // Companions spawn via normal timer — set maxEnemies to companion count
         maxEnemies = levelCfg.bossCompanionMax;

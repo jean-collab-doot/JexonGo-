@@ -86,12 +86,12 @@ function makePriceBtn(skin, onBuy, onEquip) {
     btn.onclick          = () => onEquip(skin);
   } else if (!planeOwned) {
     const planeName = AIRCRAFT[skin.aircraft]?.name ?? skin.aircraft;
-    btn.textContent = `🔒 ${planeName}`;
+    btn.textContent = `■ ${planeName}`;
     btn.classList.add('sc-btn-locked');
     btn.disabled    = true;
     btn.title       = `Unlock ${planeName} first`;
   } else {
-    btn.innerHTML        = `🪙 <strong>${skin.price}</strong>`;
+    btn.innerHTML        = `◎ <strong>${skin.price}</strong>`;
     btn.classList.add('sc-btn-buy');
     btn.style.background = RARITY_META[skin.rarity]?.color || '#f59e0b';
     btn.onclick          = () => onBuy(skin);
@@ -207,9 +207,9 @@ function makePixelCard(skin, size, onBuy, onEquip) {
   } else {
     const origPrice = disc ? Math.round(skin.price * disc.origMult) : null;
     if (origPrice) {
-      btn.innerHTML = `<s style="opacity:0.55;font-size:6px">🪙${origPrice.toLocaleString()}</s>&nbsp;🪙 <strong>${skin.price.toLocaleString()}</strong>`;
+      btn.innerHTML = `<s style="opacity:0.55;font-size:6px">◎${origPrice.toLocaleString()}</s>&nbsp;◎ <strong>${skin.price.toLocaleString()}</strong>`;
     } else {
-      btn.innerHTML = `🪙 <strong>${skin.price.toLocaleString()}</strong>`;
+      btn.innerHTML = `◎ <strong>${skin.price.toLocaleString()}</strong>`;
     }
     btn.onclick = () => onBuy(skin);
   }
@@ -224,7 +224,7 @@ function makeHandlers() {
     const errEl = $('shop-error');
     if (!G.unlockedAircraft.includes(skin.aircraft)) {
       const planeName = AIRCRAFT[skin.aircraft]?.name ?? skin.aircraft;
-      errEl.textContent = `🔒 Unlock ${planeName} first`;
+      errEl.textContent = `■ Unlock ${planeName} first`;
       errEl.classList.remove('shop-err-anim');
       requestAnimationFrame(() => errEl.classList.add('shop-err-anim'));
       return;
@@ -307,10 +307,10 @@ function renderSkins(content, handlers) {
 }
 
 const BUYABLE_CHESTS = [
-  { name: 'BRONZE',    emoji: '📦', color: '#cd7f32', price: 100,  desc: 'Common\ndrops',    tier: 0 },
-  { name: 'SILVER',    emoji: '🎁', color: '#c0c0c0', price: 400,  desc: 'Rare\ndrops',      tier: 1 },
-  { name: 'GOLD',      emoji: '🏆', color: '#fbbf24', price: 1200, desc: 'Epic\nchance',     tier: 2 },
-  { name: 'LEGENDARY', emoji: '👑', color: '#a855f7', price: 3500, desc: 'Best\ndrops',      tier: 4 },
+  { name: 'BRONZE',    emoji: '◈', color: '#cd7f32', price: 100,  desc: 'Common\ndrops',    tier: 0 },
+  { name: 'SILVER',    emoji: '◆', color: '#c0c0c0', price: 400,  desc: 'Rare\ndrops',      tier: 1 },
+  { name: 'GOLD',      emoji: '★', color: '#fbbf24', price: 1200, desc: 'Epic\nchance',     tier: 2 },
+  { name: 'LEGENDARY', emoji: '♛', color: '#7a2ac5', price: 3500, desc: 'Best\ndrops',      tier: 4 },
 ];
 
 function renderMore(content) {
@@ -338,7 +338,7 @@ function renderMore(content) {
 
     const btn = document.createElement('button');
     btn.className   = 'csc-buy-btn';
-    btn.innerHTML   = `🪙 ${ch.price.toLocaleString()}`;
+    btn.innerHTML   = `◎ ${ch.price.toLocaleString()}`;
     btn.onclick = () => {
       const errEl = $('shop-error');
       if (G.coins < ch.price) {
@@ -370,12 +370,52 @@ function renderMore(content) {
   });
 
   content.appendChild(grid);
+
+  // ── Blueprint progress ──────────────────────────────────────────────────────
+  const bpTitle = document.createElement('div');
+  bpTitle.className   = 'sc-more-section-title';
+  bpTitle.textContent = 'BLUEPRINT PARTS';
+  content.appendChild(bpTitle);
+
+  const bpList = document.createElement('div');
+  bpList.className = 'sc-bp-list';
+
+  const BP_ORDER = ['pc21', 'c130', 'a10', 'f16', 'f18', 'f22', 'f35', 'b2', 'sr71'];
+  BP_ORDER.forEach(id => {
+    const needed   = _blueprintCost[id] || 0;
+    const have     = (G.blueprints || {})[id] || 0;
+    const unlocked = G.unlockedAircraft.includes(id);
+    const name     = AIRCRAFT[id]?.name ?? id;
+    const pct      = unlocked ? 100 : (needed > 0 ? Math.min(100, Math.round((have / needed) * 100)) : 0);
+    const hasAny   = have > 0;
+
+    const row = document.createElement('div');
+    row.className = 'sc-bp-row'
+      + (unlocked ? ' sc-bp-unlocked' : '')
+      + (!unlocked && hasAny ? ' sc-bp-progress' : '')
+      + (!unlocked && !hasAny ? ' sc-bp-empty' : '');
+
+    const iconEl = unlocked ? '✓' : hasAny ? '■' : '□';
+    row.innerHTML = `
+      <div class="sc-bp-icon">${iconEl}</div>
+      <div class="sc-bp-name">${name}</div>
+      <div class="sc-bp-bar-wrap"><div class="sc-bp-bar-fill" style="width:${pct}%"></div></div>
+      <div class="sc-bp-count">${unlocked ? 'UNLOCKED' : `${have}/${needed}`}</div>
+    `;
+    bpList.appendChild(row);
+  });
+
+  content.appendChild(bpList);
 }
 
 // Lazy-imported to avoid circular dep — resolved at call time
 const _chestSystem = { get rollChest() { return _rollChest; } };
-let _rollChest = null;
-import('../systems/chest.js').then(m => { _rollChest = m.rollChest; });
+let _rollChest      = null;
+let _blueprintCost  = {};
+import('../systems/chest.js').then(m => {
+  _rollChest     = m.rollChest;
+  _blueprintCost = m.BLUEPRINT_COST || {};
+});
 
 // ── PUBLIC API ────────────────────────────────────────────────────────────────
 

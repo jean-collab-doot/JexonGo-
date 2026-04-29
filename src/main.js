@@ -18,6 +18,14 @@ import { initArena, enterArena } from './screens/arena.js';
 import { preloadShips } from './game/sprites.js';
 import { checkDailyLogin } from './systems/daily.js';
 import { showDailyReward } from './screens/menu.js';
+import { canSendFeedback, markFeedbackSent, sendFeedback } from './systems/feedback.js';
+import { t, applyI18n } from './i18n.js';
+
+// ── SESSION TIMER ────────────────────────────────────────────────────────────
+const _sessionStart = Date.now();
+function _playtimeStr() {
+  return Math.max(1, Math.round((Date.now() - _sessionStart) / 60000)) + ' min';
+}
 
 // ── NAVIGATION ──────────────────────────────────────────────────────────────
 let _cleanup = null;
@@ -107,6 +115,46 @@ function cleanup() {
 }
 
 window._nav = nav;
+window._showFeedbackPopup = () => showFeedbackPopup();
+
+window._onGoogleCredential = function(response) {
+  try {
+    const raw     = response.credential.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+    const payload = JSON.parse(atob(raw));
+    const name    = (payload.name    || 'PILOT').toUpperCase().slice(0, 20);
+    const email   = (payload.email   || '').toLowerCase();
+    const photo   = payload.picture  || '';
+
+    const wasRegistered = G.playerRegistered;
+    G.playerName       = name;
+    G.playerEmail      = email;
+    G.playerPhoto      = photo;
+    G.playerRegistered = true;
+    save('playerName',       G.playerName);
+    save('playerEmail',      G.playerEmail);
+    save('playerPhoto',      G.playerPhoto);
+    save('playerRegistered', true);
+
+    if (wasRegistered) {
+      renderMenu();
+      const el = document.getElementById('login-toast');
+      if (el) {
+        el.textContent = '✓ WELCOME BACK, ' + name + '!';
+        el.classList.add('toast-show');
+        setTimeout(() => el.classList.remove('toast-show'), 2200);
+      }
+    } else if (!G.playerGrade) {
+      nav.toGradeSelect();
+    } else {
+      nav.toMenu();
+      const _daily = checkDailyLogin();
+      if (_daily.isNewDay) setTimeout(() => showDailyReward(_daily.reward, _daily.streak), 600);
+      setTimeout(() => showFeedbackPopup(), 1200);
+    }
+  } catch (_) {
+    console.warn('Google credential parse error');
+  }
+};
 
 // ── GRADE SELECTION SCREEN ───────────────────────────────────────────────────
 function initGradeScreen() {
@@ -135,12 +183,139 @@ initBriefing(nav);
 initClassroom(nav);
 initArena(nav);
 initGradeScreen();
+initRegistration();
+initFeedback();
 
 // ── GLOBAL BUTTON CLICK SOUND ─────────────────────────────────────────────────
 document.addEventListener('click', e => {
   const btn = e.target.closest('button');
   if (btn && btn.id !== 'btn-audio-start') SFX.click();
 }, true);
+
+// ── REGISTRATION SCREEN ───────────────────────────────────────────────────────
+function initRegistration() {
+  document.getElementById('btn-reg-submit').addEventListener('click', () => {
+    const name  = (document.getElementById('reg-name').value  || '').trim().toUpperCase();
+    const email = (document.getElementById('reg-email').value || '').trim().toLowerCase();
+    const pw    = (document.getElementById('reg-password').value || '');
+    const age   = parseInt(document.getElementById('reg-age').value, 10);
+    const grade = parseInt(document.getElementById('reg-grade').value, 10);
+    const tos   = document.getElementById('reg-tos').checked;
+    const err   = document.getElementById('reg-error');
+
+    if (!name)                          { err.textContent = t('regErrName');     return; }
+    if (!email || !email.includes('@')) { err.textContent = t('regErrEmail');    return; }
+    if (pw.length < 6)                  { err.textContent = t('regErrPassword'); return; }
+    if (!age)                           { err.textContent = t('regErrAge');      return; }
+    if (!grade)                         { err.textContent = t('regErrGrade');    return; }
+    if (!tos)                           { err.textContent = t('regErrTos');      return; }
+
+    err.textContent       = '';
+    G.playerName          = name;
+    G.playerEmail         = email;
+    G.playerAge           = age;
+    G.playerGrade         = grade;
+    G.playerRegistered    = true;
+
+    save('playerName',       G.playerName);
+    save('playerEmail',      G.playerEmail);
+    save('playerAge',        G.playerAge);
+    save('playerGrade',      G.playerGrade);
+    save('playerPassword',   pw);
+    save('playerRegistered', true);
+
+    renderMenu();
+    showScreen('s-menu');
+    SFX.playMusic('menu');
+    const _daily = checkDailyLogin();
+    if (_daily.isNewDay) {
+      setTimeout(() => showDailyReward(_daily.reward, _daily.streak), 600);
+    }
+    setTimeout(() => showFeedbackPopup(), 1500);
+  });
+}
+
+// ── FEEDBACK POPUP ────────────────────────────────────────────────────────────
+let _fbRating = 0;
+
+function initFeedback() {
+  const stars = document.querySelectorAll('.fb-star');
+
+  function highlight(n) {
+    stars.forEach(s => s.classList.toggle('fb-star-on', Number(s.dataset.v) <= n));
+  }
+
+  stars.forEach(s => {
+    s.addEventListener('mouseover', () => highlight(Number(s.dataset.v)));
+    s.addEventListener('mouseout',  () => highlight(_fbRating));
+    s.addEventListener('click',     () => { _fbRating = Number(s.dataset.v); highlight(_fbRating); });
+  });
+
+  document.getElementById('btn-feedback-submit').addEventListener('click', async () => {
+    const errEl = document.getElementById('feedback-error');
+    if (!_fbRating) { errEl.textContent = t('feedbackErrRating'); return; }
+    errEl.textContent = '';
+
+    // Already sent today — show thanks without re-sending
+    if (!canSendFeedback()) {
+      document.getElementById('feedback-btns').classList.add('hidden');
+      document.getElementById('feedback-comment').classList.add('hidden');
+      const thanksEl = document.getElementById('feedback-thanks');
+      thanksEl.innerHTML = t('feedbackThanks').replace('\n', '<br>');
+      thanksEl.classList.remove('hidden');
+      setTimeout(() => document.getElementById('feedback-overlay').classList.add('hidden'), 3000);
+      return;
+    }
+
+    const btn = document.getElementById('btn-feedback-submit');
+    btn.disabled = true;
+    btn.textContent = t('feedbackSending');
+    try {
+      await sendFeedback({
+        playerName:  G.playerName,
+        playerEmail: G.playerEmail,
+        grade:       G.playerGrade,
+        rating:      _fbRating,
+        comment:     document.getElementById('feedback-comment').value.trim(),
+        level:       G.highestLevel,
+        xp:          G.xp,
+        aircraft:    G.unlockedAircraft,
+        playtime:    _playtimeStr(),
+      });
+      markFeedbackSent();
+      document.getElementById('feedback-btns').classList.add('hidden');
+      document.getElementById('feedback-comment').classList.add('hidden');
+      const thanksEl = document.getElementById('feedback-thanks');
+      thanksEl.innerHTML = t('feedbackThanks').replace('\n', '<br>');
+      thanksEl.classList.remove('hidden');
+      setTimeout(() => {
+        document.getElementById('feedback-overlay').classList.add('hidden');
+      }, 3000);
+    } catch (_) {
+      errEl.textContent = t('feedbackErrConn');
+      btn.disabled = false;
+      btn.textContent = t('feedbackSubmit');
+    }
+  });
+
+  document.getElementById('btn-feedback-skip').addEventListener('click', () => {
+    document.getElementById('feedback-overlay').classList.add('hidden');
+  });
+}
+
+function showFeedbackPopup() {
+  _fbRating = 0;
+  document.querySelectorAll('.fb-star').forEach(s => s.classList.remove('fb-star-on'));
+  document.getElementById('feedback-comment').value    = '';
+  document.getElementById('feedback-error').textContent = '';
+  document.getElementById('feedback-thanks').classList.add('hidden');
+  document.getElementById('feedback-btns').classList.remove('hidden');
+  document.getElementById('feedback-comment').classList.remove('hidden');
+  const btn = document.getElementById('btn-feedback-submit');
+  btn.disabled    = false;
+  btn.textContent = '▶ SEND FEEDBACK';
+  document.getElementById('feedback-overlay').classList.remove('hidden');
+}
 
 // ── BOOT ──────────────────────────────────────────────────────────────────────
 loadSave();
@@ -152,10 +327,8 @@ document.getElementById('btn-audio-start').addEventListener('click', () => {
   SFX.playMusic('menu');
   document.getElementById('audio-splash').classList.add('hidden');
 
-  // Show grade selection if not yet chosen
   if (!G.playerGrade) {
     showScreen('s-grade');
-    // Grade buttons handled by initGradeScreen above
   } else {
     renderMenu();
     showScreen('s-menu');
@@ -163,6 +336,7 @@ document.getElementById('btn-audio-start').addEventListener('click', () => {
     if (_daily.isNewDay) {
       setTimeout(() => showDailyReward(_daily.reward, _daily.streak), 600);
     }
+    setTimeout(() => showFeedbackPopup(), 1200);
   }
 });
 

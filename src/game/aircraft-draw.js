@@ -56,6 +56,7 @@ export function drawEnemySprite(ctx, enemy, bankAngle = 0) {
   const size = enemy.size * ENEMY_SCALE;
   ctx.save();
   ctx.imageSmoothingEnabled = true;
+  if (enemy.spriteFilter) ctx.filter = enemy.spriteFilter;
   drawFrame(ctx, enemy.spriteKey, enemy.animFrame, enemy.x, enemy.y, size, size,
     { rotate: Math.PI + bankAngle });
   ctx.restore();

@@ -19,7 +19,7 @@ export function showBriefing(levelNum) {
 
   const levelCfg  = getLevel(levelNum);
   const story      = getStory(levelNum);
-  const pilotInfo  = getPilotInfo(G.xp || 0);
+  const pilotInfo  = getPilotInfo(G.totalXpEarned || G.xp || 0);
   const grade      = getPilotGrade(G.highestLevel || 0);
 
   const isFr = getLang() === 'fr';

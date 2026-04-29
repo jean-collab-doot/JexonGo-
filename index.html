@@ -8,6 +8,8 @@
   <link rel="stylesheet" href="style.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
 
@@ -82,6 +84,17 @@
           <button id="btn-practice-hearts" class="practice-hearts-btn poh-active">ON</button>
         </div>
 
+        <div class="practice-timer-row">
+          <span class="practice-timer-label">⏱ TIMER</span>
+          <div class="practice-timer-btns">
+            <button class="practice-timer-btn" data-time="5">5s</button>
+            <button class="practice-timer-btn" data-time="10">10s</button>
+            <button class="practice-timer-btn" data-time="15">15s</button>
+            <button class="practice-timer-btn" data-time="30">30s</button>
+            <button class="practice-timer-btn" data-time="0">∞</button>
+          </div>
+        </div>
+
         <button id="btn-practice-start" class="btn btn-primary practice-start-btn" data-i18n="start">▶ START</button>
       </div>
     </div>
@@ -97,7 +110,7 @@
 
       <div class="sett-row sett-row-volume">
         <div class="sett-row-left">
-          <span class="sett-icon" id="sett-vol-icon">🔊</span>
+          <span class="sett-icon" id="sett-vol-icon">♪</span>
           <span class="sett-label" data-i18n="volume">SFX</span>
         </div>
         <div class="sett-slider-wrap">
@@ -108,7 +121,7 @@
 
       <div class="sett-row sett-row-volume">
         <div class="sett-row-left">
-          <span class="sett-icon" id="sett-music-icon">🎵</span>
+          <span class="sett-icon" id="sett-music-icon">♫</span>
           <span class="sett-label">MUSIC</span>
         </div>
         <div class="sett-slider-wrap">
@@ -119,7 +132,7 @@
 
       <div class="sett-row">
         <div class="sett-row-left">
-          <span class="sett-icon">✨</span>
+          <span class="sett-icon">✦</span>
           <span class="sett-label" data-i18n="effects">EFFECTS</span>
         </div>
         <button id="sett-effects" class="sett-toggle sett-on">ON</button>
@@ -139,12 +152,13 @@
 
   <!-- MENU SCREEN -->
   <div id="s-menu" class="screen">
-    <video id="menu-bg-video" autoplay loop muted playsinline poster="/public/assets/menu/lobby-bg.png">
-      <source src="/public/assets/menu/bg-motion-2.mp4" type="video/mp4">
-      <source src="/public/assets/menu/bg-motion-1.mp4" type="video/mp4">
+    <video id="menu-bg-video" autoplay loop muted playsinline poster="/assets/menu/lobby-bg.png">
+      <source src="/assets/menu/bg-motion-2.mp4" type="video/mp4">
+      <source src="/assets/menu/bg-motion-1.mp4" type="video/mp4">
     </video>
     <canvas id="menu-canvas"></canvas>
-    <button id="btn-lang" class="lang-toggle-btn" aria-label="Toggle language">🇬🇧 EN</button>
+    <button id="btn-lang" class="lang-toggle-btn" aria-label="Toggle language">EN</button>
+    <button id="btn-feedback-menu" class="feedback-menu-btn" aria-label="Feedback" data-i18n="feedbackBtn">★ FEEDBACK</button>
     <button id="btn-settings" class="settings-gear-btn" aria-label="Settings">
       <svg viewBox="0 0 24 24" fill="currentColor" width="22" height="22">
         <path d="M12 15.5A3.5 3.5 0 0 1 8.5 12 3.5 3.5 0 0 1 12 8.5a3.5 3.5 0 0 1 3.5 3.5 3.5 3.5 0 0 1-3.5 3.5m7.43-2.92c.04-.34.07-.69.07-1.08s-.03-.74-.07-1.08l2.32-1.82c.21-.17.27-.46.14-.7l-2.2-3.82c-.13-.24-.42-.31-.66-.22l-2.73 1.1c-.57-.44-1.18-.8-1.86-1.09l-.41-2.9A.54.54 0 0 0 14 2h-4a.54.54 0 0 0-.54.46l-.41 2.9c-.68.29-1.29.65-1.86 1.09l-2.73-1.1c-.24-.09-.53-.02-.66.22L1.6 9.49c-.13.24-.07.53.14.7l2.32 1.82C4.03 12.35 4 12.69 4 13s.03.65.07.99L1.74 15.8c-.21.17-.27.46-.14.7l2.2 3.82c.13.24.42.31.66.22l2.73-1.1c.57.44 1.18.8 1.86 1.09l.41 2.9c.06.28.28.46.54.46h4c.26 0 .48-.18.54-.46l.41-2.9c.68-.29 1.29-.65 1.86-1.09l2.73 1.1c.24.09.53.02.66-.22l2.2-3.82c.13-.24.07-.53-.14-.7l-2.32-1.81z"/>
@@ -157,11 +171,21 @@
       </div>
       <div class="menu-subtitle" data-i18n="subtitle">AERIAL MATH COMBAT</div>
       <div id="menu-rank-badge" class="menu-rank-badge"></div>
+
+      <!-- GOOGLE PROFILE -->
+      <div id="menu-profile" class="menu-profile hidden">
+        <img id="menu-profile-photo" class="menu-profile-photo" src="" alt="" referrerpolicy="no-referrer">
+        <div class="menu-profile-info">
+          <span id="menu-profile-name" class="menu-profile-name"></span>
+          <button id="btn-google-signout" class="menu-profile-signout">× SIGN OUT</button>
+        </div>
+      </div>
+
       <button id="btn-play" class="btn btn-primary" data-i18n="play">▶ PLAY</button>
       <button id="btn-hangar" class="btn btn-secondary" data-i18n="hangar">✈ HANGAR</button>
-      <button id="btn-shop" class="btn btn-secondary" data-i18n="shop">🛍 SHOP</button>
+      <button id="btn-shop" class="btn btn-secondary" data-i18n="shop">◆ SHOP</button>
       <button id="btn-practice" class="btn btn-secondary" data-i18n="practice">⚡ PRACTICE</button>
-      <button id="btn-missions" class="btn btn-secondary btn-missions-menu">📋 MISSIONS</button>
+      <button id="btn-missions" class="btn btn-secondary btn-missions-menu">≡ MISSIONS</button>
 
       <div class="login-divider"><span>— SIGN IN —</span></div>
 
@@ -239,6 +263,7 @@
     <div id="result-correct"></div>
     <div id="result-star-detail" class="result-star-detail"></div>
     <div id="result-promo-banner" class="result-promo-banner hidden"></div>
+    <div id="result-unlock-banner" class="result-unlock-banner hidden"></div>
     <button id="btn-result-continue" class="btn btn-primary" data-i18n="continueBtn">CONTINUE</button>
     <button id="btn-result-retry" class="btn btn-secondary" data-i18n="retry">RETRY</button>
   </div>
@@ -263,7 +288,7 @@
       <button id="btn-shop-back" class="shop-back-btn">&#8592;</button>
       <span class="shop-topbar-title" data-i18n="shop_title">SHOP</span>
       <div class="shop-currencies">
-        <span id="shop-coins" class="shop-currency-badge shop-currency-coins">🪙 <span id="shop-coins-val">0</span></span>
+        <span id="shop-coins" class="shop-currency-badge shop-currency-coins">◎ <span id="shop-coins-val">0</span></span>
       </div>
     </div>
 
@@ -274,7 +299,7 @@
     <!-- Bottom tab bar -->
     <div class="shop-tabbar">
       <button class="shop-tab shop-tab-active" data-tab="offers">
-        <span class="shop-tab-icon">🎁</span><span class="shop-tab-label" data-i18n="offers">OFFERS</span>
+        <span class="shop-tab-icon">✦</span><span class="shop-tab-label" data-i18n="offers">OFFERS</span>
       </button>
       <button class="shop-tab" data-tab="skins">
         <span class="shop-tab-icon">✈</span><span class="shop-tab-label" data-i18n="skins">SKINS</span>
@@ -301,7 +326,7 @@
       <div id="ranked-streak" class="ranked-win-streak"></div>
       <div id="ranked-firstwin" class="ranked-firstwin"></div>
       <button id="btn-ranked-play" class="btn btn-primary ranked-play-btn" data-i18n="findMatch">⚔ FIND MATCH</button>
-      <button id="btn-ranked-history" class="btn btn-secondary ranked-hist-btn" data-i18n="matchHistory">📋 MATCH HISTORY</button>
+      <button id="btn-ranked-history" class="btn btn-secondary ranked-hist-btn" data-i18n="matchHistory">≡ MATCH HISTORY</button>
     </div>
   </div>
 
@@ -435,7 +460,7 @@
       <span class="briefing-topbar-title" data-i18n="briefingTitle">MISSION BRIEFING</span>
     </div>
     <div class="briefing-pilot-row">
-      <span id="briefing-pilot-avatar" class="briefing-pilot-avatar">🪖</span>
+      <span id="briefing-pilot-avatar" class="briefing-pilot-avatar">▷</span>
       <div class="briefing-pilot-info">
         <div id="briefing-pilot-name" class="briefing-pilot-name">CADET</div>
         <div id="briefing-pilot-desc" class="briefing-pilot-desc"></div>
@@ -454,7 +479,7 @@
         </div>
       </div>
       <div class="briefing-condition-row">
-        <span class="briefing-cond-icon">🔢</span>
+        <span class="briefing-cond-icon">#</span>
         <div class="briefing-cond-body">
           <div class="briefing-cond-label" data-i18n="mathType" data-key="mathType">MATH TYPE</div>
           <div id="briefing-ops" class="briefing-cond-desc">Addition</div>
@@ -469,7 +494,7 @@
   <div id="s-classroom" class="screen hidden">
     <div class="top-bar">
       <button id="btn-classroom-back" class="btn-icon">&#8592;</button>
-      <span class="top-bar-title" style="color:#00d4ff" data-i18n="classroomTitle">👩‍🏫 CLASSROOM</span>
+      <span class="top-bar-title" style="color:#00d4ff" data-i18n="classroomTitle"># CLASSROOM</span>
       <button id="btn-classroom-refresh" class="btn-icon" style="font-size:14px">↺</button>
     </div>
     <div id="classroom-landing" class="classroom-landing">
@@ -500,6 +525,52 @@
     <button id="btn-go-map" class="btn btn-secondary" data-i18n="backToMenu">LOBBY</button>
   </div>
 
+  <!-- REGISTRATION SCREEN -->
+  <div id="s-register" class="screen hidden">
+    <div class="reg-wrap">
+      <div class="reg-logo">JEXON<span class="reg-logo-go">GO</span></div>
+      <div class="reg-tagline">AERIAL MATH COMBAT</div>
+      <div class="reg-title" data-i18n="regTitle">CREATE YOUR PILOT</div>
+      <div class="reg-form">
+        <input id="reg-name"     type="text"     class="reg-input" placeholder="CALL SIGN / NAME" data-i18n-placeholder="regNamePh" maxlength="20" autocomplete="off">
+        <input id="reg-email"    type="email"    class="reg-input" placeholder="EMAIL ADDRESS" data-i18n-placeholder="regEmailPh" autocomplete="email">
+        <input id="reg-password" type="password" class="reg-input" placeholder="PASSWORD (6+ CHARS)" data-i18n-placeholder="regPasswordPh" autocomplete="new-password">
+        <select id="reg-age" class="reg-input reg-select">
+          <option value="" data-i18n="regAgePh">-- SELECT YOUR AGE --</option>
+          <option value="5">5</option>
+          <option value="6">6</option>
+          <option value="7">7</option>
+          <option value="8">8</option>
+          <option value="9">9</option>
+          <option value="10">10</option>
+          <option value="11">11</option>
+          <option value="12">12</option>
+          <option value="13">13</option>
+          <option value="14">14</option>
+          <option value="15">15</option>
+          <option value="16">16</option>
+          <option value="17">17</option>
+          <option value="18">18+</option>
+        </select>
+        <select id="reg-grade" class="reg-input reg-select">
+          <option value="" data-i18n="regGradePh">-- SELECT SCHOOL GRADE --</option>
+          <option value="1">GRADE 1</option>
+          <option value="2">GRADE 2</option>
+          <option value="3">GRADE 3</option>
+          <option value="4">GRADE 4</option>
+          <option value="5">GRADE 5</option>
+          <option value="6">GRADE 6</option>
+        </select>
+        <div class="reg-tos-row">
+          <input type="checkbox" id="reg-tos" class="reg-tos-check">
+          <label for="reg-tos" class="reg-tos-label" data-i18n="regTos">I AGREE TO THE TERMS OF SERVICE</label>
+        </div>
+        <div id="reg-error" class="reg-error"></div>
+        <button id="btn-reg-submit" class="btn btn-primary" data-i18n="regSubmit">▶ CREATE PILOT</button>
+      </div>
+    </div>
+  </div>
+
   <!-- GRADE SELECTION SCREEN -->
   <div id="s-grade" class="screen hidden">
     <div class="grade-screen-title">WELCOME, PILOT!</div>
@@ -513,6 +584,28 @@
       <button class="grade-btn" data-grade="6">GRADE<br>6</button>
     </div>
     <div class="grade-screen-hint">Math difficulty adapts to your grade</div>
+  </div>
+
+  <!-- FEEDBACK OVERLAY -->
+  <div id="feedback-overlay" class="sett-backdrop hidden">
+    <div class="feedback-panel">
+      <div class="feedback-header" data-i18n="feedbackTitle">HOW DO YOU LIKE JEXONGO ?</div>
+      <div class="feedback-sub" data-i18n="feedbackSub">★ DAILY FEEDBACK ★</div>
+      <div class="feedback-stars" id="feedback-stars">
+        <span class="fb-star" data-v="1">★</span>
+        <span class="fb-star" data-v="2">★</span>
+        <span class="fb-star" data-v="3">★</span>
+        <span class="fb-star" data-v="4">★</span>
+        <span class="fb-star" data-v="5">★</span>
+      </div>
+      <textarea id="feedback-comment" class="feedback-textarea" placeholder="YOUR COMMENT (OPTIONAL)..." data-i18n-placeholder="feedbackCommentPh" maxlength="300"></textarea>
+      <div id="feedback-error" class="feedback-error"></div>
+      <div class="feedback-btns" id="feedback-btns">
+        <button id="btn-feedback-submit" class="btn btn-primary" data-i18n="feedbackSubmit">▶ SEND FEEDBACK</button>
+        <button id="btn-feedback-skip" class="feedback-skip-btn" data-i18n="feedbackSkip">SKIP</button>
+      </div>
+      <div id="feedback-thanks" class="feedback-thanks hidden"></div>
+    </div>
   </div>
 
   <div id="login-toast"></div>

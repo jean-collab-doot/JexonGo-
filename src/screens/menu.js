@@ -6,6 +6,47 @@ import { save } from '../utils/storage.js';
 import { getPilotInfo } from '../data/pilots.js';
 import { t, getLang, setLang, applyI18n } from '../i18n.js';
 
+// ── GOOGLE SIGN-IN ───────────────────────────────────────────────────────────
+const GOOGLE_CLIENT_ID = '182729505930-rulb73m14t9qvfpjfbplknrcgn0fqvci.apps.googleusercontent.com';
+let _gsiReady = false;
+
+function _ensureGSI() {
+  if (_gsiReady) return true;
+  if (typeof google === 'undefined' || !google.accounts) return false;
+  google.accounts.id.initialize({
+    client_id: GOOGLE_CLIENT_ID,
+    callback:  cred => window._onGoogleCredential?.(cred),
+  });
+  _gsiReady = true;
+  return true;
+}
+
+function _updateProfile() {
+  const wrap    = document.getElementById('menu-profile');
+  const photoEl = document.getElementById('menu-profile-photo');
+  const nameEl  = document.getElementById('menu-profile-name');
+  const loginDiv = document.querySelector('.login-divider');
+  const gBtn    = document.getElementById('btn-login-google');
+  const aBtn    = document.getElementById('btn-login-apple');
+  const hasGoogle = !!G.playerPhoto;
+  if (wrap)      wrap.classList.toggle('hidden', !hasGoogle);
+  if (photoEl)   photoEl.src          = G.playerPhoto || '';
+  if (nameEl)    nameEl.textContent   = G.playerName  || 'PILOT';
+  if (loginDiv)  loginDiv.style.display = hasGoogle ? 'none' : '';
+  if (gBtn)      gBtn.style.display   = hasGoogle ? 'none' : '';
+  if (aBtn)      aBtn.style.display   = hasGoogle ? 'none' : '';
+}
+
+function _handleSignOut() {
+  G.playerPhoto = '';
+  save('playerPhoto', '');
+  _gsiReady = false;
+  if (typeof google !== 'undefined' && google.accounts) {
+    google.accounts.id.disableAutoSelect();
+  }
+  renderMenu();
+}
+
 // ── ASSETS ────────────────────────────────────────────────────────────────────
 const PLANE_PATH  = '/assets/menu/anim-3.png';
 const FIRE_PATH   = '/assets/menu/engine-fire.png';
@@ -251,7 +292,7 @@ function drawTick() {
 function _applyLang() {
   const lang = getLang();
   const btn  = $('btn-lang');
-  if (btn) btn.textContent = lang === 'fr' ? '🇫🇷 FR' : '🇬🇧 EN';
+  if (btn) btn.textContent = lang === 'fr' ? 'FR' : 'EN';
 
   const sub = document.querySelector('.menu-subtitle');
   if (sub) sub.textContent = t('subtitle');
@@ -300,6 +341,12 @@ export function initMenu(nav) {
     if (e.target === $('missions-panel')) $('missions-panel').classList.add('hidden');
   });
 
+  const fbBtn = $('btn-feedback-menu');
+  if (fbBtn) fbBtn.onclick = () => window._showFeedbackPopup?.();
+
+  const signoutBtn = $('btn-google-signout');
+  if (signoutBtn) signoutBtn.onclick = _handleSignOut;
+
   const langBtn = $('btn-lang');
   if (langBtn) {
     langBtn.onclick = () => {
@@ -325,12 +372,20 @@ function _handleLogin(provider) {
   const btn = document.getElementById('btn-login-' + provider);
   if (btn) {
     btn.classList.remove('login-tapped');
-    void btn.offsetWidth; // force reflow to restart animation
+    void btn.offsetWidth;
     btn.classList.add('login-tapped');
     btn.addEventListener('animationend', () => btn.classList.remove('login-tapped'), { once: true });
   }
-  const label = provider === 'google' ? 'Google' : 'Apple';
-  _showToast('🔒 ' + label + ' sign-in\nCOMING SOON');
+  if (provider === 'google') {
+    if (!_ensureGSI()) { _showToast('■ Google not available'); return; }
+    google.accounts.id.prompt(n => {
+      if (n.isNotDisplayed?.() || n.isSkippedMoment?.()) {
+        _showToast('■ Google popup blocked\nTry disabling ad blocker');
+      }
+    });
+    return;
+  }
+  _showToast('■ Apple sign-in\nCOMING SOON');
 }
 
 function openPracticeSelect(nav) {
@@ -374,6 +429,22 @@ function openPracticeSelect(nav) {
   syncHearts();
   heartsBtn.onclick = () => { G.practiceHearts = !G.practiceHearts; syncHearts(); };
 
+  // Timer selection
+  const syncTimerBtns = () => {
+    panel.querySelectorAll('.practice-timer-btn').forEach(btn => {
+      const val = btn.dataset.time === '0' ? null : Number(btn.dataset.time);
+      btn.classList.toggle('ptb-active', val === G.practiceTimeLimit);
+    });
+  };
+  syncTimerBtns();
+  panel.querySelectorAll('.practice-timer-btn').forEach(btn => {
+    btn.onclick = () => {
+      G.practiceTimeLimit = btn.dataset.time === '0' ? null : Number(btn.dataset.time);
+      save('practiceTimeLimit', G.practiceTimeLimit);
+      syncTimerBtns();
+    };
+  });
+
   $('btn-practice-close').onclick = () => panel.classList.add('hidden');
   panel.onclick = e => { if (e.target === panel) panel.classList.add('hidden'); };
 
@@ -401,13 +472,15 @@ export function renderMenu() {
 
   _updateRankBadge();
   _updateMissionsBadge();
+  _updateProfile();
   _applyLang();
 }
 
 function _updateRankBadge() {
   const el = document.getElementById('menu-rank-badge');
   if (!el) return;
-  const { tier, pct } = getPilotInfo(G.xp || 0);
+  const earned = G.totalXpEarned || G.xp || 0;
+  const { tier, pct } = getPilotInfo(earned);
   el.innerHTML = `
     <span class="mrb-avatar" style="color:${tier.color};text-shadow:0 0 10px ${tier.color}">${tier.avatar}</span>
     <span style="color:${tier.color}">${tier.name}</span>
@@ -532,7 +605,7 @@ function _renderMissions() {
         <span class="mission-count">${m.progress}/${m.target}</span>
       </div>
       <div class="mission-reward-row">
-        <span class="mission-reward-text">🪙 ${m.coins}  ⚡ ${m.xp} XP</span>
+        <span class="mission-reward-text">◎ ${m.coins}  ⚡ ${m.xp} XP</span>
         <button class="mission-claim-btn ${m.claimed ? 'mcb-claimed' : done ? 'mcb-ready' : 'mcb-locked'}"
                 data-id="${m.id}" ${!done || m.claimed ? 'disabled' : ''}>
           ${claimBtnText}

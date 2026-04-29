@@ -21,12 +21,12 @@ export const RARITIES = [
 // ── ROULETTE SLOT DEFINITIONS ─────────────────────────────────────────────────
 // weight = out of 100 total
 export const ROULETTE_SLOTS = [
-  { id: 'common',    label: 'COMMON PART',    icon: '🔧', color: '#94a3b8', weight: 40, rewardType: 'blueprint', rarityIdx: 0 },
-  { id: 'rare',      label: 'RARE PART',      icon: '🔩', color: '#60a5fa', weight: 25, rewardType: 'blueprint', rarityIdx: 1 },
-  { id: 'epic',      label: 'EPIC PART',      icon: '⚙',  color: '#a855f7', weight: 15, rewardType: 'blueprint', rarityIdx: 2 },
-  { id: 'legendary', label: 'LEGENDARY PART', icon: '💎', color: '#fbbf24', weight: 10, rewardType: 'blueprint', rarityIdx: 3 },
+  { id: 'common',    label: 'COMMON PART',    icon: '■', color: '#94a3b8', weight: 40, rewardType: 'blueprint', rarityIdx: 0 },
+  { id: 'rare',      label: 'RARE PART',      icon: '◈', color: '#60a5fa', weight: 25, rewardType: 'blueprint', rarityIdx: 1 },
+  { id: 'epic',      label: 'EPIC PART',      icon: '✦', color: '#a855f7', weight: 15, rewardType: 'blueprint', rarityIdx: 2 },
+  { id: 'legendary', label: 'LEGENDARY PART', icon: '◆', color: '#fbbf24', weight: 10, rewardType: 'blueprint', rarityIdx: 3 },
   { id: 'xp200',     label: 'BONUS XP',       icon: '⚡', color: '#00e84b', weight: 7,  rewardType: 'xp', xpAmount: 200 },
-  { id: 'xp500',     label: 'MEGA XP',        icon: '⭐', color: '#fff700', weight: 3,  rewardType: 'xp', xpAmount: 500 },
+  { id: 'xp500',     label: 'MEGA XP',        icon: '★', color: '#fff700', weight: 3,  rewardType: 'xp', xpAmount: 500 },
 ];
 
 // Blueprint pieces needed to auto-unlock each aircraft via blueprints
@@ -127,7 +127,8 @@ export function applyReward(reward) {
   const newlyUnlocked = [];
 
   if (reward.type === 'xp') {
-    G.xp = (G.xp || 0) + reward.amount;
+    G.xp            = (G.xp            || 0) + reward.amount;
+    G.totalXpEarned = (G.totalXpEarned || 0) + reward.amount;
 
   } else if (reward.type === 'blueprint') {
     if (!G.blueprints) G.blueprints = {};
@@ -137,7 +138,8 @@ export function applyReward(reward) {
     if (G.unlockedAircraft.includes(reward.aircraft) || have >= needed) {
       // Duplicate — give XP bonus
       reward._converted = true;
-      G.xp = (G.xp || 0) + 50;
+      G.xp            = (G.xp            || 0) + 50;
+      G.totalXpEarned = (G.totalXpEarned || 0) + 50;
     } else {
       G.blueprints[reward.aircraft] = have + reward.pieces;
       if (G.blueprints[reward.aircraft] >= needed) {

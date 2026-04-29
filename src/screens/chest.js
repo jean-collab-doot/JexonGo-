@@ -136,18 +136,16 @@ function buildResultCard(reward) {
 
 // ── PUBLIC API ────────────────────────────────────────────────────────────────
 let _returnTo = 'map';
+let _chestNav = null;
+let _chestBusy = false; // true while animation/roulette is in progress
 
-export function initChest(nav) {
-  $('btn-chest-continue').onclick = () => {
-    if (_returnTo === 'shop') nav.toShop();
-    else nav.toMap();
-  };
-}
+export function initChest(nav) { _chestNav = nav; }
 
 export function setChestReturn(dest) { _returnTo = dest; }
 
 export function showChest(chestData) {
   const { chestName, chestColor, chestImg, reward } = chestData;
+  _chestBusy = false;
 
   $('chest-title').textContent      = t('chestReward');
   $('chest-tier-label').textContent = chestName + ' ' + t('chestSuffix');
@@ -164,14 +162,28 @@ export function showChest(chestData) {
   const resultArea = $('chest-result-area');
   if (resultArea) { resultArea.classList.add('hidden'); resultArea.innerHTML = ''; }
 
-  $('btn-chest-open').disabled = false;
-  $('btn-chest-open').classList.remove('hidden');
-  $('btn-chest-open').textContent = t('openChest');
-  $('btn-chest-continue').classList.add('hidden');
+  const openBtn = $('btn-chest-open');
+  const contBtn = $('btn-chest-continue');
+
+  openBtn.disabled = false;
+  openBtn.classList.remove('hidden');
+  openBtn.textContent = t('openChest');
+  contBtn.classList.add('hidden');
   box.classList.remove('hidden');
 
-  $('btn-chest-open').onclick = () => {
-    $('btn-chest-open').disabled = true;
+  // Refresh continue handler with current returnTo destination
+  contBtn.onclick = () => {
+    if (_chestBusy) return;
+    const dest = _returnTo;
+    const nav  = _chestNav;
+    if (dest === 'shop') nav.toShop();
+    else nav.toMap();
+  };
+
+  openBtn.onclick = () => {
+    if (_chestBusy) return;  // prevent spam click / double-open
+    _chestBusy = true;
+    openBtn.disabled = true;
 
     // Bounce open animation
     SFX.chest?.();
@@ -185,7 +197,7 @@ export function showChest(chestData) {
     setTimeout(() => {
       // Hide chest, show roulette
       box.classList.add('hidden');
-      $('btn-chest-open').classList.add('hidden');
+      openBtn.classList.add('hidden');
 
       if (rlArea) {
         rlArea.innerHTML = `
@@ -205,6 +217,7 @@ export function showChest(chestData) {
         // Apply reward
         const newlyUnlocked = applyReward(reward);
         save('xp',                G.xp);
+        save('totalXpEarned',     G.totalXpEarned);
         save('blueprints',        G.blueprints);
         save('chestsWithoutEpic', G.chestsWithoutEpic);
         if (newlyUnlocked.length) save('unlockedAircraft', G.unlockedAircraft);
@@ -225,7 +238,8 @@ export function showChest(chestData) {
           resultArea.classList.remove('hidden');
         }
 
-        setTimeout(() => $('btn-chest-continue').classList.remove('hidden'), 500);
+        _chestBusy = false; // unlock after roulette completes
+        setTimeout(() => contBtn.classList.remove('hidden'), 500);
       });
     }, 600);
   };

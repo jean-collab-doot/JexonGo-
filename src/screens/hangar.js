@@ -133,6 +133,14 @@ export function renderHangar() {
       card.appendChild(buff);
     }
 
+    // Lives bonus row
+    if (plane.livesDesc) {
+      const lives = document.createElement('div');
+      lives.className   = 'plane-ability';
+      lives.textContent = `♥ ${plane.livesDesc}`;
+      card.appendChild(lives);
+    }
+
     // Debuff row
     if (plane.debuffDesc && plane.debuffDesc !== 'Standard — no debuff') {
       const debuff = document.createElement('div');
@@ -151,7 +159,7 @@ export function renderHangar() {
     } else if (plane.gradeRequired && !gradeOk) {
       // Locked by grade requirement
       const reqGrade = plane.gradeLabel || 'CAPTAIN';
-      cost.textContent = `🔒 ${reqGrade} + ${plane.xpCost.toLocaleString()} XP`;
+      cost.textContent = `■ ${reqGrade} + ${plane.xpCost.toLocaleString()} XP`;
       cost.style.color = '#ef4444';
     } else {
       cost.textContent = `${plane.xpCost.toLocaleString()} XP`;

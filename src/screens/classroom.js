@@ -130,7 +130,7 @@ function _showBoard(classroom) {
       <span class="classroom-lb-rank">${_rankLabel(rank)}</span>
       <div class="classroom-lb-info">
         <div class="classroom-lb-name">
-          ${isTeacher ? '<span class="classroom-crown">👑</span>' : ''}
+          ${isTeacher ? '<span class="classroom-crown">♛</span>' : ''}
           ${student.name}
           ${isMe ? '<span class="classroom-me-tag">YOU</span>' : ''}
         </div>

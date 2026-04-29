@@ -461,7 +461,7 @@ function _applyLPChange(delta, won) {
 // ── RESULT SCREEN ─────────────────────────────────────────────────────────────
 function _showResult(msg) {
   const title =
-    msg.opponentLeft  ? `🏆 OPP DISCONNECTED` :
+    msg.opponentLeft  ? `★ OPP DISCONNECTED` :
     msg.draw          ? `= ${t('draw')}` :
     msg.won           ? `✔ ${t('victory')}` :
                         `✘ ${t('defeat')}`;

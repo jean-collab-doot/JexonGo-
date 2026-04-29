@@ -4,11 +4,11 @@ const STRINGS = {
     subtitle:        'AERIAL MATH COMBAT',
     play:            '▶ PLAY',
     hangar:          '✈ HANGAR',
-    shop:            '🛍 SHOP',
+    shop:            '◆ SHOP',
     practice:        '⚡ PRACTICE',
-    missions:        '📋 MISSIONS',
+    missions:        '≡ MISSIONS',
     ranked:          '⚔ RANKED',
-    classroom:       '👩‍🏫 CLASSROOM',
+    classroom:       '# CLASSROOM',
     signIn:          '— SIGN IN —',
     signInGoogle:    'SIGN IN WITH GOOGLE',
     signInApple:     'SIGN IN WITH APPLE',
@@ -81,7 +81,7 @@ const STRINGS = {
     equip:           'EQUIP ▶',
     specialOffer:    'SPECIAL OFFER',
     bestValue:       'BEST VALUE!',
-    buyChests:       '📦 BUY CHESTS',
+    buyChests:       '◈ BUY CHESTS',
     needMoreCoins:   '✗ NEED',
     moreCoins:       'MORE COINS',
 
@@ -97,7 +97,7 @@ const STRINGS = {
     settings:        '⚙ SETTINGS',
     volume:          'VOLUME',
     effects:         'EFFECTS',
-    controls:        '🕹 CONTROLS',
+    controls:        '► CONTROLS',
     move:            'MOVE',
     on:              'ON',
     off:             'OFF',
@@ -109,7 +109,7 @@ const STRINGS = {
     mul:             'MUL',
     div:             'DIV',
     selectAll:       'SELECT ALL',
-    heartsLives:     '❤ LIVES',
+    heartsLives:     '♥ LIVES',
     start:           '▶ START',
 
     // Missions panel (in menu.js)
@@ -119,13 +119,13 @@ const STRINGS = {
     resetsIn:        'RESETS IN',
 
     // Daily reward popup
-    dailyReward:     '🎁 DAILY REWARD',
+    dailyReward:     '✦ DAILY REWARD',
     claimReward:     'CLAIM REWARD',
     todayReward:     'TODAY\'S REWARD',
 
     // Ranked
     findMatch:       '⚔ FIND MATCH',
-    matchHistory:    '📋 MATCH HISTORY',
+    matchHistory:    '≡ MATCH HISTORY',
     findingOpp:      'FINDING OPPONENT',
     searching:       'SEARCHING FOR MATCH',
     victory:         'VICTORY!',
@@ -147,7 +147,7 @@ const STRINGS = {
     opp:             'OPP',
 
     // Classroom
-    classroomTitle:  '👩‍🏫 CLASSROOM',
+    classroomTitle:  '# CLASSROOM',
     joinYourClass:   'JOIN YOUR CLASS',
     joinClass:       'JOIN CLASS',
     createClass:     'CREATE CLASSROOM',
@@ -173,6 +173,34 @@ const STRINGS = {
     pilotColonel:      'COLONEL',
     pilotGeneral:      'GENERAL',
     pilotAirAce:       'AIR ACE',
+
+    // Registration screen
+    regTitle:          'CREATE YOUR PILOT',
+    regNamePh:         'CALL SIGN / NAME',
+    regEmailPh:        'EMAIL ADDRESS',
+    regPasswordPh:     'PASSWORD (6+ CHARS)',
+    regAgePh:          '-- SELECT YOUR AGE --',
+    regGradePh:        '-- SELECT SCHOOL GRADE --',
+    regTos:            'I AGREE TO THE TERMS OF SERVICE',
+    regSubmit:         '▶ CREATE PILOT',
+    regErrName:        'ENTER YOUR CALL SIGN',
+    regErrEmail:       'ENTER A VALID EMAIL',
+    regErrPassword:    'PASSWORD MUST BE 6+ CHARS',
+    regErrAge:         'SELECT YOUR AGE',
+    regErrGrade:       'SELECT YOUR SCHOOL GRADE',
+    regErrTos:         'ACCEPT THE TERMS TO CONTINUE',
+
+    // Feedback
+    feedbackTitle:     'HOW DO YOU LIKE JEXONGO ?',
+    feedbackSub:       '★ DAILY FEEDBACK ★',
+    feedbackCommentPh: 'YOUR COMMENT (OPTIONAL)...',
+    feedbackSubmit:    '▶ SEND FEEDBACK',
+    feedbackSending:   'SENDING...',
+    feedbackSkip:      'SKIP',
+    feedbackThanks:    '✓ THANK YOU, PILOT !\nYOUR FEEDBACK HELPS US FLY HIGHER.',
+    feedbackErrRating: 'PLEASE SELECT A STAR RATING',
+    feedbackErrConn:   'SEND FAILED — CHECK CONNECTION',
+    feedbackBtn:       '★ FEEDBACK',
   },
 
   fr: {
@@ -180,11 +208,11 @@ const STRINGS = {
     subtitle:        'COMBAT MATHÉMATIQUE AÉRIEN',
     play:            '▶ JOUER',
     hangar:          '✈ HANGAR',
-    shop:            '🛍 BOUTIQUE',
+    shop:            '◆ BOUTIQUE',
     practice:        '⚡ ENTRAÎNEMENT',
-    missions:        '📋 MISSIONS',
+    missions:        '≡ MISSIONS',
     ranked:          '⚔ CLASSÉ',
-    classroom:       '👩‍🏫 CLASSE',
+    classroom:       '# CLASSE',
     signIn:          '— CONNEXION —',
     signInGoogle:    'SE CONNECTER AVEC GOOGLE',
     signInApple:     'SE CONNECTER AVEC APPLE',
@@ -257,7 +285,7 @@ const STRINGS = {
     equip:           'ÉQUIPER ▶',
     specialOffer:    'OFFRE SPÉCIALE',
     bestValue:       'MEILLEUR PRIX !',
-    buyChests:       '📦 ACHETER DES COFFRES',
+    buyChests:       '◈ ACHETER DES COFFRES',
     needMoreCoins:   '✗ BESOIN DE',
     moreCoins:       'PIÈCES DE PLUS',
 
@@ -273,7 +301,7 @@ const STRINGS = {
     settings:        '⚙ PARAMÈTRES',
     volume:          'VOLUME',
     effects:         'EFFETS',
-    controls:        '🕹 CONTRÔLES',
+    controls:        '► CONTRÔLES',
     move:            'DÉPLACER',
     on:              'ACT.',
     off:             'DÉS.',
@@ -285,7 +313,7 @@ const STRINGS = {
     mul:             'MUL',
     div:             'DIV',
     selectAll:       'TOUT SÉLECTIONNER',
-    heartsLives:     '❤ VIES',
+    heartsLives:     '♥ VIES',
     start:           '▶ DÉMARRER',
 
     // Missions panel (in menu.js)
@@ -295,13 +323,13 @@ const STRINGS = {
     resetsIn:        'RÉINITIALISE DANS',
 
     // Daily reward popup
-    dailyReward:     '🎁 RÉCOMPENSE QUOTIDIENNE',
+    dailyReward:     '✦ RÉCOMPENSE QUOTIDIENNE',
     claimReward:     'RÉCLAMER LA RÉCOMPENSE',
     todayReward:     'RÉCOMPENSE DU JOUR',
 
     // Ranked
     findMatch:       '⚔ TROUVER UN MATCH',
-    matchHistory:    '📋 HISTORIQUE',
+    matchHistory:    '≡ HISTORIQUE',
     findingOpp:      'RECHERCHE ADVERSAIRE',
     searching:       'RECHERCHE EN COURS',
     victory:         'VICTOIRE !',
@@ -323,7 +351,7 @@ const STRINGS = {
     opp:             'ADV',
 
     // Classroom
-    classroomTitle:  '👩‍🏫 CLASSE',
+    classroomTitle:  '# CLASSE',
     joinYourClass:   'REJOINDRE MA CLASSE',
     joinClass:       'REJOINDRE',
     createClass:     'CRÉER UNE CLASSE',
@@ -349,6 +377,34 @@ const STRINGS = {
     pilotColonel:      'COLONEL',
     pilotGeneral:      'GÉNÉRAL',
     pilotAirAce:       'AS DE L\'AIR',
+
+    // Registration screen
+    regTitle:          'CRÉER VOTRE PILOTE',
+    regNamePh:         'INDICATIF / NOM',
+    regEmailPh:        'ADRESSE EMAIL',
+    regPasswordPh:     'MOT DE PASSE (6+ CAR.)',
+    regAgePh:          '-- SÉLECTIONNEZ VOTRE ÂGE --',
+    regGradePh:        '-- CHOISIR VOTRE NIVEAU --',
+    regTos:            'J\'ACCEPTE LES CONDITIONS D\'UTILISATION',
+    regSubmit:         '▶ CRÉER MON PILOTE',
+    regErrName:        'ENTREZ VOTRE INDICATIF',
+    regErrEmail:       'EMAIL INVALIDE',
+    regErrPassword:    'MOT DE PASSE 6 CAR. MIN.',
+    regErrAge:         'SÉLECTIONNEZ VOTRE ÂGE',
+    regErrGrade:       'CHOISISSEZ VOTRE NIVEAU',
+    regErrTos:         'ACCEPTEZ LES CONDITIONS',
+
+    // Feedback
+    feedbackTitle:     'COMMENT TROUVEZ-VOUS JEXONGO ?',
+    feedbackSub:       '★ AVIS QUOTIDIEN ★',
+    feedbackCommentPh: 'VOTRE COMMENTAIRE (OPTIONNEL)...',
+    feedbackSubmit:    '▶ ENVOYER',
+    feedbackSending:   'ENVOI...',
+    feedbackSkip:      'PASSER',
+    feedbackThanks:    '✓ MERCI, PILOTE !\nVOTRE AVIS NOUS AIDE À NOUS AMÉLIORER.',
+    feedbackErrRating: 'VEUILLEZ SÉLECTIONNER UNE NOTE',
+    feedbackErrConn:   'ÉCHEC D\'ENVOI — VÉRIFIEZ LA CONNEXION',
+    feedbackBtn:       '★ AVIS',
   },
 };
 

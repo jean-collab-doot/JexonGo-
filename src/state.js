@@ -3,6 +3,7 @@ import { load } from './utils/storage.js';
 export const G = {
   // --- Persisted ---
   xp: 0,
+  totalXpEarned: 0, // cumulative XP earned (never decremented — used for pilot grade)
   coins: 500,
   blueprints: {},
   chestsWithoutEpic: 0,
@@ -31,14 +32,19 @@ export const G = {
   rankedFirstWinToday: null,
 
   // --- Profile ---
-  playerName: 'PILOT',
+  playerName:       'PILOT',
+  playerEmail:      '',
+  playerPhoto:      '',
+  playerAge:        0,
+  playerRegistered: false,
   currentWeather: null,
 
   // --- Session ---
   currentLevel: 1,
   practiceMode: false,
-  practiceOps:    ['+', '-', '*', '/'],
-  practiceHearts: true,
+  practiceOps:       ['+', '-', '*', '/'],
+  practiceHearts:    true,
+  practiceTimeLimit: 10,   // seconds per question; null = unlimited
   continueState: null,
 
   // --- In-game (reset each level) ---
@@ -62,6 +68,7 @@ export const G = {
 
 export function loadSave() {
   G.xp                = load('xp', 0);
+  G.totalXpEarned     = load('totalXpEarned', G.xp); // fallback to current xp for existing saves
   G.coins             = load('coins', 0);
   G.blueprints        = load('blueprints', {});
   G.chestsWithoutEpic = load('chestsWithoutEpic', 0);
@@ -71,8 +78,13 @@ export function loadSave() {
   G.ownedSkins        = load('ownedSkins', []);
   G.activeSkin        = load('activeSkin', null);
   G.playerName        = load('playerName', 'PILOT');
+  G.playerEmail       = load('playerEmail', '');
+  G.playerPhoto       = load('playerPhoto', '');
+  G.playerAge         = load('playerAge', 0);
+  G.playerRegistered  = load('playerRegistered', false);
   G.playerGrade       = load('playerGrade', 0);
   G.highestLevel      = load('highestLevel', 0);
+  G.practiceTimeLimit = load('practiceTimeLimit', 10);
   G.dailyLastLogin    = load('dailyLastLogin', null);
   G.dailyStreak       = load('dailyStreak', 0);
   G.dailyMissions     = load('dailyMissions', null);

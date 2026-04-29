@@ -7,6 +7,7 @@ import { saveProgress } from '../systems/progression.js';
 import { rollChest } from '../systems/chest.js';
 import { getPilotGrade, getNextGrade } from '../data/pilots.js';
 import { t } from '../i18n.js';
+import { AIRCRAFT } from '../data/aircraft.js';
 
 let _prevHighestLevel = 0;
 
@@ -39,7 +40,8 @@ export function showResult(won) {
   _prevHighestLevel = G.highestLevel || 0;
 
   if (!G.practiceMode) {
-    G.xp += xp;
+    G.xp            += xp;
+    G.totalXpEarned  = (G.totalXpEarned || 0) + xp;
     G.levelStars[G.currentLevel] = Math.max(G.levelStars[G.currentLevel] || 0, stars);
 
     // Update highest level
@@ -48,6 +50,7 @@ export function showResult(won) {
       save('highestLevel', G.highestLevel);
     }
 
+    save('totalXpEarned', G.totalXpEarned);
     saveProgress(G.currentLevel, stars, G.xp);
     window._currentLevelCfg = { isChestLevel: isBoss };
   }
@@ -78,6 +81,24 @@ export function showResult(won) {
   $('result-xp').textContent      = G.practiceMode ? t('noXpPractice') : `+ ${xp} XP`;
   const total = isBoss ? answered : 10;
   $('result-correct').textContent = `${correct} / ${total} ${t('correct')}`;
+
+  // SR-71 perfect-run unlock on level 30
+  const unlockBanner = $('result-unlock-banner');
+  if (unlockBanner) {
+    const perfectLv30 = G.currentLevel === 30
+      && hits === 0
+      && correct === answered
+      && !G.practiceMode
+      && !G.unlockedAircraft.includes('sr71');
+    if (perfectLv30) {
+      G.unlockedAircraft.push('sr71');
+      save('unlockedAircraft', G.unlockedAircraft);
+      unlockBanner.textContent = '★ SR-71 BLACKBIRD UNLOCKED — PERFECT RUN!';
+      unlockBanner.classList.remove('hidden');
+    } else {
+      unlockBanner.classList.add('hidden');
+    }
+  }
 
   // Pilot grade promotion banner
   const promoBanner = $('result-promo-banner');
