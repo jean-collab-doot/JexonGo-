@@ -2,7 +2,8 @@ import { $ } from '../utils/dom.js';
 import { G } from '../state.js';
 import { save } from '../utils/storage.js';
 import { SFX } from '../audio/sound.js';
-import { RARITIES, BLUEPRINT_COST, ROULETTE_SLOTS, applyReward } from '../systems/chest.js';
+import { RARITIES, BLUEPRINT_COST, ROULETTE_SLOTS, SLOT_WEIGHTS_BY_TIER, applyReward } from '../systems/chest.js';
+import { trackMission } from '../systems/daily.js';
 import { AIRCRAFT } from '../data/aircraft.js';
 import { t } from '../i18n.js';
 
@@ -12,11 +13,12 @@ const TILE_GAP  = 6;     // px gap between tiles
 const TILE_UNIT = TILE_W + TILE_GAP;
 const STRIP_REPS = 6;    // how many times to repeat the slot sequence
 
-function buildStrip(winSlotId) {
-  // Build a pool of tile indices respecting weights (100 tiles total)
+function buildStrip(winSlotId, tierIdx = 0) {
+  // Build a pool of tiles respecting tier-specific weights (100 tiles total)
+  const weights = SLOT_WEIGHTS_BY_TIER[tierIdx] ?? SLOT_WEIGHTS_BY_TIER[0];
   const pool = [];
-  for (const s of ROULETTE_SLOTS) {
-    for (let i = 0; i < s.weight; i++) pool.push(s);
+  for (let i = 0; i < ROULETTE_SLOTS.length; i++) {
+    for (let w = 0; w < weights[i]; w++) pool.push(ROULETTE_SLOTS[i]);
   }
 
   // Build a shuffled-then-repeated strip of 60 tiles
@@ -46,10 +48,10 @@ function buildTileEl(slot) {
 }
 
 function showRoulette(chestData, onDone) {
-  const { reward, slot } = chestData;
+  const { reward, slot, tierIdx = 0 } = chestData;
   const winSlotId = slot?.id ?? reward?.slotId ?? 'common';
 
-  const { strip, targetIdx } = buildStrip(winSlotId);
+  const { strip, targetIdx } = buildStrip(winSlotId, tierIdx);
 
   // Build HTML
   const vp    = $('rl-viewport');
@@ -63,8 +65,11 @@ function showRoulette(chestData, onDone) {
   const vpW = TILE_UNIT * 3 + TILE_GAP;
   vp.style.width = vpW + 'px';
 
-  // Offset so the middle tile is centered in viewport
-  const centerOffset = Math.floor(vpW / 2) - Math.floor(TILE_W / 2);
+  // Account for viewport border (3px each side) and strip padding-left (4px)
+  const VP_BORDER      = 3;
+  const STRIP_PAD_LEFT = 4;
+  const vpContentW  = vpW - VP_BORDER * 2;
+  const centerOffset = Math.floor(vpContentW / 2) - Math.floor(TILE_W / 2) - STRIP_PAD_LEFT;
 
   // Position strip so tile 0 starts in center, then scroll to targetIdx
   const startTranslate = centerOffset;
@@ -216,6 +221,7 @@ export function showChest(chestData) {
       showRoulette(chestData, () => {
         // Apply reward
         const newlyUnlocked = applyReward(reward);
+        trackMission('open_chest', 1);
         save('xp',                G.xp);
         save('totalXpEarned',     G.totalXpEarned);
         save('blueprints',        G.blueprints);

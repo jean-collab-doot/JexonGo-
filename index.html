@@ -8,7 +8,7 @@
   <link rel="stylesheet" href="style.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+  <script src="/assets/email.min.js"></script>
   <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
@@ -157,8 +157,23 @@
       <source src="/assets/menu/bg-motion-1.mp4" type="video/mp4">
     </video>
     <canvas id="menu-canvas"></canvas>
-    <button id="btn-lang" class="lang-toggle-btn" aria-label="Toggle language">EN</button>
-    <button id="btn-feedback-menu" class="feedback-menu-btn" aria-label="Feedback" data-i18n="feedbackBtn">★ FEEDBACK</button>
+    <div class="menu-top-left">
+      <button id="btn-lang" class="lang-toggle-btn" aria-label="Toggle language">EN</button>
+      <button id="btn-feedback-menu" class="feedback-menu-btn" aria-label="Feedback" data-i18n="feedbackBtn">★ FEEDBACK</button>
+
+      <!-- PROFILE SQUARE (top bar, next to feedback) -->
+      <div id="menu-profile" class="menu-profile hidden">
+      <button class="menu-profile-btn" id="btn-menu-profile-avatar">
+        <img id="menu-profile-photo" class="menu-profile-photo" src="" alt="" referrerpolicy="no-referrer">
+        <span id="menu-profile-initial" class="menu-profile-initial"></span>
+      </button>
+      <div id="menu-profile-dropdown" class="menu-profile-dropdown hidden">
+        <span id="menu-profile-name" class="menu-profile-name"></span>
+        <button id="btn-google-signout" class="menu-profile-signout" data-i18n="signOut">× SIGN OUT</button>
+      </div>
+    </div>
+    </div><!-- .menu-top-left -->
+
     <button id="btn-settings" class="settings-gear-btn" aria-label="Settings">
       <svg viewBox="0 0 24 24" fill="currentColor" width="22" height="22">
         <path d="M12 15.5A3.5 3.5 0 0 1 8.5 12 3.5 3.5 0 0 1 12 8.5a3.5 3.5 0 0 1 3.5 3.5 3.5 3.5 0 0 1-3.5 3.5m7.43-2.92c.04-.34.07-.69.07-1.08s-.03-.74-.07-1.08l2.32-1.82c.21-.17.27-.46.14-.7l-2.2-3.82c-.13-.24-.42-.31-.66-.22l-2.73 1.1c-.57-.44-1.18-.8-1.86-1.09l-.41-2.9A.54.54 0 0 0 14 2h-4a.54.54 0 0 0-.54.46l-.41 2.9c-.68.29-1.29.65-1.86 1.09l-2.73-1.1c-.24-.09-.53-.02-.66.22L1.6 9.49c-.13.24-.07.53.14.7l2.32 1.82C4.03 12.35 4 12.69 4 13s.03.65.07.99L1.74 15.8c-.21.17-.27.46-.14.7l2.2 3.82c.13.24.42.31.66.22l2.73-1.1c.57.44 1.18.8 1.86 1.09l.41 2.9c.06.28.28.46.54.46h4c.26 0 .48-.18.54-.46l.41-2.9c.68-.29 1.29-.65 1.86-1.09l2.73 1.1c.24.09.53.02.66-.22l2.2-3.82c.13-.24.07-.53-.14-.7l-2.32-1.81z"/>
@@ -172,20 +187,15 @@
       <div class="menu-subtitle" data-i18n="subtitle">AERIAL MATH COMBAT</div>
       <div id="menu-rank-badge" class="menu-rank-badge"></div>
 
-      <!-- GOOGLE PROFILE -->
-      <div id="menu-profile" class="menu-profile hidden">
-        <img id="menu-profile-photo" class="menu-profile-photo" src="" alt="" referrerpolicy="no-referrer">
-        <div class="menu-profile-info">
-          <span id="menu-profile-name" class="menu-profile-name"></span>
-          <button id="btn-google-signout" class="menu-profile-signout">× SIGN OUT</button>
-        </div>
-      </div>
+      <div id="menu-offline-banner" class="menu-offline-banner hidden">⚠ Not connected — progress will not be saved</div>
 
       <button id="btn-play" class="btn btn-primary" data-i18n="play">▶ PLAY</button>
       <button id="btn-hangar" class="btn btn-secondary" data-i18n="hangar">✈ HANGAR</button>
       <button id="btn-shop" class="btn btn-secondary" data-i18n="shop">◆ SHOP</button>
       <button id="btn-practice" class="btn btn-secondary" data-i18n="practice">⚡ PRACTICE</button>
       <button id="btn-missions" class="btn btn-secondary btn-missions-menu">≡ MISSIONS</button>
+      <button id="btn-prestige" class="btn btn-prestige hidden">⚡ PRESTIGE</button>
+      <div id="menu-prestige-badge" class="menu-prestige-badge"></div>
 
       <div class="login-divider"><span>— SIGN IN —</span></div>
 
@@ -199,12 +209,11 @@
         <span class="login-btn-text" data-i18n="signInGoogle">SIGN IN WITH GOOGLE</span>
       </button>
 
-      <button class="login-btn login-apple" id="btn-login-apple" aria-label="Sign in with Apple">
-        <svg class="login-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="currentColor">
-          <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.7 9.05 7.42c1.29.07 2.18.77 2.93.8.98-.2 1.94-.92 3.21-.99 1.37-.08 2.6.52 3.33 1.4-3.02 1.83-2.5 5.85.41 7.08-.51 1.46-1.2 2.91-1.88 3.57zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
-        </svg>
-        <span class="login-btn-text" data-i18n="signInApple">SIGN IN WITH APPLE</span>
-      </button>
+      <div class="login-auth-row" id="login-auth-row">
+        <button class="login-auth-btn login-auth-signup" id="btn-signup" data-i18n="signUp">✦ SIGN UP</button>
+        <button class="login-auth-btn login-auth-login"  id="btn-login" data-i18n="logIn">▶ LOG IN</button>
+      </div>
+
     </div>
   </div>
 
@@ -225,7 +234,9 @@
     <div id="game-hud">
       <div id="hud-lives"></div>
       <div id="hud-level">Level 1</div>
+      <div id="hud-prestige" class="hud-prestige-slot"></div>
       <div id="hud-streak"></div>
+      <div id="hud-godmode" class="hud-godmode hidden">∞ INFINITE LIVES</div>
       <button id="btn-quit-game" class="btn-quit-game" data-i18n="quit">&#x2715; QUIT</button>
     </div>
     <div id="timer-bar-wrap"><div id="timer-bar"></div></div>
@@ -260,6 +271,7 @@
     <div id="result-title">MISSION COMPLETE</div>
     <div id="result-stars"></div>
     <div id="result-xp"></div>
+    <div id="result-coins" class="result-coins"></div>
     <div id="result-correct"></div>
     <div id="result-star-detail" class="result-star-detail"></div>
     <div id="result-promo-banner" class="result-promo-banner hidden"></div>
@@ -605,6 +617,63 @@
         <button id="btn-feedback-skip" class="feedback-skip-btn" data-i18n="feedbackSkip">SKIP</button>
       </div>
       <div id="feedback-thanks" class="feedback-thanks hidden"></div>
+    </div>
+  </div>
+
+  <!-- LOGIN MODAL -->
+  <div id="login-modal" class="sett-backdrop hidden">
+    <div class="login-modal-panel">
+      <div class="login-modal-header">
+        <span class="login-modal-title" data-i18n="loginTitle">LOG IN</span>
+        <button id="btn-login-modal-close" class="sett-close">✕</button>
+      </div>
+      <input id="login-modal-email"    type="email"    class="reg-input" placeholder="EMAIL ADDRESS" autocomplete="email">
+      <input id="login-modal-password" type="password" class="reg-input" placeholder="PASSWORD" autocomplete="current-password">
+      <div id="login-modal-error" class="login-modal-error"></div>
+      <button id="btn-login-modal-submit" class="btn btn-primary" style="margin-top:4px">▶ LOG IN</button>
+    </div>
+  </div>
+
+  <!-- RESET CONFIRM MODAL -->
+  <div id="reset-modal" class="sett-backdrop hidden">
+    <div class="reset-modal-panel">
+      <div class="reset-modal-title">⚠ RESET GAME</div>
+      <div class="reset-modal-body">This will erase ALL progress.<br>Levels · XP · Coins · Stars</div>
+      <div class="reset-modal-actions">
+        <button id="btn-reset-confirm" class="btn btn-danger">RESET EVERYTHING</button>
+        <button id="btn-reset-cancel" class="btn btn-secondary">CANCEL</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- PRESTIGE CONFIRM MODAL -->
+  <div id="prestige-modal" class="sett-backdrop hidden">
+    <div class="prestige-modal-panel">
+      <div class="prestige-modal-title">⚡ PRESTIGE</div>
+      <img id="prestige-modal-img" class="prestige-modal-img hidden" src="" alt="">
+      <div id="prestige-modal-tier" class="prestige-modal-tier"></div>
+      <div id="prestige-modal-reward" class="prestige-modal-reward"></div>
+      <div class="prestige-modal-list">
+        <div class="prestige-modal-keep">✓ Aircraft · Skins · Prestige Rewards</div>
+        <div class="prestige-modal-reset">✗ Level · XP · Coins</div>
+      </div>
+      <div class="prestige-modal-actions">
+        <button id="btn-prestige-confirm" class="btn btn-primary">⚡ PRESTIGE NOW</button>
+        <button id="btn-prestige-cancel" class="btn btn-secondary">CANCEL</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- PRESTIGE CELEBRATION -->
+  <div id="prestige-celebration" class="prestige-celebration hidden">
+    <canvas id="prestige-canvas" class="prestige-canvas"></canvas>
+    <div id="prestige-cel-number" class="prestige-cel-number"></div>
+    <div class="prestige-cel-content">
+      <div class="prestige-cel-flash">⚡ PRESTIGE!</div>
+      <img id="prestige-cel-img" class="prestige-cel-img hidden" src="" alt="">
+      <div id="prestige-cel-tier" class="prestige-cel-tier"></div>
+      <div id="prestige-cel-reward" class="prestige-cel-reward"></div>
+      <div class="prestige-cel-hint">TAP TO CONTINUE</div>
     </div>
   </div>
 

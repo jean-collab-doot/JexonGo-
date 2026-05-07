@@ -7,6 +7,7 @@ import { spawnExplosion, spawnHitSpark, updateParticles, drawParticles } from '.
 import { drawAircraftSprite, drawEnemySprite, getPlayerSize } from '../game/aircraft-draw.js';
 import { AIRCRAFT } from '../data/aircraft.js';
 import { SKINS } from '../data/skins.js';
+import { getPrestigeBadgeHTML } from '../data/prestige.js';
 import { getLevel } from '../data/levels.js';
 import { SFX } from '../audio/sound.js';
 import { preloadBiome } from '../game/sprites.js';
@@ -14,6 +15,7 @@ import { initBackground, updateBackground, drawBackground } from '../game/backgr
 import { trackMission } from '../systems/daily.js';
 import { getPilotGrade } from '../data/pilots.js';
 import { applyAgeModifiers } from '../systems/age-modifiers.js';
+import { calcSpeedXP } from '../systems/xp.js';
 import { save } from '../utils/storage.js';
 import { t } from '../i18n.js';
 
@@ -64,6 +66,8 @@ let _revealTimer  = null;
 let _skipHandler  = null;
 let _transitioning = false;
 let _shipFrame  = 0;   // player ship animation (0–4, cycled every tick)
+let _godMode    = false;
+const _gameCT   = new Map(); // cheat key timestamps
 
 // ── INPUT ───────────────────────────────────────────────────────────────────
 const keys = {
@@ -83,13 +87,43 @@ const LERP         = 0.12;
 const JS_RADIUS    = 72;     // max joystick drag radius (px on screen)
 
 function normaliseKey(k) { return k.length === 1 ? k.toLowerCase() : k; }
+
+function _gameCheatHeld(keys) {
+  const now = Date.now();
+  return keys.every(k => _gameCT.has(k) && now - _gameCT.get(k) < 600);
+}
 function onKeyDown(e) {
   const k = normaliseKey(e.key);
   if (k in keys) { keys[k] = true; pointerTarget = null; e.preventDefault(); }
+  _gameCT.set(k, Date.now());
+  if (_gameCheatHeld(['y', 'u']))             _toggleGodMode();
+  if (_gameCheatHeld(['q', 'w', 'e']))        _killBoss();
+  if (_gameCheatHeld(['r', 'm', 'h', 'u']))   _winLevel();
 }
 function onKeyUp(e) {
   const k = normaliseKey(e.key);
   if (k in keys) keys[k] = false;
+}
+function _toggleGodMode() {
+  _gameCT.delete('y'); _gameCT.delete('u');
+  _godMode = !_godMode;
+  const badge = document.getElementById('hud-godmode');
+  if (badge) badge.classList.toggle('hidden', !_godMode);
+}
+function _winLevel() {
+  _gameCT.delete('r'); _gameCT.delete('m'); _gameCT.delete('h'); _gameCT.delete('u');
+  endLevel(true);
+}
+function _killBoss() {
+  _gameCT.delete('q'); _gameCT.delete('w'); _gameCT.delete('e');
+  const boss = G.enemies.find(e => e.type === 'boss' && e.active);
+  if (!boss) return;
+  spawnExplosion(G.particles, boss.x, boss.y, boss.color || '#fbbf24', 40);
+  SFX.explode();
+  boss.active = false;
+  G.enemies = G.enemies.filter(e => e.active);
+  shakeFrames = 20;
+  if (levelCfg.isBossLevel) setTimeout(() => endLevel(true), 800);
 }
 
 function canvasPointer(e) {
@@ -255,6 +289,16 @@ function frame() {
   }
   G.enemies = G.enemies.filter(e => e.type === 'boss' || e.y < canvas.height + 80);
 
+  // Level-based missile guidance strength and homing probability
+  const _guideF = G.currentLevel >= 50 ? 0.10
+                : G.currentLevel >= 26 ? 0.06
+                : G.currentLevel >= 11 ? 0.03
+                : 0.015;
+  const _homingChance = G.currentLevel >= 50 ? 0.70
+                      : G.currentLevel >= 26 ? 0.55
+                      : G.currentLevel >= 11 ? 0.35
+                      : 0.20;
+
   // ── Enemies ────────────────────────────────────────────────────────────
   updateEnemies(G.enemies, canvas.width);
   for (const e of G.enemies) {
@@ -284,12 +328,42 @@ function frame() {
           e.bossPauseTimer = e._pauseFrames ?? 300;
         }
       }
+
+      // ── Boss movement ──────────────────────────────────────────────────
+      e._moveTimer--;
+      if (e._moveTimer <= 0) {
+        const m     = canvas.width * (1 - e._xRange) / 2;
+        const randX = m + Math.random() * (canvas.width - m * 2);
+        // Higher milestones blend target toward player X (more threatening)
+        e._targetX  = randX + (G.player.x - randX) * (e._trackX ?? 0);
+        const yLo   = canvas.height * (e._yMinF ?? 0.08);
+        const yHi   = canvas.height * (e._yMaxF ?? 0.28);
+        e._targetY  = yLo + Math.random() * (yHi - yLo);
+        e._moveTimer = (e._moveInterval ?? 110) + Math.floor(Math.random() * 20) - 10;
+      }
+      // Velocity + damping — gradual acceleration and natural deceleration
+      const spd = e._moveSpeed ?? 0.010;
+      e._vx = (e._vx ?? 0) * 0.90 + (e._targetX - e.x) * spd;
+      e._vy = (e._vy ?? 0) * 0.90 + (e._targetY - e.y) * spd;
+      e.x += e._vx;
+      e.y += e._vy;
+      // Hard constraint: boss always stays in front of (above) the player
+      const frontY = G.player.y - 110;
+      if (e.y > frontY) {
+        e.y = frontY;
+        if (e._targetY > frontY) e._targetY = frontY * 0.8;
+      }
+      e.x = Math.max(44, Math.min(canvas.width - 44, e.x));
+
     } else {
       e.fireCooldown--;
       const inFireZone = e.y > canvas.height * 0.25 && e.y < canvas.height * 0.78 && e.y < G.player.y;
       if (e.fireCooldown <= 0 && inFireZone && !_stealthActive) {
         e.fireCooldown = e.fireRate;
-        { const em = createMissile(e.x, e.y, G.player.x, G.player.y, 2.5, null, '#ef4444'); em.guideTick = 180; G.enemyMissiles.push(em); }
+        const _homing = Math.random() < _homingChance;
+        const em = createMissile(e.x, e.y, G.player.x, G.player.y, 2.5, null, _homing ? '#f97316' : '#ef4444');
+        if (_homing) em.guideTick = 180;
+        G.enemyMissiles.push(em);
         SFX.missile();
       } else if (e.fireCooldown <= 0) {
         e.fireCooldown = e.fireRate;
@@ -331,10 +405,6 @@ function frame() {
   drawMissiles(ctx, G.missiles, false);
 
   // ── Enemy missiles (with level-based guidance) ─────────────────────────
-  const _guideF = G.currentLevel >= 50 ? 0.10
-                : G.currentLevel >= 26 ? 0.06
-                : G.currentLevel >= 11 ? 0.03
-                : 0.015;
   for (let i = G.enemyMissiles.length - 1; i >= 0; i--) {
     const m  = G.enemyMissiles[i];
     const dx = m.x - G.player.x, dy = m.y - G.player.y;
@@ -395,13 +465,15 @@ function frame() {
       ? 0.28 + 0.12 * Math.sin(tick * 0.18)  // slow ghost pulse
       : 1.0;
 
-  const activeSkinData = SKINS.find(s => s.id === G.activeSkin);
-  const skinFilter  = activeSkinData?.filter || '';
-  const skinAircraft = activeSkinData?.aircraft ?? G.activeAircraft;
+  const activeSkinData   = SKINS.find(s => s.id === G.activeSkin);    // shop image skin
+  const activeLiveryData = SKINS.find(s => s.id === G.activeLivery);  // hangar livery
+  const skinFilter    = activeLiveryData?.filter || '';
+  const skinAircraft  = (activeSkinData ?? activeLiveryData)?.aircraft ?? G.activeAircraft;
 
-  if (activeSkinData?.offerImg) {
+  const _inGameImg = activeSkinData?.skinImg || activeSkinData?.offerImg;
+  if (_inGameImg) {
     // Draw the skin artwork image directly as the player plane
-    const cached = _skinImgCache[activeSkinData.offerImg];
+    const cached = _skinImgCache[_inGameImg];
     if (cached?.complete) {
       const sz = getPlayerSize();
       ctx.save();
@@ -552,6 +624,10 @@ function applyNuke() {
 function onEnemyMissileHit() {
   if (G.lives <= 0 || _invincible > 0) return;
   G.missileHitsReceived = (G.missileHitsReceived || 0) + 1;
+  if (!G.practiceMode && G.currentLevel <= 30) {
+    G.sr71MissileHits = (G.sr71MissileHits || 0) + 1;
+    save('sr71MissileHits', G.sr71MissileHits);
+  }
   spawnExplosion(G.particles, G.player.x, G.player.y, '#ef4444', 14);
   SFX.explode();
   shakeFrames = 14;
@@ -585,8 +661,7 @@ function nextQuestion() {
 
   // Remove any pending skip listener
   if (_skipHandler) {
-    document.removeEventListener('touchstart', _skipHandler, true);
-    document.removeEventListener('click',      _skipHandler, true);
+    document.removeEventListener('pointerdown', _skipHandler, true);
     _skipHandler = null;
   }
   clearTimeout(_revealTimer);
@@ -692,6 +767,7 @@ function handleAnswer(choice, btn) {
     SFX.correct();
     G.correctAnswers++;
     G.questionsAnswered++;
+    G.sessionXP += calcSpeedXP(G.timeLeft, _timerTotal);
     G.streak++;
     updateStreakHUD();
     if (G.streak === 3 || G.streak === 5) SFX.streak();
@@ -733,26 +809,27 @@ function handleAnswer(choice, btn) {
       }
     }
 
-    const baseSpeed = aircraft.ability === 'fastMissile' ? 13 : 8;
-    const speed     = baseSpeed * (aircraft.missileSpdMult ?? 1);
-    const damage    = aircraft.ability === 'doubleDamage' ? 2
-                    : aircraft.ability === 'heavyMissile' ? 1.4
-                    : aircraft.ability === 'tripleShot'  ? 1.25
-                    : 1;
-    const target   = nearestEnemy();
+    const baseSpeed    = aircraft.ability === 'fastMissile' ? 13 : 8;
+    const speed        = baseSpeed * (aircraft.missileSpdMult ?? 1);
+    const damage       = aircraft.ability === 'doubleDamage' ? 2
+                       : aircraft.ability === 'heavyMissile' ? 1.4
+                       : aircraft.ability === 'tripleShot'  ? 1.25
+                       : 1;
+    const missileColor = G.prestige >= 3 ? '#a855f7' : '#00d4ff';
+    const target       = nearestEnemy();
     if (target) {
       if (aircraft.ability === 'multiShot' || aircraft.ability === 'multiStealth') {
         nearestEnemies(2).forEach((t, i) => {
-          G.missiles.push(createMissile(G.player.x, G.player.y, t.x, t.y, speed, t.id, '#00d4ff', damage));
+          G.missiles.push(createMissile(G.player.x, G.player.y, t.x, t.y, speed, t.id, missileColor, damage));
           setTimeout(() => SFX.missile(), i * 60);
         });
       } else if (aircraft.ability === 'tripleShot') {
         nearestEnemies(3).forEach((t, i) => {
-          G.missiles.push(createMissile(G.player.x, G.player.y, t.x, t.y, speed, t.id, '#00d4ff', damage));
+          G.missiles.push(createMissile(G.player.x, G.player.y, t.x, t.y, speed, t.id, missileColor, damage));
           setTimeout(() => SFX.missile(), i * 60);
         });
       } else {
-        G.missiles.push(createMissile(G.player.x, G.player.y, target.x, target.y, speed, target.id, '#00d4ff', damage));
+        G.missiles.push(createMissile(G.player.x, G.player.y, target.x, target.y, speed, target.id, missileColor, damage));
         SFX.missile();
       }
     }
@@ -762,6 +839,13 @@ function handleAnswer(choice, btn) {
     G.streak = 0;
     updateStreakHUD();
     revealCorrectAnswer();
+    // Wrong answer breaks the SR-71 run — reset all cube progress
+    if (!G.practiceMode && G.currentLevel <= 30) {
+      G.sr71WrongAnswers = (G.sr71WrongAnswers || 0) + 1;
+      G.sr71CleanLevels  = [];
+      save('sr71WrongAnswers', G.sr71WrongAnswers);
+      save('sr71CleanLevels',  []);
+    }
   }
 
   const sid = _sessionId;
@@ -777,12 +861,8 @@ function handleAnswer(choice, btn) {
   }, delay);
 
   if (!correct) {
-    let _touchPending = false;
-    _skipHandler = (ev) => {
-      if (ev.type === 'touchstart') { _touchPending = true; }
-      else if (ev.type === 'click' && _touchPending) { _touchPending = false; return; }
-      document.removeEventListener('touchstart', _skipHandler, true);
-      document.removeEventListener('click',      _skipHandler, true);
+    _skipHandler = () => {
+      document.removeEventListener('pointerdown', _skipHandler, true);
       _skipHandler = null;
       clearTimeout(_revealTimer);
       _revealTimer = null;
@@ -790,24 +870,20 @@ function handleAnswer(choice, btn) {
       loseLife();
     };
     setTimeout(() => {
-      if (_skipHandler) {
-        document.addEventListener('touchstart', _skipHandler, true);
-        document.addEventListener('click',      _skipHandler, true);
-      }
-    }, 700);
+      if (_skipHandler) document.addEventListener('pointerdown', _skipHandler, true);
+    }, 50);
   }
 }
 
 function buildExplanation(q) {
   const { a, b, op, answer } = q;
-  const sym = op === '*' ? '×' : op === '/' ? '÷' : op;
-  switch (op) {
-    case '+': return `Start at ${a}, then add ${b}  →  ${a} + ${b} = ${answer}`;
-    case '-': return `Start at ${a}, then subtract ${b}  →  ${a} − ${b} = ${answer}`;
-    case '*': return `${a} groups of ${b}  →  ${a} × ${b} = ${answer}`;
-    case '/': return `How many ${b}s fit in ${a}?  →  ${a} ÷ ${b} = ${answer}`;
-    default:  return `${a} ${sym} ${b} = ${answer}`;
+  const keyMap = { '+': 'explainAdd', '-': 'explainSub', '*': 'explainMul', '/': 'explainDiv' };
+  const key = keyMap[op];
+  if (!key) {
+    const sym = op === '*' ? '×' : op === '/' ? '÷' : op;
+    return `${a} ${sym} ${b} = ${answer}`;
   }
+  return t(key).replace(/\{(\w+)\}/g, (_, k) => ({ a, b, answer })[k] ?? k);
 }
 
 function revealCorrectAnswer() {
@@ -857,11 +933,33 @@ function handleTimeout() {
   document.querySelectorAll('.answer-btn').forEach(b => { b.classList.add('wrong'); b.disabled = true; });
   revealCorrectAnswer();
   const sid = _sessionId;
-  setTimeout(() => { if (_sessionId === sid) loseLife(); }, 10000);
+  _revealTimer = setTimeout(() => { if (_sessionId === sid) loseLife(); }, 10000);
+  _skipHandler = () => {
+    document.removeEventListener('pointerdown', _skipHandler, true);
+    _skipHandler = null;
+    clearTimeout(_revealTimer);
+    _revealTimer = null;
+    if (_sessionId !== sid) return;
+    loseLife();
+  };
+  setTimeout(() => {
+    if (_skipHandler) document.addEventListener('pointerdown', _skipHandler, true);
+  }, 50);
 }
 
 // ── LIVES ────────────────────────────────────────────────────────────────────
 function loseLife() {
+  if (_godMode) {
+    shakeFrames = 8;
+    _invincible = 120;
+    const sid = _sessionId;
+    setTimeout(() => {
+      if (_sessionId !== sid) return;
+      if (levelCfg.isBossLevel || G.questionsAnswered < levelCfg.questionCount) nextQuestion();
+      else endLevel(true);
+    }, 900);
+    return;
+  }
   // Practice without hearts — just shake, next question
   if (G.practiceMode && !G.practiceHearts) {
     shakeFrames = 8;
@@ -888,8 +986,6 @@ function loseLife() {
     return;
   }
   _invincible = 120;
-  // On boss levels keep the boss alive; on normal levels clear all enemies
-  G.enemies   = levelCfg.isBossLevel ? G.enemies.filter(e => e.type === 'boss') : [];
   spawnTimer  = spawnRate;
   setTimeout(() => {
     if (_sessionId !== sid) return;
@@ -968,6 +1064,10 @@ export function initGame(levelNum, onComplete) {
   _nukeAnim    = 0;
   _nukeApplied = false;
   _nukeAnswers = 0;
+  _godMode     = false;
+  _gameCT.clear();
+  const godBadge = document.getElementById('hud-godmode');
+  if (godBadge) godBadge.classList.add('hidden');
   shakeFrames = 0;
   tick        = 0;
   _shipFrame  = 0;
@@ -977,6 +1077,15 @@ export function initGame(levelNum, onComplete) {
   G.continueState = null;
   resetLevel();
   G.currentLevel = levelNum;
+  // Reset SR-71 run tracker when starting level 1 (non-practice)
+  if (levelNum === 1 && !G.practiceMode) {
+    G.sr71WrongAnswers = 0;
+    G.sr71MissileHits  = 0;
+    G.sr71CleanLevels  = [];
+    save('sr71WrongAnswers', 0);
+    save('sr71MissileHits',  0);
+    save('sr71CleanLevels',  []);
+  }
   levelCfg       = applyAgeModifiers(getLevel(levelNum), G.playerAge);
   const aircraft = AIRCRAFT[G.activeAircraft] || AIRCRAFT.t6;
   if (!snap && aircraft.lives) G.lives = aircraft.lives;
@@ -999,6 +1108,8 @@ export function initGame(levelNum, onComplete) {
 
   $('hud-level').textContent = G.practiceMode ? t('practice_label')
     : levelCfg.isBossLevel ? `${t('bossLevel')}${levelNum}` : `${t('level')} ${levelNum}`;
+  const _hudPrestige = document.getElementById('hud-prestige');
+  if (_hudPrestige) _hudPrestige.innerHTML = getPrestigeBadgeHTML(G.prestige);
 
   if (G.practiceMode && !G.practiceHearts) {
     $('hud-lives').innerHTML = '<span style="opacity:0.3">∞</span>';
@@ -1065,10 +1176,11 @@ export function initGame(levelNum, onComplete) {
 
       // Pre-load skin artwork if needed
       const _skinData = SKINS.find(s => s.id === G.activeSkin);
-      if (_skinData?.offerImg && !_skinImgCache[_skinData.offerImg]) {
+      const _skinSrc  = _skinData?.skinImg || _skinData?.offerImg;
+      if (_skinSrc && !_skinImgCache[_skinSrc]) {
         const _img = new Image();
-        _img.src = _skinData.offerImg;
-        _skinImgCache[_skinData.offerImg] = _img;
+        _img.src = _skinSrc;
+        _skinImgCache[_skinSrc] = _img;
       }
 
       // Boss level: spawn one static boss centred near top, infinite questions
@@ -1105,6 +1217,29 @@ export function initGame(levelNum, onComplete) {
         boss._burstInterval = theme.burstI;
         boss._missileSpd   = theme.missileSpd;
         boss._missileColor = theme.missileColor;
+
+        // Per-milestone movement profile
+        // Higher milestones = faster, wider range, more player tracking
+        const BOSS_MOVES = [
+          null,
+          { speed: 0.005, interval: 240, xRange: 0.60, yMinF: 0.08, yMaxF: 0.25, trackX: 0.00 }, // lv10
+          { speed: 0.007, interval: 210, xRange: 0.68, yMinF: 0.07, yMaxF: 0.28, trackX: 0.12 }, // lv20
+          { speed: 0.009, interval: 185, xRange: 0.75, yMinF: 0.06, yMaxF: 0.30, trackX: 0.22 }, // lv30
+          { speed: 0.012, interval: 160, xRange: 0.82, yMinF: 0.05, yMaxF: 0.32, trackX: 0.33 }, // lv40
+          { speed: 0.015, interval: 135, xRange: 0.86, yMinF: 0.05, yMaxF: 0.34, trackX: 0.42 }, // lv50
+        ];
+        const bm           = BOSS_MOVES[milestone] ?? BOSS_MOVES[1];
+        boss._moveSpeed    = bm.speed;
+        boss._moveInterval = bm.interval;
+        boss._xRange       = bm.xRange;
+        boss._yMinF        = bm.yMinF;
+        boss._yMaxF        = bm.yMaxF;
+        boss._trackX       = bm.trackX;
+        boss._targetX      = boss.x;
+        boss._targetY      = boss.y;
+        boss._moveTimer    = bm.interval;
+        boss._vx           = 0;
+        boss._vy           = 0;
 
         G.enemies.push(boss);
         // Companions spawn via normal timer — set maxEnemies to companion count

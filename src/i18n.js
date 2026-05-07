@@ -12,6 +12,14 @@ const STRINGS = {
     signIn:          '— SIGN IN —',
     signInGoogle:    'SIGN IN WITH GOOGLE',
     signInApple:     'SIGN IN WITH APPLE',
+    signOut:         '× SIGN OUT',
+    signUp:          '✦ SIGN UP',
+    logIn:           '▶ LOG IN',
+    loginTitle:      'LOG IN',
+    loginErrEmail:   'ENTER A VALID EMAIL',
+    loginErrPw:      'ENTER YOUR PASSWORD',
+    loginErrNone:    'NO ACCOUNT — SIGN UP FIRST',
+    loginErrWrong:   'WRONG EMAIL OR PASSWORD',
 
     // Briefing
     briefingTitle:   'MISSION BRIEFING',
@@ -36,6 +44,10 @@ const STRINGS = {
     loading:         'LOADING...',
     wrongReveal:     '✗ Wrong — let\'s see how to solve it',
     answerReveal:    '✓ Answer:',
+    explainAdd:      'Start at {a}, then add {b}  →  {a} + {b} = {answer}',
+    explainSub:      'Start at {a}, then subtract {b}  →  {a} − {b} = {answer}',
+    explainMul:      '{a} groups of {b}  →  {a} × {b} = {answer}',
+    explainDiv:      'How many {b}s fit in {a}?  →  {a} ÷ {b} = {answer}',
     quit:            '✕ QUIT',
 
     // Result screen
@@ -216,6 +228,14 @@ const STRINGS = {
     signIn:          '— CONNEXION —',
     signInGoogle:    'SE CONNECTER AVEC GOOGLE',
     signInApple:     'SE CONNECTER AVEC APPLE',
+    signOut:         '× DÉCONNEXION',
+    signUp:          '✦ S\'INSCRIRE',
+    logIn:           '▶ SE CONNECTER',
+    loginTitle:      'CONNEXION',
+    loginErrEmail:   'EMAIL INVALIDE',
+    loginErrPw:      'MOT DE PASSE REQUIS',
+    loginErrNone:    'AUCUN COMPTE — INSCRIVEZ-VOUS D\'ABORD',
+    loginErrWrong:   'EMAIL OU MOT DE PASSE INCORRECT',
 
     // Briefing
     briefingTitle:   'BRIEFING DE MISSION',
@@ -240,6 +260,10 @@ const STRINGS = {
     loading:         'CHARGEMENT...',
     wrongReveal:     '✗ Faux — voyons comment résoudre',
     answerReveal:    '✓ Réponse :',
+    explainAdd:      'Part de {a}, ajoute {b}  →  {a} + {b} = {answer}',
+    explainSub:      'Part de {a}, soustrait {b}  →  {a} − {b} = {answer}',
+    explainMul:      '{a} groupes de {b}  →  {a} × {b} = {answer}',
+    explainDiv:      'Combien de {b} dans {a} ?  →  {a} ÷ {b} = {answer}',
     quit:            '✕ QUITTER',
 
     // Result screen

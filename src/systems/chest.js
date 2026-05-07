@@ -19,14 +19,25 @@ export const RARITIES = [
 ];
 
 // ── ROULETTE SLOT DEFINITIONS ─────────────────────────────────────────────────
-// weight = out of 100 total
 export const ROULETTE_SLOTS = [
-  { id: 'common',    label: 'COMMON PART',    icon: '■', color: '#94a3b8', weight: 40, rewardType: 'blueprint', rarityIdx: 0 },
-  { id: 'rare',      label: 'RARE PART',      icon: '◈', color: '#60a5fa', weight: 25, rewardType: 'blueprint', rarityIdx: 1 },
-  { id: 'epic',      label: 'EPIC PART',      icon: '✦', color: '#a855f7', weight: 15, rewardType: 'blueprint', rarityIdx: 2 },
-  { id: 'legendary', label: 'LEGENDARY PART', icon: '◆', color: '#fbbf24', weight: 10, rewardType: 'blueprint', rarityIdx: 3 },
-  { id: 'xp200',     label: 'BONUS XP',       icon: '⚡', color: '#00e84b', weight: 7,  rewardType: 'xp', xpAmount: 200 },
-  { id: 'xp500',     label: 'MEGA XP',        icon: '★', color: '#fff700', weight: 3,  rewardType: 'xp', xpAmount: 500 },
+  { id: 'common',     label: 'COMMON PART',    icon: '■', color: '#94a3b8', rewardType: 'blueprint', rarityIdx: 0 },
+  { id: 'rare',       label: 'RARE PART',      icon: '◈', color: '#60a5fa', rewardType: 'blueprint', rarityIdx: 1 },
+  { id: 'epic',       label: 'EPIC PART',      icon: '✦', color: '#a855f7', rewardType: 'blueprint', rarityIdx: 2 },
+  { id: 'legendary',  label: 'LEGENDARY PART', icon: '◆', color: '#fbbf24', rewardType: 'blueprint', rarityIdx: 3 },
+  { id: 'xp200',      label: 'BONUS XP',       icon: '⚡', color: '#00e84b', rewardType: 'xp',        xpAmount: 200 },
+  { id: 'xp500',      label: 'MEGA XP',        icon: '★', color: '#fff700', rewardType: 'xp',        xpAmount: 500 },
+  { id: 'coins',      label: 'COINS',          icon: '◎', color: '#fbbf24', rewardType: 'coins' },
+  { id: 'coins-big',  label: 'BIG COINS',      icon: '◎', color: '#ff8c00', rewardType: 'coins',     big: true },
+];
+
+// Weights per tier — index matches ROULETTE_SLOTS order above
+// [common, rare, epic, legendary, xp200, xp500, coins, coins-big]  must sum to 100
+export const SLOT_WEIGHTS_BY_TIER = [
+  [ 50, 28, 10,  2,  5,  0,  4,  1 ],  // 0 Bronze    — mostly common
+  [ 30, 35, 18,  4,  6,  1,  5,  1 ],  // 1 Silver    — common/rare mix
+  [ 12, 28, 32, 12,  6,  3,  5,  2 ],  // 2 Gold      — rare/epic mix
+  [  5, 15, 38, 28,  5,  4,  4,  1 ],  // 3 Platinum  — epic/legendary mix
+  [  0,  8, 30, 48,  5,  5,  3,  1 ],  // 4 Legendary — mostly legendary
 ];
 
 // Blueprint pieces needed to auto-unlock each aircraft via blueprints
@@ -51,17 +62,34 @@ function rand(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
-function rollRouletteSlot() {
+function rollRouletteSlot(tierIdx) {
+  const weights = SLOT_WEIGHTS_BY_TIER[tierIdx] ?? SLOT_WEIGHTS_BY_TIER[0];
   const roll = Math.random() * 100;
   let acc = 0;
-  for (const slot of ROULETTE_SLOTS) {
-    acc += slot.weight;
-    if (roll < acc) return slot;
+  for (let i = 0; i < ROULETTE_SLOTS.length; i++) {
+    acc += weights[i];
+    if (roll < acc) return ROULETTE_SLOTS[i];
   }
   return ROULETTE_SLOTS[0];
 }
 
+// Coins per tier: Bronze→50, Silver→100, Gold→200, Platinum→350, Legendary→500
+const COINS_BY_TIER = [50, 100, 200, 350, 500];
+
 function buildRewardFromSlot(slot, tierIdx) {
+  if (slot.rewardType === 'coins') {
+    const base   = COINS_BY_TIER[tierIdx] ?? 50;
+    const amount = slot.big ? Math.round(base * 2.5) : base;
+    return {
+      type:   'coins',
+      rarity: slot.big ? 2 : 1,
+      amount,
+      icon:   '◎',
+      label:  slot.label,
+      slotId: slot.id,
+    };
+  }
+
   if (slot.rewardType === 'xp') {
     return {
       type: 'xp',
@@ -113,20 +141,23 @@ export function rollChest() {
   const tier      = CHEST_TIERS.find(t => t.level === milestone) || CHEST_TIERS[0];
   const t         = tier.idx;
 
-  const slot   = rollRouletteSlot();
+  const slot   = rollRouletteSlot(t);
   const reward = buildRewardFromSlot(slot, t);
 
   const hasEpic = reward.rarity >= 2;
   G.chestsWithoutEpic = hasEpic ? 0 : (G.chestsWithoutEpic || 0) + 1;
 
-  return { chestName: tier.name, chestColor: tier.color, chestImg: tier.img, reward, slot };
+  return { chestName: tier.name, chestColor: tier.color, chestImg: tier.img, reward, slot, tierIdx: t };
 }
 
 // ── APPLY REWARD TO STATE ─────────────────────────────────────────────────────
 export function applyReward(reward) {
   const newlyUnlocked = [];
 
-  if (reward.type === 'xp') {
+  if (reward.type === 'coins') {
+    G.coins = (G.coins || 0) + reward.amount;
+
+  } else if (reward.type === 'xp') {
     G.xp            = (G.xp            || 0) + reward.amount;
     G.totalXpEarned = (G.totalXpEarned || 0) + reward.amount;
 

@@ -39,14 +39,17 @@ const OFFER_IDS   = ['epic'];
 
 // ── SPRITE PREVIEW ────────────────────────────────────────────────────────────
 function makePreview(skin, size, offerMode = false) {
-  // Offer mode with a dedicated art image — display directly, no blending
-  if (offerMode && skin.offerImg) {
+  // Pick the right image: offerImg for the featured/offer card, skinImg for the skins grid
+  const imgSrc = offerMode ? skin.offerImg : (skin.skinImg || skin.offerImg);
+  if (imgSrc) {
     const img = document.createElement('img');
-    img.src = skin.offerImg;
+    img.src = imgSrc;
     img.className = 'sc-preview sc-offer-art';
     img.style.width  = size + 'px';
     img.style.height = size + 'px';
     img.style.objectFit = 'contain';
+    // Apply CSS filter for filter-based skins (e.g. SR-71 exclusive)
+    if (skin.filter && !skin.skinImg) img.style.filter = skin.filter;
     return img;
   }
 
@@ -70,31 +73,29 @@ function makePreview(skin, size, offerMode = false) {
 
 // ── PRICE BUTTON (skins grid) ─────────────────────────────────────────────────
 function makePriceBtn(skin, onBuy, onEquip) {
-  const owned       = G.ownedSkins.includes(skin.id);
-  const active      = G.activeSkin === skin.id;
-  const planeOwned  = G.unlockedAircraft.includes(skin.aircraft);
-  const btn         = document.createElement('button');
+  const owned      = G.ownedSkins.includes(skin.id);
+  const planeOwned = !skin.aircraft || G.unlockedAircraft.includes(skin.aircraft);
+  const btn        = document.createElement('button');
   btn.className = 'sc-price-btn';
 
-  if (active) {
-    btn.textContent      = t('equipped');
-    btn.classList.add('sc-btn-equipped');
-    btn.disabled         = true;
-  } else if (owned) {
-    btn.textContent      = t('equip').replace(' ▶', '');
-    btn.classList.add('sc-btn-equip');
-    btn.onclick          = () => onEquip(skin);
-  } else if (!planeOwned) {
-    const planeName = AIRCRAFT[skin.aircraft]?.name ?? skin.aircraft;
-    btn.textContent = `■ ${planeName}`;
-    btn.classList.add('sc-btn-locked');
-    btn.disabled    = true;
-    btn.title       = `Unlock ${planeName} first`;
-  } else {
-    btn.innerHTML        = `◎ <strong>${skin.price}</strong>`;
+  if (!owned) {
+    // Not bought yet — always show price, anyone can buy
+    btn.innerHTML        = `◎ <strong>${skin.price.toLocaleString()}</strong>`;
     btn.classList.add('sc-btn-buy');
     btn.style.background = RARITY_META[skin.rarity]?.color || '#f59e0b';
     btn.onclick          = () => onBuy(skin);
+  } else if (planeOwned) {
+    // Owned + plane available → can equip
+    btn.textContent = t('equip').replace(' ▶', '');
+    btn.classList.add('sc-btn-equip');
+    btn.onclick     = () => onEquip(skin);
+  } else {
+    // Owned but plane locked → can't equip yet
+    const planeName = AIRCRAFT[skin.aircraft]?.name ?? skin.aircraft;
+    btn.textContent = `■ Need ${planeName}`;
+    btn.classList.add('sc-btn-locked');
+    btn.disabled    = true;
+    btn.title       = `Unlock ${planeName} to equip`;
   }
   return btn;
 }
@@ -103,10 +104,9 @@ function makePriceBtn(skin, onBuy, onEquip) {
 function makeCard(skin, size = 'small', onBuy, onEquip, offerMode = false) {
   const meta  = RARITY_META[skin.rarity];
   const owned = G.ownedSkins.includes(skin.id);
-  const active = G.activeSkin === skin.id;
 
   const card = document.createElement('div');
-  card.className = `sc-card sc-card-${size}` + (active ? ' sc-card-active' : '');
+  card.className = `sc-card sc-card-${size}`;
   card.style.background = CARD_GRAD[skin.rarity] || CARD_GRAD.common;
 
   // Shine
@@ -151,12 +151,11 @@ function makeCard(skin, size = 'small', onBuy, onEquip, offerMode = false) {
 function makePixelCard(skin, size, onBuy, onEquip) {
   const meta   = RARITY_META[skin.rarity];
   const owned  = G.ownedSkins.includes(skin.id);
-  const active = G.activeSkin === skin.id;
   const disc   = OFFER_DISCOUNT[skin.rarity];
   const isFeat = size === 'featured';
 
   const card = document.createElement('div');
-  card.className = `sc-card-px sc-card-px-${size}` + (active ? ' sc-card-px-equipped' : '');
+  card.className = `sc-card-px sc-card-px-${size}`;
 
   // Decorative layers
   const shine    = document.createElement('div'); shine.className = 'sc-px-shine';
@@ -196,11 +195,7 @@ function makePixelCard(skin, size, onBuy, onEquip) {
   const btn = document.createElement('button');
   btn.className = 'sc-px-price-btn';
 
-  if (active) {
-    btn.textContent = t('equipped');
-    btn.classList.add('sc-px-equipped');
-    btn.onclick = () => { G.activeSkin = null; save('activeSkin', null); redrawContent(); };
-  } else if (owned) {
+  if (owned) {
     btn.textContent = t('equip');
     btn.classList.add('sc-px-equip');
     btn.onclick = () => onEquip(skin);
@@ -222,13 +217,6 @@ function makePixelCard(skin, size, onBuy, onEquip) {
 function makeHandlers() {
   function onBuy(skin) {
     const errEl = $('shop-error');
-    if (!G.unlockedAircraft.includes(skin.aircraft)) {
-      const planeName = AIRCRAFT[skin.aircraft]?.name ?? skin.aircraft;
-      errEl.textContent = `■ Unlock ${planeName} first`;
-      errEl.classList.remove('shop-err-anim');
-      requestAnimationFrame(() => errEl.classList.add('shop-err-anim'));
-      return;
-    }
     if (G.coins < skin.price) {
       errEl.textContent = `${t('needMoreCoins')} ${(skin.price - G.coins).toLocaleString()} ${t('moreCoins')}`;
       errEl.classList.remove('shop-err-anim');
@@ -252,8 +240,10 @@ function makeHandlers() {
   }
 
   function onEquip(skin) {
-    G.activeSkin = skin.id;
-    save('activeSkin', G.activeSkin);
+    G.activeSkin   = skin.id;
+    G.activeLivery = skin.id;
+    save('activeSkin',   G.activeSkin);
+    save('activeLivery', G.activeLivery);
     updateCoinDisplay();
     redrawContent();
   }
@@ -282,7 +272,83 @@ function renderOffers(content, handlers) {
   offerSkins.forEach(skin => grid.appendChild(makePixelCard(skin, 'small', onBuy, onEquip)));
 
   content.appendChild(grid);
+
+  // ── SR-71 CHALLENGE OFFER ──────────────────────────────────────────────────
+  content.appendChild(_makeSr71ChallengeCard());
 }
+
+function _makeSr71ChallengeCard() {
+  const unlocked  = G.unlockedAircraft.includes('sr71');
+  const earned    = G.sr71Earned || unlocked;
+  const sr71Skin  = SKINS.find(s => s.id === 'exclusive');
+
+  const card = document.createElement('div');
+  card.className = 'sr71-challenge-card';
+
+  // Plane preview — plain aircraft image (no filter)
+  const imgWrap = document.createElement('div');
+  imgWrap.className = 'sr71-ch-img-wrap';
+  const img = document.createElement('img');
+  img.src = '/assets/hangar/sr71.png';
+  img.className = 'sr71-ch-img';
+  imgWrap.appendChild(img);
+  card.appendChild(imgWrap);
+
+  // Text side
+  const info = document.createElement('div');
+  info.className = 'sr71-ch-info';
+
+  const tag = document.createElement('div');
+  tag.className   = 'sr71-ch-tag';
+  tag.textContent = '★ CHALLENGE REWARD';
+  info.appendChild(tag);
+
+  const name = document.createElement('div');
+  name.className   = 'sr71-ch-name';
+  name.textContent = 'SR-71 BLACKBIRD';
+  info.appendChild(name);
+
+  const sub = document.createElement('div');
+  sub.className   = 'sr71-ch-sub';
+  sub.textContent = 'Full aircraft + Exclusive Skin';
+  info.appendChild(sub);
+
+  const cond = document.createElement('div');
+  cond.className   = 'sr71-ch-cond';
+  cond.textContent = 'Answer all questions correctly on level 30';
+  info.appendChild(cond);
+
+  const btn = document.createElement('button');
+  btn.className = 'sr71-ch-btn';
+  if (unlocked) {
+    btn.textContent = '✓ UNLOCKED';
+    btn.classList.add('sr71-ch-btn-owned');
+    btn.disabled = true;
+  } else if (earned) {
+    btn.textContent = '▶ CLAIM FREE';
+    btn.classList.add('sr71-ch-btn-claim');
+    btn.onclick = () => {
+      if (!G.unlockedAircraft.includes('sr71')) {
+        G.unlockedAircraft.push('sr71');
+        save('unlockedAircraft', G.unlockedAircraft);
+      }
+      if (!G.ownedSkins.includes('exclusive')) {
+        G.ownedSkins.push('exclusive');
+        save('ownedSkins', G.ownedSkins);
+      }
+      redrawContent();
+    };
+  } else {
+    btn.textContent = '— NOT YET EARNED';
+    btn.classList.add('sr71-ch-btn-locked');
+    btn.disabled = true;
+  }
+  info.appendChild(btn);
+
+  card.appendChild(info);
+  return card;
+}
+
 
 function _resetContentStyle(content) {
   content.style.overflowX = '';
@@ -298,7 +364,7 @@ function renderSkins(content, handlers) {
   const { onBuy, onEquip } = handlers;
   const grid = document.createElement('div');
   grid.className = 'sc-skins-grid';
-  SKINS.forEach(skin => {
+  SKINS.filter(s => !s.prestige && !s.offerOnly && (s.aircraft || s.filter || s.skinImg)).forEach(skin => {
     const { card, btn } = makeCard(skin, 'small', onBuy, onEquip);
     btn.dataset.skin = skin.id;
     grid.appendChild(card);

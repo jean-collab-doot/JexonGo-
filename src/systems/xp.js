@@ -4,6 +4,13 @@ export function calcXP(correct) {
   return 50;
 }
 
+// Per-question XP based on answer speed: 10 (slow) → 30 (instant)
+export function calcSpeedXP(timeLeft, timerTotal) {
+  if (!timerTotal || timerTotal <= 0) return 10;
+  const ratio = Math.max(0, Math.min(1, timeLeft / timerTotal));
+  return Math.round(10 + 20 * ratio);
+}
+
 /**
  * Star criteria (score-based):
  *  1 star  — completed the level

@@ -1,4 +1,4 @@
-import { G, loadSave } from './state.js';
+import { G, loadSave, saveAll } from './state.js';
 import { save } from './utils/storage.js';
 import { showScreen } from './utils/dom.js';
 import { SFX } from './audio/sound.js';
@@ -136,6 +136,8 @@ window._onGoogleCredential = function(response) {
     save('playerRegistered', true);
 
     if (wasRegistered) {
+      saveAll();
+      loadSave();
       renderMenu();
       const el = document.getElementById('login-toast');
       if (el) {
@@ -217,12 +219,8 @@ function initRegistration() {
     G.playerGrade         = grade;
     G.playerRegistered    = true;
 
-    save('playerName',       G.playerName);
-    save('playerEmail',      G.playerEmail);
-    save('playerAge',        G.playerAge);
-    save('playerGrade',      G.playerGrade);
     save('playerPassword',   pw);
-    save('playerRegistered', true);
+    saveAll();
 
     renderMenu();
     showScreen('s-menu');
@@ -291,8 +289,11 @@ function initFeedback() {
       setTimeout(() => {
         document.getElementById('feedback-overlay').classList.add('hidden');
       }, 3000);
-    } catch (_) {
-      errEl.textContent = t('feedbackErrConn');
+    } catch (err) {
+      console.error('[Feedback] Send failed:', err);
+      errEl.textContent = err?.message?.includes('not loaded')
+        ? '❌ EmailJS not loaded — check CDN'
+        : '❌ Send failed — check console';
       btn.disabled = false;
       btn.textContent = t('feedbackSubmit');
     }

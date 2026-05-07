@@ -1,9 +1,11 @@
-import { $ } from '../utils/dom.js';
-import { G } from '../state.js';
+import { $, showScreen } from '../utils/dom.js';
+import { G, loadSave, saveAll } from '../state.js';
 import { LOGIN_REWARDS, claimDailyReward, getMissions, claimMission,
-         hasPendingMissionClaim, getPlayerRank } from '../systems/daily.js';
-import { save } from '../utils/storage.js';
+         hasPendingMissionClaim, getPlayerRank,
+         getSr71MissionState, claimSr71Mission } from '../systems/daily.js';
+import { save, load } from '../utils/storage.js';
 import { getPilotInfo } from '../data/pilots.js';
+import { getPrestigeTier, getPrestigeBadgeHTML } from '../data/prestige.js';
 import { t, getLang, setLang, applyI18n } from '../i18n.js';
 
 // ── GOOGLE SIGN-IN ───────────────────────────────────────────────────────────
@@ -14,37 +16,100 @@ function _ensureGSI() {
   if (_gsiReady) return true;
   if (typeof google === 'undefined' || !google.accounts) return false;
   google.accounts.id.initialize({
-    client_id: GOOGLE_CLIENT_ID,
-    callback:  cred => window._onGoogleCredential?.(cred),
+    client_id:             GOOGLE_CLIENT_ID,
+    callback:              cred => window._onGoogleCredential?.(cred),
+    use_fedcm_for_prompt:  true,
   });
   _gsiReady = true;
   return true;
 }
 
 function _updateProfile() {
-  const wrap    = document.getElementById('menu-profile');
-  const photoEl = document.getElementById('menu-profile-photo');
-  const nameEl  = document.getElementById('menu-profile-name');
-  const loginDiv = document.querySelector('.login-divider');
-  const gBtn    = document.getElementById('btn-login-google');
-  const aBtn    = document.getElementById('btn-login-apple');
-  const hasGoogle = !!G.playerPhoto;
-  if (wrap)      wrap.classList.toggle('hidden', !hasGoogle);
-  if (photoEl)   photoEl.src          = G.playerPhoto || '';
-  if (nameEl)    nameEl.textContent   = G.playerName  || 'PILOT';
-  if (loginDiv)  loginDiv.style.display = hasGoogle ? 'none' : '';
-  if (gBtn)      gBtn.style.display   = hasGoogle ? 'none' : '';
-  if (aBtn)      aBtn.style.display   = hasGoogle ? 'none' : '';
+  const wrap       = document.getElementById('menu-profile');
+  const photoEl    = document.getElementById('menu-profile-photo');
+  const initialEl  = document.getElementById('menu-profile-initial');
+  const nameEl     = document.getElementById('menu-profile-name');
+  const loginDiv   = document.querySelector('.login-divider');
+  const gBtn       = document.getElementById('btn-login-google');
+  const authRow    = document.getElementById('login-auth-row');
+
+  const isLoggedIn = !!G.playerRegistered;
+  const hasPhoto   = !!G.playerPhoto;
+
+  if (wrap) wrap.classList.toggle('hidden', !isLoggedIn);
+
+  if (photoEl) {
+    photoEl.src   = hasPhoto ? G.playerPhoto : '';
+    photoEl.style.display = hasPhoto ? 'block' : 'none';
+  }
+  if (initialEl) {
+    initialEl.textContent = (G.playerName || 'P')[0].toUpperCase();
+    initialEl.style.display = hasPhoto ? 'none' : 'flex';
+  }
+  if (nameEl) nameEl.textContent = G.playerName || 'PILOT';
+
+  if (loginDiv) loginDiv.style.display = isLoggedIn ? 'none' : '';
+  if (gBtn)     { gBtn.style.display   = isLoggedIn ? 'none' : ''; gBtn.classList.toggle('hidden', isLoggedIn); }
+  if (authRow)  authRow.style.display  = isLoggedIn ? 'none' : '';
+
+  if (isLoggedIn && typeof google !== 'undefined' && google.accounts) {
+    try { google.accounts.id.cancel(); } catch (_) {}
+  }
+
+  // P2 blue profile border
+  const avatarBtn = document.getElementById('btn-menu-profile-avatar');
+  if (avatarBtn) avatarBtn.classList.toggle('prestige-border-p2', G.prestige >= 2);
+
+  document.getElementById('menu-profile-dropdown')?.classList.add('hidden');
 }
 
 function _handleSignOut() {
-  G.playerPhoto = '';
-  save('playerPhoto', '');
+  G.playerPhoto      = '';
+  G.playerRegistered = false;
+  save('playerPhoto',      '');
+  save('playerRegistered', false);
   _gsiReady = false;
   if (typeof google !== 'undefined' && google.accounts) {
     google.accounts.id.disableAutoSelect();
   }
   renderMenu();
+}
+
+function _openLoginOverlay() {
+  const modal = document.getElementById('login-modal');
+  if (!modal) return;
+  document.getElementById('login-modal-email').value    = '';
+  document.getElementById('login-modal-password').value = '';
+  document.getElementById('login-modal-error').textContent = '';
+  modal.classList.remove('hidden');
+  document.getElementById('login-modal-email').focus();
+}
+
+function _closeLoginOverlay() {
+  const modal = document.getElementById('login-modal');
+  if (modal) modal.classList.add('hidden');
+}
+
+function _handleLoginSubmit() {
+  const emailIn = document.getElementById('login-modal-email').value.trim().toLowerCase();
+  const pwIn    = document.getElementById('login-modal-password').value;
+  const errEl   = document.getElementById('login-modal-error');
+
+  if (!emailIn || !emailIn.includes('@')) { errEl.textContent = t('loginErrEmail'); return; }
+  if (!pwIn)                              { errEl.textContent = t('loginErrPw');    return; }
+
+  const storedEmail = (load('playerEmail', '') || '').toLowerCase();
+  const storedPw    = load('playerPassword', '');
+
+  if (!storedEmail)                                  { errEl.textContent = t('loginErrNone');  return; }
+  if (emailIn !== storedEmail || pwIn !== storedPw)  { errEl.textContent = t('loginErrWrong'); return; }
+
+  _closeLoginOverlay();
+  G.playerRegistered = true;
+  save('playerRegistered', true);
+  loadSave();
+  renderMenu();
+  _showToast('✓ WELCOME BACK, ' + (G.playerName || 'PILOT') + '!');
 }
 
 // ── ASSETS ────────────────────────────────────────────────────────────────────
@@ -321,8 +386,234 @@ function _applyLang() {
 
   const googleText = document.querySelector('#btn-login-google .login-btn-text');
   if (googleText) googleText.textContent = t('signInGoogle');
-  const appleText  = document.querySelector('#btn-login-apple .login-btn-text');
-  if (appleText)  appleText.textContent  = t('signInApple');
+}
+
+// ── PRESTIGE ─────────────────────────────────────────────────────────────────
+function _updatePrestigeBadge() {
+  const badgeEl = document.getElementById('menu-prestige-badge');
+  if (badgeEl) badgeEl.innerHTML = getPrestigeBadgeHTML(G.prestige);
+
+  const btn = document.getElementById('btn-prestige');
+  if (btn) btn.classList.toggle('hidden', !(G.highestLevel >= 50 && G.prestige < 5));
+}
+
+function _openPrestigeConfirm() {
+  const nextP  = G.prestige + 1;
+  const tier   = getPrestigeTier(nextP);
+  const tierEl = document.getElementById('prestige-modal-tier');
+  const rewEl  = document.getElementById('prestige-modal-reward');
+  const imgEl  = document.getElementById('prestige-modal-img');
+  if (tierEl) { tierEl.textContent = tier.name; tierEl.style.color = tier.color || '#ffffff'; }
+  if (rewEl)  rewEl.textContent = `✦ REWARD: ${tier.rewardDesc}`;
+  if (imgEl) {
+    if (tier.img) {
+      imgEl.src = tier.img;
+      imgEl.style.borderColor = tier.color || '#fff';
+      imgEl.style.boxShadow   = `0 0 30px ${tier.color || '#fff'}88`;
+      imgEl.classList.remove('hidden');
+    } else {
+      imgEl.classList.add('hidden');
+    }
+  }
+  document.getElementById('prestige-modal')?.classList.remove('hidden');
+}
+
+function _closePrestigeModal() {
+  document.getElementById('prestige-modal')?.classList.add('hidden');
+}
+
+function _openResetConfirm() {
+  document.getElementById('reset-modal')?.classList.remove('hidden');
+}
+function _closeResetModal() {
+  document.getElementById('reset-modal')?.classList.add('hidden');
+}
+function _doReset() {
+  _closeResetModal();
+  G.highestLevel  = 0;
+  G.levelStars    = {};
+  G.xp            = 0;
+  G.coins         = 0;
+  G.totalXpEarned = 0;
+  save('highestLevel',  0);
+  save('levelStars',    {});
+  save('xp',            0);
+  save('coins',         0);
+  save('totalXpEarned', 0);
+  _showToast('Game reset');
+  renderMenu();
+}
+
+function _doPrestige() {
+  _closePrestigeModal();
+  G.prestige++;
+  const tier = getPrestigeTier(G.prestige);
+  if (tier.skinReward && !G.ownedSkins.includes(tier.skinReward)) {
+    G.ownedSkins.push(tier.skinReward);
+    save('ownedSkins', G.ownedSkins);
+  }
+  G.xp           = 0;
+  G.coins        = 0;
+  G.highestLevel = 0;
+  save('prestige',      G.prestige);
+  save('xp',            0);
+  save('coins',         0);
+  save('highestLevel',  0);
+  _showPrestigeCelebration(tier);
+}
+
+function _showPrestigeCelebration(tier) {
+  const overlay = document.getElementById('prestige-celebration');
+  if (!overlay) { renderMenu(); return; }
+
+  // Big background rank number
+  const numEl = document.getElementById('prestige-cel-number');
+  if (numEl) {
+    numEl.textContent = `P${G.prestige}`;
+    numEl.style.color = tier.color || '#fff';
+  }
+
+  // Tier image
+  const celImgEl = document.getElementById('prestige-cel-img');
+  if (celImgEl) {
+    if (tier.img) {
+      celImgEl.src = tier.img;
+      celImgEl.style.borderColor = tier.color || '#fff';
+      celImgEl.style.boxShadow   = `0 0 40px ${tier.color || '#fff'}aa, 0 0 80px ${tier.color || '#fff'}44`;
+      celImgEl.classList.remove('hidden');
+    } else {
+      celImgEl.classList.add('hidden');
+    }
+  }
+
+  const titleEl = document.getElementById('prestige-cel-tier');
+  const rewEl   = document.getElementById('prestige-cel-reward');
+  if (titleEl) {
+    titleEl.textContent = `✦ ${tier.name}`;
+    if (tier.color) {
+      titleEl.style.color      = tier.color;
+      titleEl.style.textShadow = `0 0 40px ${tier.color}, 0 0 90px ${tier.color}88`;
+      titleEl.classList.remove('prestige-badge-rainbow');
+    } else {
+      titleEl.style.color = '';
+      titleEl.classList.add('prestige-badge-rainbow');
+    }
+  }
+  if (rewEl) rewEl.textContent = tier.rewardDesc || '';
+  overlay.classList.remove('hidden');
+
+  // White flash on entry
+  overlay.style.background = 'rgba(255,255,255,0.95)';
+  setTimeout(() => { overlay.style.background = ''; }, 150);
+
+  const canvas = document.getElementById('prestige-canvas');
+  let raf;
+  if (canvas) {
+    canvas.width  = window.innerWidth;
+    canvas.height = window.innerHeight;
+    const ctx = canvas.getContext('2d');
+    const COLORS = tier.color
+      ? [tier.color, '#fff', '#fbbf24', '#fff', tier.color, '#e2e8f0']
+      : ['#ff2277', '#ff8c00', '#ffe600', '#00e84b', '#00e8ff', '#a855f7'];
+
+    // 250 confetti pieces — 3 shapes
+    const pieces = Array.from({ length: 250 }, () => ({
+      x:     Math.random() * canvas.width,
+      y:     Math.random() * canvas.height - canvas.height * 1.5,
+      vx:    (Math.random() - 0.5) * 5,
+      vy:    3 + Math.random() * 8,
+      size:  5 + Math.random() * 14,
+      color: COLORS[Math.floor(Math.random() * COLORS.length)],
+      rot:   Math.random() * Math.PI * 2,
+      rotV:  (Math.random() - 0.5) * 0.25,
+      shape: Math.floor(Math.random() * 3), // 0=rect 1=diamond 2=star
+      alpha: 0.75 + Math.random() * 0.25,
+    }));
+
+    // Expanding shockwave rings from center
+    const cx = canvas.width / 2, cy = canvas.height / 2;
+    const maxR = Math.sqrt(cx * cx + cy * cy) * 1.25;
+    const rings = [
+      { r: 0, speed: 14, w: 7, alpha: 0.9, color: tier.color || '#fff',    delay: 0  },
+      { r: 0, speed: 9,  w: 5, alpha: 0.7, color: tier.color || '#a855f7', delay: 10 },
+      { r: 0, speed: 6,  w: 3, alpha: 0.5, color: '#fbbf24',               delay: 22 },
+    ];
+
+    function drawStar(x, y, r) {
+      ctx.beginPath();
+      for (let i = 0; i < 5; i++) {
+        const a  = (i * 4 * Math.PI) / 5 - Math.PI / 2;
+        const ai = a + Math.PI / 5;
+        if (i === 0) ctx.moveTo(x + r * Math.cos(a), y + r * Math.sin(a));
+        else         ctx.lineTo(x + r * Math.cos(a), y + r * Math.sin(a));
+        ctx.lineTo(x + r * 0.42 * Math.cos(ai), y + r * 0.42 * Math.sin(ai));
+      }
+      ctx.closePath();
+    }
+
+    let frame = 0;
+    const start = Date.now();
+    function tick() {
+      frame++;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Rings
+      for (const ring of rings) {
+        if (frame < ring.delay) continue;
+        ring.r += ring.speed;
+        if (ring.r < maxR) {
+          const a = ring.alpha * (1 - ring.r / maxR);
+          ctx.save();
+          ctx.globalAlpha = a;
+          ctx.strokeStyle = ring.color;
+          ctx.lineWidth   = ring.w;
+          ctx.beginPath();
+          ctx.arc(cx, cy, ring.r, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.restore();
+        }
+      }
+
+      // Confetti
+      for (const p of pieces) {
+        p.x += p.vx; p.y += p.vy; p.rot += p.rotV;
+        if (p.y > canvas.height + 20) { p.y = -20; p.x = Math.random() * canvas.width; }
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate(p.rot);
+        ctx.fillStyle  = p.color;
+        ctx.globalAlpha = p.alpha;
+        if (p.shape === 0) {
+          ctx.fillRect(-p.size / 2, -p.size / 4, p.size, p.size / 2);
+        } else if (p.shape === 1) {
+          ctx.beginPath();
+          ctx.moveTo(0, -p.size / 2);
+          ctx.lineTo(p.size / 2, 0);
+          ctx.lineTo(0,  p.size / 2);
+          ctx.lineTo(-p.size / 2, 0);
+          ctx.closePath();
+          ctx.fill();
+        } else {
+          drawStar(0, 0, p.size / 2);
+          ctx.fill();
+        }
+        ctx.restore();
+      }
+
+      if (Date.now() - start < 7000) raf = requestAnimationFrame(tick);
+      else dismiss();
+    }
+    raf = requestAnimationFrame(tick);
+  }
+
+  function dismiss() {
+    cancelAnimationFrame(raf);
+    overlay.classList.add('hidden');
+    overlay.style.background = '';
+    renderMenu();
+  }
+  overlay.onclick = dismiss;
+  setTimeout(dismiss, 7000);
 }
 
 // ── PUBLIC API ────────────────────────────────────────────────────────────────
@@ -334,7 +625,40 @@ export function initMenu(nav) {
   $('btn-practice').onclick = () => openPracticeSelect(nav);
 
   $('btn-login-google').onclick  = () => _handleLogin('google');
-  $('btn-login-apple').onclick   = () => _handleLogin('apple');
+
+  const signupBtn = document.getElementById('btn-signup');
+  if (signupBtn) signupBtn.onclick = () => showScreen('s-register');
+
+  const loginBtn = document.getElementById('btn-login');
+  if (loginBtn) loginBtn.onclick = () => _openLoginOverlay();
+
+  const loginModalClose = document.getElementById('btn-login-modal-close');
+  if (loginModalClose) loginModalClose.onclick = () => _closeLoginOverlay();
+
+  const loginModal = document.getElementById('login-modal');
+  if (loginModal) loginModal.addEventListener('click', e => { if (e.target === loginModal) _closeLoginOverlay(); });
+
+  const loginSubmitBtn = document.getElementById('btn-login-modal-submit');
+  if (loginSubmitBtn) loginSubmitBtn.onclick = () => _handleLoginSubmit();
+
+  document.getElementById('login-modal-password')?.addEventListener('keydown', e => {
+    if (e.key === 'Enter') _handleLoginSubmit();
+  });
+
+  const prestigeBtn = document.getElementById('btn-prestige');
+  if (prestigeBtn) prestigeBtn.onclick = _openPrestigeConfirm;
+  document.getElementById('btn-prestige-confirm')?.addEventListener('click', _doPrestige);
+  document.getElementById('btn-prestige-cancel')?.addEventListener('click', _closePrestigeModal);
+  document.getElementById('prestige-modal')?.addEventListener('click', e => {
+    if (e.target === document.getElementById('prestige-modal')) _closePrestigeModal();
+  });
+
+  document.getElementById('btn-reset-confirm')?.addEventListener('click', _doReset);
+  document.getElementById('btn-reset-cancel')?.addEventListener('click', _closeResetModal);
+  document.getElementById('reset-modal')?.addEventListener('click', e => {
+    if (e.target === document.getElementById('reset-modal')) _closeResetModal();
+  });
+
   $('btn-missions').onclick      = () => openMissionsPanel();
   $('btn-missions-close').onclick = () => $('missions-panel').classList.add('hidden');
   $('missions-panel').addEventListener('click', e => {
@@ -343,6 +667,18 @@ export function initMenu(nav) {
 
   const fbBtn = $('btn-feedback-menu');
   if (fbBtn) fbBtn.onclick = () => window._showFeedbackPopup?.();
+
+  const avatarBtn = document.getElementById('btn-menu-profile-avatar');
+  if (avatarBtn) {
+    avatarBtn.onclick = e => {
+      e.stopPropagation();
+      document.getElementById('menu-profile-dropdown')?.classList.toggle('hidden');
+    };
+  }
+
+  document.addEventListener('click', () => {
+    document.getElementById('menu-profile-dropdown')?.classList.add('hidden');
+  });
 
   const signoutBtn = $('btn-google-signout');
   if (signoutBtn) signoutBtn.onclick = _handleSignOut;
@@ -356,6 +692,64 @@ export function initMenu(nav) {
   }
   applyI18n();
   _applyLang();
+
+  // ── CHEAT CODES (keyboard only, time-window: all keys within 600ms) ──────────
+  const _ct = new Map(); // key → timestamp of last press
+  function _held(...keys) {
+    const now = Date.now();
+    return keys.every(k => _ct.has(k) && now - _ct.get(k) < 600);
+  }
+  function _clearKeys(...keys) { keys.forEach(k => _ct.delete(k)); }
+
+  document.addEventListener('keydown', e => {
+    const k = e.key.toLowerCase();
+    _ct.set(k, Date.now());
+
+    // 1 + 8 + M → prestige up
+    if (_held('1','8','m')) {
+      _clearKeys('1','8','m');
+      if (G.prestige < 5) _doPrestige();
+    }
+    // 1 + 9 + L → prestige down
+    if (_held('1','9','l')) {
+      _clearKeys('1','9','l');
+      if (G.prestige > 0) {
+        G.prestige--;
+        save('prestige', G.prestige);
+        _showToast('Prestige → P' + G.prestige);
+        renderMenu();
+      }
+    }
+    // P + 0 + L → reset everything (with confirmation)
+    if (_held('p','0','l')) {
+      _clearKeys('p','0','l');
+      _openResetConfirm();
+    }
+    // P + 1 + L → +1 level
+    if (_held('p','1','l')) {
+      _clearKeys('p','1','l');
+      G.highestLevel = Math.min((G.highestLevel || 0) + 1, 50);
+      save('highestLevel', G.highestLevel);
+      _showToast('Level → ' + G.highestLevel);
+      renderMenu();
+    }
+    // P + 2 + 5 → unlock all 50 levels
+    if (_held('p','2','5')) {
+      _clearKeys('p','2','5');
+      G.highestLevel = 50;
+      save('highestLevel', 50);
+      _showToast('All 50 levels unlocked');
+      renderMenu();
+    }
+    // B + H + Q + A → +5000 coins
+    if (_held('b','h','q','a')) {
+      _clearKeys('b','h','q','a');
+      G.coins = (G.coins || 0) + 5000;
+      save('coins', G.coins);
+      _showToast('◎ +5000 coins');
+      renderMenu();
+    }
+  });
 }
 
 let _toastTimer = null;
@@ -378,11 +772,7 @@ function _handleLogin(provider) {
   }
   if (provider === 'google') {
     if (!_ensureGSI()) { _showToast('■ Google not available'); return; }
-    google.accounts.id.prompt(n => {
-      if (n.isNotDisplayed?.() || n.isSkippedMoment?.()) {
-        _showToast('■ Google popup blocked\nTry disabling ad blocker');
-      }
-    });
+    google.accounts.id.prompt();
     return;
   }
   _showToast('■ Apple sign-in\nCOMING SOON');
@@ -472,8 +862,12 @@ export function renderMenu() {
 
   _updateRankBadge();
   _updateMissionsBadge();
+  _updatePrestigeBadge();
   _updateProfile();
   _applyLang();
+
+  const offlineBanner = document.getElementById('menu-offline-banner');
+  if (offlineBanner) offlineBanner.classList.toggle('hidden', !!G.playerRegistered);
 }
 
 function _updateRankBadge() {
@@ -615,9 +1009,40 @@ function _renderMissions() {
     list.appendChild(card);
   });
 
+  // ── Permanent SR-71 challenge card ──────────────────────────────────────────
+  const sr71 = getSr71MissionState();
+  const sr71Done  = sr71.progress >= 1;
+  const sr71Label = getLang() === 'fr' ? sr71.labelFr : sr71.label;
+  const sr71BtnText = sr71.claimed ? t('claimed') : sr71Done ? t('claim') : t('locked');
+  const cleanSet  = new Set(sr71.cleanLevels || []);
+  const cubesHTML = Array.from({ length: 30 }, (_, i) => {
+    const lvl  = i + 1;
+    const done = cleanSet.has(lvl);
+    return `<div class="sr71-cube${done ? ' sr71-cube-done' : ''}" title="Level ${lvl}"></div>`;
+  }).join('');
+  const sr71Card = document.createElement('div');
+  sr71Card.className = 'mission-card mc-sr71' + (sr71.claimed ? ' mc-claimed' : '');
+  sr71Card.innerHTML = `
+    <div class="mission-label" style="color:#ff8c00">★ SR-71 CHALLENGE</div>
+    <div class="mission-label" style="font-size:6px;opacity:0.8;margin-top:2px">${sr71Label}</div>
+    <div class="sr71-cubes">${cubesHTML}</div>
+    <div class="sr71-cube-count">${sr71.cleanLevels.length} / 30 levels</div>
+    <div class="mission-reward-row">
+      <span class="mission-reward-text">◎ ${sr71.coins}  ⚡ ${sr71.xp} XP</span>
+      <button class="mission-claim-btn ${sr71.claimed ? 'mcb-claimed' : sr71Done ? 'mcb-ready' : 'mcb-locked'}"
+              data-id="sr71_challenge" ${!sr71Done || sr71.claimed ? 'disabled' : ''}>
+        ${sr71BtnText}
+      </button>
+    </div>
+  `;
+  if (!sr71.claimed) list.appendChild(sr71Card);
+
   list.querySelectorAll('.mission-claim-btn:not([disabled])').forEach(btn => {
     btn.onclick = () => {
-      if (claimMission(btn.dataset.id)) {
+      const claimed = btn.dataset.id === 'sr71_challenge'
+        ? claimSr71Mission()
+        : claimMission(btn.dataset.id);
+      if (claimed) {
         _renderMissions();
         _updateMissionsBadge();
         _updateRankBadge();

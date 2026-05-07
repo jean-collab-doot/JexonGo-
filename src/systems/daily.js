@@ -1,6 +1,7 @@
 import { G } from '../state.js';
 import { save } from '../utils/storage.js';
 
+
 function todayStr() {
   return new Date().toISOString().slice(0, 10);
 }
@@ -49,7 +50,9 @@ const MISSION_POOL = [
   { id: 'win3',      label: 'Win 3 levels',                  labelFr: 'Gagner 3 niveaux',                     type: 'levels_won',      target: 3,  coins: 350, xp: 150 },
   { id: 'play3',     label: 'Play 3 games',                  labelFr: 'Jouer 3 parties',                      type: 'games_played',    target: 3,  coins: 150, xp: 60  },
   { id: 'streak3',   label: 'Get a 3-answer streak',         labelFr: 'Obtenir une série de 3 bonnes réponses', type: 'max_streak',    target: 3,  coins: 100, xp: 80  },
-  { id: 'streak5',   label: 'Get a 5-answer streak',         labelFr: 'Obtenir une série de 5 bonnes réponses', type: 'max_streak',    target: 5,  coins: 200, xp: 150 },
+  { id: 'streak5',   label: 'Get a 5-answer streak',         labelFr: 'Obtenir une série de 5 bonnes réponses', type: 'max_streak',      target: 5,  coins: 200, xp: 150 },
+  { id: 'open_chest1', label: 'Open 1 chest',               labelFr: 'Ouvrir 1 coffre',                        type: 'open_chest',      target: 1,  coins: 200, xp: 100 },
+  { id: 'open_chest3', label: 'Open 3 chests',              labelFr: 'Ouvrir 3 coffres',                       type: 'open_chest',      target: 3,  coins: 500, xp: 300 },
 ];
 
 function seededPick(dateStr) {
@@ -144,5 +147,39 @@ export function claimMission(missionId) {
 }
 
 export function hasPendingMissionClaim() {
-  return (G.dailyMissions || []).some(m => !m.claimed && m.progress >= m.target);
+  const dailyPending = (G.dailyMissions || []).some(m => !m.claimed && m.progress >= m.target);
+  const sr71Pending  = G.sr71Earned && !G.sr71MissionClaimed;
+  return dailyPending || sr71Pending;
+}
+
+// ── PERMANENT SR-71 CHALLENGE ─────────────────────────────────────────────────
+export const SR71_MISSION = {
+  id:       'sr71_challenge',
+  label:    'Beat all 30 levels with a perfect score on every level',
+  labelFr:  'Compléter les 30 niveaux avec un score parfait à chaque niveau',
+  coins:    1000,
+  xp:       500,
+};
+
+export function getSr71MissionState() {
+  return {
+    ...SR71_MISSION,
+    target:      1,
+    progress:    G.sr71Earned ? 1 : 0,
+    claimed:     G.sr71MissionClaimed || false,
+    cleanLevels: G.sr71CleanLevels || [],
+  };
+}
+
+export function claimSr71Mission() {
+  if (!G.sr71Earned || G.sr71MissionClaimed) return false;
+  G.sr71MissionClaimed = true;
+  G.coins         += SR71_MISSION.coins;
+  G.xp            += SR71_MISSION.xp;
+  G.totalXpEarned  = (G.totalXpEarned || 0) + SR71_MISSION.xp;
+  save('sr71MissionClaimed', true);
+  save('coins',        G.coins);
+  save('xp',           G.xp);
+  save('totalXpEarned', G.totalXpEarned);
+  return true;
 }

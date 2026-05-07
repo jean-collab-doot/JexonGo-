@@ -4,6 +4,7 @@ import { save } from '../utils/storage.js';
 import { AIRCRAFT, AIRCRAFT_ORDER } from '../data/aircraft.js';
 import { SKINS } from '../data/skins.js';
 import { getPilotGrade } from '../data/pilots.js';
+import { getPrestigeBadgeHTML } from '../data/prestige.js';
 import { t } from '../i18n.js';
 
 export function initHangar(nav) {
@@ -39,9 +40,9 @@ function showLiveryPanel(id) {
   grid.appendChild(makeLiveryCard('Default', `/assets/hangar/${id}.png`, null, id));
 
   SKINS
-    .filter(s => s.aircraft === id && G.ownedSkins.includes(s.id))
+    .filter(s => (s.aircraft === id || s.universal) && G.ownedSkins.includes(s.id))
     .forEach(skin => {
-      const imgSrc = skin.offerImg || `/assets/hangar/${id}.png`;
+      const imgSrc = skin.skinImg || skin.offerImg || `/assets/hangar/${id}.png`;
       grid.appendChild(makeLiveryCard(skin.name, imgSrc, skin, id));
     });
 
@@ -51,8 +52,8 @@ function showLiveryPanel(id) {
 
 function makeLiveryCard(label, imgSrc, skin, aircraftId) {
   const isActive = skin
-    ? G.activeSkin === skin.id && G.activeAircraft === aircraftId
-    : G.activeAircraft === aircraftId && !G.activeSkin;
+    ? G.activeLivery === skin.id && G.activeAircraft === aircraftId
+    : G.activeAircraft === aircraftId && !G.activeLivery;
 
   const card = document.createElement('div');
   card.className = 'hlp-card' + (isActive ? ' hlp-card-active' : '');
@@ -77,8 +78,10 @@ function makeLiveryCard(label, imgSrc, skin, aircraftId) {
 
   card.onclick = () => {
     G.activeAircraft = aircraftId;
+    G.activeLivery   = skin ? skin.id : null;
     G.activeSkin     = skin ? skin.id : null;
     save('activeAircraft', G.activeAircraft);
+    save('activeLivery',   G.activeLivery);
     save('activeSkin',     G.activeSkin);
     renderHangar();
     showLiveryPanel(aircraftId);
@@ -97,7 +100,7 @@ function meetsGradeRequirement(plane) {
 export function renderHangar() {
   const grade = getPilotGrade(G.highestLevel || 0);
   const xpEl  = $('hangar-xp');
-  if (xpEl) xpEl.textContent = `${G.xp} XP  |  ${grade.emoji} ${grade.name}`;
+  if (xpEl) xpEl.innerHTML = `${G.xp} XP  |  ${grade.emoji} ${grade.name} ${getPrestigeBadgeHTML(G.prestige)}`;
 
   const grid = $('hangar-grid');
   grid.innerHTML = '';
@@ -117,7 +120,15 @@ export function renderHangar() {
     const img = document.createElement('img');
     img.src       = `/assets/hangar/${id}.png`;
     img.className = 'hangar-livery';
-    if (!unlocked) img.style.opacity = '0.35';
+    if (!unlocked) {
+      img.style.opacity = '0.35';
+    } else {
+      const livery = SKINS.find(s => s.id === G.activeLivery && (s.aircraft === id || s.universal));
+      if (livery) {
+        if (livery.skinImg) img.src = livery.skinImg;
+        else if (livery.filter) img.style.filter = livery.filter;
+      }
+    }
     card.appendChild(img);
 
     const name = document.createElement('div');
