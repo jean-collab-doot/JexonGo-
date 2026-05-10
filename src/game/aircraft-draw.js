@@ -4,12 +4,13 @@
 
 import { drawFrame, AIRCRAFT_SPRITE } from './sprites.js';
 
-// ── CONSTANTS ─────────────────────────────────────────────────────────────────
-const ENEMY_SCALE  = 4.8;  // multiplier on enemy.size for draw dimensions
-
 // Smaller on phone so the plane doesn't dominate the narrow screen
 function getPlayerSize() {
   return window.innerWidth <= 520 ? 110 : 180;
+}
+
+function getEnemyScale() {
+  return window.innerWidth <= 520 ? 3.2 : 4.8;
 }
 export { getPlayerSize };
 
@@ -53,7 +54,7 @@ export function drawAircraftPreview(ctx, aircraftId, cx, cy, size) {
  * @param {object} enemy  full enemy object from G.enemies
  */
 export function drawEnemySprite(ctx, enemy, bankAngle = 0) {
-  const size = enemy.size * ENEMY_SCALE;
+  const size = enemy.size * getEnemyScale();
   ctx.save();
   ctx.imageSmoothingEnabled = true;
   if (enemy.spriteFilter) ctx.filter = enemy.spriteFilter;

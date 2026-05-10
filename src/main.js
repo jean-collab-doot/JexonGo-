@@ -11,6 +11,7 @@ import { initChest, showChest, setChestReturn } from './screens/chest.js';
 import { initGameover, showGameover } from './screens/gameover.js';
 import { initShop, renderShop } from './screens/shop.js';
 import { initSettings, loadSettings } from './screens/settings.js';
+import { initProfile, renderProfile } from './screens/profile.js';
 import { initRanked, renderRankedLobby } from './screens/ranked.js';
 import { initBriefing, showBriefing } from './screens/briefing.js';
 import { initClassroom, renderClassroom } from './screens/classroom.js';
@@ -18,7 +19,7 @@ import { initArena, enterArena } from './screens/arena.js';
 import { preloadShips } from './game/sprites.js';
 import { checkDailyLogin } from './systems/daily.js';
 import { showDailyReward } from './screens/menu.js';
-import { canSendFeedback, markFeedbackSent, sendFeedback } from './systems/feedback.js';
+import { canSendFeedback, markFeedbackSent, sendFeedback, sendNewPlayerNotification, _resetNewPlayer, _testEmailNow } from './systems/feedback.js';
 import { t, applyI18n } from './i18n.js';
 
 // ── SESSION TIMER ────────────────────────────────────────────────────────────
@@ -104,6 +105,12 @@ const nav = {
     showScreen('s-arena');
     enterArena();
   },
+  toProfile() {
+    cleanup();
+    renderProfile();
+    showScreen('s-profile');
+    SFX.playMusic('menu');
+  },
   toGradeSelect() {
     cleanup();
     showScreen('s-grade');
@@ -115,7 +122,9 @@ function cleanup() {
 }
 
 window._nav = nav;
-window._showFeedbackPopup = () => showFeedbackPopup();
+window._showFeedbackPopup  = () => showFeedbackPopup();
+window._resetNewPlayer     = _resetNewPlayer;
+window._testEmailNow       = _testEmailNow;
 
 window._onGoogleCredential = function(response) {
   try {
@@ -146,8 +155,10 @@ window._onGoogleCredential = function(response) {
         setTimeout(() => el.classList.remove('toast-show'), 2200);
       }
     } else if (!G.playerGrade) {
+      sendNewPlayerNotification({ playerName: name, playerEmail: email, playerGrade: G.playerGrade });
       nav.toGradeSelect();
     } else {
+      sendNewPlayerNotification({ playerName: name, playerEmail: email, playerGrade: G.playerGrade });
       nav.toMenu();
       const _daily = checkDailyLogin();
       if (_daily.isNewDay) setTimeout(() => showDailyReward(_daily.reward, _daily.streak), 600);
@@ -184,6 +195,7 @@ initRanked(nav);
 initBriefing(nav);
 initClassroom(nav);
 initArena(nav);
+initProfile(nav);
 initGradeScreen();
 initRegistration();
 initFeedback();
@@ -196,6 +208,11 @@ document.addEventListener('click', e => {
 
 // ── REGISTRATION SCREEN ───────────────────────────────────────────────────────
 function initRegistration() {
+  document.getElementById('btn-reg-close').addEventListener('click', () => {
+    renderMenu();
+    showScreen('s-menu');
+  });
+
   document.getElementById('btn-reg-submit').addEventListener('click', () => {
     const name  = (document.getElementById('reg-name').value  || '').trim().toUpperCase();
     const email = (document.getElementById('reg-email').value || '').trim().toLowerCase();
@@ -221,6 +238,8 @@ function initRegistration() {
 
     save('playerPassword',   pw);
     saveAll();
+
+    sendNewPlayerNotification({ playerName: name, playerEmail: email, playerGrade: grade });
 
     renderMenu();
     showScreen('s-menu');

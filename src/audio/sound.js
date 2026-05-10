@@ -197,6 +197,7 @@ export const SFX = {
       '/assets/music/explosion.mp3',
       '/assets/music/purchase.mp3',
       '/assets/music/gameover.mp3',
+      '/assets/music/Buy.mp3',
     ].forEach(_loadBuf);
   },
 
@@ -288,6 +289,10 @@ export const SFX = {
   },
   timerWarn() {
     _tone(_ac(), 880, 'triangle', 0.07, 0.18);
+  },
+  buy() {
+    _playBuf('/assets/music/Buy.mp3', 0.9,
+      ctx => _tone(ctx, 880, 'sine', 0.2, 0.4));
   },
   noMoney() {
     // Low thud + descending tones = "error / denied"

@@ -44,6 +44,9 @@ export const G = {
   playerPhoto:      '',
   playerAge:        0,
   playerRegistered: false,
+  pilotEmblem:      '✈',
+  pilotMotto:       '',
+  profileTheme:     'default',
   currentWeather: null,
 
   // --- Session ---
@@ -98,6 +101,9 @@ export function loadSave() {
   G.playerAge         = load('playerAge', 0);
   G.playerRegistered  = load('playerRegistered', false);
   G.playerGrade       = load('playerGrade', 0);
+  G.pilotEmblem       = load('pilotEmblem',  '✈');
+  G.pilotMotto        = load('pilotMotto',   '');
+  G.profileTheme      = load('profileTheme', 'default');
   G.highestLevel      = load('highestLevel', 0);
   G.practiceTimeLimit = load('practiceTimeLimit', 10);
   G.dailyLastLogin    = load('dailyLastLogin', null);
@@ -134,6 +140,9 @@ export function saveAll() {
   save('playerAge',         G.playerAge);
   save('playerRegistered',  G.playerRegistered);
   save('playerGrade',       G.playerGrade);
+  save('pilotEmblem',       G.pilotEmblem);
+  save('pilotMotto',        G.pilotMotto);
+  save('profileTheme',      G.profileTheme);
   save('highestLevel',      G.highestLevel);
   save('practiceTimeLimit', G.practiceTimeLimit);
   save('dailyLastLogin',    G.dailyLastLogin);

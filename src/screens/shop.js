@@ -53,7 +53,7 @@ function makePreview(skin, size, offerMode = false) {
     return img;
   }
 
-  // Fallback: canvas sprite preview
+  // Fallback: canvas sprite preview — skin filter applied to the aircraft sprite
   const c = document.createElement('canvas');
   c.width = c.height = size;
   c.className = 'sc-preview';
@@ -231,6 +231,7 @@ function makeHandlers() {
       return;
     }
     errEl.textContent = '';
+    SFX.buy?.();
     G.coins -= skin.price;
     G.ownedSkins.push(skin.id);
     save('coins', G.coins);
@@ -419,6 +420,7 @@ function renderMore(content) {
         }
         return;
       }
+      SFX.buy?.();
       G.coins -= ch.price;
       save('coins', G.coins);
       updateCoinDisplay();

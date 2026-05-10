@@ -623,6 +623,7 @@ export function initMenu(nav) {
   $('btn-hangar').onclick  = () => nav.toHangar();
   $('btn-shop').onclick    = () => nav.toShop();
   $('btn-practice').onclick = () => openPracticeSelect(nav);
+  $('btn-pilot-card').onclick = () => nav.toProfile();
 
   $('btn-login-google').onclick  = () => _handleLogin('google');
 

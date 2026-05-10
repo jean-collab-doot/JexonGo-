@@ -194,6 +194,7 @@
       <button id="btn-shop" class="btn btn-secondary" data-i18n="shop">◆ SHOP</button>
       <button id="btn-practice" class="btn btn-secondary" data-i18n="practice">⚡ PRACTICE</button>
       <button id="btn-missions" class="btn btn-secondary btn-missions-menu">≡ MISSIONS</button>
+      <button id="btn-pilot-card" class="btn btn-secondary btn-pilot-card">✈ PILOT</button>
       <button id="btn-prestige" class="btn btn-prestige hidden">⚡ PRESTIGE</button>
       <div id="menu-prestige-badge" class="menu-prestige-badge"></div>
 
@@ -540,6 +541,7 @@
   <!-- REGISTRATION SCREEN -->
   <div id="s-register" class="screen hidden">
     <div class="reg-wrap">
+      <button id="btn-reg-close" class="sett-close" style="position:absolute;top:10px;right:10px;color:#fff;border-color:#fff">✕</button>
       <div class="reg-logo">JEXON<span class="reg-logo-go">GO</span></div>
       <div class="reg-tagline">AERIAL MATH COMBAT</div>
       <div class="reg-title" data-i18n="regTitle">CREATE YOUR PILOT</div>
@@ -674,6 +676,71 @@
       <div id="prestige-cel-tier" class="prestige-cel-tier"></div>
       <div id="prestige-cel-reward" class="prestige-cel-reward"></div>
       <div class="prestige-cel-hint">TAP TO CONTINUE</div>
+    </div>
+  </div>
+
+  <!-- PILOT PROFILE SCREEN -->
+  <div id="s-profile" class="screen hidden">
+    <div class="top-bar">
+      <button id="btn-profile-back" class="btn-icon">&#8592;</button>
+      <span class="top-bar-title">PILOT CARD</span>
+    </div>
+
+    <!-- Live card preview -->
+    <div class="pc-wrap">
+      <div id="pilot-card" class="pilot-card">
+        <div class="pc-corner pc-corner-tr"></div>
+        <div class="pc-corner pc-corner-bl"></div>
+        <div class="pc-header">
+          <div class="pc-avatar-wrap">
+            <img  id="pc-photo"     class="pc-photo"     src="" alt="" referrerpolicy="no-referrer">
+            <img  id="pc-pilot-img" class="pc-pilot-img" src="" alt="">
+            <span id="pc-initial"   class="pc-initial">P</span>
+            <span id="pc-emblem"    class="pc-emblem-badge">✈</span>
+          </div>
+          <div class="pc-info">
+            <div id="pc-name"    class="pc-name">PILOT</div>
+            <div id="pc-grade"   class="pc-grade">▷  CADET</div>
+            <div id="pc-rank"    class="pc-rank">◎ 0 XP</div>
+          </div>
+        </div>
+        <div id="pc-motto" class="pc-motto"></div>
+        <div class="pc-footer">
+          <span id="pc-aircraft" class="pc-aircraft-label">T-6 TEXAN II</span>
+          <span id="pc-stats"    class="pc-stats-label">LV.0 · P0</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Customization panel -->
+    <div class="pc-editor">
+
+      <div class="pce-section">
+        <div class="pce-label">ACCOUNT</div>
+        <div id="pce-account-display"></div>
+      </div>
+
+      <div class="pce-section">
+        <div class="pce-label">PILOT EMBLEM</div>
+        <div id="emblem-grid" class="emblem-grid"></div>
+      </div>
+
+      <div class="pce-section">
+        <div class="pce-label">CALL SIGN</div>
+        <input id="prof-callsign" class="pce-input" type="text" maxlength="20" placeholder="YOUR CALL SIGN" autocomplete="off">
+      </div>
+
+      <div class="pce-section">
+        <div class="pce-label">PILOT MOTTO</div>
+        <input id="prof-motto" class="pce-input" type="text" maxlength="40" placeholder="YOUR MOTTO" autocomplete="off">
+      </div>
+
+      <div class="pce-section">
+        <div class="pce-label">CARD THEME</div>
+        <div id="theme-grid" class="theme-grid"></div>
+      </div>
+
+      <button id="btn-profile-save" class="pce-save-btn">▶ SAVE PILOT CARD</button>
     </div>
   </div>
 

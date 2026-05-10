@@ -48,6 +48,7 @@ let tick        = 0;
 let shakeFrames = 0;
 let _onComplete = null;
 let spawnTimer  = 0;
+let _cutsceneActive = false;
 let spawnRate   = 150;
 let maxEnemies  = 5;
 let _sessionId    = 0;
@@ -568,7 +569,7 @@ function frame() {
   ctx.fillStyle = topGrad;
   ctx.fillRect(0, 0, canvas.width, fadeH);
 
-  G.animFrame = requestAnimationFrame(frame);
+  if (!_cutsceneActive) G.animFrame = requestAnimationFrame(frame);
 }
 
 // ── COMBAT ──────────────────────────────────────────────────────────────────
@@ -670,7 +671,7 @@ function nextQuestion() {
   // Undim and resume game loop
   const overlay = $('game-pause-overlay');
   overlay.classList.remove('dimmed');
-  if (!G.animFrame) G.animFrame = requestAnimationFrame(frame);
+  if (!G.animFrame && !_cutsceneActive) G.animFrame = requestAnimationFrame(frame);
 
   const reveal = $('correct-answer-reveal');
   const qbox   = $('question-box');
@@ -948,6 +949,224 @@ function handleTimeout() {
 }
 
 // ── LIVES ────────────────────────────────────────────────────────────────────
+// ── DEATH CUTSCENE ────────────────────────────────────────────────────────────
+function _loadFrames(base, count) {
+  return Array.from({ length: count }, (_, i) => {
+    const img = new Image();
+    img.src = base + (i + 1) + '.png';
+    return img;
+  });
+}
+
+function playDeathCutscene(onDone) {
+  _cutsceneActive = true;
+  SFX.stopMusic();
+  const cw = canvas.width;
+  const ch = canvas.height;
+  const px = G.player.x;
+  const py = G.player.y;
+
+  // Snapshot the live game frame so the transition flows seamlessly
+  const snapshot = new Image();
+  snapshot.src = canvas.toDataURL();
+
+  const activeSkinData   = SKINS.find(s => s.id === G.activeSkin);
+  const activeLiveryData = SKINS.find(s => s.id === G.activeLivery);
+  const skinFilter   = activeLiveryData?.filter || '';
+  const skinAircraft = (activeSkinData ?? activeLiveryData)?.aircraft ?? G.activeAircraft;
+  const skinImgKey   = activeSkinData?.skinImg || activeSkinData?.offerImg;
+  const skinImgEl    = skinImgKey ? _skinImgCache[skinImgKey] : null;
+  const playerSz     = getPlayerSize();
+
+  // Retro sprite frames from Legacy Collection
+  const impactFrames  = _loadFrames('/assets/fx/enemy-death/enemy-death', 8);
+  const bigExFrames   = _loadFrames('/assets/fx/explosion-e/explosion-e', 22);
+
+  // Cinematic missile
+  let mx = px + (Math.random() > 0.5 ? 90 : -90);
+  let my = py - 150;
+  const mdx = px - mx, mdy = py - my;
+  const mlen = Math.sqrt(mdx * mdx + mdy * mdy);
+  const mvx = (mdx / mlen) * 2.8;
+  const mvy = (mdy / mlen) * 2.8;
+
+  let phase = 'slowmo', phaseTick = 0;
+  let zoomT = 0;      // normalized [0,1] for easing
+  let zoom  = 1;
+  let cutRaf;
+
+  function _easeInOut(t) {
+    return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+  }
+
+  function _drawPlayer() {
+    if (skinImgEl?.complete) {
+      ctx.save();
+      ctx.translate(px, py);
+      ctx.drawImage(skinImgEl, -playerSz / 2, -playerSz / 2, playerSz, playerSz);
+      ctx.restore();
+    } else {
+      drawAircraftSprite(ctx, skinAircraft, px, py, 0, 1, 0, skinFilter);
+    }
+  }
+
+  function _drawRetroFrame(frames, idx, cx, cy, size) {
+    const f = frames[Math.min(Math.max(idx, 0), frames.length - 1)];
+    if (!f?.complete || !f.naturalWidth) return;
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(f, cx - size / 2, cy - size / 2, size, size);
+  }
+
+  function step() {
+    phaseTick++;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.globalAlpha = 1;
+    ctx.clearRect(0, 0, cw, ch);
+
+    // ── Phase 1: slow-motion zoom from live game snapshot ─────────────
+    if (phase === 'slowmo') {
+      // Smooth cubic ease-in-out zoom over ~120 frames (2 s)
+      zoomT = Math.min(1, zoomT + 0.008);
+      zoom  = 1 + _easeInOut(zoomT) * 1.8;  // 1 → 2.8
+
+      // Zoom the game snapshot centered on the player
+      if (snapshot.complete && snapshot.naturalWidth) {
+        ctx.save();
+        ctx.translate(px, py);
+        ctx.scale(zoom, zoom);
+        ctx.translate(-px, -py);
+        ctx.drawImage(snapshot, 0, 0, cw, ch);
+        ctx.restore();
+      } else {
+        ctx.fillStyle = '#06060f';
+        ctx.fillRect(0, 0, cw, ch);
+      }
+
+      // Fade to black smoothly as zoom builds
+      const darken = _easeInOut(Math.min(1, zoomT * 1.15));
+      ctx.fillStyle = `rgba(0,0,10,${darken})`;
+      ctx.fillRect(0, 0, cw, ch);
+
+      // Draw fresh sharp player + missile on top (in zoomed space)
+      ctx.save();
+      ctx.translate(px, py);
+      ctx.scale(zoom, zoom);
+      ctx.translate(-px, -py);
+      _drawPlayer();
+      drawMissiles(ctx, [{ x: mx, y: my, vx: mvx, vy: mvy, boltFrame: 0, trail: [], tx: px, ty: py }], true);
+      ctx.restore();
+
+      // Cinematic vignette
+      const vig = ctx.createRadialGradient(cw/2, ch/2, ch*0.2, cw/2, ch/2, ch*0.85);
+      vig.addColorStop(0, 'rgba(0,0,0,0)');
+      vig.addColorStop(1, 'rgba(0,0,20,0.65)');
+      ctx.fillStyle = vig; ctx.fillRect(0, 0, cw, ch);
+
+      mx += mvx; my += mvy;
+      const dx = mx - px, dy = my - py;
+      if (dx*dx + dy*dy < 18*18 || phaseTick > 240) {
+        phase = 'impact'; phaseTick = 0;
+        SFX.explode?.();
+      }
+    }
+
+    // ── Phase 2: retro impact sprite (enemy-death, 8 frames) ──────────
+    else if (phase === 'impact') {
+      ctx.fillStyle = '#06060f';
+      ctx.fillRect(0, 0, cw, ch);
+
+      if (phaseTick < 6) {
+        ctx.fillStyle = '#ffffff';
+        ctx.globalAlpha = 1 - phaseTick / 6;
+        ctx.fillRect(0, 0, cw, ch);
+        ctx.globalAlpha = 1;
+      }
+
+      ctx.save();
+      ctx.translate(cw / 2, ch / 2);
+      ctx.scale(zoom, zoom);
+      ctx.translate(-px, -py);
+      const impactFrame = Math.floor(phaseTick / 3);
+      _drawRetroFrame(impactFrames, impactFrame, px, py, playerSz * 3.5);
+      ctx.restore();
+
+      if (phaseTick >= impactFrames.length * 3) {
+        phase = 'explode'; phaseTick = 0;
+        SFX.explode?.();
+      }
+    }
+
+    // ── Phase 3: big retro explosion (explosion-e, 22 frames) ─────────
+    else if (phase === 'explode') {
+      ctx.fillStyle = '#06060f';
+      ctx.fillRect(0, 0, cw, ch);
+
+      const exFrame = Math.floor(phaseTick / 3);
+      const exSize  = Math.max(cw, ch) * 2.2;
+      _drawRetroFrame(bigExFrames, exFrame, cw / 2, ch / 2, exSize);
+
+      if (phaseTick >= bigExFrames.length * 3) {
+        phase = 'text'; phaseTick = 0;
+      }
+    }
+
+    // ── Phase 4: KABOOM text + earthquake shake ────────────────────────
+    else if (phase === 'text') {
+      // Earthquake: strong at start, fades out over ~60 frames
+      const shakeStr  = Math.max(0, 1 - phaseTick / 60);
+      const shakeAmp  = 18 * shakeStr;
+      const sx = (Math.random() * 2 - 1) * shakeAmp;
+      const sy = (Math.random() * 2 - 1) * shakeAmp;
+
+      ctx.save();
+      ctx.translate(sx, sy);
+
+      ctx.fillStyle = 'rgba(3,3,15,0.92)';
+      ctx.fillRect(-Math.abs(sx) - 4, -Math.abs(sy) - 4, cw + 8, ch + 8);
+
+      const fade = Math.min(1, phaseTick / 12);
+      ctx.globalAlpha  = fade;
+      ctx.textAlign    = 'center';
+      ctx.textBaseline = 'middle';
+
+      const emojiSz = Math.min(cw * 0.35, 110);
+      ctx.font = `${emojiSz}px serif`;
+      ctx.fillText('💥', cw / 2, ch / 2 - emojiSz * 0.9);
+
+      // Pulse scale on KABOOM — bounces in on first few frames
+      const popT   = Math.min(1, phaseTick / 10);
+      const popScale = 0.4 + _easeInOut(popT) * 0.6 + Math.sin(phaseTick * 0.4) * 0.04 * shakeStr;
+      const bigSz  = Math.min(cw * 0.14, 52) * popScale;
+      ctx.font        = `${bigSz}px 'Press Start 2P', monospace`;
+      ctx.fillStyle   = '#ff2200';
+      ctx.shadowColor = '#ff8800';
+      ctx.shadowBlur  = 40 + shakeStr * 20;
+      ctx.fillText('KABOOM!', cw / 2, ch / 2 + 10);
+
+      const subSz = Math.min(cw * 0.045, 15);
+      ctx.font        = `${subSz}px 'Press Start 2P', monospace`;
+      ctx.fillStyle   = '#ffffff';
+      ctx.shadowColor = '#aaaaff';
+      ctx.shadowBlur  = 8;
+      ctx.fillText('YOUR PLANE CRASHED! 🛸', cw / 2, ch / 2 + Math.min(cw * 0.14, 52) + 28);
+
+      ctx.globalAlpha = 1;
+      ctx.shadowBlur  = 0;
+      ctx.restore();
+
+      if (phaseTick > 130) {
+        cancelAnimationFrame(cutRaf);
+        onDone();
+        return;
+      }
+    }
+
+    cutRaf = requestAnimationFrame(step);
+  }
+
+  cutRaf = requestAnimationFrame(step);
+}
+
 function loseLife() {
   if (_godMode) {
     shakeFrames = 8;
@@ -982,7 +1201,10 @@ function loseLife() {
       questionsAnswered: G.questionsAnswered,
       streak:            G.streak,
     };
-    setTimeout(() => { if (_sessionId === sid) endLevel(false); }, 700);
+    cancelAnimationFrame(G.animFrame);
+    G.animFrame = null;
+    const sid2 = _sessionId;
+    playDeathCutscene(() => { if (_sessionId === sid2) endLevel(false); });
     return;
   }
   _invincible = 120;
@@ -1008,12 +1230,13 @@ function updateStreakHUD() {
 
 // ── LEVEL END ────────────────────────────────────────────────────────────────
 function endLevel(won) {
+  _cutsceneActive = false;
   _sessionId++;
   clearInterval(G.timerInterval);
   cancelAnimationFrame(G.animFrame);
   G.timerInterval = null;
   G.animFrame     = null;
-  G.answerLocked  = true;   // prevent any stale timeout handlers from counting wrong answers
+  G.answerLocked  = true;
   if (ctx) { ctx.setTransform(1,0,0,1,0,0); ctx.globalAlpha = 1; }
   if (won) trackMission('levels_won', 1);
   if (_onComplete) _onComplete(won);

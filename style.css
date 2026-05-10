@@ -3650,6 +3650,7 @@ body::after {
   min-height: 100vh;
 }
 .reg-wrap {
+  position: relative;
   width: min(92vw, 400px);
   padding: 32px 24px 28px;
   background: #08081a;
@@ -4235,4 +4236,506 @@ body::after {
 @keyframes prestige-blink {
   0%, 100% { opacity: 0.3; }
   50%       { opacity: 1; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PILOT PROFILE SCREEN
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Animatable CSS custom properties for smooth theme transitions */
+@property --tc-bg     { syntax: '<color>'; inherits: false; initial-value: #0a0e1a; }
+@property --tc-accent { syntax: '<color>'; inherits: false; initial-value: #00d4ff; }
+@property --tc-border { syntax: '<color>'; inherits: false; initial-value: #1e3a5f; }
+
+#s-profile {
+  background: #060a12;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* ── Pilot card preview ─────────────────────────────────────────────────── */
+.pc-wrap {
+  padding: 14px 14px 0;
+  flex-shrink: 0;
+}
+
+.pilot-card {
+  --tc-bg: #0a0e1a;
+  --tc-accent: #00d4ff;
+  --tc-border: #1e3a5f;
+  position: relative;
+  background: var(--tc-bg);
+  border: 2px solid var(--tc-border);
+  padding: 14px;
+  overflow: hidden;
+  transition:
+    --tc-bg     0.55s ease,
+    --tc-accent 0.55s ease,
+    --tc-border 0.55s ease;
+  box-shadow: 5px 5px 0 rgba(0,0,0,0.85);
+}
+
+/* Scan-line texture */
+.pilot-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(0,0,0,0.06) 3px, rgba(0,0,0,0.06) 4px);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Corner brackets */
+.pc-corner {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border-color: var(--tc-accent);
+  border-style: solid;
+  pointer-events: none;
+  z-index: 2;
+}
+.pc-corner-tr { top: 5px; right: 5px; border-width: 2px 2px 0 0; }
+.pc-corner-bl { bottom: 5px; left: 5px; border-width: 0 0 2px 2px; }
+
+.pc-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+  position: relative;
+  z-index: 1;
+}
+
+.pc-avatar-wrap {
+  position: relative;
+  width: 52px;
+  height: 52px;
+  flex-shrink: 0;
+}
+
+.pc-photo {
+  width: 52px;
+  height: 52px;
+  object-fit: cover;
+  border: 2px solid var(--tc-border);
+  display: none;
+}
+
+.pc-pilot-img {
+  width: 52px;
+  height: 52px;
+  object-fit: contain;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  border: 2px solid var(--tc-border);
+  background: color-mix(in srgb, var(--tc-border) 40%, #0a0e1a);
+  display: none;
+}
+
+.pc-initial {
+  width: 52px;
+  height: 52px;
+  background: color-mix(in srgb, var(--tc-border) 60%, #0a0e1a);
+  border: 2px solid var(--tc-border);
+  color: var(--tc-accent);
+  font-family: 'Press Start 2P', monospace;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pc-emblem-badge {
+  position: absolute;
+  bottom: -5px;
+  right: -7px;
+  width: 22px;
+  height: 22px;
+  background: var(--tc-bg);
+  border: 2px solid var(--tc-accent);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  line-height: 1;
+  text-align: center;
+}
+
+.pc-info { flex: 1; min-width: 0; }
+
+.pc-name {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 12px;
+  color: #f1f5f9;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 5px;
+}
+
+.pc-grade {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 7px;
+  color: var(--tc-accent);
+  margin-bottom: 3px;
+  letter-spacing: 1px;
+}
+
+.pc-rank {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 7px;
+  color: #475569;
+}
+
+.pc-motto {
+  position: relative;
+  z-index: 1;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 6px;
+  color: rgba(255,255,255,0.35);
+  font-style: italic;
+  letter-spacing: 0.5px;
+  line-height: 1.7;
+  min-height: 14px;
+  padding: 6px 0 8px;
+  border-top: 1px solid rgba(255,255,255,0.06);
+  word-break: break-word;
+}
+.pc-motto.pc-motto-empty { border-top-color: transparent; }
+
+.pc-footer {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 7px;
+  border-top: 1px solid var(--tc-border);
+}
+
+.pc-aircraft-label {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 6px;
+  color: var(--tc-accent);
+  letter-spacing: 1px;
+}
+
+.pc-stats-label {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 6px;
+  color: #475569;
+}
+
+/* Card animations */
+@keyframes pca-theme-kf {
+  0%   { box-shadow: 5px 5px 0 rgba(0,0,0,0.85), 0 0 0 0 var(--tc-accent); }
+  40%  { box-shadow: 5px 5px 0 rgba(0,0,0,0.85), 0 0 28px 4px var(--tc-accent); }
+  100% { box-shadow: 5px 5px 0 rgba(0,0,0,0.85), 0 0 0 0 transparent; }
+}
+@keyframes pca-emblem-kf {
+  0%   { transform: scale(1); }
+  35%  { transform: scale(1.03); }
+  65%  { transform: scale(0.99); }
+  100% { transform: scale(1); }
+}
+@keyframes pca-save-kf {
+  0%   { box-shadow: 5px 5px 0 rgba(0,0,0,0.85); filter: brightness(1); }
+  25%  { box-shadow: 5px 5px 0 rgba(0,0,0,0.85); filter: brightness(1.8); }
+  100% { box-shadow: 5px 5px 0 rgba(0,0,0,0.85); filter: brightness(1); }
+}
+.pilot-card.pca-theme  { animation: pca-theme-kf  0.7s ease-out forwards; }
+.pilot-card.pca-emblem { animation: pca-emblem-kf 0.35s ease-out forwards; }
+.pilot-card.pca-save   { animation: pca-save-kf   0.7s ease-out forwards; }
+
+/* ── Editor panel ───────────────────────────────────────────────────────── */
+.pc-editor {
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding-bottom: 24px;
+}
+
+.pce-section {}
+
+.pce-label {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 7px;
+  color: #475569;
+  letter-spacing: 2px;
+  margin-bottom: 8px;
+}
+
+/* Emblem grid */
+.emblem-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 7px;
+}
+
+.emblem-btn {
+  aspect-ratio: 1;
+  background: #0d1622;
+  border: 2px solid #1e2d40;
+  border-top-color: #0a1018;
+  border-left-color: #0a1018;
+  font-size: 18px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.18s, background 0.18s, transform 0.12s;
+  box-shadow: 2px 2px 0 rgba(0,0,0,0.75);
+  user-select: none;
+}
+.emblem-btn:active { transform: translate(1px,1px); box-shadow: 1px 1px 0 rgba(0,0,0,0.75); }
+
+.emblem-btn.emb-on {
+  border-color: #00d4ff;
+  background: #0a2030;
+  box-shadow: 0 0 12px rgba(0,212,255,0.25), 2px 2px 0 rgba(0,0,0,0.75);
+}
+
+@keyframes emb-pop {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(1.22); }
+  70%  { transform: scale(0.95); }
+  100% { transform: scale(1); }
+}
+/* Replay pop when newly selected — controlled from JS via reflow trick */
+.emblem-btn.emb-on { animation: emb-pop 0.32s cubic-bezier(0.34,1.56,0.64,1); }
+
+/* Inputs */
+.pce-input {
+  width: 100%;
+  background: #0d1622;
+  border: 2px solid #1e2d40;
+  border-top-color: #0a1018;
+  border-left-color: #0a1018;
+  color: #f1f5f9;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 9px;
+  padding: 11px 12px;
+  outline: none;
+  box-sizing: border-box;
+  letter-spacing: 1px;
+  transition: border-color 0.2s;
+  box-shadow: 2px 2px 0 rgba(0,0,0,0.7);
+}
+.pce-input:focus { border-color: #00d4ff; }
+.pce-input::placeholder { color: #2a3d55; }
+
+/* Theme grid */
+.theme-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+.theme-btn {
+  padding: 11px 8px;
+  background: #0d1622;
+  border: 2px solid var(--th-b, #1e3a5f);
+  border-top-color: #0a1018;
+  border-left-color: #0a1018;
+  color: var(--th-a, #00d4ff);
+  font-family: 'Press Start 2P', monospace;
+  font-size: 7px;
+  cursor: pointer;
+  text-align: center;
+  letter-spacing: 1px;
+  transition: background 0.2s, box-shadow 0.2s;
+  box-shadow: 3px 3px 0 rgba(0,0,0,0.8);
+}
+.theme-btn:active { transform: translate(2px,2px); box-shadow: 1px 1px 0 rgba(0,0,0,0.8); }
+
+.theme-btn.th-on {
+  background: color-mix(in srgb, var(--th-a, #00d4ff) 12%, #0d1622);
+  border-color: var(--th-a, #00d4ff);
+  box-shadow: 0 0 14px color-mix(in srgb, var(--th-a,#00d4ff) 35%, transparent), 3px 3px 0 rgba(0,0,0,0.8);
+}
+
+@keyframes th-select {
+  0%   { transform: scale(1); }
+  50%  { transform: scale(0.97); }
+  100% { transform: scale(1); }
+}
+.theme-btn.th-on { animation: th-select 0.22s ease-out; }
+
+/* Save button */
+.pce-save-btn {
+  width: 100%;
+  padding: 14px;
+  background: #00d4ff;
+  color: #050c14;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 10px;
+  border: none;
+  border-bottom: 4px solid #0090bb;
+  border-right: 4px solid #0090bb;
+  cursor: pointer;
+  letter-spacing: 2px;
+  box-shadow: 4px 4px 0 rgba(0,0,0,0.85);
+  transition: transform 0.1s, box-shadow 0.1s, background 0.2s;
+}
+.pce-save-btn:active {
+  transform: translate(3px,3px);
+  box-shadow: 1px 1px 0 rgba(0,0,0,0.85);
+}
+.pce-save-btn:disabled {
+  background: #134e6f;
+  color: #0a2a3a;
+  border-color: #0a2a3a;
+  cursor: not-allowed;
+}
+
+/* ── PROFILE ACCOUNT SECTION ─────────────────────────────────────────────── */
+.pce-acc-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+.pce-acc-photo {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid #1e4a8f;
+  flex-shrink: 0;
+}
+.pce-acc-initial {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: #0d2240;
+  border: 2px solid #1e4a8f;
+  color: #93c5fd;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.pce-acc-info {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.pce-acc-name {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 8px;
+  color: #e0f0ff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pce-acc-email {
+  font-size: 9px;
+  color: #5a8aaa;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pce-acc-badge {
+  display: inline-block;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 6px;
+  padding: 3px 6px;
+  border-radius: 2px;
+  margin-top: 2px;
+  align-self: flex-start;
+}
+.pce-acc-badge-google {
+  background: #0f3460;
+  color: #4a9eff;
+  border: 1px solid #1e4a8f;
+}
+.pce-acc-badge-reg {
+  background: #0f3a1f;
+  color: #4ade80;
+  border: 1px solid #166534;
+}
+.pce-signout-btn {
+  width: 100%;
+  padding: 8px;
+  background: #1a0808;
+  border: 2px solid #7f1d1d;
+  border-bottom-color: #450a0a;
+  border-right-color: #450a0a;
+  color: #f87171;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 7px;
+  cursor: pointer;
+  text-align: center;
+  transition: background 0.15s;
+}
+.pce-signout-btn:active { background: #2a0808; }
+
+/* Guest / not connected */
+.pce-acc-guest {
+  text-align: center;
+  padding: 12px 0 10px;
+}
+.pce-acc-guest-icon {
+  font-size: 24px;
+  opacity: 0.3;
+  margin-bottom: 6px;
+}
+.pce-acc-guest-label {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 8px;
+  color: #5a8aaa;
+  margin-bottom: 4px;
+}
+.pce-acc-guest-sub {
+  font-size: 9px;
+  color: #2a4a5a;
+  margin-bottom: 10px;
+}
+.pce-acc-btns {
+  display: flex;
+  gap: 8px;
+}
+.pce-google-btn {
+  flex: 1;
+  padding: 9px 4px;
+  background: #0f2040;
+  border: 2px solid #1e4a8f;
+  border-bottom-color: #0a1a3f;
+  border-right-color: #0a1a3f;
+  color: #93c5fd;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 6px;
+  cursor: pointer;
+}
+.pce-google-btn:active { background: #0a1a30; }
+.pce-register-btn {
+  flex: 1;
+  padding: 9px 4px;
+  background: #0f2a15;
+  border: 2px solid #166534;
+  border-bottom-color: #052a0f;
+  border-right-color: #052a0f;
+  color: #4ade80;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 6px;
+  cursor: pointer;
+}
+.pce-register-btn:active { background: #081a0d; }
+
+/* PILOT button in main menu */
+.btn-pilot-card {
+  background: linear-gradient(135deg, #0a1a2e 0%, #0d2240 100%);
+  border-top-color: #1e4a8f;
+  border-left-color: #1e4a8f;
+  color: #93c5fd;
 }

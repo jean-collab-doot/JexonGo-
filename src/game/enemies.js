@@ -48,7 +48,6 @@ export function spawnEnemy(canvasW, type) {
 }
 
 export function updateEnemies(enemies, canvasW = 400) {
-  const margin = canvasW < 500 ? Math.round(canvasW * 0.26) : 70;
   for (const e of enemies) {
     if (!e.active) continue;
 
@@ -62,16 +61,9 @@ export function updateEnemies(enemies, canvasW = 400) {
     e.sinPhase += e.sinFreq;
     e.vx = Math.sin(e.sinPhase) * e.sinAmp;
 
-    const nextX = e.x + e.vx;
-    if (nextX < margin || nextX > canvasW - margin) {
-      // sin(-x) = -sin(x): negating sinPhase flips vx permanently.
-      // Just negating vx alone is overwritten next frame by sin(phase).
-      e.sinPhase = -e.sinPhase;
-      e.sinFreq  = -e.sinFreq;
-      e.vx = Math.sin(e.sinPhase) * e.sinAmp;
-    }
     e.x += e.vx;
-    e.x = Math.max(margin, Math.min(canvasW - margin, e.x));
+    const edge = e.size * 1.5;
+    e.x = Math.max(edge, Math.min(canvasW - edge, e.x));
 
     e.y += e.speed;
     if (e.shakeTick > 0) e.shakeTick--;
