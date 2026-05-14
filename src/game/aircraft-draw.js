@@ -67,12 +67,16 @@ export function drawAircraftPreview(ctx, aircraftId, cx, cy, size) {
  */
 export function drawEnemySprite(ctx, enemy, bankAngle = 0) {
   const size = enemy.size * getEnemyScale();
-  ctx.save();
-  ctx.imageSmoothingEnabled = true;
-  if (enemy.spriteFilter) ctx.filter = enemy.spriteFilter;
-  drawFrame(ctx, enemy.spriteKey, enemy.animFrame, enemy.x, enemy.y, size, size,
-    { rotate: Math.PI + bankAngle });
-  ctx.restore();
+  if (enemy.spriteFilter) {
+    ctx.save();
+    ctx.filter = enemy.spriteFilter;
+    drawFrame(ctx, enemy.spriteKey, enemy.animFrame, enemy.x, enemy.y, size, size,
+      { rotate: Math.PI + bankAngle });
+    ctx.restore();
+  } else {
+    drawFrame(ctx, enemy.spriteKey, enemy.animFrame, enemy.x, enemy.y, size, size,
+      { rotate: Math.PI + bankAngle });
+  }
 
   // HP bar for tank / boss enemies
   if (enemy.maxHp > 1) {

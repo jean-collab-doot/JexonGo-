@@ -44,14 +44,17 @@ export function updateParticles(particles) {
     p.frame += p.frameRate;
     if (p.frame >= p.totalFrames) particles.splice(i, 1);
   }
+  if (particles.length > MAX_PARTICLES) particles.splice(0, particles.length - MAX_PARTICLES);
 }
 
 // ── DRAW ──────────────────────────────────────────────────────────────────────
 
+const MAX_PARTICLES = 24;
+
 export function drawParticles(ctx, particles) {
-  ctx.imageSmoothingEnabled = false;
-  for (const p of particles) {
+  const limit = Math.min(particles.length, MAX_PARTICLES);
+  for (let i = 0; i < limit; i++) {
+    const p = particles[i];
     drawFrame(ctx, p.spriteKey, p.frame, p.x, p.y, p.size, p.size);
   }
-  ctx.imageSmoothingEnabled = true;
 }

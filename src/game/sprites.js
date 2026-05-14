@@ -138,10 +138,19 @@ export function drawFrame(ctx, key, frame, cx, cy, w, h, { rotate = 0, alpha = 1
   const fh  = img.naturalHeight;
   const f   = Math.floor(frame) % def.frames;
 
-  ctx.save();
-  if (alpha !== 1) ctx.globalAlpha *= alpha;
-  ctx.translate(cx, cy);
-  if (rotate !== 0) ctx.rotate(rotate);
-  ctx.drawImage(img, f * fw, 0, fw, fh, -w / 2, -h / 2, w, h);
-  ctx.restore();
+  if (rotate !== 0) {
+    ctx.save();
+    if (alpha !== 1) ctx.globalAlpha *= alpha;
+    ctx.translate(cx, cy);
+    ctx.rotate(rotate);
+    ctx.drawImage(img, f * fw, 0, fw, fh, -w / 2, -h / 2, w, h);
+    ctx.restore();
+  } else if (alpha !== 1) {
+    ctx.save();
+    ctx.globalAlpha *= alpha;
+    ctx.drawImage(img, f * fw, 0, fw, fh, cx - w / 2, cy - h / 2, w, h);
+    ctx.restore();
+  } else {
+    ctx.drawImage(img, f * fw, 0, fw, fh, cx - w / 2, cy - h / 2, w, h);
+  }
 }
