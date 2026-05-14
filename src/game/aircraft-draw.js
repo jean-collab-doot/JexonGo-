@@ -4,6 +4,18 @@
 
 import { drawFrame, AIRCRAFT_SPRITE } from './sprites.js';
 
+// Engine exhaust nozzle positions as fractions of the sprite size from center.
+// x: left(-) / right(+), y: forward(-) / rear(+). Multiply by sz to get pixels.
+const ENGINE_OFFSETS = {
+  f16:  [{ x:  0,     y:  0.38 }],
+  f35:  [{ x:  0,     y:  0.38 }],
+  f18:  [{ x: -0.12,  y:  0.35 }, { x:  0.12,  y:  0.35 }],
+  f22:  [{ x: -0.13,  y:  0.35 }, { x:  0.13,  y:  0.35 }],
+  sr71: [{ x: -0.18,  y:  0.28 }, { x:  0.18,  y:  0.28 }],
+  a10:  [{ x: -0.08,  y:  0.22 }, { x:  0.08,  y:  0.22 }],
+  b2:   [{ x: -0.22,  y:  0.1  }, { x: -0.07,  y:  0.1  }, { x:  0.07, y: 0.1 }, { x:  0.22, y: 0.1 }],
+};
+
 // Smaller on phone so the plane doesn't dominate the narrow screen
 function getPlayerSize() {
   return window.innerWidth <= 520 ? 110 : 180;
@@ -72,4 +84,29 @@ export function drawEnemySprite(ctx, enemy, bankAngle = 0) {
     ctx.fillStyle = enemy.color;
     ctx.fillRect(bx, by, bw * (enemy.currentHp / enemy.maxHp), bh);
   }
+}
+
+// ── ENGINE FIRE ───────────────────────────────────────────────────────────────
+
+export function drawEngineFire(ctx, aircraftId, cx, cy, tick, bankAngle = 0) {
+  const offsets = ENGINE_OFFSETS[aircraftId];
+  if (!offsets) return;
+  const sz    = getPlayerSize();
+  const fw    = sz * 0.28;
+  const fh    = sz * 0.16;
+  const frame = Math.floor(tick / 3) % 3;
+
+  ctx.save();
+  ctx.translate(cx, cy);
+  if (bankAngle) ctx.rotate(bankAngle);
+
+  for (const off of offsets) {
+    ctx.save();
+    ctx.translate(off.x * sz, off.y * sz);
+    ctx.rotate(-Math.PI / 2);  // sprite points right → rotate to point down
+    drawFrame(ctx, 'fire-ball', frame, 0, 0, fw, fh);
+    ctx.restore();
+  }
+
+  ctx.restore();
 }

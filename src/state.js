@@ -8,7 +8,7 @@ export const G = {
   blueprints: {},
   chestsWithoutEpic: 0,
   levelStars: {},
-  unlockedAircraft: ['t6'],
+  unlockedAircraft: ['t6','pc21','c130','a10','f16','f18','f22','f35','b2','sr71'],
   activeAircraft: 't6',
   ownedSkins: [],
   activeSkin: null,    // shop image skin (FURTIF, SPACE, etc.)
@@ -84,7 +84,7 @@ export function loadSave() {
   G.blueprints        = load('blueprints', {});
   G.chestsWithoutEpic = load('chestsWithoutEpic', 0);
   G.levelStars        = load('levelStars', {});
-  G.unlockedAircraft  = load('unlockedAircraft', ['t6']);
+  G.unlockedAircraft  = ['t6','pc21','c130','a10','f16','f18','f22','f35','b2','sr71'];
   G.activeAircraft    = load('activeAircraft', 't6');
   G.ownedSkins        = load('ownedSkins', []);
   G.activeSkin        = load('activeSkin', null);

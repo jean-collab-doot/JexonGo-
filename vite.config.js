@@ -25,4 +25,15 @@ const copyGameAssets = {
 export default {
   base: './',
   plugins: [copyGameAssets],
+  build: {
+    target: 'es2020',
+    // Inline small assets (<4 KB) to save HTTP round-trips on mobile
+    assetsInlineLimit: 4096,
+    rollupOptions: {
+      output: {
+        // Keep a single JS bundle — avoids extra round-trips on slow mobile networks
+        manualChunks: undefined,
+      },
+    },
+  },
 };

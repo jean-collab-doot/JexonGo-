@@ -24,7 +24,6 @@ export function createMissile(x, y, tx, ty, speed, enemyId, color = '#00d4ff', d
     vx: (dx / d) * speed,
     vy: (dy / d) * speed,
     tx, ty, enemyId, color, damage,
-    trail:     [],
     boltFrame: 0,
   };
 }
@@ -34,8 +33,6 @@ export function createMissile(x, y, tx, ty, speed, enemyId, color = '#00d4ff', d
 export function updateMissiles(missiles, onHit) {
   for (let i = missiles.length - 1; i >= 0; i--) {
     const m = missiles[i];
-    m.trail.push({ x: m.x, y: m.y });
-    if (m.trail.length > 8) m.trail.shift();
     m.x += m.vx;
     m.y += m.vy;
     m.boltFrame = (m.boltFrame + BOLT_FRAME_RATE) % 4;

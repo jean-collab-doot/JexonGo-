@@ -4739,3 +4739,31 @@ body::after {
   border-left-color: #1e4a8f;
   color: #93c5fd;
 }
+
+/* ── MOBILE / TABLET PERFORMANCE OPTIMIZATIONS ──────────────────────────────
+   Touch devices: disable decorative infinite animations to save GPU cycles.
+────────────────────────────────────────────────────────────────────────────── */
+@media (hover: none), (prefers-reduced-motion: reduce) {
+  .prestige-badge-rainbow { animation: none !important; }
+  .prestige-btn-pulse-el  { animation: none !important; }
+  .prestige-modal-glow    { animation: none !important; }
+  .godmode-badge          { animation: none !important; }
+  .rk-live-dot            { animation: none !important; }
+  .sr71-mission-card      { animation: none !important; }
+  .offline-banner         { animation: none !important; }
+  .answer-btn { transition: transform 0.05s, background 0.05s !important; }
+  .chest-card { transition: transform 0.15s ease !important; }
+}
+
+/* Canvas on its own compositor layer for smoother rendering */
+#game-canvas {
+  will-change: contents;
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+}
+
+/* Remove costly will-change from off-gameplay elements on mobile */
+@media (hover: none) {
+  .profile-card { will-change: auto; }
+  .chest-card   { will-change: auto; }
+}

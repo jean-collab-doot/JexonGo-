@@ -34,8 +34,9 @@ export const SPRITE_DEFS = {
   // FX — death / hit
   'enemy-death': { path: '/assets/enemies/enemy-explosion.png', frames: 7 },
   // FX
-  'bolt':  { path: '/assets/fx/rocket.png',      frames: 1 },
-  'spark': { path: '/assets/fx/explosion-a.png', frames: 8 },
+  'bolt':      { path: '/assets/fx/rocket.png',               frames: 1 },
+  'spark':     { path: '/assets/fx/explosion-a.png',         frames: 8 },
+  'fire-ball': { path: '/assets/fx/fire-ball.png', frames: 3 },
   // Ocean backgrounds
   'ocean-back':   { path: '/assets/bg/ocean/back.png',   frames: 1 },
   'ocean-clouds': { path: '/assets/bg/ocean/clouds.png', frames: 1 },
@@ -73,7 +74,7 @@ export const ENEMY_SPRITE = {
 // Biome → sprite keys required before gameplay starts
 const SHIP_KEYS   = ['ship-t6','ship-pc21','ship-c130','ship-a10','ship-f16','ship-f18','ship-f22','ship-f35','ship-b2','ship-sr71'];
 const ENEMY_KEYS  = ['enemy-f15','enemy-t38','enemy-f117','enemy-death'];
-const FX_KEYS     = ['bolt','spark'];
+const FX_KEYS     = ['bolt','spark','fire-ball'];
 
 export const BIOME_SPRITES = {
   ocean:  [...SHIP_KEYS, ...ENEMY_KEYS, ...FX_KEYS, 'ocean-bg'],

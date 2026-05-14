@@ -4,7 +4,7 @@ import { newQuestion } from '../game/math-engine.js';
 import { spawnEnemy, updateEnemies, hitEnemy } from '../game/enemies.js';
 import { createMissile, updateMissiles, drawMissiles } from '../game/missiles.js';
 import { spawnExplosion, spawnHitSpark, updateParticles, drawParticles } from '../game/particles.js';
-import { drawAircraftSprite, drawEnemySprite, getPlayerSize } from '../game/aircraft-draw.js';
+import { drawAircraftSprite, drawEnemySprite, drawEngineFire, getPlayerSize } from '../game/aircraft-draw.js';
 import { AIRCRAFT } from '../data/aircraft.js';
 import { SKINS } from '../data/skins.js';
 import { getPrestigeBadgeHTML } from '../data/prestige.js';
@@ -49,6 +49,8 @@ let shakeFrames = 0;
 let _onComplete = null;
 let spawnTimer  = 0;
 let _cutsceneActive = false;
+let _maxLives = 3;
+let _fireTick = 0;
 let spawnRate   = 150;
 let maxEnemies  = 5;
 let _sessionId    = 0;
@@ -168,8 +170,7 @@ function clearPointer() {
 function updatePlayerMovement() {
   const margin  = 32;
   const minY    = canvas.height * 0.4;
-  const qboxH   = $('question-box').offsetHeight || 180;
-  const maxY    = canvas.height - qboxH - 24;
+  const maxY    = canvas.height - _qboxH - 24;
 
   if (_jsOrigin) {
     // Joystick touch: apply velocity directly, no lerp lag
@@ -220,15 +221,14 @@ function resize() {
   if (!w || !h) return;
   canvas.width  = w;
   canvas.height = h;
+  _qboxH = $('question-box').offsetHeight || 180;
   G.player.x = Math.max(32, Math.min(w - 32,  G.player.x || w / 2));
-  const qH = $('question-box').offsetHeight || 180;
-  G.player.y = Math.max(h * 0.4, Math.min(h - qH - 24, G.player.y || h - qH - 60));
+  G.player.y = Math.max(h * 0.4, Math.min(h - _qboxH - 24, G.player.y || h - _qboxH - 60));
 }
 
 function placePlayer() {
   G.player.x = canvas.width  / 2;
-  const qboxHeight = $('question-box').offsetHeight || 180;
-  G.player.y = canvas.height - qboxHeight - 160;
+  G.player.y = canvas.height - _qboxH - 160;
 }
 
 // ── LOADING SCREEN ──────────────────────────────────────────────────────────
@@ -248,11 +248,18 @@ function drawLoadingScreen() {
 }
 
 // ── GAME LOOP ───────────────────────────────────────────────────────────────
-function frame() {
+function frame(ts = 0) {
+  if (_frameInterval && ts - _lastFrameTs < _frameInterval) {
+    if (!_cutsceneActive) G.animFrame = requestAnimationFrame(frame);
+    return;
+  }
+  _lastFrameTs = ts;
+
   tick++;
   _shipFrame = (_shipFrame + 0.08) % 5;
 
   ctx.globalAlpha = 1;
+  ctx.imageSmoothingEnabled = false;
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
   const shaking = shakeFrames > 0;
@@ -428,8 +435,6 @@ function frame() {
       const ns = Math.sqrt(m.vx * m.vx + m.vy * m.vy) || 1;
       m.vx = (m.vx / ns) * spd; m.vy = (m.vy / ns) * spd;
     }
-    m.trail.push({ x: m.x, y: m.y });
-    if (m.trail.length > 8) m.trail.shift();
     m.x += m.vx;
     m.y += m.vy;
     m.boltFrame = 0;
@@ -470,6 +475,11 @@ function frame() {
   const activeLiveryData = SKINS.find(s => s.id === G.activeLivery);  // hangar livery
   const skinFilter    = activeLiveryData?.filter || '';
   const skinAircraft  = (activeSkinData ?? activeLiveryData)?.aircraft ?? G.activeAircraft;
+
+  if (!_isPhone) {
+    _fireTick++;
+    drawEngineFire(ctx, G.activeAircraft, G.player.x, G.player.y, _fireTick, bankAngle);
+  }
 
   const _inGameImg = activeSkinData?.skinImg || activeSkinData?.offerImg;
   if (_inGameImg) {
@@ -961,6 +971,9 @@ function _loadFrames(base, count) {
 function playDeathCutscene(onDone) {
   _cutsceneActive = true;
   SFX.stopMusic();
+  $('question-box').style.visibility = 'hidden';
+  $('game-hud').style.visibility = 'hidden';
+  $('timer-bar-wrap').style.visibility = 'hidden';
   const cw = canvas.width;
   const ch = canvas.height;
   const px = G.player.x;
@@ -1053,7 +1066,7 @@ function playDeathCutscene(onDone) {
       ctx.scale(zoom, zoom);
       ctx.translate(-px, -py);
       _drawPlayer();
-      drawMissiles(ctx, [{ x: mx, y: my, vx: mvx, vy: mvy, boltFrame: 0, trail: [], tx: px, ty: py }], true);
+      drawMissiles(ctx, [{ x: mx, y: my, vx: mvx, vy: mvy, boltFrame: 0, tx: px, ty: py }], true);
       ctx.restore();
 
       // Cinematic vignette
@@ -1218,9 +1231,8 @@ function loseLife() {
 
 // ── HUD ──────────────────────────────────────────────────────────────────────
 function updateLivesHUD() {
-  const maxSlots = Math.max(3, G.lives);
-  $('hud-lives').innerHTML = Array.from({ length: maxSlots }, (_, i) =>
-    `<span style="opacity:${i < G.lives ? '1' : '0.2'}">&#10084;&#65039;</span>`
+  $('hud-lives').innerHTML = Array.from({ length: _maxLives }, (_, i) =>
+    `<img src="/assets/fx/heart-full.png" style="width:28px;height:28px;image-rendering:pixelated;opacity:${i < G.lives ? '1' : '0.3'}">`
   ).join('');
 }
 
@@ -1246,8 +1258,17 @@ function endLevel(won) {
 // Speed lines — initialised per session, used in frame()
 let _speedLines   = [];
 const _skinImgCache = {};
+// ── DEVICE DETECTION ─────────────────────────────────────────────────────────
+const _isPhone   = window.innerWidth <= 480 || (('ontouchstart' in window) && window.innerWidth <= 768);
+const _isTablet  = !_isPhone && 'ontouchstart' in window;
+const _isMobile  = _isPhone || _isTablet;
+// Frame-rate caps: 30 fps phone, 45 fps tablet, native (60 Hz) on desktop
+const _frameInterval = _isPhone ? 1000 / 30 : _isTablet ? 1000 / 45 : 0;
+let   _lastFrameTs   = 0;
+let   _qboxH         = 180;  // cached question-box height — updated in resize()
 function initSpeedLines(cw, ch) {
-  _speedLines = Array.from({ length: 28 }, () => ({
+  const count = window.innerWidth <= 768 ? 12 : 28;
+  _speedLines = Array.from({ length: count }, () => ({
     x:      Math.random() * cw,
     y:      Math.random() * ch,
     len:    30 + Math.random() * 80,
@@ -1260,22 +1281,26 @@ function initSpeedLines(cw, ch) {
 function drawSpeedLines(ctx, cw, ch) {
   ctx.save();
   ctx.strokeStyle = '#ffffff';
-  ctx.lineCap = 'round';
+  ctx.lineCap     = 'round';
+  ctx.lineWidth   = 0.8;
+  ctx.globalAlpha = 0.08;
+  ctx.beginPath();
   for (const l of _speedLines) {
     l.y += l.speed;
     if (l.y > ch + l.len) { l.y = -l.len; l.x = Math.random() * cw; }
-    ctx.globalAlpha = l.alpha;
-    ctx.lineWidth   = l.width;
-    ctx.beginPath();
     ctx.moveTo(l.x, l.y);
     ctx.lineTo(l.x, l.y + l.len);
-    ctx.stroke();
   }
+  ctx.stroke();
   ctx.restore();
 }
 
 export function initGame(levelNum, onComplete) {
   _sessionId++;
+  _cutsceneActive = false;
+  $('question-box').style.visibility  = '';
+  $('game-hud').style.visibility      = '';
+  $('timer-bar-wrap').style.visibility = '';
   _invincible    = 0;
   _stealthActive = false;
   _stealthTicks  = 0;
@@ -1312,6 +1337,7 @@ export function initGame(levelNum, onComplete) {
   levelCfg       = applyAgeModifiers(getLevel(levelNum), G.playerAge);
   const aircraft = AIRCRAFT[G.activeAircraft] || AIRCRAFT.t6;
   if (!snap && aircraft.lives) G.lives = aircraft.lives;
+  _maxLives = G.lives;
   if (snap) {
     G.lives             = snap.lives;
     G.correctAnswers    = snap.correctAnswers;
@@ -1339,12 +1365,13 @@ export function initGame(levelNum, onComplete) {
   } else {
     updateLivesHUD();
     if (aircraft.ability === 'extraLife') G.lives = Math.min(G.lives + 1, 5);
+    _maxLives = G.lives;
     updateLivesHUD();
   }
   updateStreakHUD();
 
   spawnRate  = levelCfg.spawnRate;
-  maxEnemies = levelCfg.maxEnemies;
+  maxEnemies = _isPhone ? Math.min(levelCfg.maxEnemies, 3) : _isTablet ? Math.min(levelCfg.maxEnemies, 4) : levelCfg.maxEnemies;
   spawnTimer = 60;
 
   attachInputListeners();
@@ -1475,10 +1502,23 @@ export function initGame(levelNum, onComplete) {
   }
   requestAnimationFrame(tryStart);
 
+  // Pause loop when tab is hidden, resume when visible again
+  const _onVisibility = () => {
+    if (document.hidden) {
+      cancelAnimationFrame(G.animFrame);
+      G.animFrame = null;
+    } else if (!G.animFrame && !_cutsceneActive) {
+      _lastFrameTs = 0;
+      G.animFrame = requestAnimationFrame(frame);
+    }
+  };
+  document.addEventListener('visibilitychange', _onVisibility);
+
   return () => {
     _sessionId++;
     clearInterval(G.timerInterval);
     cancelAnimationFrame(G.animFrame);
+    document.removeEventListener('visibilitychange', _onVisibility);
     G.timerInterval = null;
     G.animFrame     = null;
     detachInputListeners();
