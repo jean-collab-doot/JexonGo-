@@ -148,7 +148,7 @@ export function claimMission(missionId) {
 
 export function hasPendingMissionClaim() {
   const dailyPending = (G.dailyMissions || []).some(m => !m.claimed && m.progress >= m.target);
-  const sr71Pending  = G.sr71Earned && !G.sr71MissionClaimed;
+  const sr71Pending  = G.sr71Earned && !G.sr71MissionClaimed && !G.unlockedAircraft.includes('sr71');
   return dailyPending || sr71Pending;
 }
 

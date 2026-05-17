@@ -1036,7 +1036,7 @@ function _renderMissions() {
       </button>
     </div>
   `;
-  if (!sr71.claimed) list.appendChild(sr71Card);
+  if (!sr71.claimed && !G.unlockedAircraft.includes('sr71')) list.appendChild(sr71Card);
 
   list.querySelectorAll('.mission-claim-btn:not([disabled])').forEach(btn => {
     btn.onclick = () => {
