@@ -50,7 +50,8 @@ let _onComplete = null;
 let spawnTimer  = 0;
 let _cutsceneActive = false;
 let _maxLives = 3;
-let _fireTick = 0;
+let _fireTick  = 0;
+let _bankTilt  = 0;   // current tilt in radians (smoothed)
 let spawnRate   = 150;
 let maxEnemies  = 5;
 let _sessionId    = 0;
@@ -464,7 +465,11 @@ function frame(ts = 0) {
   if (_stealthActive && --_stealthTicks <= 0) _stealthActive = false;
   const prevX = G.player.x;
   updatePlayerMovement();
-  const bankAngle  = (G.player.x - prevX) * 0.06;
+  const _moveDelta = G.player.x - prevX;
+  const _targetTilt = _moveDelta > 0.5 ? 0.349 : _moveDelta < -0.5 ? -0.349 : 0;
+  _bankTilt += (_targetTilt - _bankTilt) * 0.1;
+  if (Math.abs(_bankTilt) < 0.001) _bankTilt = 0;
+  const bankAngle = _bankTilt;
   const flashAlpha = _invincible > 0
     ? (Math.floor(_invincible / 6) % 2 === 0 ? 1.0 : 0.25)
     : _stealthActive
@@ -1304,6 +1309,7 @@ export function initGame(levelNum, onComplete) {
   $('game-hud').style.visibility      = '';
   $('timer-bar-wrap').style.visibility = '';
   _invincible    = 0;
+  _bankTilt      = 0;
   _stealthActive = false;
   _stealthTicks  = 0;
   _stealthAnswers = 0;
