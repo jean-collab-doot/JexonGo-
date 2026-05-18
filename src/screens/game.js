@@ -289,7 +289,7 @@ function frame(ts = 0) {
   }
 
   // ── Background ─────────────────────────────────────────────────────────
-  if (!_isMobile) updateBackground();
+  updateBackground();
   drawBackground(ctx, canvas);
 
   // ── Weather overlay ────────────────────────────────────────────────────

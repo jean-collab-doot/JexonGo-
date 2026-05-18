@@ -5,20 +5,21 @@
 
 import { getImage } from './sprites.js';
 
-const _isMobileBg = window.innerWidth < 768;
+const _isMobileBg = /iPhone|iPad|Android/i.test(navigator.userAgent) || window.innerWidth < 768;
 
 // ── LAYER CONFIG ─────────────────────────────────────────────────────────────
 const LAYER_DEFS = {
-  ocean:  [{ key: 'ocean-bg',  speed: _isMobileBg ? 0.8 : 1.2 }],
-  desert: [{ key: 'desert-bg', speed: _isMobileBg ? 0.8 : 1.2 }],
-  city:   [{ key: 'city-bg',   speed: _isMobileBg ? 0.8 : 1.2 }],
-  arctic: [{ key: 'arctic-bg', speed: _isMobileBg ? 0.8 : 1.2 }],
-  space:  [{ key: 'space-bg',  speed: _isMobileBg ? 0.8 : 1.2 }],
+  ocean:  [{ key: 'ocean-bg',  speed: _isMobileBg ? 0.4 : 1.2 }],
+  desert: [{ key: 'desert-bg', speed: _isMobileBg ? 0.4 : 1.2 }],
+  city:   [{ key: 'city-bg',   speed: _isMobileBg ? 0.4 : 1.2 }],
+  arctic: [{ key: 'arctic-bg', speed: _isMobileBg ? 0.4 : 1.2 }],
+  space:  [{ key: 'space-bg',  speed: _isMobileBg ? 0.4 : 1.2 }],
 };
 
 // ── STATE ─────────────────────────────────────────────────────────────────────
 let _layers       = [];
 let _lastCanvasW  = 0;  // track resize to invalidate tile caches
+let _bgFrameSkip  = 0;
 
 // ── PUBLIC API ────────────────────────────────────────────────────────────────
 
@@ -31,6 +32,10 @@ export function initBackground(biome) {
 
 /** Call every game-tick (before draw). */
 export function updateBackground() {
+  if (_isMobileBg) {
+    _bgFrameSkip++;
+    if (_bgFrameSkip % 2 !== 0) return; // update every other frame on mobile
+  }
   for (const l of _layers) l.y += l.speed;
 }
 
