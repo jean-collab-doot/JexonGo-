@@ -22,6 +22,22 @@ import { showDailyReward } from './screens/menu.js';
 import { canSendFeedback, markFeedbackSent, sendFeedback, sendNewPlayerNotification, _resetNewPlayer, _testEmailNow } from './systems/feedback.js';
 import { t, applyI18n } from './i18n.js';
 
+// ── VIDEO BACKGROUND ─────────────────────────────────────────────────────────
+const _menuVideo  = document.getElementById('menu-bg-video');
+const _isMobileUA = /iPhone|iPad|Android/i.test(navigator.userAgent) || window.innerWidth < 768;
+
+if (_isMobileUA && _menuVideo) {
+  _menuVideo.pause();
+  _menuVideo.style.display = 'none';
+}
+
+function _videoPause() {
+  if (_menuVideo && !_menuVideo.paused) _menuVideo.pause();
+}
+function _videoResume() {
+  if (!_isMobileUA && _menuVideo) _menuVideo.play().catch(() => {});
+}
+
 // ── SESSION TIMER ────────────────────────────────────────────────────────────
 const _sessionStart = Date.now();
 function _playtimeStr() {
@@ -37,6 +53,7 @@ const nav = {
     renderMenu();
     showScreen('s-menu');
     SFX.playMusic('menu');
+    _videoResume();
   },
   toMap() {
     cleanup();
@@ -118,6 +135,9 @@ const nav = {
 };
 
 function cleanup() {
+  _videoPause();
+  if (G.animFrame)     { cancelAnimationFrame(G.animFrame); G.animFrame = null; }
+  if (G.timerInterval) { clearInterval(G.timerInterval);    G.timerInterval = null; }
   if (_cleanup) { _cleanup(); _cleanup = null; }
 }
 
