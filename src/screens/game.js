@@ -250,11 +250,17 @@ function drawLoadingScreen() {
 
 // ── GAME LOOP ───────────────────────────────────────────────────────────────
 function frame(ts = 0) {
-  if (_frameInterval && ts - _lastFrameTs < _frameInterval) {
-    if (!_cutsceneActive) G.animFrame = requestAnimationFrame(frame);
-    return;
+  if (_frameInterval) {
+    const elapsed = ts - _lastFrameTs;
+    if (elapsed < _frameInterval) {
+      if (!_cutsceneActive) G.animFrame = requestAnimationFrame(frame);
+      return;
+    }
+    // Subtract overshoot so timing doesn't drift over time
+    _lastFrameTs = ts - (elapsed % _frameInterval);
+  } else {
+    _lastFrameTs = ts;
   }
-  _lastFrameTs = ts;
 
   tick++;
   _shipFrame = (_shipFrame + 0.08) % 5;

@@ -1,33 +1,32 @@
 // ── PARALLAX BACKGROUND ──────────────────────────────────────────────────────
-// Each biome has N layers; each layer stores a key into SPRITE_DEFS and a
-// scroll speed (canvas-pixels per game tick, applied downward so it looks
-// like the player is flying upward).
-//
-// If an image isn't loaded yet the layer is silently skipped — game.js draws
-// the solid-colour gradient fallback before calling drawBackground(), so the
-// canvas is never blank.
+// Each biome has one scrolling layer. The source image is pre-scaled once into
+// an offscreen canvas so every frame only does a cheap pixel blit, not a
+// scaled drawImage of a 1024×1536 texture.
 
 import { getImage } from './sprites.js';
 
+const _isMobileBg = window.innerWidth < 768;
+
 // ── LAYER CONFIG ─────────────────────────────────────────────────────────────
 const LAYER_DEFS = {
-  ocean:  [{ key: 'ocean-bg',  speed: 1.2 }],
-  desert: [{ key: 'desert-bg', speed: 1.2 }],
-  city:   [{ key: 'city-bg',   speed: 1.2 }],
-  arctic: [{ key: 'arctic-bg', speed: 1.2 }],
-  space:  [{ key: 'space-bg',  speed: 1.2 }],
+  ocean:  [{ key: 'ocean-bg',  speed: _isMobileBg ? 0.8 : 1.2 }],
+  desert: [{ key: 'desert-bg', speed: _isMobileBg ? 0.8 : 1.2 }],
+  city:   [{ key: 'city-bg',   speed: _isMobileBg ? 0.8 : 1.2 }],
+  arctic: [{ key: 'arctic-bg', speed: _isMobileBg ? 0.8 : 1.2 }],
+  space:  [{ key: 'space-bg',  speed: _isMobileBg ? 0.8 : 1.2 }],
 };
 
 // ── STATE ─────────────────────────────────────────────────────────────────────
-// Each active layer: { key, speed, y } where y is the running scroll offset.
-let _layers = [];
+let _layers       = [];
+let _lastCanvasW  = 0;  // track resize to invalidate tile caches
 
 // ── PUBLIC API ────────────────────────────────────────────────────────────────
 
 /** Call once when a level starts (or biome changes). */
 export function initBackground(biome) {
   const defs = LAYER_DEFS[biome] ?? LAYER_DEFS.ocean;
-  _layers = defs.map(d => ({ key: d.key, speed: d.speed, y: 0 }));
+  _layers = defs.map(d => ({ key: d.key, speed: d.speed, y: 0, offscreen: null, dh: 0 }));
+  _lastCanvasW = 0; // force tile rebuild on next draw
 }
 
 /** Call every game-tick (before draw). */
@@ -38,35 +37,44 @@ export function updateBackground() {
 /**
  * Draw all parallax layers onto the canvas.
  *
- * Each image is scaled to fill the canvas width while preserving its aspect
- * ratio, then tiled vertically so there are no gaps as it scrolls.
- *
- * @param {CanvasRenderingContext2D} ctx
- * @param {HTMLCanvasElement}        canvas
+ * Each layer's image is pre-scaled to an offscreen canvas once (on first
+ * available frame and whenever the canvas is resized). After that, every
+ * frame is a plain blit — no GPU scaling, no save/restore.
  */
 export function drawBackground(ctx, canvas) {
   const cw = canvas.width;
   const ch = canvas.height;
 
+  // Invalidate tile caches on resize
+  if (_lastCanvasW !== cw) {
+    for (const l of _layers) { l.offscreen = null; l.dh = 0; }
+    _lastCanvasW = cw;
+  }
+
   for (const l of _layers) {
-    const img = getImage(l.key);
-    if (!img) continue;
+    // Build pre-scaled tile on first frame when image is loaded
+    if (!l.offscreen) {
+      const img = getImage(l.key);
+      if (!img) continue;
+      const scale = cw / img.naturalWidth;
+      const dw    = cw;
+      const dh    = Math.ceil(img.naturalHeight * scale);
+      if (dh <= 0) continue;
+      const off = document.createElement('canvas');
+      off.width  = dw;
+      off.height = dh;
+      off.getContext('2d').drawImage(img, 0, 0, dw, dh);
+      l.offscreen = off;
+      l.dh        = dh;
+    }
 
-    // Scale image to fit canvas width exactly
-    const scale = cw / img.naturalWidth;
-    const dw    = cw;
-    const dh    = Math.ceil(img.naturalHeight * scale);
-    if (dh <= 0) continue;
-
-    // Wrap offset so the tile seamlessly loops
+    // Blit pre-scaled tile — no scaling, just position
+    const { offscreen: off, dh } = l;
     const offset = l.y % dh;
-
-    // Draw enough tiles to cover the full canvas height (usually 2, rarely 3)
-    let startY = offset - dh; // start above viewport so first tile is visible from the top
+    let startY = offset - dh;
     while (startY < ch) {
-      ctx.drawImage(img, 0, startY, dw, dh);
+      ctx.drawImage(off, 0, startY);
       startY += dh;
     }
   }
-
 }

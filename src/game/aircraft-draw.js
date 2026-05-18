@@ -16,13 +16,20 @@ const ENGINE_OFFSETS = {
   b2:   [{ x: -0.22,  y:  0.1  }, { x: -0.07,  y:  0.1  }, { x:  0.07, y: 0.1 }, { x:  0.22, y: 0.1 }],
 };
 
-// Smaller on phone so the plane doesn't dominate the narrow screen
+// Cached per window width — recalculated only on resize, not every frame
+let _cachedPlayerSize = 0, _cachedPlayerSizeW = -1;
+let _cachedEnemyScale = 0, _cachedEnemyScaleW = -1;
+
 function getPlayerSize() {
-  return window.innerWidth <= 520 ? 110 : 180;
+  const w = window.innerWidth;
+  if (_cachedPlayerSizeW !== w) { _cachedPlayerSizeW = w; _cachedPlayerSize = w <= 520 ? 110 : 180; }
+  return _cachedPlayerSize;
 }
 
 function getEnemyScale() {
-  return window.innerWidth <= 520 ? 3.2 : 4.8;
+  const w = window.innerWidth;
+  if (_cachedEnemyScaleW !== w) { _cachedEnemyScaleW = w; _cachedEnemyScale = w <= 520 ? 3.2 : 4.8; }
+  return _cachedEnemyScale;
 }
 export { getPlayerSize };
 
