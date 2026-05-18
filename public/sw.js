@@ -89,6 +89,10 @@ self.addEventListener('fetch', event => {
   // Skip non-GET requests (POST to EmailJS, etc.)
   if (request.method !== 'GET') return;
 
+  // Skip range requests — browsers use these for audio/video seeking.
+  // Cache API rejects 206 Partial Content responses with a TypeError.
+  if (request.headers.get('range')) return;
+
   const isAsset = url.pathname.startsWith('/assets/');
   const isFont  = url.pathname.endsWith('.otf') || url.pathname.endsWith('.woff2');
 
@@ -98,7 +102,7 @@ self.addEventListener('fetch', event => {
       caches.match(request).then(cached => {
         if (cached) return cached;
         return fetch(request).then(response => {
-          if (response.ok) {
+          if (response.ok && response.status === 200) {
             const clone = response.clone();
             caches.open(CACHE_VERSION).then(c => c.put(request, clone));
           }
@@ -111,7 +115,7 @@ self.addEventListener('fetch', event => {
     event.respondWith(
       fetch(request)
         .then(response => {
-          if (response.ok) {
+          if (response.ok && response.status === 200) {
             const clone = response.clone();
             caches.open(CACHE_VERSION).then(c => c.put(request, clone));
           }
