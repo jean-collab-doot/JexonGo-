@@ -53,6 +53,12 @@ let _maxLives = 3;
 let _fireTick    = 0;
 let _bankTilt    = 0;   // current tilt in radians (smoothed)
 let _resizeTimer = null;
+let _topGrad     = null;
+let _topGradH    = 0;
+let _cachedSkinData   = null;
+let _cachedLiveryData = null;
+let _lastSkinId       = null;
+let _lastLiveryId     = null;
 let spawnRate   = 150;
 let maxEnemies  = 5;
 let _sessionId    = 0;
@@ -290,8 +296,10 @@ function frame(ts = 0) {
   }
 
   // ── Speed lines ────────────────────────────────────────────────────────
-  if (_speedLines.length === 0) initSpeedLines(canvas.width, canvas.height);
-  drawSpeedLines(ctx, canvas.width, canvas.height);
+  if (!_isMobile) {
+    if (_speedLines.length === 0) initSpeedLines(canvas.width, canvas.height);
+    drawSpeedLines(ctx, canvas.width, canvas.height);
+  }
 
   // ── Enemy spawn ────────────────────────────────────────────────────────
   spawnTimer--;
@@ -439,11 +447,9 @@ function frame(ts = 0) {
       m.guideTick--;
       const tdx = G.player.x - m.x, tdy = G.player.y - m.y;
       const td  = Math.sqrt(tdx * tdx + tdy * tdy) || 1;
-      const spd = Math.sqrt(m.vx * m.vx + m.vy * m.vy);
-      m.vx = m.vx * (1 - _guideF) + (tdx / td) * spd * _guideF;
-      m.vy = m.vy * (1 - _guideF) + (tdy / td) * spd * _guideF;
-      const ns = Math.sqrt(m.vx * m.vx + m.vy * m.vy) || 1;
-      m.vx = (m.vx / ns) * spd; m.vy = (m.vy / ns) * spd;
+      if (!m._spd) m._spd = Math.sqrt(m.vx * m.vx + m.vy * m.vy);
+      m.vx = m.vx * (1 - _guideF) + (tdx / td) * m._spd * _guideF;
+      m.vy = m.vy * (1 - _guideF) + (tdy / td) * m._spd * _guideF;
     }
     m.x += m.vx;
     m.y += m.vy;
@@ -485,8 +491,10 @@ function frame(ts = 0) {
       ? 0.28 + 0.12 * Math.sin(tick * 0.18)  // slow ghost pulse
       : 1.0;
 
-  const activeSkinData   = SKINS.find(s => s.id === G.activeSkin);    // shop image skin
-  const activeLiveryData = SKINS.find(s => s.id === G.activeLivery);  // hangar livery
+  if (G.activeSkin    !== _lastSkinId)    { _cachedSkinData   = SKINS.find(s => s.id === G.activeSkin);    _lastSkinId    = G.activeSkin; }
+  if (G.activeLivery  !== _lastLiveryId)  { _cachedLiveryData = SKINS.find(s => s.id === G.activeLivery);  _lastLiveryId  = G.activeLivery; }
+  const activeSkinData   = _cachedSkinData;
+  const activeLiveryData = _cachedLiveryData;
   const skinFilter    = activeLiveryData?.filter || '';
   const skinAircraft  = (activeSkinData ?? activeLiveryData)?.aircraft ?? G.activeAircraft;
 
@@ -587,10 +595,13 @@ function frame(ts = 0) {
 
   // Top-edge fade — drawn last so it overlays all game elements
   const fadeH = Math.round(canvas.height * 0.13);
-  const topGrad = ctx.createLinearGradient(0, 0, 0, fadeH);
-  topGrad.addColorStop(0, 'rgba(0,0,0,0.82)');
-  topGrad.addColorStop(1, 'rgba(0,0,0,0)');
-  ctx.fillStyle = topGrad;
+  if (!_topGrad || _topGradH !== fadeH) {
+    _topGrad  = ctx.createLinearGradient(0, 0, 0, fadeH);
+    _topGrad.addColorStop(0, 'rgba(0,0,0,0.82)');
+    _topGrad.addColorStop(1, 'rgba(0,0,0,0)');
+    _topGradH = fadeH;
+  }
+  ctx.fillStyle = _topGrad;
   ctx.fillRect(0, 0, canvas.width, fadeH);
 
   if (!_cutsceneActive) G.animFrame = requestAnimationFrame(frame);
