@@ -12,6 +12,40 @@
   <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
+  <script>
+    const isMobile = /iPhone|iPad|Android|Mobile/i.test(navigator.userAgent)
+        || window.innerWidth < 1024;
+
+    if (isMobile) {
+      const password = prompt('JEXONGO BETA ACCESS CODE:');
+      if (password !== 'JEXONGO2026') {
+        document.body.innerHTML = `
+        <div style="
+            background: #0a0e1a;
+            color: #00d4ff;
+            font-family: monospace;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            text-align: center;
+            padding: 20px;
+            box-sizing: border-box;
+        ">
+            <div style="font-size: 48px; margin-bottom: 20px">✈️</div>
+            <div style="font-size: 16px; color: #ff4444; margin-bottom: 20px">
+                COMING SOON
+            </div>
+            <div style="font-size: 12px; color: #ffffff; line-height: 2">
+                JEXONGO mobile is coming soon.<br><br>
+                Play on desktop for now.<br>
+                jexongo.com
+            </div>
+        </div>`;
+      }
+    }
+  </script>
 
   <!-- AUDIO SPLASH (tap-to-start, guarantees audio unlock) -->
   <div id="audio-splash" class="audio-splash">
