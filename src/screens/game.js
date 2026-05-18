@@ -50,8 +50,9 @@ let _onComplete = null;
 let spawnTimer  = 0;
 let _cutsceneActive = false;
 let _maxLives = 3;
-let _fireTick  = 0;
-let _bankTilt  = 0;   // current tilt in radians (smoothed)
+let _fireTick    = 0;
+let _bankTilt    = 0;   // current tilt in radians (smoothed)
+let _resizeTimer = null;
 let spawnRate   = 150;
 let maxEnemies  = 5;
 let _sessionId    = 0;
@@ -220,11 +221,13 @@ function detachInputListeners() {
 function resize() {
   const w = canvas.clientWidth, h = canvas.clientHeight;
   if (!w || !h) return;
+  if (G.animFrame) { cancelAnimationFrame(G.animFrame); G.animFrame = null; }
   canvas.width  = w;
   canvas.height = h;
   _qboxH = $('question-box').offsetHeight || 180;
   G.player.x = Math.max(32, Math.min(w - 32,  G.player.x || w / 2));
   G.player.y = Math.max(h * 0.4, Math.min(h - _qboxH - 24, G.player.y || h - _qboxH - 60));
+  if (!_cutsceneActive) G.animFrame = requestAnimationFrame(frame);
 }
 
 function placePlayer() {
@@ -1366,7 +1369,10 @@ export function initGame(levelNum, onComplete) {
   ctx.setTransform(1,0,0,1,0,0);
   ctx.globalAlpha = 1;
 
-  const ro = new ResizeObserver(resize);
+  const ro = new ResizeObserver(() => {
+    if (_resizeTimer) return;
+    _resizeTimer = setTimeout(() => { _resizeTimer = null; resize(); }, 200);
+  });
   ro.observe(canvas);
 
   $('hud-level').textContent = G.practiceMode ? t('practice_label')
@@ -1384,7 +1390,9 @@ export function initGame(levelNum, onComplete) {
   }
   updateStreakHUD();
 
-  spawnRate  = levelCfg.spawnRate;
+  spawnRate  = _isPhone  ? Math.round(levelCfg.spawnRate * 1.5)
+             : _isTablet ? Math.round(levelCfg.spawnRate * 1.2)
+             : levelCfg.spawnRate;
   maxEnemies = _isPhone ? Math.min(levelCfg.maxEnemies, 3) : _isTablet ? Math.min(levelCfg.maxEnemies, 4) : levelCfg.maxEnemies;
   spawnTimer = 60;
 
