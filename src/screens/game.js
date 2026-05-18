@@ -228,8 +228,11 @@ function resize() {
   const w = canvas.clientWidth, h = canvas.clientHeight;
   if (!w || !h) return;
   if (G.animFrame) { cancelAnimationFrame(G.animFrame); G.animFrame = null; }
-  canvas.width  = w;
-  canvas.height = h;
+  // Cap DPR at 1 on mobile — retina canvas 3x the pixel count kills GPU
+  const dpr = _isMobile ? 1 : Math.min(window.devicePixelRatio || 1, 1);
+  canvas.width  = Math.round(w * dpr);
+  canvas.height = Math.round(h * dpr);
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
   _qboxH = $('question-box').offsetHeight || 180;
   G.player.x = Math.max(32, Math.min(w - 32,  G.player.x || w / 2));
   G.player.y = Math.max(h * 0.4, Math.min(h - _qboxH - 24, G.player.y || h - _qboxH - 60));
@@ -286,7 +289,7 @@ function frame(ts = 0) {
   }
 
   // ── Background ─────────────────────────────────────────────────────────
-  updateBackground();
+  if (!_isMobile) updateBackground();
   drawBackground(ctx, canvas);
 
   // ── Weather overlay ────────────────────────────────────────────────────
@@ -498,7 +501,7 @@ function frame(ts = 0) {
   const skinFilter    = activeLiveryData?.filter || '';
   const skinAircraft  = (activeSkinData ?? activeLiveryData)?.aircraft ?? G.activeAircraft;
 
-  if (!_isPhone) {
+  if (!_isMobile) {
     _fireTick++;
     drawEngineFire(ctx, G.activeAircraft, G.player.x, G.player.y, _fireTick, bankAngle);
   }
@@ -1440,8 +1443,10 @@ export function initGame(levelNum, onComplete) {
     if (_sessionId !== sid) return;
     const cw = canvas.clientWidth, ch = canvas.clientHeight;
     if (!cw || !ch) { requestAnimationFrame(tryStart); return; }
-    canvas.width  = cw;
-    canvas.height = ch;
+    const _dpr = _isMobile ? 1 : Math.min(window.devicePixelRatio || 1, 1);
+    canvas.width  = Math.round(cw * _dpr);
+    canvas.height = Math.round(ch * _dpr);
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
 
     // Animate loading screen while sprites download
     let _loadRaf = requestAnimationFrame(function loadTick() {
