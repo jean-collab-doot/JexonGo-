@@ -192,14 +192,9 @@
     </video>
     <script>
       (function() {
-        var isMob = /iPhone|iPad|Android/i.test(navigator.userAgent) || window.innerWidth < 1024;
         var v = document.getElementById('menu-bg-video');
-        if (isMob) {
-          v.style.display = 'none';
-        } else {
-          v.querySelectorAll('source[data-src]').forEach(function(s) { s.src = s.dataset.src; });
-          v.load();
-        }
+        v.querySelectorAll('source[data-src]').forEach(function(s) { s.src = s.dataset.src; });
+        v.load();
       })();
     </script>
     <canvas id="menu-canvas"></canvas>

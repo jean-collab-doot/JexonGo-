@@ -26,16 +26,13 @@ import { t, applyI18n } from './i18n.js';
 const _menuVideo  = document.getElementById('menu-bg-video');
 const _isMobileUA = /iPhone|iPad|Android/i.test(navigator.userAgent) || window.innerWidth < 768;
 
-if (_isMobileUA && _menuVideo) {
-  _menuVideo.pause();
-  _menuVideo.style.display = 'none';
-}
+// Video plays on all devices including mobile
 
 function _videoPause() {
   if (_menuVideo && !_menuVideo.paused) _menuVideo.pause();
 }
 function _videoResume() {
-  if (!_isMobileUA && _menuVideo) _menuVideo.play().catch(() => {});
+  if (_menuVideo) _menuVideo.play().catch(() => {});
 }
 
 // ── SESSION TIMER ────────────────────────────────────────────────────────────
