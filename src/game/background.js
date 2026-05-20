@@ -1,7 +1,9 @@
 // ── PARALLAX BACKGROUND ──────────────────────────────────────────────────────
-// Each biome has one scrolling layer. The source image is pre-scaled once into
-// an offscreen canvas so every frame only does a cheap pixel blit, not a
-// scaled drawImage of a 1024×1536 texture.
+// Two-level cache on mobile:
+//   Level 1 — per-layer tile canvas (pre-scaled image, built once per biome/resize)
+//   Level 2 — full-frame canvas (composite of all tiles, rebuilt every other frame)
+// Skipped frames blit the full-frame cache with a single drawImage call.
+// Desktop renders directly to ctx with no extra canvas overhead.
 
 import { getImage } from './sprites.js';
 
@@ -9,42 +11,49 @@ const _isMobileBg = /iPhone|iPad|Android/i.test(navigator.userAgent) || window.i
 
 // ── LAYER CONFIG ─────────────────────────────────────────────────────────────
 const LAYER_DEFS = {
-  ocean:  [{ key: 'ocean-bg',  speed: _isMobileBg ? 0.4 : 1.2 }],
-  desert: [{ key: 'desert-bg', speed: _isMobileBg ? 0.4 : 1.2 }],
-  city:   [{ key: 'city-bg',   speed: _isMobileBg ? 0.4 : 1.2 }],
-  arctic: [{ key: 'arctic-bg', speed: _isMobileBg ? 0.4 : 1.2 }],
-  space:  [{ key: 'space-bg',  speed: _isMobileBg ? 0.4 : 1.2 }],
+  ocean:  [{ key: 'ocean-bg',  speed: _isMobileBg ? 0.5 : 1.2 }],
+  desert: [{ key: 'desert-bg', speed: _isMobileBg ? 0.5 : 1.2 }],
+  city:   [{ key: 'city-bg',   speed: _isMobileBg ? 0.5 : 1.2 }],
+  arctic: [{ key: 'arctic-bg', speed: _isMobileBg ? 0.5 : 1.2 }],
+  space:  [{ key: 'space-bg',  speed: _isMobileBg ? 0.5 : 1.2 }],
 };
 
 // ── STATE ─────────────────────────────────────────────────────────────────────
-let _layers       = [];
-let _lastCanvasW  = 0;  // track resize to invalidate tile caches
-let _bgFrameSkip  = 0;
+let _layers      = [];
+let _lastCanvasW = 0;
+
+// Shared tick counter — both update and draw read it to stay in sync
+let _bgTick = 0;
+
+// Level-2 full-frame cache (mobile only)
+let _frameCache    = null;
+let _frameCacheCtx = null;
 
 // ── PUBLIC API ────────────────────────────────────────────────────────────────
 
 /** Call once when a level starts (or biome changes). */
 export function initBackground(biome) {
   const defs = LAYER_DEFS[biome] ?? LAYER_DEFS.ocean;
-  _layers = defs.map(d => ({ key: d.key, speed: d.speed, y: 0, offscreen: null, dh: 0 }));
-  _lastCanvasW = 0; // force tile rebuild on next draw
+  _layers      = defs.map(d => ({ key: d.key, speed: d.speed, y: 0, offscreen: null, dh: 0 }));
+  _lastCanvasW = 0;  // force tile rebuild on next draw
+  _frameCache  = null;
+  _bgTick      = 0;
 }
 
-/** Call every game-tick (before draw). */
+/** Call every game-tick (before draw). Advances scroll position. */
 export function updateBackground() {
-  if (_isMobileBg) {
-    _bgFrameSkip++;
-    if (_bgFrameSkip % 2 !== 0) return; // update every other frame on mobile
-  }
+  _bgTick++;
+  // On mobile advance scroll only on even ticks — half the update rate
+  if (_isMobileBg && _bgTick % 2 !== 0) return;
   for (const l of _layers) l.y += l.speed;
 }
 
 /**
  * Draw all parallax layers onto the canvas.
  *
- * Each layer's image is pre-scaled to an offscreen canvas once (on first
- * available frame and whenever the canvas is resized). After that, every
- * frame is a plain blit — no GPU scaling, no save/restore.
+ * Desktop: tiles are blitted directly to ctx every frame (no cache overhead).
+ * Mobile even ticks: composite tiles into _frameCache, then blit cache to ctx.
+ * Mobile odd ticks: blit _frameCache to ctx — single drawImage, no other work.
  */
 export function drawBackground(ctx, canvas) {
   const cw = canvas.width;
@@ -53,11 +62,31 @@ export function drawBackground(ctx, canvas) {
   // Invalidate tile caches on resize
   if (_lastCanvasW !== cw) {
     for (const l of _layers) { l.offscreen = null; l.dh = 0; }
+    _frameCache  = null;
     _lastCanvasW = cw;
   }
 
+  // ── Mobile skip frame: blit last cached composite ─────────────────────────
+  if (_isMobileBg && _bgTick % 2 !== 0) {
+    if (_frameCache) ctx.drawImage(_frameCache, 0, 0);
+    return;
+  }
+
+  // ── Choose render target ───────────────────────────────────────────────────
+  let targetCtx = ctx;
+  if (_isMobileBg) {
+    if (!_frameCache || _frameCache.width !== cw || _frameCache.height !== ch) {
+      _frameCache    = document.createElement('canvas');
+      _frameCache.width  = cw;
+      _frameCache.height = ch;
+      _frameCacheCtx = _frameCache.getContext('2d');
+    }
+    _frameCacheCtx.clearRect(0, 0, cw, ch);
+    targetCtx = _frameCacheCtx;
+  }
+
+  // ── Render tiles (pre-scaled level-1 cache) ───────────────────────────────
   for (const l of _layers) {
-    // Build pre-scaled tile on first frame when image is loaded
     if (!l.offscreen) {
       const img = getImage(l.key);
       if (!img) continue;
@@ -73,13 +102,15 @@ export function drawBackground(ctx, canvas) {
       l.dh        = dh;
     }
 
-    // Blit pre-scaled tile — no scaling, just position
     const { offscreen: off, dh } = l;
     const offset = l.y % dh;
-    let startY = offset - dh;
+    let startY   = offset - dh;
     while (startY < ch) {
-      ctx.drawImage(off, 0, startY);
+      targetCtx.drawImage(off, 0, startY);
       startY += dh;
     }
   }
+
+  // ── Blit full-frame cache to main canvas (mobile only) ───────────────────
+  if (_isMobileBg) ctx.drawImage(_frameCache, 0, 0);
 }
