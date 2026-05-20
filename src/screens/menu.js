@@ -204,9 +204,9 @@ function updateDrawClouds(ctx, dW, dH) {
 
 // ── THREE PLANES ──────────────────────────────────────────────────────────────
 const PLANES = [
-  { xFrac: 0.18, startOffset: 0,   speed: 2.8, scale: 0.42, y: null, smoke: [] },
-  { xFrac: 0.50, startOffset: 300, speed: 3.4, scale: 0.65, y: null, smoke: [] },
-  { xFrac: 0.82, startOffset: 600, speed: 2.5, scale: 0.38, y: null, smoke: [] },
+  { xFrac: 0.18, startOffset: 0,   speed: 5.0, scale: 0.42, y: null, smoke: [] },
+  { xFrac: 0.50, startOffset: 300, speed: 6.0, scale: 0.65, y: null, smoke: [] },
+  { xFrac: 0.82, startOffset: 600, speed: 4.5, scale: 0.38, y: null, smoke: [] },
 ];
 
 // ── SMOKE PARTICLES ───────────────────────────────────────────────────────────

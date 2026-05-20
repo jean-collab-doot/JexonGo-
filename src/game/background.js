@@ -11,11 +11,11 @@ const _isMobileBg = /iPhone|iPad|Android/i.test(navigator.userAgent) || window.i
 
 // ── LAYER CONFIG ─────────────────────────────────────────────────────────────
 const LAYER_DEFS = {
-  ocean:  [{ key: 'ocean-bg',  speed: 0.4 }],
-  desert: [{ key: 'desert-bg', speed: 0.4 }],
-  city:   [{ key: 'city-bg',   speed: 0.4 }],
-  arctic: [{ key: 'arctic-bg', speed: 0.4 }],
-  space:  [{ key: 'space-bg',  speed: 0.4 }],
+  ocean:  [{ key: 'ocean-bg',  speed: 1.2 }],
+  desert: [{ key: 'desert-bg', speed: 1.2 }],
+  city:   [{ key: 'city-bg',   speed: 1.2 }],
+  arctic: [{ key: 'arctic-bg', speed: 1.2 }],
+  space:  [{ key: 'space-bg',  speed: 1.2 }],
 };
 
 // ── STATE ─────────────────────────────────────────────────────────────────────
