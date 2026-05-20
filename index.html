@@ -187,9 +187,21 @@
   <!-- MENU SCREEN -->
   <div id="s-menu" class="screen">
     <video id="menu-bg-video" autoplay loop muted playsinline poster="/assets/menu/lobby-bg.png">
-      <source src="/assets/menu/bg-motion-2.mp4" type="video/mp4">
-      <source src="/assets/menu/bg-motion-1.mp4" type="video/mp4">
+      <source data-src="/assets/menu/bg-motion-2.mp4" type="video/mp4">
+      <source data-src="/assets/menu/bg-motion-1.mp4" type="video/mp4">
     </video>
+    <script>
+      (function() {
+        var isMob = /iPhone|iPad|Android/i.test(navigator.userAgent) || window.innerWidth < 1024;
+        var v = document.getElementById('menu-bg-video');
+        if (isMob) {
+          v.style.display = 'none';
+        } else {
+          v.querySelectorAll('source[data-src]').forEach(function(s) { s.src = s.dataset.src; });
+          v.load();
+        }
+      })();
+    </script>
     <canvas id="menu-canvas"></canvas>
     <div class="menu-top-left">
       <button id="btn-lang" class="lang-toggle-btn" aria-label="Toggle language">EN</button>
