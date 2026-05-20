@@ -171,23 +171,6 @@ document.addEventListener('click', () => {
   if (_actx && _actx.state === 'suspended') _actx.resume();
 }, { once: true });
 
-// iOS resumes audio session when page becomes visible again
-document.addEventListener('visibilitychange', () => {
-  if (!document.hidden && _bgCurrent && _bgEl.paused) {
-    setTimeout(() => {
-      _bgEl.play().catch(() => {});
-      if (_actx && _actx.state === 'suspended') _actx.resume();
-    }, 300);
-  }
-});
-
-// iOS can silently kill audio mid-session — recover every 3 seconds
-setInterval(() => {
-  if (_bgCurrent && _bgEl.paused && !document.hidden) {
-    _bgEl.play().catch(() => {});
-  }
-}, 3000);
-
 // ── PUBLIC API ────────────────────────────────────────────────────────────────
 export const SFX = {
   setVolume(v)      { _sfxVol   = Math.max(0, Math.min(1, v)); },
