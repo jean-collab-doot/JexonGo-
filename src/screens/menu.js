@@ -129,7 +129,10 @@ let _xfadeT      = -1;   // -1 = idle, 0..1 = crossfade progress
 function loadAssets() {
   if (_planeImg) return;
   _planeImg = new Image(); _planeImg.src = PLANE_PATH;
-  _fireImg  = new Image(); _fireImg.src  = FIRE_PATH;
+
+  if (_isMenuMobile) return; // skip video and fire assets on mobile
+
+  _fireImg = new Image(); _fireImg.src = FIRE_PATH;
 
   const vid = document.getElementById('menu-bg-video');
   if (vid) {

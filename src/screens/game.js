@@ -1293,7 +1293,7 @@ const _isPhone   = !_isIpad && (window.innerWidth <= 480 || (('ontouchstart' in 
 const _isTablet  = _isIpad || (!_isPhone && 'ontouchstart' in window);
 const _isMobile  = _isPhone || _isTablet;
 // Frame-rate caps: 30 fps phone, 45 fps tablet, native (60 Hz) on desktop
-const _frameInterval = _isPhone ? 1000 / 30 : _isTablet ? 1000 / 45 : 0;
+const _frameInterval = _isMobile ? 1000 / 30 : 0;
 let   _lastFrameTs   = 0;
 let   _qboxH         = 180;  // cached question-box height — updated in resize()
 function initSpeedLines(cw, ch) {

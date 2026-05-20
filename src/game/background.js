@@ -10,7 +10,7 @@ import { getImage } from './sprites.js';
 const _isMobileBg = /iPhone|iPad|Android/i.test(navigator.userAgent) || window.innerWidth < 768;
 
 // ── LAYER CONFIG ─────────────────────────────────────────────────────────────
-const _bgSpeed = _isMobileBg ? 1.2 : 2.0;
+const _bgSpeed = _isMobileBg ? 0.4 : 2.0;
 const LAYER_DEFS = {
   ocean:  [{ key: 'ocean-bg',  speed: _bgSpeed }],
   desert: [{ key: 'desert-bg', speed: _bgSpeed }],
