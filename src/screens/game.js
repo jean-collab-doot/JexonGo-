@@ -310,7 +310,8 @@ function frame(ts = 0) {
     const types = levelCfg.isBossLevel ? levelCfg.bossCompanionTypes : levelCfg.enemyTypes;
     const type  = types[Math.floor(Math.random() * types.length)];
     const e     = spawnEnemy(canvas.width, type);
-    e.speed        *= levelCfg.enemySpeedMult * (canvas.width < 500 ? 1.45 : 1);
+    const _fpsMult  = _isPhone ? 0.5 : _isTablet ? 0.75 : 1;
+    e.speed        *= levelCfg.enemySpeedMult * (canvas.width < 500 ? 1.45 : 1) * _fpsMult;
     e.fireRate      = Math.max(30, Math.floor(e.fireRate * levelCfg.enemyFireRateMult));
     e.fireCooldown  = e.fireRate + Math.floor(Math.random() * 40);
     G.enemies.push(e);

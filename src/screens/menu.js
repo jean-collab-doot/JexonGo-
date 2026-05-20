@@ -121,6 +121,7 @@ let _planeImg    = null;
 let _fireImg     = null;
 let _raf         = null;
 let _tick        = 0;
+const _isMobileMenu = /iPhone|iPad|Android/i.test(navigator.userAgent) || window.innerWidth < 768;
 let _activeVid   = 'v1'; // which video is currently primary
 let _xfadeT      = -1;   // -1 = idle, 0..1 = crossfade progress
 
@@ -149,7 +150,11 @@ function loadAssets() {
 
 // ── DRIFTING CLOUDS ───────────────────────────────────────────────────────────
 // Mimics the 200.gif: white/light clouds scrolling right → left at varying depths
-const CLOUDS = [
+const CLOUDS = _isMobileMenu ? [
+  { xFrac: 1.10, y: 0.08, w: 180, h: 70,  speed: 0.55, alpha: 0.82 },
+  { xFrac: 1.70, y: 0.05, w: 130, h: 55,  speed: 0.65, alpha: 0.60 },
+  { xFrac: 0.20, y: 0.32, w: 110, h: 45,  speed: 0.70, alpha: 0.55 },
+] : [
   { xFrac: 1.10, y: 0.08, w: 180, h: 70,  speed: 0.55, alpha: 0.82 },
   { xFrac: 1.40, y: 0.18, w: 240, h: 90,  speed: 0.40, alpha: 0.70 },
   { xFrac: 1.70, y: 0.05, w: 130, h: 55,  speed: 0.65, alpha: 0.60 },
@@ -201,7 +206,9 @@ function updateDrawClouds(ctx, dW, dH) {
 }
 
 // ── THREE PLANES ──────────────────────────────────────────────────────────────
-const PLANES = [
+const PLANES = _isMobileMenu ? [
+  { xFrac: 0.50, startOffset: 0, speed: 3.4, scale: 0.65, y: null, smoke: [] },
+] : [
   { xFrac: 0.18, startOffset: 0,   speed: 2.8, scale: 0.42, y: null, smoke: [] },
   { xFrac: 0.50, startOffset: 300, speed: 3.4, scale: 0.65, y: null, smoke: [] },
   { xFrac: 0.82, startOffset: 600, speed: 2.5, scale: 0.38, y: null, smoke: [] },
@@ -253,7 +260,12 @@ function drawEngineFire(ctx, x, y, size) {
 function drawTick() {
   const canvas = document.getElementById('menu-canvas');
   if (!canvas || document.getElementById('s-menu')?.classList.contains('hidden')) {
-    _raf = null; return;
+    _raf = null;
+    const _vid  = document.getElementById('menu-bg-video');
+    const _vid2 = document.getElementById('menu-bg-video2');
+    if (_vid)  _vid.pause();
+    if (_vid2) _vid2.pause();
+    return;
   }
 
   const dW = canvas.clientWidth  || 360;
@@ -265,6 +277,12 @@ function drawTick() {
   const ctx = canvas.getContext('2d');
   ctx.clearRect(0, 0, dW, dH);
   _tick++;
+
+  // Skip every other frame on mobile to halve menu animation cost
+  if (_isMobileMenu && _tick % 2 !== 0) {
+    _raf = requestAnimationFrame(drawTick);
+    return;
+  }
 
   // 0. Video crossfade — fully RAF-driven, no timeupdate, no black flash
   const vid  = document.getElementById('menu-bg-video');
