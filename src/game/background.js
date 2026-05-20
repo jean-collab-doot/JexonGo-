@@ -10,12 +10,13 @@ import { getImage } from './sprites.js';
 const _isMobileBg = /iPhone|iPad|Android/i.test(navigator.userAgent) || window.innerWidth < 768;
 
 // ── LAYER CONFIG ─────────────────────────────────────────────────────────────
+const _bgSpeed = _isMobileBg ? 1.2 : 2.0;
 const LAYER_DEFS = {
-  ocean:  [{ key: 'ocean-bg',  speed: 1.2 }],
-  desert: [{ key: 'desert-bg', speed: 1.2 }],
-  city:   [{ key: 'city-bg',   speed: 1.2 }],
-  arctic: [{ key: 'arctic-bg', speed: 1.2 }],
-  space:  [{ key: 'space-bg',  speed: 1.2 }],
+  ocean:  [{ key: 'ocean-bg',  speed: _bgSpeed }],
+  desert: [{ key: 'desert-bg', speed: _bgSpeed }],
+  city:   [{ key: 'city-bg',   speed: _bgSpeed }],
+  arctic: [{ key: 'arctic-bg', speed: _bgSpeed }],
+  space:  [{ key: 'space-bg',  speed: _bgSpeed }],
 };
 
 // ── STATE ─────────────────────────────────────────────────────────────────────
