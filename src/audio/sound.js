@@ -166,30 +166,28 @@ function _stopMusic() {
   _bgCurrent   = '';
 }
 
-document.addEventListener('click', () => {
-  if (_bgEl.src && _bgEl.paused) _bgEl.play().catch(() => {});
-  if (_actx && _actx.state === 'suspended') _actx.resume();
-}, { once: true });
+// ── AUDIO RECOVERY ───────────────────────────────────────────────────────────
+const _isMobileAudio = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
-// ── iOS AUDIO RECOVERY ────────────────────────────────────────────────────────
-(function() {
-  const _isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
-  if (!_isIOS) return;
-  let _iosRecovery = null;
-  document.addEventListener('visibilitychange', () => {
-    if (document.hidden) {
-      if (_iosRecovery) { clearInterval(_iosRecovery); _iosRecovery = null; }
-    } else {
-      _iosRecovery = setInterval(() => {
-        if (_bgEl.src && _bgEl.paused && !_bgEl.ended) {
-          _bgEl.play().catch(() => {});
-        }
-        if (_actx && _actx.state === 'suspended') _actx.resume();
-        if (_bgEl.src && !_bgEl.paused) { clearInterval(_iosRecovery); _iosRecovery = null; }
-      }, 3000);
-    }
-  });
-})();
+function _resumeAll() {
+  if (_bgEl.src && _bgEl.paused && !_bgEl.ended) _bgEl.play().catch(() => {});
+  if (_actx && _actx.state === 'suspended') _actx.resume();
+}
+
+// Resume on every tap/click (not { once } — AudioContext can suspend repeatedly)
+document.addEventListener('touchstart', _resumeAll, { passive: true });
+document.addEventListener('click',      _resumeAll);
+
+// Resume when tab comes back to foreground
+window.addEventListener('focus', _resumeAll);
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) setTimeout(_resumeAll, 300);
+});
+
+// On mobile: poll every 4 s while visible to catch silent audio drops
+if (_isMobileAudio) {
+  setInterval(() => { if (!document.hidden) _resumeAll(); }, 4000);
+}
 
 // ── PUBLIC API ────────────────────────────────────────────────────────────────
 export const SFX = {
