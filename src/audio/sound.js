@@ -171,6 +171,26 @@ document.addEventListener('click', () => {
   if (_actx && _actx.state === 'suspended') _actx.resume();
 }, { once: true });
 
+// ── iOS AUDIO RECOVERY ────────────────────────────────────────────────────────
+(function() {
+  const _isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+  if (!_isIOS) return;
+  let _iosRecovery = null;
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      if (_iosRecovery) { clearInterval(_iosRecovery); _iosRecovery = null; }
+    } else {
+      _iosRecovery = setInterval(() => {
+        if (_bgEl.src && _bgEl.paused && !_bgEl.ended) {
+          _bgEl.play().catch(() => {});
+        }
+        if (_actx && _actx.state === 'suspended') _actx.resume();
+        if (_bgEl.src && !_bgEl.paused) { clearInterval(_iosRecovery); _iosRecovery = null; }
+      }, 3000);
+    }
+  });
+})();
+
 // ── PUBLIC API ────────────────────────────────────────────────────────────────
 export const SFX = {
   setVolume(v)      { _sfxVol   = Math.max(0, Math.min(1, v)); },

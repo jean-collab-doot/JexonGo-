@@ -117,6 +117,8 @@ const PLANE_PATH  = '/assets/menu/anim-3.png';
 const FIRE_PATH   = '/assets/menu/engine-fire.png';
 const FIRE_FRAMES = 4;
 
+const _isMenuMobile = /iPhone|iPad|Android/i.test(navigator.userAgent) || window.innerWidth < 768;
+
 let _planeImg    = null;
 let _fireImg     = null;
 let _raf         = null;
@@ -267,8 +269,9 @@ function drawTick() {
   _tick++;
 
   // 0. Video crossfade — fully RAF-driven, no timeupdate, no black flash
-  const vid  = document.getElementById('menu-bg-video');
-  const vid2 = document.getElementById('menu-bg-video2');
+  // On mobile: skip crossfade entirely (video is hidden/not loaded on mobile)
+  const vid  = _isMenuMobile ? null : document.getElementById('menu-bg-video');
+  const vid2 = _isMenuMobile ? null : document.getElementById('menu-bg-video2');
   const FADE_DUR  = 1.5;
   const FADE_STEP = 1 / (FADE_DUR * 60);
 
@@ -308,8 +311,9 @@ function drawTick() {
   // 2. Planes + smoke + fire
   if (_planeImg && _planeImg.complete && _planeImg.naturalWidth) {
     const iw = _planeImg.naturalWidth, ih = _planeImg.naturalHeight;
+    const visiblePlanes = _isMenuMobile ? PLANES.slice(0, 1) : PLANES;
 
-    for (const p of PLANES) {
+    for (const p of visiblePlanes) {
       const drawH = dH * p.scale;
       const drawW = iw * (drawH / ih);
       const bx    = dW * p.xFrac - drawW / 2;
@@ -318,28 +322,30 @@ function drawTick() {
       p.y -= p.speed;
       if (p.y < -drawH * 2) { p.y = dH + drawH; p.smoke = []; }
 
-      // Accelerate smoke fade as plane nears the top
-      const fadeRatio = p.y < 0 ? Math.max(0, 1 + p.y / drawH) : 1;
-      if (fadeRatio < 1) {
-        for (const s of p.smoke) s.alpha -= 0.04 * (1 - fadeRatio);
-      }
+      if (!_isMenuMobile) {
+        // Accelerate smoke fade as plane nears the top
+        const fadeRatio = p.y < 0 ? Math.max(0, 1 + p.y / drawH) : 1;
+        if (fadeRatio < 1) {
+          for (const s of p.smoke) s.alpha -= 0.04 * (1 - fadeRatio);
+        }
 
-      const engineY  = p.y + drawH * 0.79;
-      const engineLX = bx + drawW * 0.47;
-      const engineRX = bx + drawW * 0.53;
+        const engineY  = p.y + drawH * 0.79;
+        const engineLX = bx + drawW * 0.47;
+        const engineRX = bx + drawW * 0.53;
 
-      if (_tick % 3 === 0 && p.y < dH && p.y + drawH > 0) {
-        spawnSmoke(p, engineLX, engineY);
-        spawnSmoke(p, engineLX, engineY);
-        spawnSmoke(p, engineRX, engineY);
-        spawnSmoke(p, engineRX, engineY);
-      }
+        if (_tick % 3 === 0 && p.y < dH && p.y + drawH > 0) {
+          spawnSmoke(p, engineLX, engineY);
+          spawnSmoke(p, engineLX, engineY);
+          spawnSmoke(p, engineRX, engineY);
+          spawnSmoke(p, engineRX, engineY);
+        }
 
-      updateDrawSmoke(ctx, p);
+        updateDrawSmoke(ctx, p);
 
-      if (p.y < dH && p.y + drawH > 0) {
-        drawEngineFire(ctx, engineLX, engineY, drawW * 0.06);
-        drawEngineFire(ctx, engineRX, engineY, drawW * 0.06);
+        if (p.y < dH && p.y + drawH > 0) {
+          drawEngineFire(ctx, engineLX, engineY, drawW * 0.06);
+          drawEngineFire(ctx, engineRX, engineY, drawW * 0.06);
+        }
       }
 
       ctx.save();
