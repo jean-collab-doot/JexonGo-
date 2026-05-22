@@ -7,10 +7,12 @@
 
 import { getImage } from './sprites.js';
 
-const _isMobileBg = /iPhone|iPad|Android/i.test(navigator.userAgent) || window.innerWidth < 768;
+const _isMobileBg  = /iPhone|iPad|Android/i.test(navigator.userAgent) || window.innerWidth < 768;
+const _isTabletBg  = navigator.maxTouchPoints > 1 && window.innerWidth >= 768;
 
 // ── LAYER CONFIG ─────────────────────────────────────────────────────────────
-const _bgSpeed = _isMobileBg ? 1.0 : 2.0;
+// Speed: tablet 0.6 (GPU relief), phone 1.0, desktop 1.2
+const _bgSpeed = _isTabletBg ? 0.6 : _isMobileBg ? 1.0 : 1.2;
 const LAYER_DEFS = {
   ocean:  [{ key: 'ocean-bg',  speed: _bgSpeed }],
   desert: [{ key: 'desert-bg', speed: _bgSpeed }],

@@ -228,8 +228,8 @@ function resize() {
   const w = canvas.clientWidth, h = canvas.clientHeight;
   if (!w || !h) return;
   if (G.animFrame) { cancelAnimationFrame(G.animFrame); G.animFrame = null; }
-  // Cap DPR at 1 on mobile — retina canvas 3x the pixel count kills GPU
-  const dpr = _isMobile ? 1 : Math.min(window.devicePixelRatio || 1, 1);
+  // Cap DPR at 1 on mobile/tablet — retina canvas 3x the pixel count kills GPU
+  const dpr = _isTablet ? 1 : _isMobile ? 1 : Math.min(window.devicePixelRatio || 1, 1);
   canvas.width  = Math.round(w * dpr);
   canvas.height = Math.round(h * dpr);
   ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -299,7 +299,7 @@ function frame(ts = 0) {
   }
 
   // ── Speed lines ────────────────────────────────────────────────────────
-  if (!_isMobile) {
+  if (!_isMobile && !_isTablet) {
     if (_speedLines.length === 0) initSpeedLines(canvas.width, canvas.height);
     drawSpeedLines(ctx, canvas.width, canvas.height);
   }
@@ -501,7 +501,7 @@ function frame(ts = 0) {
   const skinFilter    = activeLiveryData?.filter || '';
   const skinAircraft  = (activeSkinData ?? activeLiveryData)?.aircraft ?? G.activeAircraft;
 
-  if (!_isMobile) {
+  if (!_isMobile && !_isTablet) {
     _fireTick++;
     drawEngineFire(ctx, G.activeAircraft, G.player.x, G.player.y, _fireTick, bankAngle);
   }
@@ -1294,8 +1294,8 @@ const _isTablet  = _isIpad
                 || (/Android/i.test(_ua) && window.innerWidth >= 768);
 const _isPhone   = !_isTablet && (window.innerWidth <= 480 || (('ontouchstart' in window) && window.innerWidth <= 768));
 const _isMobile  = _isPhone || _isTablet;
-// Frame-rate caps: 30 fps phone, 45 fps tablet, native (60 Hz) on desktop
-const _frameInterval = _isPhone ? 1000 / 30 : _isTablet ? 1000 / 45 : 0;
+// Frame-rate caps: 30 fps phone, 30 fps tablet, native (60 Hz) on desktop
+const _frameInterval = _isPhone ? 1000 / 30 : _isTablet ? 1000 / 30 : 0;
 let   _lastFrameTs   = 0;
 let   _qboxH         = 180;  // cached question-box height — updated in resize()
 function initSpeedLines(cw, ch) {
@@ -1409,7 +1409,7 @@ export function initGame(levelNum, onComplete) {
   spawnRate  = _isPhone  ? Math.round(levelCfg.spawnRate * 1.5)
              : _isTablet ? Math.round(levelCfg.spawnRate * 1.2)
              : levelCfg.spawnRate;
-  maxEnemies = _isPhone ? Math.min(levelCfg.maxEnemies, 3) : _isTablet ? Math.min(levelCfg.maxEnemies, 4) : levelCfg.maxEnemies;
+  maxEnemies = _isPhone ? Math.min(levelCfg.maxEnemies, 3) : _isTablet ? Math.min(levelCfg.maxEnemies, 3) : levelCfg.maxEnemies;
   spawnTimer = 60;
 
   attachInputListeners();
@@ -1445,7 +1445,7 @@ export function initGame(levelNum, onComplete) {
     if (_sessionId !== sid) return;
     const cw = canvas.clientWidth, ch = canvas.clientHeight;
     if (!cw || !ch) { requestAnimationFrame(tryStart); return; }
-    const _dpr = _isMobile ? 1 : Math.min(window.devicePixelRatio || 1, 1);
+    const _dpr = _isTablet ? 1 : _isMobile ? 1 : Math.min(window.devicePixelRatio || 1, 1);
     canvas.width  = Math.round(cw * _dpr);
     canvas.height = Math.round(ch * _dpr);
     ctx.setTransform(1, 0, 0, 1, 0, 0);
