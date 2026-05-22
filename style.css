@@ -822,6 +822,7 @@ body::after {
 .shop-content {
   flex: 1; overflow-y: auto; width: 100%;
   padding: 10px 10px 6px;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* ── Error bar ── */
@@ -1088,6 +1089,12 @@ body::after {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 8px;
+}
+@media (min-width: 600px) {
+  .sc-skins-grid { grid-template-columns: repeat(3, 1fr); }
+}
+@media (min-width: 900px) {
+  .sc-skins-grid { grid-template-columns: repeat(4, 1fr); }
 }
 
 /* ── MORE placeholder ── */

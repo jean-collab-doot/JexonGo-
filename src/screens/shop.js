@@ -119,8 +119,8 @@ function makeCard(skin, size = 'small', onBuy, onEquip, offerMode = false) {
   banner.textContent = owned ? t('owned') : t('specialOffer');
   banner.style.color = meta.color;
 
-  // Aircraft preview — larger for featured card
-  const previewSize = size === 'featured' ? 350 : 200;
+  // Aircraft preview — larger for featured card, compact for grid cards
+  const previewSize = size === 'featured' ? 350 : 120;
   const preview = makePreview(skin, previewSize, offerMode);
 
   // Name
