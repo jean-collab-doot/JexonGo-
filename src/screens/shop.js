@@ -53,6 +53,18 @@ function makePreview(skin, size, offerMode = false) {
     return img;
   }
 
+  // Filter-based skins: use the hangar aircraft image with CSS filter applied
+  if (skin.aircraft && skin.filter) {
+    const img = document.createElement('img');
+    img.src = `/assets/hangar/${skin.aircraft}.png`;
+    img.className = 'sc-preview sc-offer-art';
+    img.style.width  = size + 'px';
+    img.style.height = size + 'px';
+    img.style.objectFit = 'contain';
+    img.style.filter = skin.filter;
+    return img;
+  }
+
   // Fallback: canvas sprite preview — skin filter applied to the aircraft sprite
   const c = document.createElement('canvas');
   c.width = c.height = size;
