@@ -10,13 +10,12 @@ import { getImage } from './sprites.js';
 const _isMobileBg = /iPhone|iPad|Android/i.test(navigator.userAgent) || window.innerWidth < 768;
 
 // ── LAYER CONFIG ─────────────────────────────────────────────────────────────
-const _bgSpeed = _isMobileBg ? 2.0 : 2.0;
 const LAYER_DEFS = {
-  ocean:  [{ key: 'ocean-bg',  speed: _bgSpeed }],
-  desert: [{ key: 'desert-bg', speed: _bgSpeed }],
-  city:   [{ key: 'city-bg',   speed: _bgSpeed }],
-  arctic: [{ key: 'arctic-bg', speed: _bgSpeed }],
-  space:  [{ key: 'space-bg',  speed: _bgSpeed }],
+  ocean:  [{ key: 'ocean-bg',  speed: 2.0 }],
+  desert: [{ key: 'desert-bg', speed: 2.0 }],
+  city:   [{ key: 'city-bg',   speed: 2.0 }],
+  arctic: [{ key: 'arctic-bg', speed: 2.0 }],
+  space:  [{ key: 'space-bg',  speed: 2.0 }],
 };
 
 // ── STATE ─────────────────────────────────────────────────────────────────────
@@ -44,8 +43,7 @@ export function initBackground(biome) {
 /** Call every game-tick (before draw). Advances scroll position. */
 export function updateBackground() {
   _bgTick++;
-  // On mobile advance scroll only on even ticks — half the update rate
-  if (_isMobileBg && _bgTick % 2 !== 0) return;
+  // Always advance position — skip only affects draw, not scroll speed
   for (const l of _layers) l.y += l.speed;
 }
 
