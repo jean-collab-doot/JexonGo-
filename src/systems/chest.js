@@ -26,18 +26,16 @@ export const ROULETTE_SLOTS = [
   { id: 'legendary',  label: 'LEGENDARY PART', icon: '◆', color: '#fbbf24', rewardType: 'blueprint', rarityIdx: 3 },
   { id: 'xp200',      label: 'BONUS XP',       icon: '⚡', color: '#00e84b', rewardType: 'xp',        xpAmount: 200 },
   { id: 'xp500',      label: 'MEGA XP',        icon: '★', color: '#fff700', rewardType: 'xp',        xpAmount: 500 },
-  { id: 'coins',      label: 'COINS',          icon: '◎', color: '#fbbf24', rewardType: 'coins' },
-  { id: 'coins-big',  label: 'BIG COINS',      icon: '◎', color: '#ff8c00', rewardType: 'coins',     big: true },
 ];
 
 // Weights per tier — index matches ROULETTE_SLOTS order above
-// [common, rare, epic, legendary, xp200, xp500, coins, coins-big]  must sum to 100
+// [common, rare, epic, legendary, xp200, xp500]  must sum to 100
 export const SLOT_WEIGHTS_BY_TIER = [
-  [ 50, 28, 10,  2,  5,  0,  4,  1 ],  // 0 Bronze    — mostly common
-  [ 30, 35, 18,  4,  6,  1,  5,  1 ],  // 1 Silver    — common/rare mix
-  [ 12, 28, 32, 12,  6,  3,  5,  2 ],  // 2 Gold      — rare/epic mix
-  [  5, 15, 38, 28,  5,  4,  4,  1 ],  // 3 Platinum  — epic/legendary mix
-  [  0,  8, 30, 48,  5,  5,  3,  1 ],  // 4 Legendary — mostly legendary
+  [ 54, 29, 10,  2,  5,  0 ],  // 0 Bronze    — mostly common
+  [ 32, 37, 18,  4,  7,  2 ],  // 1 Silver    — common/rare mix
+  [ 13, 30, 34, 12,  7,  4 ],  // 2 Gold      — rare/epic mix
+  [  6, 16, 39, 29,  6,  4 ],  // 3 Platinum  — epic/legendary mix
+  [  0,  9, 31, 50,  5,  5 ],  // 4 Legendary — mostly legendary
 ];
 
 // Blueprint pieces needed to auto-unlock each aircraft via blueprints

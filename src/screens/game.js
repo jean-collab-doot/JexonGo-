@@ -1289,11 +1289,13 @@ const _skinImgCache = {};
 // ── DEVICE DETECTION ─────────────────────────────────────────────────────────
 const _ua        = navigator.userAgent;
 const _isIpad    = /iPad/i.test(_ua) || (/Macintosh/i.test(_ua) && 'ontouchstart' in window);
-const _isPhone   = !_isIpad && (window.innerWidth <= 480 || (('ontouchstart' in window) && window.innerWidth <= 768));
-const _isTablet  = _isIpad || (!_isPhone && 'ontouchstart' in window);
+const _isTablet  = _isIpad
+                || (navigator.maxTouchPoints > 1 && window.innerWidth >= 768)
+                || (/Android/i.test(_ua) && window.innerWidth >= 768);
+const _isPhone   = !_isTablet && (window.innerWidth <= 480 || (('ontouchstart' in window) && window.innerWidth <= 768));
 const _isMobile  = _isPhone || _isTablet;
 // Frame-rate caps: 30 fps phone, 45 fps tablet, native (60 Hz) on desktop
-const _frameInterval = _isMobile ? 1000 / 30 : 0;
+const _frameInterval = _isPhone ? 1000 / 30 : _isTablet ? 1000 / 45 : 0;
 let   _lastFrameTs   = 0;
 let   _qboxH         = 180;  // cached question-box height — updated in resize()
 function initSpeedLines(cw, ch) {

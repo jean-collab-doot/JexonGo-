@@ -13,10 +13,12 @@
 </head>
 <body>
   <script>
-    const isMobile = /iPhone|iPad|Android|Mobile/i.test(navigator.userAgent)
-        || window.innerWidth < 1024;
+    const isPhone = /iPhone|Android/i.test(navigator.userAgent)
+        && window.innerWidth < 768
+        && !(/iPad/i.test(navigator.userAgent))
+        && !(navigator.maxTouchPoints > 1 && window.innerWidth >= 768);
 
-    if (isMobile) {
+    if (isPhone) {
       const password = prompt('JEXONGO BETA ACCESS CODE:');
       if (password !== 'JEXONGO2026') {
         document.body.innerHTML = `

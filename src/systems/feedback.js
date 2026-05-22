@@ -2,7 +2,7 @@
 const PUBLIC_KEY     = 'tKhT13eitJ6j1EdHo';
 const FEEDBACK_SVC   = 'service_mdhv776';
 const FEEDBACK_TMPL  = 'template_icrozxf';
-const NOTIFY_SVC     = 'service_wdvlb9n';
+const NOTIFY_SVC     = 'service_mdhv776';
 const NOTIFY_TMPL    = 'template_gl9depi';
 const ADMIN_EMAIL    = 'jeanlouisahyee72@gmail.com';
 
