@@ -22,7 +22,7 @@ let _cachedEnemyScale = 0, _cachedEnemyScaleW = -1;
 
 function getPlayerSize() {
   const w = window.innerWidth;
-  if (_cachedPlayerSizeW !== w) { _cachedPlayerSizeW = w; _cachedPlayerSize = w <= 520 ? 110 : 180; }
+  if (_cachedPlayerSizeW !== w) { _cachedPlayerSizeW = w; _cachedPlayerSize = w <= 520 ? 85 : 150; }
   return _cachedPlayerSize;
 }
 
