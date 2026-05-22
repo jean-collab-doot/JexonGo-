@@ -178,7 +178,7 @@ function clearPointer() {
 function updatePlayerMovement() {
   const margin  = 32;
   const minY    = canvas.height * 0.4;
-  const maxY    = canvas.height - _qboxH - 24;
+  const maxY    = canvas.height - 24;
 
   if (_jsOrigin) {
     // Joystick touch: apply velocity directly, no lerp lag
@@ -235,7 +235,7 @@ function resize() {
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   _qboxH = $('question-box').offsetHeight || 180;
   G.player.x = Math.max(32, Math.min(w - 32,  G.player.x || w / 2));
-  G.player.y = Math.max(h * 0.4, Math.min(h - _qboxH - 24, G.player.y || h - _qboxH - 60));
+  G.player.y = Math.max(h * 0.4, Math.min(h - 24, G.player.y || h - _qboxH - 60));
   if (!_cutsceneActive) G.animFrame = requestAnimationFrame(frame);
 }
 
