@@ -93,6 +93,13 @@ function showRoulette(chestData, onDone) {
     const tiles = rlStr.querySelectorAll('.rl-tile');
     tiles.forEach((t, i) => t.classList.toggle('rl-tile-win', i === targetIdx));
 
+    // Show exact coin amount on the winning tile
+    const winTile = tiles[targetIdx];
+    if (winTile && reward.type === 'coins') {
+      const lbl = winTile.querySelector('.rl-tile-label');
+      if (lbl) lbl.textContent = `+${reward.amount}`;
+    }
+
     SFX.rouletteWin?.();
 
     // Show result card
@@ -111,7 +118,11 @@ function buildResultCard(reward) {
   let title = '';
   let sub   = '';
 
-  if (reward.type === 'xp') {
+  if (reward.type === 'coins') {
+    title = `+${reward.amount}`;
+    sub   = reward.label || 'COINS';
+    icon  = '◎';
+  } else if (reward.type === 'xp') {
     title = `+${reward.amount} XP`;
     sub   = reward.label || 'BONUS XP';
   } else if (reward.type === 'blueprint') {
