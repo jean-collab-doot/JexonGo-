@@ -794,7 +794,16 @@ function _handleLogin(provider) {
       return;
     }
     if (!_ensureGSI()) { _showToast('■ Google Sign-In not loaded\nTry refreshing'); return; }
-    google.accounts.id.prompt();
+    google.accounts.id.prompt(notification => {
+      if (notification.isNotDisplayed()) {
+        const reason = notification.getNotDisplayedReason?.() || '';
+        if (reason === 'unregistered_origin') {
+          _showToast('■ Domain not authorized\nfor Google Sign-In');
+        } else {
+          _showToast('■ Sign-In blocked\n(' + reason + ')');
+        }
+      }
+    });
     return;
   }
   _showToast('■ Apple sign-in\nCOMING SOON');
