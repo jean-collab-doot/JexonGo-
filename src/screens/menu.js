@@ -26,18 +26,20 @@ function _ensureGSI() {
   return true;
 }
 
+let _googleLoginPending = false;
+
 function _handleLogin(provider) {
   if (provider !== 'google') return;
-  if (!_ensureGSI()) { _showToast('■ Google not available'); return; }
-  const container = document.getElementById('btn-login-google');
-  google.accounts.id.renderButton(container, {
-    theme: 'filled_black', size: 'large', shape: 'rectangular',
-    text: 'signin_with', width: 280,
-  });
-  setTimeout(() => {
-    const btn = container.querySelector('div[role="button"]');
-    if (btn) btn.click();
-  }, 100);
+  if (_googleLoginPending) return;
+  _googleLoginPending = true;
+  setTimeout(() => { _googleLoginPending = false; }, 3000);
+
+  if (!_ensureGSI()) {
+    _showToast('■ Google not available');
+    _googleLoginPending = false;
+    return;
+  }
+  google.accounts.id.prompt();
 }
 
 function _updateProfile() {
