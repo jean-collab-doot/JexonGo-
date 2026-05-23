@@ -176,8 +176,8 @@ function clearPointer() {
 }
 
 function updatePlayerMovement() {
-  const margin  = 32;
-  const minY    = canvas.height * 0.4;
+  const margin  = 16;
+  const minY    = canvas.height * 0.08;
   const maxY    = canvas.height - 24;
 
   if (_jsOrigin) {
@@ -234,8 +234,8 @@ function resize() {
   canvas.height = Math.round(h * dpr);
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   _qboxH = $('question-box').offsetHeight || 180;
-  G.player.x = Math.max(32, Math.min(w - 32,  G.player.x || w / 2));
-  G.player.y = Math.max(h * 0.4, Math.min(h - 24, G.player.y || h - _qboxH - 60));
+  G.player.x = Math.max(16, Math.min(w - 16,  G.player.x || w / 2));
+  G.player.y = Math.max(h * 0.08, Math.min(h - 24, G.player.y || h - _qboxH - 60));
   if (!_cutsceneActive) G.animFrame = requestAnimationFrame(frame);
 }
 
