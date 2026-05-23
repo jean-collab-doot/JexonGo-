@@ -1,5 +1,5 @@
 import { $ } from '../utils/dom.js';
-import { G } from '../state.js';
+import { G, autoSave } from '../state.js';
 import { save } from '../utils/storage.js';
 import { SFX } from '../audio/sound.js';
 import { calcStars } from '../systems/xp.js';
@@ -73,6 +73,7 @@ export function showResult(won) {
       G.sr71CleanLevels = [...cleanSet].sort((a, b) => a - b);
       save('sr71CleanLevels', G.sr71CleanLevels);
     }
+    autoSave();
   }
 
   $('result-title').textContent = G.practiceMode ? t('practiceComplete') : t('missionComplete');

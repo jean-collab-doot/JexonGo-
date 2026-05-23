@@ -1,4 +1,4 @@
-import { G, loadSave, saveAll } from './state.js';
+import { G, loadSave, saveAll, autoSave } from './state.js';
 import { save } from './utils/storage.js';
 import { showScreen } from './utils/dom.js';
 import { SFX } from './audio/sound.js';
@@ -162,7 +162,7 @@ window._onGoogleCredential = function(response) {
     save('playerRegistered', true);
 
     if (wasRegistered) {
-      saveAll();
+      autoSave();
       loadSave();
       renderMenu();
       const el = document.getElementById('login-toast');
@@ -171,15 +171,27 @@ window._onGoogleCredential = function(response) {
         el.classList.add('toast-show');
         setTimeout(() => el.classList.remove('toast-show'), 2200);
       }
-    } else if (!G.playerGrade) {
-      sendNewPlayerNotification({ playerName: name, playerEmail: email, playerGrade: G.playerGrade });
-      nav.toGradeSelect();
     } else {
+      // First login on this device — save identity then continue without resetting progress
+      autoSave();
       sendNewPlayerNotification({ playerName: name, playerEmail: email, playerGrade: G.playerGrade });
-      nav.toMenu();
-      const _daily = checkDailyLogin();
-      if (_daily.isNewDay) setTimeout(() => showDailyReward(_daily.reward, _daily.streak), 600);
-      setTimeout(() => showFeedbackPopup(), 1200);
+
+      // Show cross-device sync info toast
+      const toastEl = document.getElementById('login-toast');
+      if (toastEl) {
+        toastEl.textContent = 'Your progress is saved on this device. Cross-device sync coming soon!';
+        toastEl.classList.add('toast-show');
+        setTimeout(() => toastEl.classList.remove('toast-show'), 3500);
+      }
+
+      if (!G.playerGrade) {
+        nav.toGradeSelect();
+      } else {
+        nav.toMenu();
+        const _daily = checkDailyLogin();
+        if (_daily.isNewDay) setTimeout(() => showDailyReward(_daily.reward, _daily.streak), 600);
+        setTimeout(() => showFeedbackPopup(), 1200);
+      }
     }
   } catch (_) {
     console.warn('Google credential parse error');
