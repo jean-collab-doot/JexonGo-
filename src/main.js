@@ -143,58 +143,56 @@ window._showFeedbackPopup  = () => showFeedbackPopup();
 window._resetNewPlayer     = _resetNewPlayer;
 window._testEmailNow       = _testEmailNow;
 
+function _showLoginToast(msg, duration = 2800) {
+  const el = document.getElementById('login-toast');
+  if (!el) return;
+  el.textContent = msg;
+  el.classList.add('toast-show');
+  setTimeout(() => el.classList.remove('toast-show'), duration);
+}
+
 window._onGoogleCredential = function(response) {
   try {
     const raw     = response.credential.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
     const payload = JSON.parse(atob(raw));
-    const name    = (payload.name    || 'PILOT').toUpperCase().slice(0, 20);
-    const email   = (payload.email   || '').toLowerCase();
-    const photo   = payload.picture  || '';
+    const name    = (payload.name  || 'PILOT').toUpperCase().slice(0, 20);
+    const email   = (payload.email || '').toLowerCase();
+    const photo   = payload.picture || '';
 
     const wasRegistered = G.playerRegistered;
+
+    // Always persist identity
     G.playerName       = name;
     G.playerEmail      = email;
     G.playerPhoto      = photo;
     G.playerRegistered = true;
-    save('playerName',       G.playerName);
-    save('playerEmail',      G.playerEmail);
-    save('playerPhoto',      G.playerPhoto);
+    save('playerName',       name);
+    save('playerEmail',      email);
+    save('playerPhoto',      photo);
     save('playerRegistered', true);
 
     if (wasRegistered) {
-      autoSave();
+      // Returning player on this device — preserve local progress
       loadSave();
       renderMenu();
-      const el = document.getElementById('login-toast');
-      if (el) {
-        el.textContent = '✓ WELCOME BACK, ' + name + '!';
-        el.classList.add('toast-show');
-        setTimeout(() => el.classList.remove('toast-show'), 2200);
-      }
+      _showLoginToast('✓ WELCOME BACK, ' + name + '!');
     } else {
-      // First login on this device — save identity then continue without resetting progress
+      // First Google login on this device — preserve any local progress
       autoSave();
-      sendNewPlayerNotification({ playerName: name, playerEmail: email, playerGrade: G.playerGrade });
-
-      // Show cross-device sync info toast
-      const toastEl = document.getElementById('login-toast');
-      if (toastEl) {
-        toastEl.textContent = 'Your progress is saved on this device. Cross-device sync coming soon!';
-        toastEl.classList.add('toast-show');
-        setTimeout(() => toastEl.classList.remove('toast-show'), 3500);
-      }
-
       if (!G.playerGrade) {
+        // New player: go to grade selection — email sent after grade is chosen
         nav.toGradeSelect();
       } else {
+        // Had grade from before login — send notification now, go to menu
+        sendNewPlayerNotification({ playerName: name, playerEmail: email, playerGrade: G.playerGrade });
         nav.toMenu();
+        setTimeout(() => _showLoginToast('✓ WELCOME, ' + name + '!'), 300);
         const _daily = checkDailyLogin();
-        if (_daily.isNewDay) setTimeout(() => showDailyReward(_daily.reward, _daily.streak), 600);
-        setTimeout(() => showFeedbackPopup(), 1200);
+        if (_daily.isNewDay) setTimeout(() => showDailyReward(_daily.reward, _daily.streak), 700);
       }
     }
   } catch (_) {
-    console.warn('Google credential parse error');
+    console.warn('[GSI] Credential parse error');
   }
 };
 
@@ -205,8 +203,11 @@ function initGradeScreen() {
       const grade = parseInt(btn.dataset.grade, 10);
       G.playerGrade = grade;
       save('playerGrade', grade);
+      // Send new player emails now that grade is confirmed
+      sendNewPlayerNotification({ playerName: G.playerName, playerEmail: G.playerEmail, playerGrade: grade });
       nav.toMenu();
       SFX.playMusic('menu');
+      setTimeout(() => _showLoginToast('✓ WELCOME, ' + (G.playerName || 'PILOT') + '! You start from zero — good luck!', 3500), 300);
     });
   });
 }
