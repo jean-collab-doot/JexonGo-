@@ -478,6 +478,21 @@ function frame(ts = 0) {
   updateParticles(G.particles);
   drawParticles(ctx, G.particles);
 
+  // ── Play area boundary line ────────────────────────────────────────────
+  {
+    const boundY = canvas.height - _qboxH - 24;
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255, 80, 80, 0.45)';
+    ctx.lineWidth   = 1.5;
+    ctx.setLineDash([10, 8]);
+    ctx.beginPath();
+    ctx.moveTo(0, boundY);
+    ctx.lineTo(canvas.width, boundY);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.restore();
+  }
+
   // ── Player ─────────────────────────────────────────────────────────────
   if (_invincible > 0) _invincible--;
   if (_stealthActive && --_stealthTicks <= 0) _stealthActive = false;
