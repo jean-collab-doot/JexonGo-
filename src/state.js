@@ -78,6 +78,35 @@ export const G = {
 };
 
 export function loadSave() {
+  // Always load identity first so login state is known
+  G.playerRegistered  = load('playerRegistered', false);
+  G.playerName        = load('playerName', 'PILOT');
+  G.playerEmail       = load('playerEmail', '');
+  G.playerPhoto       = load('playerPhoto', '');
+  G.playerAge         = load('playerAge', 0);
+  G.playerGrade       = load('playerGrade', 0);
+  G.pilotEmblem       = load('pilotEmblem', '✈');
+  G.pilotMotto        = load('pilotMotto', '');
+  G.profileTheme      = load('profileTheme', 'default');
+  G.practiceTimeLimit = load('practiceTimeLimit', 10);
+
+  if (!G.playerRegistered) {
+    // Guest — reset all progression to zero, never load saved progress
+    G.xp = 0; G.totalXpEarned = 0; G.coins = 0;
+    G.blueprints = {}; G.chestsWithoutEpic = 0; G.levelStars = {};
+    G.unlockedAircraft = ['t6']; G.activeAircraft = 't6';
+    G.ownedSkins = []; G.activeSkin = null; G.activeLivery = null;
+    G.prestige = 0; G.highestLevel = 0;
+    G.sr71Earned = false; G.sr71MissionClaimed = false;
+    G.sr71WrongAnswers = 0; G.sr71MissileHits = 0; G.sr71CleanLevels = [];
+    G.dailyLastLogin = null; G.dailyStreak = 0;
+    G.dailyMissions = null; G.dailyMissionDate = null; G.claimedRanks = [];
+    G.rankedLP = 0; G.rankedWins = 0; G.rankedLosses = 0;
+    G.rankedWinStreak = 0; G.rankedGamesPlayed = 0;
+    G.rankedSeasonStart = null; G.rankedFirstWinToday = null;
+    return;
+  }
+
   G.xp                = load('xp', 0);
   G.totalXpEarned     = load('totalXpEarned', G.xp);
   G.coins             = load('coins', 0);
@@ -95,17 +124,7 @@ export function loadSave() {
   G.sr71WrongAnswers     = load('sr71WrongAnswers', 0);
   G.sr71MissileHits      = load('sr71MissileHits', 0);
   G.sr71CleanLevels      = load('sr71CleanLevels', []);
-  G.playerName        = load('playerName', 'PILOT');
-  G.playerEmail       = load('playerEmail', '');
-  G.playerPhoto       = load('playerPhoto', '');
-  G.playerAge         = load('playerAge', 0);
-  G.playerRegistered  = load('playerRegistered', false);
-  G.playerGrade       = load('playerGrade', 0);
-  G.pilotEmblem       = load('pilotEmblem',  '✈');
-  G.pilotMotto        = load('pilotMotto',   '');
-  G.profileTheme      = load('profileTheme', 'default');
-  G.highestLevel      = load('highestLevel', 0);
-  G.practiceTimeLimit = load('practiceTimeLimit', 10);
+  G.highestLevel         = load('highestLevel', 0);
   G.dailyLastLogin    = load('dailyLastLogin', null);
   G.dailyStreak       = load('dailyStreak', 0);
   G.dailyMissions     = load('dailyMissions', null);
@@ -160,6 +179,7 @@ export function saveAll() {
 }
 
 export function autoSave() {
+  if (!G.playerRegistered) return; // guests: no progress saved
   save('xp',              G.xp);
   save('totalXpEarned',   G.totalXpEarned);
   save('coins',           G.coins);
