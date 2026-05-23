@@ -10,19 +10,35 @@ import { t, getLang, setLang, applyI18n } from '../i18n.js';
 
 // ── GOOGLE SIGN-IN ───────────────────────────────────────────────────────────
 const GOOGLE_CLIENT_ID = '182729505930-rulb73m14t9qvfpjfbplknrcgn0fqvci.apps.googleusercontent.com';
+let _gsiReady = false;
 
-window.addEventListener('load', function() {
-  if (typeof google === 'undefined' || !google.accounts) return;
+function _ensureGSI() {
+  if (_gsiReady) return true;
+  if (typeof google === 'undefined' || !google.accounts) return false;
   google.accounts.id.initialize({
-    client_id:            GOOGLE_CLIENT_ID,
-    callback:             window._onGoogleCredential,
-    use_fedcm_for_prompt: true,
+    client_id:             GOOGLE_CLIENT_ID,
+    callback:              cred => window._onGoogleCredential?.(cred),
+    use_fedcm_for_prompt:  true,
+    auto_select:           false,
+    cancel_on_tap_outside: true,
   });
-  google.accounts.id.renderButton(
-    document.getElementById('btn-login-google'),
-    { theme: 'filled_black', size: 'large', text: 'signin_with', shape: 'rectangular', width: 280 }
-  );
-});
+  _gsiReady = true;
+  return true;
+}
+
+function _handleLogin(provider) {
+  if (provider !== 'google') return;
+  if (!_ensureGSI()) { _showToast('■ Google not available'); return; }
+  const container = document.getElementById('btn-login-google');
+  google.accounts.id.renderButton(container, {
+    theme: 'filled_black', size: 'large', shape: 'rectangular',
+    text: 'signin_with', width: 280,
+  });
+  setTimeout(() => {
+    const btn = container.querySelector('div[role="button"]');
+    if (btn) btn.click();
+  }, 100);
+}
 
 function _updateProfile() {
   const wrap       = document.getElementById('menu-profile');
@@ -64,6 +80,7 @@ function _handleSignOut() {
   G.playerRegistered = false;
   save('playerPhoto',      '');
   save('playerRegistered', false);
+  _gsiReady = false;
   if (typeof google !== 'undefined' && google.accounts) {
     google.accounts.id.disableAutoSelect();
   }
@@ -626,6 +643,9 @@ export function initMenu(nav) {
   $('btn-shop').onclick    = () => nav.toShop();
   $('btn-practice').onclick = () => openPracticeSelect(nav);
   $('btn-pilot-card').onclick = () => nav.toProfile();
+
+  const googleBtn = document.getElementById('btn-login-google');
+  if (googleBtn) googleBtn.onclick = () => _handleLogin('google');
 
   const signupBtn = document.getElementById('btn-signup');
   if (signupBtn) signupBtn.onclick = () => showScreen('s-register');
