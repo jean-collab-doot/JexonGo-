@@ -10,27 +10,19 @@ import { t, getLang, setLang, applyI18n } from '../i18n.js';
 
 // ── GOOGLE SIGN-IN ───────────────────────────────────────────────────────────
 const GOOGLE_CLIENT_ID = '182729505930-rulb73m14t9qvfpjfbplknrcgn0fqvci.apps.googleusercontent.com';
-let _gsiReady = false;
 
-function _isWebView() {
-  const ua = navigator.userAgent;
-  // Social in-app browsers and generic WebViews don't support GSI
-  return /FBAN|FBAV|Instagram|Line\/|MicroMessenger|GSA\//.test(ua)
-      || (/Android/i.test(ua) && /wv\)/.test(ua))
-      || (/iPhone|iPad/.test(ua) && !/Safari/i.test(ua));
-}
-
-function _ensureGSI() {
-  if (_gsiReady) return true;
-  if (typeof google === 'undefined' || !google.accounts) return false;
+window.addEventListener('load', function() {
+  if (typeof google === 'undefined' || !google.accounts) return;
   google.accounts.id.initialize({
-    client_id:             GOOGLE_CLIENT_ID,
-    callback:              cred => window._onGoogleCredential?.(cred),
-    use_fedcm_for_prompt:  true,
+    client_id:            GOOGLE_CLIENT_ID,
+    callback:             window._onGoogleCredential,
+    use_fedcm_for_prompt: true,
   });
-  _gsiReady = true;
-  return true;
-}
+  google.accounts.id.renderButton(
+    document.getElementById('btn-login-google'),
+    { theme: 'filled_black', size: 'large', text: 'signin_with', shape: 'rectangular', width: 280 }
+  );
+});
 
 function _updateProfile() {
   const wrap       = document.getElementById('menu-profile');
@@ -60,10 +52,6 @@ function _updateProfile() {
   if (gBtn)     { gBtn.style.display   = isLoggedIn ? 'none' : ''; gBtn.classList.toggle('hidden', isLoggedIn); }
   if (authRow)  authRow.style.display  = isLoggedIn ? 'none' : '';
 
-  if (isLoggedIn && typeof google !== 'undefined' && google.accounts) {
-    try { google.accounts.id.cancel(); } catch (_) {}
-  }
-
   // P2 blue profile border
   const avatarBtn = document.getElementById('btn-menu-profile-avatar');
   if (avatarBtn) avatarBtn.classList.toggle('prestige-border-p2', G.prestige >= 2);
@@ -76,7 +64,6 @@ function _handleSignOut() {
   G.playerRegistered = false;
   save('playerPhoto',      '');
   save('playerRegistered', false);
-  _gsiReady = false;
   if (typeof google !== 'undefined' && google.accounts) {
     google.accounts.id.disableAutoSelect();
   }
@@ -401,8 +388,6 @@ function _applyLang() {
   const dividerSpan = document.querySelector('.login-divider span');
   if (dividerSpan) dividerSpan.textContent = t('signIn');
 
-  const googleText = document.querySelector('#btn-login-google .login-btn-text');
-  if (googleText) googleText.textContent = t('signInGoogle');
 }
 
 // ── PRESTIGE ─────────────────────────────────────────────────────────────────
@@ -642,8 +627,6 @@ export function initMenu(nav) {
   $('btn-practice').onclick = () => openPracticeSelect(nav);
   $('btn-pilot-card').onclick = () => nav.toProfile();
 
-  $('btn-login-google').onclick  = () => _handleLogin('google');
-
   const signupBtn = document.getElementById('btn-signup');
   if (signupBtn) signupBtn.onclick = () => showScreen('s-register');
 
@@ -778,35 +761,6 @@ function _showToast(msg) {
   el.classList.add('toast-show');
   if (_toastTimer) clearTimeout(_toastTimer);
   _toastTimer = setTimeout(() => el.classList.remove('toast-show'), 2200);
-}
-
-function _handleLogin(provider) {
-  const btn = document.getElementById('btn-login-' + provider);
-  if (btn) {
-    btn.classList.remove('login-tapped');
-    void btn.offsetWidth;
-    btn.classList.add('login-tapped');
-    btn.addEventListener('animationend', () => btn.classList.remove('login-tapped'), { once: true });
-  }
-  if (provider === 'google') {
-    if (_isWebView()) {
-      _showToast('■ Open in Safari or Chrome\nto use Google Sign-In');
-      return;
-    }
-    if (!_ensureGSI()) { _showToast('■ Google Sign-In not loaded\nTry refreshing'); return; }
-    google.accounts.id.prompt(notification => {
-      if (notification.isNotDisplayed()) {
-        const reason = notification.getNotDisplayedReason?.() || '';
-        if (reason === 'unregistered_origin') {
-          _showToast('■ Domain not authorized\nfor Google Sign-In');
-        } else {
-          _showToast('■ Sign-In blocked\n(' + reason + ')');
-        }
-      }
-    });
-    return;
-  }
-  _showToast('■ Apple sign-in\nCOMING SOON');
 }
 
 function openPracticeSelect(nav) {
