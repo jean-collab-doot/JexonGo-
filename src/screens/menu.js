@@ -12,6 +12,14 @@ import { t, getLang, setLang, applyI18n } from '../i18n.js';
 const GOOGLE_CLIENT_ID = '182729505930-rulb73m14t9qvfpjfbplknrcgn0fqvci.apps.googleusercontent.com';
 let _gsiReady = false;
 
+function _isWebView() {
+  const ua = navigator.userAgent;
+  // Social in-app browsers and generic WebViews don't support GSI
+  return /FBAN|FBAV|Instagram|Line\/|MicroMessenger|GSA\//.test(ua)
+      || (/Android/i.test(ua) && /wv\)/.test(ua))
+      || (/iPhone|iPad/.test(ua) && !/Safari/i.test(ua));
+}
+
 function _ensureGSI() {
   if (_gsiReady) return true;
   if (typeof google === 'undefined' || !google.accounts) return false;
@@ -781,8 +789,21 @@ function _handleLogin(provider) {
     btn.addEventListener('animationend', () => btn.classList.remove('login-tapped'), { once: true });
   }
   if (provider === 'google') {
-    if (!_ensureGSI()) { _showToast('■ Google not available'); return; }
-    google.accounts.id.prompt();
+    if (_isWebView()) {
+      _showToast('■ Open in Safari or Chrome\nto use Google Sign-In');
+      return;
+    }
+    if (!_ensureGSI()) { _showToast('■ Google Sign-In not loaded\nTry refreshing'); return; }
+    google.accounts.id.prompt(notification => {
+      if (notification.isNotDisplayed()) {
+        const reason = notification.getNotDisplayedReason?.() || '';
+        if (reason === 'unregistered_origin') {
+          _showToast('■ Domain not authorized\nfor Google Sign-In');
+        } else {
+          _showToast('■ Sign-In blocked\n(' + reason + ')');
+        }
+      }
+    });
     return;
   }
   _showToast('■ Apple sign-in\nCOMING SOON');
