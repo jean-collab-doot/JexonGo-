@@ -591,7 +591,10 @@
       <div class="reg-form">
         <input id="reg-name"     type="text"     class="reg-input" placeholder="CALL SIGN / NAME" data-i18n-placeholder="regNamePh" maxlength="20" autocomplete="off">
         <input id="reg-email"    type="email"    class="reg-input" placeholder="EMAIL ADDRESS" data-i18n-placeholder="regEmailPh" autocomplete="email">
-        <input id="reg-password" type="password" class="reg-input" placeholder="PASSWORD (6+ CHARS)" data-i18n-placeholder="regPasswordPh" autocomplete="new-password">
+        <div class="pw-field-wrap">
+          <input id="reg-password" type="password" class="reg-input" placeholder="PASSWORD (6+ CHARS)" data-i18n-placeholder="regPasswordPh" autocomplete="new-password">
+          <button type="button" class="pw-eye-btn" id="btn-reg-pw-toggle" aria-label="Show password">👁</button>
+        </div>
         <select id="reg-age" class="reg-input reg-select">
           <option value="" data-i18n="regAgePh">-- SELECT YOUR AGE --</option>
           <option value="5">5</option>
@@ -673,7 +676,10 @@
         <button id="btn-login-modal-close" class="sett-close">✕</button>
       </div>
       <input id="login-modal-email"    type="email"    class="reg-input" placeholder="EMAIL ADDRESS" autocomplete="email">
-      <input id="login-modal-password" type="password" class="reg-input" placeholder="PASSWORD" autocomplete="current-password">
+      <div class="pw-field-wrap">
+        <input id="login-modal-password" type="password" class="reg-input" placeholder="PASSWORD" autocomplete="current-password">
+        <button type="button" class="pw-eye-btn" id="btn-login-pw-toggle" aria-label="Show password">👁</button>
+      </div>
       <div id="login-modal-error" class="login-modal-error"></div>
       <button id="btn-login-modal-submit" class="btn btn-primary" style="margin-top:4px">▶ LOG IN</button>
     </div>

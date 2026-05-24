@@ -3708,6 +3708,15 @@ body::after {
 }
 .reg-input:focus { border-color: #00e84b; }
 .reg-input::placeholder { color: #334155; }
+.pw-field-wrap { position: relative; margin-bottom: 10px; }
+.pw-field-wrap .reg-input { margin-bottom: 0; padding-right: 44px; }
+.pw-eye-btn {
+  position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+  background: none; border: none; cursor: pointer;
+  font-size: 16px; line-height: 1; padding: 4px;
+  opacity: 0.6; transition: opacity .15s;
+}
+.pw-eye-btn:hover { opacity: 1; }
 .reg-select { cursor: pointer; }
 .reg-select option { background: #0f172a; color: #e2e8f0; }
 .reg-tos-row {

@@ -668,6 +668,20 @@ export function initMenu(nav) {
     if (e.key === 'Enter') _handleLoginSubmit();
   });
 
+  // Password visibility toggles — work unlimited times
+  function _makePwToggle(btnId, inputId) {
+    const btn   = document.getElementById(btnId);
+    const input = document.getElementById(inputId);
+    if (!btn || !input) return;
+    btn.addEventListener('click', () => {
+      const show = input.type === 'password';
+      input.type  = show ? 'text' : 'password';
+      btn.textContent = show ? '🙈' : '👁';
+    });
+  }
+  _makePwToggle('btn-login-pw-toggle', 'login-modal-password');
+  _makePwToggle('btn-reg-pw-toggle',   'reg-password');
+
   const prestigeBtn = document.getElementById('btn-prestige');
   if (prestigeBtn) prestigeBtn.onclick = _openPrestigeConfirm;
   document.getElementById('btn-prestige-confirm')?.addEventListener('click', _doPrestige);
