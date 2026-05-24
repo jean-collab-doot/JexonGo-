@@ -20,7 +20,7 @@ import { preloadShips } from './game/sprites.js';
 import { checkDailyLogin } from './systems/daily.js';
 import { showDailyReward } from './screens/menu.js';
 import { canSendFeedback, markFeedbackSent, sendFeedback, sendNewPlayerNotification, _resetNewPlayer, _testEmailNow } from './systems/feedback.js';
-import { t, applyI18n } from './i18n.js';
+import { t, getLang, applyI18n } from './i18n.js';
 
 // ── VIDEO BACKGROUND ─────────────────────────────────────────────────────────
 const _menuVideo  = document.getElementById('menu-bg-video');
@@ -175,7 +175,7 @@ window._onGoogleCredential = function(response) {
       // Returning player on this device — preserve local progress
       loadSave();
       renderMenu();
-      _showLoginToast('✓ WELCOME BACK, ' + name + '!');
+      _showLoginToast(t('welcomeBack').replace('{name}', name));
     } else {
       // First Google login on this device — preserve any local progress
       autoSave();
@@ -186,7 +186,7 @@ window._onGoogleCredential = function(response) {
         // Had grade from before login — send notification now, go to menu
         sendNewPlayerNotification({ playerName: name, playerEmail: email, playerGrade: G.playerGrade });
         nav.toMenu();
-        setTimeout(() => _showLoginToast('✓ WELCOME, ' + name + '!'), 300);
+        setTimeout(() => _showLoginToast(t('welcomeNew').replace('{name}', name)), 300);
         const _daily = checkDailyLogin();
         if (_daily.isNewDay) setTimeout(() => showDailyReward(_daily.reward, _daily.streak), 700);
       }
@@ -207,7 +207,7 @@ function initGradeScreen() {
       sendNewPlayerNotification({ playerName: G.playerName, playerEmail: G.playerEmail, playerGrade: grade });
       nav.toMenu();
       SFX.playMusic('menu');
-      setTimeout(() => _showLoginToast('✓ WELCOME, ' + (G.playerName || 'PILOT') + '! You start from zero — good luck!', 3500), 300);
+      setTimeout(() => _showLoginToast(t('welcomeNew').replace('{name}', G.playerName || 'PILOT'), 3500), 300);
     });
   });
 }

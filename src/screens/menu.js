@@ -35,7 +35,7 @@ function _handleLogin(provider) {
   setTimeout(() => { _googleLoginPending = false; }, 3000);
 
   if (!_ensureGSI()) {
-    _showToast('■ Google not available');
+    _showToast(t('googleNotAvail'));
     _googleLoginPending = false;
     return;
   }
@@ -123,7 +123,7 @@ function _handleLoginSubmit() {
   save('playerRegistered', true);
   loadSave();
   renderMenu();
-  _showToast('✓ WELCOME BACK, ' + (G.playerName || 'PILOT') + '!');
+  _showToast(t('welcomeBack').replace('{name}', G.playerName || 'PILOT'));
 }
 
 // ── ASSETS ────────────────────────────────────────────────────────────────────

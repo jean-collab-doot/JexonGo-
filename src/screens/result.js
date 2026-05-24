@@ -124,7 +124,7 @@ export function showResult(won) {
         G.ownedSkins.push('exclusive');
         save('ownedSkins', G.ownedSkins);
       }
-      unlockBanner.textContent = '★ SR-71 BLACKBIRD UNLOCKED!';
+      unlockBanner.textContent = t('sr71Unlocked');
       unlockBanner.classList.remove('hidden');
     } else {
       unlockBanner.classList.add('hidden');
@@ -137,7 +137,7 @@ export function showResult(won) {
     const prevGrade = getPilotGrade(_prevHighestLevel);
     const newGrade  = getPilotGrade(G.highestLevel);
     if (prevGrade.name !== newGrade.name) {
-      promoBanner.textContent = `${newGrade.emoji} PROMOTED: ${newGrade.name}!`;
+      promoBanner.textContent = `${newGrade.emoji} ${t('promoted')}: ${newGrade.name}!`;
       promoBanner.style.color = newGrade.color;
       promoBanner.classList.remove('hidden');
       SFX.promoted?.();

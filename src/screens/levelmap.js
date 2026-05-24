@@ -2,6 +2,7 @@ import { $, showScreen } from '../utils/dom.js';
 import { G } from '../state.js';
 import { getLevel, TOTAL_LEVELS, BIOMES, BIOME_META } from '../data/levels.js';
 import { levelState } from '../systems/progression.js';
+import { t } from '../i18n.js';
 
 const GUEST_MAX_LEVEL = 3;
 
@@ -77,9 +78,9 @@ export function renderLevelMap() {
     if (guestLocked) {
       el.classList.add('locked');
       el.style.opacity = '0.4';
-      el.title = 'Sign in to unlock';
+      el.title = t('signInToUnlock');
       el.addEventListener('click', () => {
-        alert('Sign in with Google to unlock all 50 levels and save your progress!');
+        alert(t('signInAlert'));
       });
     } else if (node.state !== 'locked') {
       el.style.borderColor = BIOME_META[biome].accent;

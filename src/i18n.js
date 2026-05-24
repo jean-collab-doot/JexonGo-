@@ -202,6 +202,18 @@ const STRINGS = {
     regErrGrade:       'SELECT YOUR SCHOOL GRADE',
     regErrTos:         'ACCEPT THE TERMS TO CONTINUE',
 
+    // Login toasts & alerts
+    welcomeBack:       '✓ WELCOME BACK, {name}!',
+    welcomeNew:        '✓ WELCOME, {name}! You start from zero — good luck!',
+    signInToUnlock:    'Sign in to unlock',
+    signInAlert:       'Sign in with Google to unlock all 50 levels and save your progress!',
+    offlineBanner:     '✈ Sign in with Google to save your progress and unlock all 50 levels',
+    sr71Unlocked:      '★ SR-71 BLACKBIRD UNLOCKED!',
+    promoted:          'PROMOTED',
+    googleNotAvail:    '■ Google not available',
+    googleNotLoaded:   '■ Sign-In not loaded — try refreshing',
+    openInBrowser:     '■ Open in Safari or Chrome to use Google Sign-In',
+
     // Feedback
     feedbackTitle:     'HOW DO YOU LIKE JEXONGO ?',
     feedbackSub:       '★ DAILY FEEDBACK ★',
@@ -417,6 +429,18 @@ const STRINGS = {
     regErrAge:         'SÉLECTIONNEZ VOTRE ÂGE',
     regErrGrade:       'CHOISISSEZ VOTRE NIVEAU',
     regErrTos:         'ACCEPTEZ LES CONDITIONS',
+
+    // Login toasts & alerts
+    welcomeBack:       '✓ BIENVENUE, {name} !',
+    welcomeNew:        '✓ BIENVENUE, {name} ! Tu pars de zéro — bonne chance !',
+    signInToUnlock:    'Connectez-vous pour débloquer',
+    signInAlert:       'Connectez-vous avec Google pour débloquer les 50 niveaux et sauvegarder votre progression !',
+    offlineBanner:     '✈ Connectez-vous avec Google pour sauvegarder votre progression et débloquer les 50 niveaux',
+    sr71Unlocked:      '★ SR-71 BLACKBIRD DÉBLOQUÉ !',
+    promoted:          'PROMU',
+    googleNotAvail:    '■ Google non disponible',
+    googleNotLoaded:   '■ Connexion non chargée — actualisez',
+    openInBrowser:     '■ Ouvrez dans Safari ou Chrome pour vous connecter',
 
     // Feedback
     feedbackTitle:     'COMMENT TROUVEZ-VOUS JEXONGO ?',
