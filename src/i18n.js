@@ -97,6 +97,38 @@ const STRINGS = {
     needMoreCoins:   '✗ NEED',
     moreCoins:       'MORE COINS',
 
+    // Rarity labels
+    rarityCommon:    'COMMON',
+    rarityRare:      'RARE',
+    rarityEpic:      'EPIC',
+    rarityLegendary: 'LEGENDARY',
+    rarityExclusive: 'EXCLUSIVE',
+    skinLabel:       'SKIN',
+
+    // Chest shop
+    chestBronze:     'BRONZE',
+    chestSilver:     'SILVER',
+    chestGold:       'GOLD',
+    chestLegendary:  'LEGENDARY',
+    chestDescBronze: 'Common\ndrops',
+    chestDescSilver: 'Rare\ndrops',
+    chestDescGold:   'Epic\nchance',
+    chestDescLegend: 'Best\ndrops',
+
+    // SR-71 challenge card
+    challengeReward: '★ CHALLENGE REWARD',
+    sr71Sub:         'Full aircraft + Exclusive Skin',
+    sr71Cond:        'Answer all questions correctly on level 30',
+    claimFree:       '▶ CLAIM FREE',
+    notYetEarned:    '— NOT YET EARNED',
+    sr71Owned:       '✓ UNLOCKED',
+
+    // Blueprint section
+    blueprintParts:  'BLUEPRINT PARTS',
+    unlockedShort:   'UNLOCKED',
+    needPlane:       '■ Need {name}',
+    unlockToEquip:   'Unlock {name} to equip',
+
     // Chest screen
     chestReward:     'CHEST REWARD',
     chestSuffix:     'CHEST',
@@ -324,6 +356,38 @@ const STRINGS = {
     buyChests:       '◈ ACHETER DES COFFRES',
     needMoreCoins:   '✗ BESOIN DE',
     moreCoins:       'PIÈCES DE PLUS',
+
+    // Rarity labels
+    rarityCommon:    'COMMUN',
+    rarityRare:      'RARE',
+    rarityEpic:      'ÉPIQUE',
+    rarityLegendary: 'LÉGENDAIRE',
+    rarityExclusive: 'EXCLUSIF',
+    skinLabel:       'SKIN',
+
+    // Chest shop
+    chestBronze:     'BRONZE',
+    chestSilver:     'ARGENT',
+    chestGold:       'OR',
+    chestLegendary:  'LÉGENDAIRE',
+    chestDescBronze: 'Récompenses\ncourantes',
+    chestDescSilver: 'Récompenses\nrares',
+    chestDescGold:   'Chance\nÉpique',
+    chestDescLegend: 'Meilleures\nrécomp.',
+
+    // SR-71 challenge card
+    challengeReward: '★ RÉCOMPENSE DU DÉFI',
+    sr71Sub:         'Avion complet + Skin Exclusif',
+    sr71Cond:        'Toutes les questions du niveau 30 sans faute',
+    claimFree:       '▶ OBTENIR GRATUITEMENT',
+    notYetEarned:    '— PAS ENCORE GAGNÉ',
+    sr71Owned:       '✓ DÉBLOQUÉ',
+
+    // Blueprint section
+    blueprintParts:  'PIÈCES AVION',
+    unlockedShort:   'DÉBLOQUÉ',
+    needPlane:       '■ Besoin de {name}',
+    unlockToEquip:   'Débloquez {name} pour équiper',
 
     // Chest screen
     chestReward:     'RÉCOMPENSE DU COFFRE',

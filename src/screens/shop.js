@@ -104,10 +104,10 @@ function makePriceBtn(skin, onBuy, onEquip) {
   } else {
     // Owned but plane locked → can't equip yet
     const planeName = AIRCRAFT[skin.aircraft]?.name ?? skin.aircraft;
-    btn.textContent = `■ Need ${planeName}`;
+    btn.textContent = t('needPlane').replace('{name}', planeName);
     btn.classList.add('sc-btn-locked');
     btn.disabled    = true;
-    btn.title       = `Unlock ${planeName} to equip`;
+    btn.title       = t('unlockToEquip').replace('{name}', planeName);
   }
   return btn;
 }
@@ -178,7 +178,8 @@ function makePixelCard(skin, size, onBuy, onEquip) {
   // "BEST VALUE!" / rarity badge top-left
   const badge = document.createElement('div');
   badge.className = 'sc-px-badge';
-  badge.textContent = isFeat ? t('bestValue') : meta.label + '!';
+  const _rarityKey = 'rarity' + skin.rarity.charAt(0).toUpperCase() + skin.rarity.slice(1);
+  badge.textContent = isFeat ? t('bestValue') : t(_rarityKey) + '!';
   if (!isFeat) badge.style.background = 'linear-gradient(135deg,' + meta.color + ',' + meta.color + '99)';
   card.appendChild(badge);
 
@@ -191,7 +192,7 @@ function makePixelCard(skin, size, onBuy, onEquip) {
   // Rarity sub-label
   const rarityEl = document.createElement('div');
   rarityEl.className = 'sc-px-rarity';
-  rarityEl.textContent = meta.label + ' SKIN';
+  rarityEl.textContent = t(_rarityKey) + ' ' + t('skinLabel');
   rarityEl.style.color = meta.color;
   card.appendChild(rarityEl);
 
@@ -313,7 +314,7 @@ function _makeSr71ChallengeCard() {
 
   const tag = document.createElement('div');
   tag.className   = 'sr71-ch-tag';
-  tag.textContent = '★ CHALLENGE REWARD';
+  tag.textContent = t('challengeReward');
   info.appendChild(tag);
 
   const name = document.createElement('div');
@@ -323,22 +324,22 @@ function _makeSr71ChallengeCard() {
 
   const sub = document.createElement('div');
   sub.className   = 'sr71-ch-sub';
-  sub.textContent = 'Full aircraft + Exclusive Skin';
+  sub.textContent = t('sr71Sub');
   info.appendChild(sub);
 
   const cond = document.createElement('div');
   cond.className   = 'sr71-ch-cond';
-  cond.textContent = 'Answer all questions correctly on level 30';
+  cond.textContent = t('sr71Cond');
   info.appendChild(cond);
 
   const btn = document.createElement('button');
   btn.className = 'sr71-ch-btn';
   if (unlocked) {
-    btn.textContent = '✓ UNLOCKED';
+    btn.textContent = t('sr71Owned');
     btn.classList.add('sr71-ch-btn-owned');
     btn.disabled = true;
   } else if (earned) {
-    btn.textContent = '▶ CLAIM FREE';
+    btn.textContent = t('claimFree');
     btn.classList.add('sr71-ch-btn-claim');
     btn.onclick = () => {
       if (!G.unlockedAircraft.includes('sr71')) {
@@ -352,7 +353,7 @@ function _makeSr71ChallengeCard() {
       redrawContent();
     };
   } else {
-    btn.textContent = '— NOT YET EARNED';
+    btn.textContent = t('notYetEarned');
     btn.classList.add('sr71-ch-btn-locked');
     btn.disabled = true;
   }
@@ -386,10 +387,10 @@ function renderSkins(content, handlers) {
 }
 
 const BUYABLE_CHESTS = [
-  { name: 'BRONZE',    emoji: '◈', color: '#cd7f32', price: 100,  desc: 'Common\ndrops',    tier: 0 },
-  { name: 'SILVER',    emoji: '◆', color: '#c0c0c0', price: 400,  desc: 'Rare\ndrops',      tier: 1 },
-  { name: 'GOLD',      emoji: '★', color: '#fbbf24', price: 1200, desc: 'Epic\nchance',     tier: 2 },
-  { name: 'LEGENDARY', emoji: '♛', color: '#7a2ac5', price: 3500, desc: 'Best\ndrops',      tier: 4 },
+  { nameKey: 'chestBronze',    descKey: 'chestDescBronze', emoji: '◈', color: '#cd7f32', price: 100,  tier: 0 },
+  { nameKey: 'chestSilver',    descKey: 'chestDescSilver', emoji: '◆', color: '#c0c0c0', price: 400,  tier: 1 },
+  { nameKey: 'chestGold',      descKey: 'chestDescGold',   emoji: '★', color: '#fbbf24', price: 1200, tier: 2 },
+  { nameKey: 'chestLegendary', descKey: 'chestDescLegend', emoji: '♛', color: '#7a2ac5', price: 3500, tier: 4 },
 ];
 
 function renderMore(content) {
@@ -411,8 +412,8 @@ function renderMore(content) {
 
     card.innerHTML = `
       <div class="csc-img" style="filter:drop-shadow(0 0 8px ${ch.color})">${ch.emoji}</div>
-      <div class="csc-name" style="color:${ch.color}">${ch.name}</div>
-      <div class="csc-desc">${ch.desc.replace('\n', '<br>')}</div>
+      <div class="csc-name" style="color:${ch.color}">${t(ch.nameKey)}</div>
+      <div class="csc-desc">${t(ch.descKey).replace('\n', '<br>')}</div>
     `;
 
     const btn = document.createElement('button');
@@ -454,7 +455,7 @@ function renderMore(content) {
   // ── Blueprint progress ──────────────────────────────────────────────────────
   const bpTitle = document.createElement('div');
   bpTitle.className   = 'sc-more-section-title';
-  bpTitle.textContent = 'BLUEPRINT PARTS';
+  bpTitle.textContent = t('blueprintParts');
   content.appendChild(bpTitle);
 
   const bpList = document.createElement('div');
@@ -480,7 +481,7 @@ function renderMore(content) {
       <div class="sc-bp-icon">${iconEl}</div>
       <div class="sc-bp-name">${name}</div>
       <div class="sc-bp-bar-wrap"><div class="sc-bp-bar-fill" style="width:${pct}%"></div></div>
-      <div class="sc-bp-count">${unlocked ? 'UNLOCKED' : `${have}/${needed}`}</div>
+      <div class="sc-bp-count">${unlocked ? t('unlockedShort') : `${have}/${needed}`}</div>
     `;
     bpList.appendChild(row);
   });
