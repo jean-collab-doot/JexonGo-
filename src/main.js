@@ -1,4 +1,4 @@
-import { G, loadSave, saveAll, autoSave } from './state.js';
+import { G, loadSave, saveAll } from './state.js';
 import { save } from './utils/storage.js';
 import { showScreen } from './utils/dom.js';
 import { SFX } from './audio/sound.js';
@@ -161,7 +161,7 @@ window._onGoogleCredential = function(response) {
 
     const wasRegistered = G.playerRegistered;
 
-    // Always persist identity
+    // Always persist identity first so loadSave can read them back
     G.playerName       = name;
     G.playerEmail      = email;
     G.playerPhoto      = photo;
@@ -171,19 +171,22 @@ window._onGoogleCredential = function(response) {
     save('playerPhoto',      photo);
     save('playerRegistered', true);
 
+    // Restore stored progress — identity keys are already in localStorage above,
+    // so loadSave will merge new identity with any previously saved game data.
+    // Do NOT call saveAll() first — it would overwrite stored xp/coins with guest zeros.
+    loadSave();
+
     if (wasRegistered) {
-      // Returning player on this device — preserve local progress
-      loadSave();
+      // Returning player on this device
       renderMenu();
       _showLoginToast(t('welcomeBack').replace('{name}', name));
     } else {
-      // First Google login on this device — preserve any local progress
-      autoSave();
+      // First Google login on this device
       if (!G.playerGrade) {
-        // New player: go to grade selection — email sent after grade is chosen
+        // New player: go to grade selection
         nav.toGradeSelect();
       } else {
-        // Had grade from before login — send notification now, go to menu
+        // Had grade already — send notification, go to menu
         sendNewPlayerNotification({ playerName: name, playerEmail: email, playerGrade: G.playerGrade });
         nav.toMenu();
         setTimeout(() => _showLoginToast(t('welcomeNew').replace('{name}', name)), 300);
@@ -203,6 +206,7 @@ function initGradeScreen() {
       const grade = parseInt(btn.dataset.grade, 10);
       G.playerGrade = grade;
       save('playerGrade', grade);
+      saveAll(); // persist full state now that grade is confirmed
       // Send new player emails now that grade is confirmed
       sendNewPlayerNotification({ playerName: G.playerName, playerEmail: G.playerEmail, playerGrade: grade });
       nav.toMenu();
@@ -268,6 +272,7 @@ function initRegistration() {
 
     save('playerPassword',   pw);
     saveAll();
+    loadSave(); // reload from storage to confirm everything persisted
 
     sendNewPlayerNotification({ playerName: name, playerEmail: email, playerGrade: grade });
 
@@ -371,6 +376,12 @@ function showFeedbackPopup() {
 loadSave();
 loadSettings();
 preloadShips();
+
+// Auto-save every 30 seconds for registered players
+setInterval(() => { if (G.playerRegistered) saveAll(); }, 30000);
+
+// Save when tab closes
+window.addEventListener('beforeunload', () => { if (G.playerRegistered) saveAll(); });
 
 document.getElementById('btn-audio-start').addEventListener('click', () => {
   SFX.unlock();

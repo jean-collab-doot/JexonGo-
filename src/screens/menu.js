@@ -165,7 +165,8 @@ function _handleLoginSubmit() {
   _closeLoginOverlay();
   G.playerRegistered = true;
   save('playerRegistered', true);
-  loadSave();
+  loadSave();  // restores stored xp/coins/progress — must come before saveAll
+  saveAll();   // re-persist the freshly loaded state
   renderMenu();
   _showToast(t('welcomeBack').replace('{name}', G.playerName || 'PILOT'));
 }
