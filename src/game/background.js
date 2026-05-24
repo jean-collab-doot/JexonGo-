@@ -8,7 +8,7 @@
 import { getImage } from './sprites.js';
 
 const _isMobileBg  = /iPhone|iPad|Android/i.test(navigator.userAgent) || window.innerWidth < 768;
-const _isTabletBg  = navigator.maxTouchPoints > 1 && window.innerWidth >= 768;
+const _isTabletBg  = navigator.maxTouchPoints > 1 && window.innerWidth >= 768 && window.innerWidth < 1400;
 
 // ── LAYER CONFIG ─────────────────────────────────────────────────────────────
 // Speed: tablet 0.6 (GPU relief), phone 1.0, desktop 1.2

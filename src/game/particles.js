@@ -4,11 +4,11 @@
 
 import { drawFrame } from './sprites.js';
 
-const _isTabletDevice  = (navigator.maxTouchPoints > 1 && window.innerWidth >= 768)
+const _isTabletDevice  = (navigator.maxTouchPoints > 1 && window.innerWidth >= 768 && window.innerWidth < 1400)
                        || /iPad/i.test(navigator.userAgent)
                        || (/Macintosh/i.test(navigator.userAgent) && 'ontouchstart' in window);
 const _isMobileDevice  = !_isTabletDevice && (/iPhone|Android/i.test(navigator.userAgent) || window.innerWidth < 768);
-const MAX_PARTICLES    = _isMobileDevice ? 5 : _isTabletDevice ? 10 : 24;
+const MAX_PARTICLES    = _isMobileDevice ? 5 : _isTabletDevice ? 12 : 24;
 
 // ── SPAWN ─────────────────────────────────────────────────────────────────────
 
