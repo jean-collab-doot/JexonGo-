@@ -17,8 +17,7 @@ function _ensureGSI() {
   if (typeof google === 'undefined' || !google.accounts) return false;
   google.accounts.id.initialize({
     client_id:             GOOGLE_CLIENT_ID,
-    callback:              cred => window._onGoogleCredential?.(cred),
-    use_fedcm_for_prompt:  true,
+    callback:              cred => { _hideGsiFallback(); window._onGoogleCredential?.(cred); },
     auto_select:           false,
     cancel_on_tap_outside: true,
   });
@@ -32,14 +31,59 @@ function _handleLogin(provider) {
   if (provider !== 'google') return;
   if (_googleLoginPending) return;
   _googleLoginPending = true;
-  setTimeout(() => { _googleLoginPending = false; }, 3000);
 
   if (!_ensureGSI()) {
     _showToast(t('googleNotAvail'));
     _googleLoginPending = false;
     return;
   }
-  google.accounts.id.prompt();
+
+  google.accounts.id.prompt(notification => {
+    _googleLoginPending = false;
+    if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+      _showGsiFallback();
+    }
+  });
+}
+
+function _showGsiFallback() {
+  let overlay = document.getElementById('gsi-fallback-overlay');
+  if (overlay) { overlay.classList.remove('hidden'); return; }
+
+  overlay = document.createElement('div');
+  overlay.id = 'gsi-fallback-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.75);display:flex;align-items:center;justify-content:center;';
+
+  const box = document.createElement('div');
+  box.style.cssText = 'background:#1e293b;border:1px solid #334155;border-radius:16px;padding:28px 32px;text-align:center;min-width:280px;';
+
+  const title = document.createElement('p');
+  title.textContent = t('signInGoogle');
+  title.style.cssText = 'color:#fff;font-family:monospace;font-size:13px;letter-spacing:1px;margin:0 0 20px;';
+  box.appendChild(title);
+
+  const btnWrap = document.createElement('div');
+  btnWrap.style.cssText = 'display:flex;justify-content:center;';
+  box.appendChild(btnWrap);
+
+  const cancel = document.createElement('button');
+  cancel.textContent = getLang() === 'fr' ? '× ANNULER' : '× CANCEL';
+  cancel.style.cssText = 'display:block;margin:18px auto 0;background:none;border:none;color:#64748b;cursor:pointer;font-size:11px;letter-spacing:1px;';
+  cancel.onclick = () => overlay.classList.add('hidden');
+  box.appendChild(cancel);
+
+  overlay.appendChild(box);
+  overlay.onclick = e => { if (e.target === overlay) overlay.classList.add('hidden'); };
+  document.body.appendChild(overlay);
+
+  google.accounts.id.renderButton(btnWrap, {
+    type: 'standard', size: 'large', text: 'signin_with',
+    theme: 'filled_blue', shape: 'pill',
+  });
+}
+
+function _hideGsiFallback() {
+  document.getElementById('gsi-fallback-overlay')?.classList.add('hidden');
 }
 
 function _updateProfile() {
