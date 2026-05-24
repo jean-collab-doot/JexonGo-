@@ -228,10 +228,17 @@ function resize() {
   const w = canvas.clientWidth, h = canvas.clientHeight;
   if (!w || !h) return;
   if (G.animFrame) { cancelAnimationFrame(G.animFrame); G.animFrame = null; }
-  // Cap DPR at 1 on mobile/tablet — retina canvas 3x the pixel count kills GPU
-  const dpr = _isTablet ? 1 : _isMobile ? 1 : Math.min(window.devicePixelRatio || 1, 1);
+  // Tablet: render at 50% resolution, scale up via CSS — 4× fewer pixels, smooth perf
+  const dpr = _isTablet ? 0.5 : _isMobile ? 1 : Math.min(window.devicePixelRatio || 1, 1);
   canvas.width  = Math.round(w * dpr);
   canvas.height = Math.round(h * dpr);
+  if (_isTablet) {
+    canvas.style.width           = w + 'px';
+    canvas.style.height          = h + 'px';
+    canvas.style.imageRendering  = 'pixelated';
+  } else {
+    canvas.style.width = canvas.style.height = canvas.style.imageRendering = '';
+  }
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   _qboxH = $('question-box').offsetHeight || 180;
   G.player.x = Math.max(16, Math.min(w - 16,  G.player.x || w / 2));
@@ -1446,9 +1453,16 @@ export function initGame(levelNum, onComplete) {
     if (_sessionId !== sid) return;
     const cw = canvas.clientWidth, ch = canvas.clientHeight;
     if (!cw || !ch) { requestAnimationFrame(tryStart); return; }
-    const _dpr = _isTablet ? 1 : _isMobile ? 1 : Math.min(window.devicePixelRatio || 1, 1);
+    const _dpr = _isTablet ? 0.5 : _isMobile ? 1 : Math.min(window.devicePixelRatio || 1, 1);
     canvas.width  = Math.round(cw * _dpr);
     canvas.height = Math.round(ch * _dpr);
+    if (_isTablet) {
+      canvas.style.width          = cw + 'px';
+      canvas.style.height         = ch + 'px';
+      canvas.style.imageRendering = 'pixelated';
+    } else {
+      canvas.style.width = canvas.style.height = canvas.style.imageRendering = '';
+    }
     ctx.setTransform(1, 0, 0, 1, 0, 0);
 
     // Animate loading screen while sprites download
