@@ -1287,15 +1287,16 @@ function endLevel(won) {
 let _speedLines   = [];
 const _skinImgCache = {};
 // ── DEVICE DETECTION ─────────────────────────────────────────────────────────
-const _ua        = navigator.userAgent;
-const _isIpad    = /iPad/i.test(_ua) || (/Macintosh/i.test(_ua) && 'ontouchstart' in window);
-const _isTablet  = _isIpad
-                || (navigator.maxTouchPoints > 1 && window.innerWidth >= 768 && window.innerWidth < 1400)
-                || (/Android/i.test(_ua) && window.innerWidth >= 768 && window.innerWidth < 1400);
-const _isPhone   = !_isTablet && (window.innerWidth <= 480 || (('ontouchstart' in window) && window.innerWidth <= 768));
-const _isMobile  = _isPhone || _isTablet;
-// Frame-rate caps: 30 fps phone, 45 fps tablet, native on desktop
-const _frameInterval = _isPhone ? 1000 / 30 : _isTablet ? 1000 / 45 : 0;
+const _ua       = navigator.userAgent;
+// Universal tablet detection — any iPad (any iOS), Android tablet, or touch device at tablet size
+const _isTablet = /iPad/i.test(_ua)
+               || (/Macintosh/i.test(_ua) && navigator.maxTouchPoints > 1)
+               || (/Android/i.test(_ua) && !/Mobile/i.test(_ua))
+               || (navigator.maxTouchPoints > 1 && window.innerWidth >= 768 && window.innerWidth <= 1400);
+const _isPhone  = !_isTablet && (window.innerWidth <= 480 || (('ontouchstart' in window) && window.innerWidth <= 768));
+const _isMobile = _isPhone || _isTablet;
+// Frame-rate caps: 30 fps phone, 30 fps tablet, native on desktop
+const _frameInterval = _isPhone ? 1000 / 30 : _isTablet ? 1000 / 30 : 0;
 let   _lastFrameTs   = 0;
 let   _qboxH         = 180;  // cached question-box height — updated in resize()
 function initSpeedLines(cw, ch) {
@@ -1407,7 +1408,7 @@ export function initGame(levelNum, onComplete) {
   updateStreakHUD();
 
   spawnRate  = _isPhone  ? Math.round(levelCfg.spawnRate * 1.5)
-             : _isTablet ? Math.round(levelCfg.spawnRate * 1.2)
+             : _isTablet ? Math.round(levelCfg.spawnRate * 1.3)
              : levelCfg.spawnRate;
   maxEnemies = _isPhone ? Math.min(levelCfg.maxEnemies, 3) : _isTablet ? Math.min(levelCfg.maxEnemies, 3) : levelCfg.maxEnemies;
   spawnTimer = 60;

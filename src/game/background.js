@@ -7,8 +7,13 @@
 
 import { getImage } from './sprites.js';
 
-const _isMobileBg  = /iPhone|iPad|Android/i.test(navigator.userAgent) || window.innerWidth < 768;
-const _isTabletBg  = navigator.maxTouchPoints > 1 && window.innerWidth >= 768 && window.innerWidth < 1400;
+const _bgUa = navigator.userAgent;
+// Universal tablet detection — any iPad (any iOS version), Android tablet, or sized touch device
+const _isTabletBg = /iPad/i.test(_bgUa)
+                 || (/Macintosh/i.test(_bgUa) && navigator.maxTouchPoints > 1)
+                 || (/Android/i.test(_bgUa) && !/Mobile/i.test(_bgUa))
+                 || (navigator.maxTouchPoints > 1 && window.innerWidth >= 768 && window.innerWidth <= 1400);
+const _isMobileBg  = _isTabletBg || /iPhone|Android/i.test(_bgUa) || window.innerWidth < 768;
 
 // ── LAYER CONFIG ─────────────────────────────────────────────────────────────
 // Speed: tablet 0.6 (GPU relief), phone 1.0, desktop 1.2
@@ -27,6 +32,8 @@ let _lastCanvasW = 0;
 
 // Shared tick counter — both update and draw read it to stay in sync
 let _bgTick = 0;
+// Tablet-only frame skip counter
+let _bgSkip = 0;
 
 // Level-2 full-frame cache (mobile only)
 let _frameCache    = null;
@@ -41,12 +48,16 @@ export function initBackground(biome) {
   _lastCanvasW = 0;  // force tile rebuild on next draw
   _frameCache  = null;
   _bgTick      = 0;
+  _bgSkip      = 0;
 }
 
 /** Call every game-tick (before draw). Advances scroll position. */
 export function updateBackground() {
   _bgTick++;
-  // Always advance position — skip only affects draw, not scroll speed
+  if (_isTabletBg) {
+    _bgSkip++;
+    if (_bgSkip % 2 !== 0) return; // skip scroll update on odd frames (tablet perf)
+  }
   for (const l of _layers) l.y += l.speed;
 }
 

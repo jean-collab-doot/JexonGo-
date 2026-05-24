@@ -4,11 +4,14 @@
 
 import { drawFrame } from './sprites.js';
 
-const _isTabletDevice  = (navigator.maxTouchPoints > 1 && window.innerWidth >= 768 && window.innerWidth < 1400)
-                       || /iPad/i.test(navigator.userAgent)
-                       || (/Macintosh/i.test(navigator.userAgent) && 'ontouchstart' in window);
-const _isMobileDevice  = !_isTabletDevice && (/iPhone|Android/i.test(navigator.userAgent) || window.innerWidth < 768);
-const MAX_PARTICLES    = _isMobileDevice ? 5 : _isTabletDevice ? 12 : 24;
+const _pua = navigator.userAgent;
+// Universal tablet detection — mirrors game.js exactly
+const _isTabletDevice  = /iPad/i.test(_pua)
+                       || (/Macintosh/i.test(_pua) && navigator.maxTouchPoints > 1)
+                       || (/Android/i.test(_pua) && !/Mobile/i.test(_pua))
+                       || (navigator.maxTouchPoints > 1 && window.innerWidth >= 768 && window.innerWidth <= 1400);
+const _isMobileDevice  = !_isTabletDevice && (/iPhone|Android/i.test(_pua) || window.innerWidth < 768);
+const MAX_PARTICLES    = _isMobileDevice ? 5 : _isTabletDevice ? 10 : 24;
 
 // ── SPAWN ─────────────────────────────────────────────────────────────────────
 
