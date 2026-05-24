@@ -1,3 +1,4 @@
+import { injectSpeedInsights } from '@vercel/speed-insights';
 import { G, loadSave, saveAll, autoSave } from './state.js';
 import { save } from './utils/storage.js';
 import { showScreen } from './utils/dom.js';
@@ -21,6 +22,9 @@ import { checkDailyLogin } from './systems/daily.js';
 import { showDailyReward } from './screens/menu.js';
 import { canSendFeedback, markFeedbackSent, sendFeedback, sendNewPlayerNotification, _resetNewPlayer, _testEmailNow } from './systems/feedback.js';
 import { t, getLang, applyI18n } from './i18n.js';
+
+// ── VERCEL SPEED INSIGHTS ────────────────────────────────────────────────────
+injectSpeedInsights();
 
 // ── VIDEO BACKGROUND ─────────────────────────────────────────────────────────
 const _menuVideo  = document.getElementById('menu-bg-video');
