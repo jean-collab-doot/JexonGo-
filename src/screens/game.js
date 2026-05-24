@@ -228,14 +228,16 @@ function resize() {
   const w = canvas.clientWidth, h = canvas.clientHeight;
   if (!w || !h) return;
   if (G.animFrame) { cancelAnimationFrame(G.animFrame); G.animFrame = null; }
-  // Tablet: render at 50% resolution, scale up via CSS — 4× fewer pixels, smooth perf
-  const dpr = _isTablet ? 0.5 : _isMobile ? 1 : Math.min(window.devicePixelRatio || 1, 1);
+  // Tablet: render at 65% resolution, scale up smoothly — fewer pixels, no sprite deformation
+  const dpr = _isTablet ? 0.65 : _isMobile ? 1 : Math.min(window.devicePixelRatio || 1, 1);
   canvas.width  = Math.round(w * dpr);
   canvas.height = Math.round(h * dpr);
   if (_isTablet) {
-    canvas.style.width           = w + 'px';
-    canvas.style.height          = h + 'px';
-    canvas.style.imageRendering  = 'pixelated';
+    canvas.style.width          = w + 'px';
+    canvas.style.height         = h + 'px';
+    canvas.style.imageRendering = 'auto';
+    ctx.imageSmoothingEnabled   = true;
+    ctx.imageSmoothingQuality   = 'low';
   } else {
     canvas.style.width = canvas.style.height = canvas.style.imageRendering = '';
   }
@@ -1453,13 +1455,15 @@ export function initGame(levelNum, onComplete) {
     if (_sessionId !== sid) return;
     const cw = canvas.clientWidth, ch = canvas.clientHeight;
     if (!cw || !ch) { requestAnimationFrame(tryStart); return; }
-    const _dpr = _isTablet ? 0.5 : _isMobile ? 1 : Math.min(window.devicePixelRatio || 1, 1);
+    const _dpr = _isTablet ? 0.65 : _isMobile ? 1 : Math.min(window.devicePixelRatio || 1, 1);
     canvas.width  = Math.round(cw * _dpr);
     canvas.height = Math.round(ch * _dpr);
     if (_isTablet) {
       canvas.style.width          = cw + 'px';
       canvas.style.height         = ch + 'px';
-      canvas.style.imageRendering = 'pixelated';
+      canvas.style.imageRendering = 'auto';
+      ctx.imageSmoothingEnabled   = true;
+      ctx.imageSmoothingQuality   = 'low';
     } else {
       canvas.style.width = canvas.style.height = canvas.style.imageRendering = '';
     }
