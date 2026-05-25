@@ -11,7 +11,7 @@ const _isTabletDevice  = /iPad/i.test(_pua)
                        || (/Android/i.test(_pua) && !/Mobile/i.test(_pua))
                        || (navigator.maxTouchPoints > 1 && window.innerWidth >= 768 && window.innerWidth <= 1400);
 const _isMobileDevice  = !_isTabletDevice && (/iPhone|Android/i.test(_pua) || window.innerWidth < 768);
-const MAX_PARTICLES    = _isMobileDevice ? 5 : _isTabletDevice ? 10 : 24;
+const MAX_PARTICLES    = _isMobileDevice ? 5 : _isTabletDevice ? 5 : 24;
 
 // ── SPAWN ─────────────────────────────────────────────────────────────────────
 
