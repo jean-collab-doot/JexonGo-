@@ -4,10 +4,125 @@
 // ╚══════════════════════════════════════════════════════════════╝
 import { WebSocketServer, WebSocket } from 'ws';
 import http from 'http';
+import fs from 'fs';
+import path from 'path';
+import crypto from 'crypto';
+import { fileURLToPath } from 'url';
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 8080;
-const server = http.createServer((_, res) => {
-  res.writeHead(200); res.end('JexonGo WS server running');
+const SAVES_DIR = path.join(__dirname, 'data', 'saves');
+
+function _ensureSavesDir() {
+  fs.mkdirSync(SAVES_DIR, { recursive: true });
+}
+
+function _accountFile(email) {
+  const key = crypto.createHash('sha256').update(email.toLowerCase().trim()).digest('hex');
+  return path.join(SAVES_DIR, `${key}.json`);
+}
+
+function _hashPassword(pw) {
+  return crypto.createHash('sha256').update(String(pw)).digest('hex');
+}
+
+function _readBody(req) {
+  return new Promise((resolve, reject) => {
+    let raw = '';
+    req.on('data', c => { raw += c; if (raw.length > 2e6) { req.destroy(); reject(new Error('too large')); } });
+    req.on('end', () => {
+      try { resolve(raw ? JSON.parse(raw) : {}); }
+      catch { reject(new Error('invalid json')); }
+    });
+    req.on('error', reject);
+  });
+}
+
+function _cors(res) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+}
+
+function _json(res, status, obj) {
+  _cors(res);
+  res.writeHead(status, { 'Content-Type': 'application/json' });
+  res.end(JSON.stringify(obj));
+}
+
+function _loadAccount(email) {
+  const file = _accountFile(email);
+  if (!fs.existsSync(file)) return null;
+  try { return JSON.parse(fs.readFileSync(file, 'utf8')); }
+  catch { return null; }
+}
+
+function _authAccount(record, { authType, password }) {
+  if (!record) return false;
+  if (authType === 'google') return true;
+  if (!record.passwordHash) return true;
+  return password && _hashPassword(password) === record.passwordHash;
+}
+
+async function _handleSaveApi(req, res) {
+  _ensureSavesDir();
+  const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+
+  if (req.method === 'OPTIONS') {
+    _cors(res);
+    res.writeHead(204);
+    res.end();
+    return;
+  }
+
+  if (req.method === 'GET' && url.pathname === '/api/save') {
+    const email = (url.searchParams.get('email') || '').toLowerCase().trim();
+    const password = url.searchParams.get('password') || '';
+    const authType = url.searchParams.get('authType') || 'email';
+    if (!email || !email.includes('@')) return _json(res, 400, { error: 'invalid email' });
+
+    const record = _loadAccount(email);
+    if (!record) return _json(res, 404, { error: 'not found' });
+    if (!_authAccount(record, { authType, password })) return _json(res, 403, { error: 'unauthorized' });
+
+    return _json(res, 200, { data: record.data, updatedAt: record.updatedAt });
+  }
+
+  if (req.method === 'POST' && url.pathname === '/api/save') {
+    let body;
+    try { body = await _readBody(req); }
+    catch { return _json(res, 400, { error: 'bad request' }); }
+
+    const email = (body.email || '').toLowerCase().trim();
+    const password = body.password || '';
+    const authType = body.authType || 'email';
+    if (!email || !email.includes('@')) return _json(res, 400, { error: 'invalid email' });
+    if (!body.data || typeof body.data !== 'object') return _json(res, 400, { error: 'missing data' });
+
+    const file = _accountFile(email);
+    let record = _loadAccount(email);
+
+    if (record && !_authAccount(record, { authType, password })) {
+      return _json(res, 403, { error: 'unauthorized' });
+    }
+
+    const updatedAt = Math.max(Number(body.updatedAt) || 0, record?.updatedAt || 0, Date.now());
+    const passwordHash = record?.passwordHash
+      || (authType === 'email' && password ? _hashPassword(password) : null);
+
+    record = { email, passwordHash, authType: record?.authType || authType, data: body.data, updatedAt };
+    fs.writeFileSync(file, JSON.stringify(record), 'utf8');
+    return _json(res, 200, { ok: true, updatedAt });
+  }
+
+  return false;
+}
+
+const server = http.createServer(async (req, res) => {
+  if (await _handleSaveApi(req, res)) return;
+  _cors(res);
+  res.writeHead(200);
+  res.end('JexonGo WS server running');
 });
 const wss = new WebSocketServer({ server });
 
@@ -312,6 +427,7 @@ wss.on('connection', ws => {
   ws.on('error', () => {});
 });
 
+_ensureSavesDir();
 server.listen(PORT, () =>
-  console.log(`[JexonGo] WS server → ws://localhost:${PORT}`)
+  console.log(`[JexonGo] Server → http://localhost:${PORT}  |  ws://localhost:${PORT}`)
 );

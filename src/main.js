@@ -1,5 +1,5 @@
 import { G, loadSave, saveAll } from './state.js';
-import { save } from './utils/storage.js';
+import { save, load } from './utils/storage.js';
 import { showScreen } from './utils/dom.js';
 import { SFX } from './audio/sound.js';
 import { initMenu, renderMenu } from './screens/menu.js';
@@ -21,6 +21,7 @@ import { checkDailyLogin } from './systems/daily.js';
 import { showDailyReward } from './screens/menu.js';
 import { canSendFeedback, markFeedbackSent, sendFeedback, sendNewPlayerNotification, _resetNewPlayer, _testEmailNow } from './systems/feedback.js';
 import { t, getLang, applyI18n } from './i18n.js';
+import { syncAccountFromCloud, flushCloudSave, pushCloudSave } from './systems/cloud-save.js';
 
 // ── VIDEO BACKGROUND ─────────────────────────────────────────────────────────
 const _menuVideo  = document.getElementById('menu-bg-video');
@@ -151,7 +152,7 @@ function _showLoginToast(msg, duration = 2800) {
   setTimeout(() => el.classList.remove('toast-show'), duration);
 }
 
-window._onGoogleCredential = function(response) {
+window._onGoogleCredential = async function(response) {
   try {
     const raw     = response.credential.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
     const payload = JSON.parse(atob(raw));
@@ -160,6 +161,7 @@ window._onGoogleCredential = function(response) {
     const photo   = payload.picture || '';
 
     const wasRegistered = G.playerRegistered;
+    const hadGrade      = !!load('playerGrade', 0);
 
     // Always persist identity first so loadSave can read them back
     G.playerName       = name;
@@ -171,28 +173,22 @@ window._onGoogleCredential = function(response) {
     save('playerPhoto',      photo);
     save('playerRegistered', true);
 
-    // Restore stored progress — identity keys are already in localStorage above,
-    // so loadSave will merge new identity with any previously saved game data.
-    // Do NOT call saveAll() first — it would overwrite stored xp/coins with guest zeros.
     loadSave();
+    await syncAccountFromCloud({ authType: 'google' });
 
     if (wasRegistered) {
-      // Returning player on this device
       renderMenu();
       _showLoginToast(t('welcomeBack').replace('{name}', name));
+    } else if (!G.playerGrade) {
+      nav.toGradeSelect();
     } else {
-      // First Google login on this device
-      if (!G.playerGrade) {
-        // New player: go to grade selection
-        nav.toGradeSelect();
-      } else {
-        // Had grade already — send notification, go to menu
+      if (!hadGrade) {
         sendNewPlayerNotification({ playerName: name, playerEmail: email, playerGrade: G.playerGrade });
-        nav.toMenu();
-        setTimeout(() => _showLoginToast(t('welcomeNew').replace('{name}', name)), 300);
-        const _daily = checkDailyLogin();
-        if (_daily.isNewDay) setTimeout(() => showDailyReward(_daily.reward, _daily.streak), 700);
       }
+      nav.toMenu();
+      setTimeout(() => _showLoginToast(t('welcomeNew').replace('{name}', name)), 300);
+      const _daily = checkDailyLogin();
+      if (_daily.isNewDay) setTimeout(() => showDailyReward(_daily.reward, _daily.streak), 700);
     }
   } catch (_) {
     console.warn('[GSI] Credential parse error');
@@ -247,7 +243,7 @@ function initRegistration() {
     showScreen('s-menu');
   });
 
-  document.getElementById('btn-reg-submit').addEventListener('click', () => {
+  document.getElementById('btn-reg-submit').addEventListener('click', async () => {
     const name  = (document.getElementById('reg-name').value  || '').trim().toUpperCase();
     const email = (document.getElementById('reg-email').value || '').trim().toLowerCase();
     const pw    = (document.getElementById('reg-password').value || '');
@@ -272,7 +268,8 @@ function initRegistration() {
 
     save('playerPassword',   pw);
     saveAll();
-    loadSave(); // reload from storage to confirm everything persisted
+    loadSave();
+    await pushCloudSave({ authType: 'email', password: pw });
 
     sendNewPlayerNotification({ playerName: name, playerEmail: email, playerGrade: grade });
 
@@ -377,11 +374,22 @@ loadSave();
 loadSettings();
 preloadShips();
 
+if (G.playerRegistered && G.playerEmail) {
+  syncAccountFromCloud().then(synced => {
+    if (synced) renderMenu();
+  }).catch(() => {});
+}
+
 // Auto-save every 30 seconds for registered players
 setInterval(() => { if (G.playerRegistered) saveAll(); }, 30000);
 
 // Save when tab closes
-window.addEventListener('beforeunload', () => { if (G.playerRegistered) saveAll(); });
+window.addEventListener('beforeunload', () => {
+  if (G.playerRegistered) {
+    saveAll();
+    flushCloudSave();
+  }
+});
 
 document.getElementById('btn-audio-start').addEventListener('click', () => {
   SFX.unlock();

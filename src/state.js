@@ -176,6 +176,11 @@ export function saveAll() {
   save('rankedGamesPlayed', G.rankedGamesPlayed);
   save('rankedSeasonStart', G.rankedSeasonStart);
   save('rankedFirstWinToday', G.rankedFirstWinToday);
+  save('sr71MissionClaimed',   G.sr71MissionClaimed);
+  save('sr71WrongAnswers',     G.sr71WrongAnswers);
+  save('sr71MissileHits',      G.sr71MissileHits);
+  save('sr71CleanLevels',      G.sr71CleanLevels);
+  import('./systems/cloud-save.js').then(m => m.scheduleCloudPush()).catch(() => {});
 }
 
 export function autoSave() {

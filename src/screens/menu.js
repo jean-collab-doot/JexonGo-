@@ -7,6 +7,8 @@ import { save, load } from '../utils/storage.js';
 import { getPilotInfo } from '../data/pilots.js';
 import { getPrestigeTier, getPrestigeBadgeHTML } from '../data/prestige.js';
 import { t, getLang, setLang, applyI18n } from '../i18n.js';
+import { syncAccountFromCloud, flushCloudSave, fetchCloudSave,
+         mergeSaveSnapshots, exportSaveSnapshot, applySaveSnapshot } from '../systems/cloud-save.js';
 
 // ── GOOGLE SIGN-IN ───────────────────────────────────────────────────────────
 const GOOGLE_CLIENT_ID = '182729505930-rulb73m14t9qvfpjfbplknrcgn0fqvci.apps.googleusercontent.com';
@@ -121,7 +123,8 @@ function _updateProfile() {
   document.getElementById('menu-profile-dropdown')?.classList.add('hidden');
 }
 
-function _handleSignOut() {
+async function _handleSignOut() {
+  await flushCloudSave();
   G.playerPhoto      = '';
   G.playerRegistered = false;
   save('playerPhoto',      '');
@@ -148,7 +151,7 @@ function _closeLoginOverlay() {
   if (modal) modal.classList.add('hidden');
 }
 
-function _handleLoginSubmit() {
+async function _handleLoginSubmit() {
   const emailIn = document.getElementById('login-modal-email').value.trim().toLowerCase();
   const pwIn    = document.getElementById('login-modal-password').value;
   const errEl   = document.getElementById('login-modal-error');
@@ -156,17 +159,32 @@ function _handleLoginSubmit() {
   if (!emailIn || !emailIn.includes('@')) { errEl.textContent = t('loginErrEmail'); return; }
   if (!pwIn)                              { errEl.textContent = t('loginErrPw');    return; }
 
-  const storedEmail = (load('playerEmail', '') || '').toLowerCase();
-  const storedPw    = load('playerPassword', '');
+  const remote = await fetchCloudSave(emailIn, pwIn, 'email');
 
-  if (!storedEmail)                                  { errEl.textContent = t('loginErrNone');  return; }
-  if (emailIn !== storedEmail || pwIn !== storedPw)  { errEl.textContent = t('loginErrWrong'); return; }
+  if (remote?.forbidden) { errEl.textContent = t('loginErrWrong'); return; }
+
+  if (remote?.offline) {
+    const storedEmail = (load('playerEmail', '') || '').toLowerCase();
+    const storedPw    = load('playerPassword', '');
+    if (!storedEmail)                                  { errEl.textContent = t('loginErrNone');  return; }
+    if (emailIn !== storedEmail || pwIn !== storedPw)  { errEl.textContent = t('loginErrWrong'); return; }
+  } else if (remote?.notFound) {
+    errEl.textContent = t('loginErrNone');
+    return;
+  }
 
   _closeLoginOverlay();
   G.playerRegistered = true;
+  G.playerEmail      = emailIn;
   save('playerRegistered', true);
-  loadSave();  // restores stored xp/coins/progress — must come before saveAll
-  saveAll();   // re-persist the freshly loaded state
+  save('playerEmail',      emailIn);
+  save('playerPassword',   pwIn);
+  loadSave();
+  if (remote?.data) {
+    applySaveSnapshot(mergeSaveSnapshots(exportSaveSnapshot(), remote.data));
+    saveAll();
+  }
+  await syncAccountFromCloud({ authType: 'email', password: pwIn });
   renderMenu();
   _showToast(t('welcomeBack').replace('{name}', G.playerName || 'PILOT'));
 }

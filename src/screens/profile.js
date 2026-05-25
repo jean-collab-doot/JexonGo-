@@ -1,6 +1,7 @@
 import { $, showScreen } from '../utils/dom.js';
 import { G } from '../state.js';
 import { save } from '../utils/storage.js';
+import { flushCloudSave } from '../systems/cloud-save.js';
 import { SFX } from '../audio/sound.js';
 import { getPilotGrade } from '../data/pilots.js';
 import { AIRCRAFT } from '../data/aircraft.js';
@@ -126,7 +127,8 @@ function _buildThemeGrid() {
   }
 }
 
-function _signOut() {
+async function _signOut() {
+  await flushCloudSave();
   G.playerPhoto      = '';
   G.playerRegistered = false;
   save('playerPhoto',      '');
