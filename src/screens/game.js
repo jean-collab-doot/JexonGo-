@@ -227,7 +227,7 @@ function detachInputListeners() {
 function resize() {
   const w = canvas.clientWidth, h = canvas.clientHeight;
   if (!w || !h) return;
-  if (G.animFrame) { cancelAnimationFrame(G.animFrame); G.animFrame = null; }
+  if (!_isTablet && G.animFrame) { cancelAnimationFrame(G.animFrame); G.animFrame = null; }
   // Tablet: render at 50% resolution, scale up via CSS — half the pixels for smooth framerate
   const dpr = _isTablet ? 0.5 : _isMobile ? 1 : Math.min(window.devicePixelRatio || 1, 1);
   canvas.width  = Math.round(w * dpr);
@@ -243,7 +243,7 @@ function resize() {
   _qboxH = $('question-box').offsetHeight || 180;
   G.player.x = Math.max(16, Math.min(w - 16,  G.player.x || w / 2));
   G.player.y = Math.max(h * 0.08, Math.min(h - _qboxH - 80, G.player.y || h - _qboxH - 60));
-  if (!_cutsceneActive) G.animFrame = requestAnimationFrame(frame);
+  if (!_cutsceneActive && !_isTablet) G.animFrame = requestAnimationFrame(frame);
 }
 
 function placePlayer() {
@@ -272,7 +272,7 @@ function frame(ts = 0) {
   if (_frameInterval) {
     const elapsed = ts - _lastFrameTs;
     if (elapsed < _frameInterval) {
-      if (!_cutsceneActive) G.animFrame = requestAnimationFrame(frame);
+      if (!_cutsceneActive && !_isTablet) G.animFrame = requestAnimationFrame(frame);
       return;
     }
     // Subtract overshoot so timing doesn't drift over time
@@ -1428,6 +1428,7 @@ export function initGame(levelNum, onComplete) {
     G.timerInterval = null;
     cancelAnimationFrame(G.animFrame);
     G.animFrame = null;
+    if (G.tabletLoop) { clearInterval(G.tabletLoop); G.tabletLoop = null; }
     SFX.stopSFX();
     SFX.quitGame();
     window._gameResume = () => {
@@ -1436,7 +1437,14 @@ export function initGame(levelNum, onComplete) {
       showScreen('s-game');
       SFX.playMusic('game');
       _runTimer();
-      G.animFrame = requestAnimationFrame(frame);
+      if (_isTablet) {
+        G.tabletLoop = setInterval(() => {
+          if (_sessionId !== sid) { clearInterval(G.tabletLoop); G.tabletLoop = null; return; }
+          frame(performance.now());
+        }, 1000 / 30);
+      } else {
+        G.animFrame = requestAnimationFrame(frame);
+      }
     };
     $('gameover-title').textContent = 'PAUSED';
     $('gameover-score').textContent = '';
@@ -1551,7 +1559,14 @@ export function initGame(levelNum, onComplete) {
         maxEnemies = levelCfg.bossCompanionMax;
       }
 
-      G.animFrame = requestAnimationFrame(frame);
+      if (_isTablet) {
+        G.tabletLoop = setInterval(() => {
+          if (_sessionId !== sid) { clearInterval(G.tabletLoop); G.tabletLoop = null; return; }
+          frame(performance.now());
+        }, 1000 / 30);
+      } else {
+        G.animFrame = requestAnimationFrame(frame);
+      }
       nextQuestion();
     });
   }
@@ -1560,11 +1575,18 @@ export function initGame(levelNum, onComplete) {
   // Pause loop when tab is hidden, resume when visible again
   const _onVisibility = () => {
     if (document.hidden) {
-      cancelAnimationFrame(G.animFrame);
-      G.animFrame = null;
-    } else if (!G.animFrame && !_cutsceneActive) {
+      if (_isTablet) { clearInterval(G.tabletLoop); G.tabletLoop = null; }
+      else { cancelAnimationFrame(G.animFrame); G.animFrame = null; }
+    } else if (!_cutsceneActive) {
       _lastFrameTs = 0;
-      G.animFrame = requestAnimationFrame(frame);
+      if (_isTablet) {
+        if (!G.tabletLoop) G.tabletLoop = setInterval(() => {
+          if (_sessionId !== sid) { clearInterval(G.tabletLoop); G.tabletLoop = null; return; }
+          frame(performance.now());
+        }, 1000 / 30);
+      } else if (!G.animFrame) {
+        G.animFrame = requestAnimationFrame(frame);
+      }
     }
   };
   document.addEventListener('visibilitychange', _onVisibility);
@@ -1573,6 +1595,7 @@ export function initGame(levelNum, onComplete) {
     _sessionId++;
     clearInterval(G.timerInterval);
     cancelAnimationFrame(G.animFrame);
+    if (G.tabletLoop) { clearInterval(G.tabletLoop); G.tabletLoop = null; }
     document.removeEventListener('visibilitychange', _onVisibility);
     G.timerInterval = null;
     G.animFrame     = null;
