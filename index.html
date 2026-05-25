@@ -49,6 +49,34 @@
         </div>`;
       }
     }
+
+    const isTablet = (
+      /iPad/i.test(navigator.userAgent) ||
+      (/Macintosh/i.test(navigator.userAgent) && navigator.maxTouchPoints > 1) ||
+      (/Android/i.test(navigator.userAgent) && !/Mobile/i.test(navigator.userAgent)) ||
+      (navigator.maxTouchPoints > 1 && window.innerWidth >= 768)
+    );
+
+    if (isTablet) {
+      const banner = document.createElement('div');
+      banner.innerHTML = `
+      <div style="
+          position:fixed;
+          top:0;left:0;right:0;
+          background:#f97316;
+          color:#000;
+          font-family:'Press Start 2P',monospace;
+          font-size:8px;
+          text-align:center;
+          padding:8px;
+          z-index:99999;
+          cursor:pointer;
+      " onclick="this.parentElement.remove()">
+          &#9888; Best experience on PC &#8212; Click to dismiss
+      </div>`;
+      document.body.appendChild(banner);
+      setTimeout(() => banner.remove(), 5000);
+    }
   </script>
 
   <!-- AUDIO SPLASH (tap-to-start, guarantees audio unlock) -->
