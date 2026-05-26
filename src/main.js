@@ -22,6 +22,7 @@ import { showDailyReward } from './screens/menu.js';
 import { canSendFeedback, markFeedbackSent, sendFeedback, sendNewPlayerNotification, _resetNewPlayer, _testEmailNow } from './systems/feedback.js';
 import { t, getLang, applyI18n } from './i18n.js';
 import { syncAccountFromCloud, flushCloudSave, pushCloudSave } from './systems/cloud-save.js';
+import { inject } from '@vercel/analytics';
 
 // ── VIDEO BACKGROUND ─────────────────────────────────────────────────────────
 const _menuVideo  = document.getElementById('menu-bg-video');
@@ -370,6 +371,7 @@ function showFeedbackPopup() {
 }
 
 // ── BOOT ──────────────────────────────────────────────────────────────────────
+inject(); // Vercel Web Analytics (no-op in dev; enable Analytics in Vercel project)
 loadSave();
 loadSettings();
 preloadShips();

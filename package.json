@@ -9,6 +9,7 @@
     "server": "node server.js"
   },
   "dependencies": {
+    "@vercel/analytics": "^1.5.0",
     "ws": "^8.18.0"
   },
   "devDependencies": {
