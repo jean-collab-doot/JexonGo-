@@ -1,19 +1,8 @@
 // ── SPRITE-BASED PARTICLES ────────────────────────────────────────────────────
-// All particle effects use spritesheet animations from the Legacy Collection.
-// No canvas dot/circle primitives remain.
-
 import { drawFrame } from './sprites.js';
+import { isTouchMobile, MAX_PARTICLES_TOUCH } from '../utils/device.js';
 
-const _pua = navigator.userAgent;
-// Universal tablet detection — mirrors game.js exactly
-const _isTabletDevice  = /iPad/i.test(_pua)
-                       || (/Macintosh/i.test(_pua) && navigator.maxTouchPoints > 1)
-                       || (/Android/i.test(_pua) && !/Mobile/i.test(_pua))
-                       || (navigator.maxTouchPoints > 1 && window.innerWidth >= 768 && window.innerWidth <= 1400);
-const _isMobileDevice  = !_isTabletDevice && (/iPhone|Android/i.test(_pua) || window.innerWidth < 768);
-const MAX_PARTICLES    = _isMobileDevice ? 5 : _isTabletDevice ? 5 : 24;
-
-// ── SPAWN ─────────────────────────────────────────────────────────────────────
+const MAX_PARTICLES = isTouchMobile ? MAX_PARTICLES_TOUCH : 24;
 
 export function spawnExplosion(particles, x, y, color, count = 14) {
   particles.push({
@@ -37,8 +26,6 @@ export function spawnHitSpark(particles, x, y) {
   });
 }
 
-// ── UPDATE ────────────────────────────────────────────────────────────────────
-
 export function updateParticles(particles) {
   for (let i = particles.length - 1; i >= 0; i--) {
     const p = particles[i];
@@ -47,8 +34,6 @@ export function updateParticles(particles) {
   }
   if (particles.length > MAX_PARTICLES) particles.splice(0, particles.length - MAX_PARTICLES);
 }
-
-// ── DRAW ──────────────────────────────────────────────────────────────────────
 
 export function drawParticles(ctx, particles) {
   const limit = Math.min(particles.length, MAX_PARTICLES);

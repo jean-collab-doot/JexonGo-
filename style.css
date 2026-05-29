@@ -4771,15 +4771,19 @@ body::after {
   .chest-card { transition: transform 0.15s ease !important; }
 }
 
-/* Canvas on its own compositor layer for smoother rendering */
-#game-canvas {
-  will-change: contents;
-  transform: translateZ(0);
-  -webkit-transform: translateZ(0);
+/* Canvas compositor hint — desktop only (costly on phone/tablet GPUs) */
+@media (hover: hover) and (pointer: fine) {
+  #game-canvas {
+    will-change: contents;
+    transform: translateZ(0);
+    -webkit-transform: translateZ(0);
+  }
 }
 
 /* Remove costly will-change from off-gameplay elements on mobile */
 @media (hover: none) {
+  #game-canvas,
+  #menu-canvas { will-change: auto; transform: none; }
   .profile-card { will-change: auto; }
   .chest-card   { will-change: auto; }
 }

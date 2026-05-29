@@ -7,6 +7,7 @@ import { save, load } from '../utils/storage.js';
 import { getPilotInfo } from '../data/pilots.js';
 import { getPrestigeTier, getPrestigeBadgeHTML } from '../data/prestige.js';
 import { t, getLang, setLang, applyI18n } from '../i18n.js';
+import { isTouchMobile } from '../utils/device.js';
 import { syncAccountFromCloud, flushCloudSave, fetchCloudSave,
          mergeSaveSnapshots, exportSaveSnapshot, applySaveSnapshot } from '../systems/cloud-save.js';
 
@@ -194,7 +195,8 @@ const PLANE_PATH  = '/assets/menu/anim-3.png';
 const FIRE_PATH   = '/assets/menu/engine-fire.png';
 const FIRE_FRAMES = 4;
 
-const _isMenuMobile = /iPhone|iPad|Android/i.test(navigator.userAgent) || window.innerWidth < 768;
+const _isMenuMobile = isTouchMobile;
+let _menuFrame = 0;
 
 let _planeImg    = null;
 let _fireImg     = null;
@@ -338,14 +340,34 @@ function drawTick() {
     _raf = null; return;
   }
 
+  _menuFrame++;
+  if (_isMenuMobile && _menuFrame % 2 !== 0) {
+    _raf = requestAnimationFrame(drawTick);
+    return;
+  }
+
   const dW = canvas.clientWidth  || 360;
   const dH = canvas.clientHeight || 640;
-  if (canvas.width !== dW || canvas.height !== dH) {
-    canvas.width = dW; canvas.height = dH;
+  if (_isMenuMobile) {
+    const dpr = 0.6;
+    const pw = Math.round(dW * dpr);
+    const ph = Math.round(dH * dpr);
+    if (canvas.width !== pw || canvas.height !== ph) {
+      canvas.width  = pw;
+      canvas.height = ph;
+      canvas.style.width  = dW + 'px';
+      canvas.style.height = dH + 'px';
+    }
+  } else if (canvas.width !== dW || canvas.height !== dH) {
+    canvas.width = dW;
+    canvas.height = dH;
+    canvas.style.width = canvas.style.height = '';
   }
 
   const ctx = canvas.getContext('2d');
-  ctx.clearRect(0, 0, dW, dH);
+  const cW = canvas.width;
+  const cH = canvas.height;
+  ctx.clearRect(0, 0, cW, cH);
   _tick++;
 
   // 0. Video crossfade — fully RAF-driven, no timeupdate, no black flash
@@ -385,8 +407,8 @@ function drawTick() {
     }
   }
 
-  // 1. Drifting clouds (right → left)
-  updateDrawClouds(ctx, dW, dH);
+  // 1. Drifting clouds (desktop only — costly on phone/tablet)
+  if (!_isMenuMobile) updateDrawClouds(ctx, cW, cH);
 
   // 2. Planes + smoke + fire
   if (_planeImg && _planeImg.complete && _planeImg.naturalWidth) {
@@ -394,13 +416,13 @@ function drawTick() {
     const visiblePlanes = _isMenuMobile ? PLANES.slice(0, 1) : PLANES;
 
     for (const p of visiblePlanes) {
-      const drawH = dH * p.scale;
+      const drawH = cH * p.scale;
       const drawW = iw * (drawH / ih);
-      const bx    = dW * p.xFrac - drawW / 2;
+      const bx    = cW * p.xFrac - drawW / 2;
 
-      if (p.y === null) p.y = dH + drawH + p.startOffset;
-      p.y -= _isMenuMobile ? p.speed * 1.8 : p.speed;
-      if (p.y < -drawH * 2) { p.y = dH + drawH; p.smoke = []; }
+      if (p.y === null) p.y = cH + drawH + p.startOffset;
+      p.y -= _isMenuMobile ? p.speed * 1.4 : p.speed;
+      if (p.y < -drawH * 2) { p.y = cH + drawH; p.smoke = []; }
 
       if (!_isMenuMobile) {
         // Accelerate smoke fade as plane nears the top
@@ -413,7 +435,7 @@ function drawTick() {
         const engineLX = bx + drawW * 0.47;
         const engineRX = bx + drawW * 0.53;
 
-        if (_tick % 3 === 0 && p.y < dH && p.y + drawH > 0) {
+        if (_tick % 3 === 0 && p.y < cH && p.y + drawH > 0) {
           spawnSmoke(p, engineLX, engineY);
           spawnSmoke(p, engineLX, engineY);
           spawnSmoke(p, engineRX, engineY);
@@ -422,7 +444,7 @@ function drawTick() {
 
         updateDrawSmoke(ctx, p);
 
-        if (p.y < dH && p.y + drawH > 0) {
+        if (p.y < cH && p.y + drawH > 0) {
           drawEngineFire(ctx, engineLX, engineY, drawW * 0.06);
           drawEngineFire(ctx, engineRX, engineY, drawW * 0.06);
         }

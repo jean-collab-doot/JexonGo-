@@ -18,6 +18,10 @@ import { applyAgeModifiers } from '../systems/age-modifiers.js';
 import { calcSpeedXP } from '../systems/xp.js';
 import { save } from '../utils/storage.js';
 import { t } from '../i18n.js';
+import {
+  isTouchMobile, gameCanvasDpr,
+  GAME_FPS_TOUCH, MAX_ENEMY_MISSILES_TOUCH,
+} from '../utils/device.js';
 
 // ── GRADE-BASED MATH FILTER ───────────────────────────────────────────────────
 // Each grade has its own ops, number cap, and multiplication cap.
@@ -223,27 +227,52 @@ function detachInputListeners() {
   canvas.removeEventListener('touchend',   clearPointer);
 }
 
-// ── RESIZE ─────────────────────────────────────────────────────────────────
-function resize() {
-  const w = canvas.clientWidth, h = canvas.clientHeight;
-  if (!w || !h) return;
-  if (!_isTablet && G.animFrame) { cancelAnimationFrame(G.animFrame); G.animFrame = null; }
-  // Tablet: render at 50% resolution, scale up via CSS — half the pixels for smooth framerate
-  const dpr = _isTablet ? 0.5 : _isMobile ? 1 : Math.min(window.devicePixelRatio || 1, 1);
+// ── MOBILE GAME LOOP (phone + tablet only) ────────────────────────────────────
+function _setCanvasSize(w, h) {
+  const dpr = gameCanvasDpr();
   canvas.width  = Math.round(w * dpr);
   canvas.height = Math.round(h * dpr);
-  if (_isTablet) {
+  if (isTouchMobile) {
     canvas.style.width          = w + 'px';
     canvas.style.height         = h + 'px';
     canvas.style.imageRendering = 'auto';
   } else {
     canvas.style.width = canvas.style.height = canvas.style.imageRendering = '';
   }
+}
+
+function _stopGameLoop() {
+  cancelAnimationFrame(G.animFrame);
+  G.animFrame = null;
+  if (G.mobileLoop) { clearInterval(G.mobileLoop); G.mobileLoop = null; }
+}
+
+function _startGameLoop(sid) {
+  _stopGameLoop();
+  if (isTouchMobile) {
+    G.mobileLoop = setInterval(() => {
+      if (_sessionId !== sid) { clearInterval(G.mobileLoop); G.mobileLoop = null; return; }
+      frame(performance.now());
+    }, 1000 / GAME_FPS_TOUCH);
+  } else {
+    G.animFrame = requestAnimationFrame(frame);
+  }
+}
+
+// ── RESIZE ─────────────────────────────────────────────────────────────────
+function resize() {
+  const w = canvas.clientWidth, h = canvas.clientHeight;
+  if (!w || !h) return;
+  if (!isTouchMobile && G.animFrame) { cancelAnimationFrame(G.animFrame); G.animFrame = null; }
+  _setCanvasSize(w, h);
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   _qboxH = $('question-box').offsetHeight || 180;
-  G.player.x = Math.max(16, Math.min(w - 16,  G.player.x || w / 2));
-  G.player.y = Math.max(h * 0.08, Math.min(h - _qboxH - 80, G.player.y || h - _qboxH - 60));
-  if (!_cutsceneActive && !_isTablet) G.animFrame = requestAnimationFrame(frame);
+  const bw = canvas.width;
+  const bh = canvas.height;
+  const qbox = isTouchMobile ? Math.round(_qboxH * (bh / h)) : _qboxH;
+  G.player.x = Math.max(16, Math.min(bw - 16,  G.player.x || bw / 2));
+  G.player.y = Math.max(bh * 0.08, Math.min(bh - qbox - 80, G.player.y || bh - qbox - 60));
+  if (!_cutsceneActive && !isTouchMobile) G.animFrame = requestAnimationFrame(frame);
 }
 
 function placePlayer() {
@@ -269,17 +298,7 @@ function drawLoadingScreen() {
 
 // ── GAME LOOP ───────────────────────────────────────────────────────────────
 function frame(ts = 0) {
-  if (_frameInterval) {
-    const elapsed = ts - _lastFrameTs;
-    if (elapsed < _frameInterval) {
-      if (!_cutsceneActive && !_isTablet) G.animFrame = requestAnimationFrame(frame);
-      return;
-    }
-    // Subtract overshoot so timing doesn't drift over time
-    _lastFrameTs = ts - (elapsed % _frameInterval);
-  } else {
-    _lastFrameTs = ts;
-  }
+  _lastFrameTs = ts;
 
   tick++;
   _shipFrame = (_shipFrame + 0.08) % 5;
@@ -306,7 +325,7 @@ function frame(ts = 0) {
   }
 
   // ── Speed lines ────────────────────────────────────────────────────────
-  if (!_isMobile && !_isTablet) {
+  if (!isTouchMobile) {
     if (_speedLines.length === 0) initSpeedLines(canvas.width, canvas.height);
     drawSpeedLines(ctx, canvas.width, canvas.height);
   }
@@ -317,7 +336,7 @@ function frame(ts = 0) {
     const types = levelCfg.isBossLevel ? levelCfg.bossCompanionTypes : levelCfg.enemyTypes;
     const type  = types[Math.floor(Math.random() * types.length)];
     const e     = spawnEnemy(canvas.width, type);
-    e.speed        *= levelCfg.enemySpeedMult * (canvas.width < 500 ? 1.45 : 1);
+    e.speed        *= levelCfg.enemySpeedMult * (isTouchMobile ? 1 : (canvas.width < 500 ? 1.45 : 1));
     e.fireRate      = Math.max(30, Math.floor(e.fireRate * levelCfg.enemyFireRateMult));
     e.fireCooldown  = e.fireRate + Math.floor(Math.random() * 40);
     G.enemies.push(e);
@@ -354,8 +373,12 @@ function frame(ts = 0) {
         if (e.bossBurstTimer <= 0 && e.bossBurstFired < e.bossBurstMax) {
           const ms = e._missileSpd  ?? 2.5;
           const mc = e._missileColor ?? '#ef4444';
-          { const em = createMissile(e.x, e.y, G.player.x, G.player.y, ms, null, mc); em.guideTick = 180; G.enemyMissiles.push(em); }
-          SFX.missile();
+          if (!isTouchMobile || G.enemyMissiles.length < MAX_ENEMY_MISSILES_TOUCH) {
+            const em = createMissile(e.x, e.y, G.player.x, G.player.y, ms, null, mc);
+            em.guideTick = 180;
+            G.enemyMissiles.push(em);
+            SFX.missile();
+          }
           e.bossBurstFired++;
           e.bossBurstTimer = e._burstInterval ?? 28;
         }
@@ -396,11 +419,13 @@ function frame(ts = 0) {
       const inFireZone = e.y > canvas.height * 0.25 && e.y < canvas.height * 0.78 && e.y < G.player.y;
       if (e.fireCooldown <= 0 && inFireZone && !_stealthActive) {
         e.fireCooldown = e.fireRate;
-        const _homing = Math.random() < _homingChance;
-        const em = createMissile(e.x, e.y, G.player.x, G.player.y, 2.5, null, _homing ? '#f97316' : '#ef4444');
-        if (_homing) em.guideTick = 180;
-        G.enemyMissiles.push(em);
-        SFX.missile();
+        if (!isTouchMobile || G.enemyMissiles.length < MAX_ENEMY_MISSILES_TOUCH) {
+          const _homing = Math.random() < _homingChance;
+          const em = createMissile(e.x, e.y, G.player.x, G.player.y, 2.5, null, _homing ? '#f97316' : '#ef4444');
+          if (_homing) em.guideTick = 180;
+          G.enemyMissiles.push(em);
+          SFX.missile();
+        }
       } else if (e.fireCooldown <= 0) {
         e.fireCooldown = e.fireRate;
       }
@@ -413,7 +438,7 @@ function frame(ts = 0) {
     drawEnemySprite(ctx, e, bankAngle);
     e.x = origX;
 
-    if (e.label) {
+    if (e.label && !isTouchMobile) {
       ctx.fillStyle    = 'rgba(255,255,255,0.8)';
       ctx.font         = 'bold 9px monospace';
       ctx.textAlign    = 'center';
@@ -508,7 +533,7 @@ function frame(ts = 0) {
   const skinFilter    = activeLiveryData?.filter || '';
   const skinAircraft  = (activeSkinData ?? activeLiveryData)?.aircraft ?? G.activeAircraft;
 
-  if (!_isMobile && !_isTablet) {
+  if (!isTouchMobile) {
     _fireTick++;
     drawEngineFire(ctx, G.activeAircraft, G.player.x, G.player.y, _fireTick, bankAngle);
   }
@@ -614,7 +639,7 @@ function frame(ts = 0) {
   ctx.fillStyle = _topGrad;
   ctx.fillRect(0, 0, canvas.width, fadeH);
 
-  if (!_cutsceneActive) G.animFrame = requestAnimationFrame(frame);
+  if (!_cutsceneActive && !isTouchMobile) G.animFrame = requestAnimationFrame(frame);
 }
 
 // ── COMBAT ──────────────────────────────────────────────────────────────────
@@ -1293,18 +1318,7 @@ function endLevel(won) {
 // Speed lines — initialised per session, used in frame()
 let _speedLines   = [];
 const _skinImgCache = {};
-// ── DEVICE DETECTION ─────────────────────────────────────────────────────────
-const _ua       = navigator.userAgent;
-// Universal tablet detection — any iPad (any iOS), Android tablet, or touch device at tablet size
-const _isTablet = /iPad/i.test(_ua)
-               || (/Macintosh/i.test(_ua) && navigator.maxTouchPoints > 1)
-               || (/Android/i.test(_ua) && !/Mobile/i.test(_ua))
-               || (navigator.maxTouchPoints > 1 && window.innerWidth >= 768 && window.innerWidth <= 1400);
-const _isPhone  = !_isTablet && (window.innerWidth <= 480 || (('ontouchstart' in window) && window.innerWidth <= 768));
-const _isMobile = _isPhone || _isTablet;
-// Frame-rate caps: 30 fps phone, 30 fps tablet, native on desktop
-const _frameInterval = _isPhone ? 1000 / 30 : _isTablet ? 1000 / 30 : 0;
-let   _lastFrameTs   = 0;
+let _lastFrameTs = 0;
 let   _qboxH         = 180;  // cached question-box height — updated in resize()
 function initSpeedLines(cw, ch) {
   const count = window.innerWidth <= 768 ? 12 : 28;
@@ -1414,10 +1428,8 @@ export function initGame(levelNum, onComplete) {
   }
   updateStreakHUD();
 
-  spawnRate  = _isPhone  ? Math.round(levelCfg.spawnRate * 1.5)
-             : _isTablet ? Math.round(levelCfg.spawnRate * 2.0)
-             : levelCfg.spawnRate;
-  maxEnemies = _isPhone ? Math.min(levelCfg.maxEnemies, 3) : _isTablet ? Math.min(levelCfg.maxEnemies, 2) : levelCfg.maxEnemies;
+  spawnRate  = isTouchMobile ? Math.round(levelCfg.spawnRate * 2.2) : levelCfg.spawnRate;
+  maxEnemies = isTouchMobile ? Math.min(levelCfg.maxEnemies, 2) : levelCfg.maxEnemies;
   spawnTimer = 60;
 
   attachInputListeners();
@@ -1426,9 +1438,7 @@ export function initGame(levelNum, onComplete) {
   quitBtn.onclick = () => {
     clearInterval(G.timerInterval);
     G.timerInterval = null;
-    cancelAnimationFrame(G.animFrame);
-    G.animFrame = null;
-    if (G.tabletLoop) { clearInterval(G.tabletLoop); G.tabletLoop = null; }
+    _stopGameLoop();
     SFX.stopSFX();
     SFX.quitGame();
     window._gameResume = () => {
@@ -1437,14 +1447,7 @@ export function initGame(levelNum, onComplete) {
       showScreen('s-game');
       SFX.playMusic('game');
       _runTimer();
-      if (_isTablet) {
-        G.tabletLoop = setInterval(() => {
-          if (_sessionId !== sid) { clearInterval(G.tabletLoop); G.tabletLoop = null; return; }
-          frame(performance.now());
-        }, 1000 / 30);
-      } else {
-        G.animFrame = requestAnimationFrame(frame);
-      }
+      _startGameLoop(sid);
     };
     $('gameover-title').textContent = 'PAUSED';
     $('gameover-score').textContent = '';
@@ -1461,16 +1464,7 @@ export function initGame(levelNum, onComplete) {
     if (_sessionId !== sid) return;
     const cw = canvas.clientWidth, ch = canvas.clientHeight;
     if (!cw || !ch) { requestAnimationFrame(tryStart); return; }
-    const _dpr = _isTablet ? 0.5 : _isMobile ? 1 : Math.min(window.devicePixelRatio || 1, 1);
-    canvas.width  = Math.round(cw * _dpr);
-    canvas.height = Math.round(ch * _dpr);
-    if (_isTablet) {
-      canvas.style.width          = cw + 'px';
-      canvas.style.height         = ch + 'px';
-      canvas.style.imageRendering = 'auto';
-    } else {
-      canvas.style.width = canvas.style.height = canvas.style.imageRendering = '';
-    }
+    _setCanvasSize(cw, ch);
     ctx.setTransform(1, 0, 0, 1, 0, 0);
 
     // Animate loading screen while sprites download
@@ -1559,14 +1553,7 @@ export function initGame(levelNum, onComplete) {
         maxEnemies = levelCfg.bossCompanionMax;
       }
 
-      if (_isTablet) {
-        G.tabletLoop = setInterval(() => {
-          if (_sessionId !== sid) { clearInterval(G.tabletLoop); G.tabletLoop = null; return; }
-          frame(performance.now());
-        }, 1000 / 30);
-      } else {
-        G.animFrame = requestAnimationFrame(frame);
-      }
+      _startGameLoop(sid);
       nextQuestion();
     });
   }
@@ -1575,18 +1562,11 @@ export function initGame(levelNum, onComplete) {
   // Pause loop when tab is hidden, resume when visible again
   const _onVisibility = () => {
     if (document.hidden) {
-      if (_isTablet) { clearInterval(G.tabletLoop); G.tabletLoop = null; }
-      else { cancelAnimationFrame(G.animFrame); G.animFrame = null; }
+      _stopGameLoop();
     } else if (!_cutsceneActive) {
       _lastFrameTs = 0;
-      if (_isTablet) {
-        if (!G.tabletLoop) G.tabletLoop = setInterval(() => {
-          if (_sessionId !== sid) { clearInterval(G.tabletLoop); G.tabletLoop = null; return; }
-          frame(performance.now());
-        }, 1000 / 30);
-      } else if (!G.animFrame) {
-        G.animFrame = requestAnimationFrame(frame);
-      }
+      if (isTouchMobile && !G.mobileLoop) _startGameLoop(sid);
+      else if (!isTouchMobile && !G.animFrame) G.animFrame = requestAnimationFrame(frame);
     }
   };
   document.addEventListener('visibilitychange', _onVisibility);
@@ -1594,8 +1574,7 @@ export function initGame(levelNum, onComplete) {
   return () => {
     _sessionId++;
     clearInterval(G.timerInterval);
-    cancelAnimationFrame(G.animFrame);
-    if (G.tabletLoop) { clearInterval(G.tabletLoop); G.tabletLoop = null; }
+    _stopGameLoop();
     document.removeEventListener('visibilitychange', _onVisibility);
     G.timerInterval = null;
     G.animFrame     = null;
