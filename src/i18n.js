@@ -237,6 +237,8 @@ const STRINGS = {
     // Login toasts & alerts
     welcomeBack:       '✓ WELCOME BACK, {name}!',
     welcomeNew:        '✓ WELCOME, {name}! You start from zero — good luck!',
+    syncOffline:       'Offline — progress saved on this device only.',
+    syncOk:            'Progress synced from your account.',
     signInToUnlock:    'Sign in to unlock',
     signInAlert:       'Sign in with Google to unlock all 50 levels and save your progress!',
     offlineBanner:     '✈ Sign in with Google to save your progress and unlock all 50 levels',
@@ -497,6 +499,8 @@ const STRINGS = {
     // Login toasts & alerts
     welcomeBack:       '✓ BIENVENUE, {name} !',
     welcomeNew:        '✓ BIENVENUE, {name} ! Tu pars de zéro — bonne chance !',
+    syncOffline:       'Hors ligne — progression sur cet appareil seulement.',
+    syncOk:            'Progression synchronisée depuis votre compte.',
     signInToUnlock:    'Connectez-vous pour débloquer',
     signInAlert:       'Connectez-vous avec Google pour débloquer les 50 niveaux et sauvegarder votre progression !',
     offlineBanner:     '✈ Connectez-vous avec Google pour sauvegarder votre progression et débloquer les 50 niveaux',

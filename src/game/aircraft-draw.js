@@ -1,11 +1,7 @@
 // ── SPRITE-ONLY AIRCRAFT RENDERING ───────────────────────────────────────────
-// All canvas polygon shapes removed. Sprites from the Legacy Collection are
-// the definitive visuals for every aircraft and enemy in the game.
-
 import { drawFrame, AIRCRAFT_SPRITE } from './sprites.js';
+import { isTouchMobile } from '../utils/device.js';
 
-// Engine exhaust nozzle positions as fractions of the sprite size from center.
-// x: left(-) / right(+), y: forward(-) / rear(+). Multiply by sz to get pixels.
 const ENGINE_OFFSETS = {
   f16:  [{ x:  0,     y:  0.38 }],
   f35:  [{ x:  0,     y:  0.38 }],
@@ -16,29 +12,41 @@ const ENGINE_OFFSETS = {
   b2:   [{ x: -0.22,  y:  0.1  }, { x: -0.07,  y:  0.1  }, { x:  0.07, y: 0.1 }, { x:  0.22, y: 0.1 }],
 };
 
-// Cached per window width — recalculated only on resize, not every frame
+let _spriteCanvasW = 0;
 let _cachedPlayerSize = 0, _cachedPlayerSizeW = -1;
 let _cachedEnemyScale = 0, _cachedEnemyScaleW = -1;
 
+export function setSpriteCanvasWidth(w) {
+  _spriteCanvasW = w || 0;
+  _cachedPlayerSizeW = -1;
+  _cachedEnemyScaleW = -1;
+}
+
+function _layoutWidth() {
+  return _spriteCanvasW || window.innerWidth;
+}
+
 function getPlayerSize() {
-  const w = window.innerWidth;
-  if (_cachedPlayerSizeW !== w) { _cachedPlayerSizeW = w; _cachedPlayerSize = w <= 520 ? 85 : 150; }
+  const w = _layoutWidth();
+  if (_cachedPlayerSizeW !== w) {
+    _cachedPlayerSizeW = w;
+    const narrow = isTouchMobile() ? w <= 300 : w <= 520;
+    _cachedPlayerSize = narrow ? 85 : 150;
+  }
   return _cachedPlayerSize;
 }
 
 function getEnemyScale() {
-  const w = window.innerWidth;
-  if (_cachedEnemyScaleW !== w) { _cachedEnemyScaleW = w; _cachedEnemyScale = w <= 520 ? 3.2 : 4.8; }
+  const w = _layoutWidth();
+  if (_cachedEnemyScaleW !== w) {
+    _cachedEnemyScaleW = w;
+    const narrow = isTouchMobile() ? w <= 300 : w <= 520;
+    _cachedEnemyScale = narrow ? 3.2 : 4.8;
+  }
   return _cachedEnemyScale;
 }
 export { getPlayerSize };
 
-// ── PLAYER AIRCRAFT ───────────────────────────────────────────────────────────
-
-/**
- * Draw the player ship sprite centred at (cx, cy).
- * Uses 'screen' blend so the built-in dark vignette becomes transparent.
- */
 export function drawAircraftSprite(ctx, aircraftId, cx, cy, frame, alpha = 1, bankAngle = 0, skinFilter = '') {
   const key = AIRCRAFT_SPRITE[aircraftId] ?? 'ship-t6';
   ctx.save();
@@ -50,10 +58,6 @@ export function drawAircraftSprite(ctx, aircraftId, cx, cy, frame, alpha = 1, ba
   ctx.restore();
 }
 
-/**
- * Draw a static first-frame ship sprite for the hangar preview.
- * Uses 'screen' blend so the dark vignette disappears over the card background.
- */
 export function drawAircraftPreview(ctx, aircraftId, cx, cy, size) {
   const key = AIRCRAFT_SPRITE[aircraftId] ?? 'ship-t6';
   ctx.save();
@@ -63,15 +67,6 @@ export function drawAircraftPreview(ctx, aircraftId, cx, cy, size) {
   ctx.restore();
 }
 
-// ── ENEMIES ───────────────────────────────────────────────────────────────────
-
-/**
- * Draw an enemy sprite centred at (enemy.x, enemy.y).
- * Uses the enemy's own spriteKey and animFrame set by enemies.js.
- *
- * @param {CanvasRenderingContext2D} ctx
- * @param {object} enemy  full enemy object from G.enemies
- */
 export function drawEnemySprite(ctx, enemy, bankAngle = 0) {
   const size = enemy.size * getEnemyScale();
   if (enemy.spriteFilter) {
@@ -85,7 +80,6 @@ export function drawEnemySprite(ctx, enemy, bankAngle = 0) {
       { rotate: Math.PI + bankAngle });
   }
 
-  // HP bar for tank / boss enemies
   if (enemy.maxHp > 1) {
     const bw = enemy.size * 1.6;
     const bh = 4;
@@ -96,8 +90,6 @@ export function drawEnemySprite(ctx, enemy, bankAngle = 0) {
     ctx.fillRect(bx, by, bw * (enemy.currentHp / enemy.maxHp), bh);
   }
 }
-
-// ── ENGINE FIRE ───────────────────────────────────────────────────────────────
 
 export function drawEngineFire(ctx, aircraftId, cx, cy, tick, bankAngle = 0) {
   const offsets = ENGINE_OFFSETS[aircraftId];
@@ -114,7 +106,7 @@ export function drawEngineFire(ctx, aircraftId, cx, cy, tick, bankAngle = 0) {
   for (const off of offsets) {
     ctx.save();
     ctx.translate(off.x * sz, off.y * sz);
-    ctx.rotate(-Math.PI / 2);  // sprite points right → rotate to point down
+    ctx.rotate(-Math.PI / 2);
     drawFrame(ctx, 'fire-ball', frame, 0, 0, fw, fh);
     ctx.restore();
   }

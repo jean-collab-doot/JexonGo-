@@ -168,15 +168,17 @@ export async function flushCloudSave() {
 }
 
 /** Pull cloud save, merge with local, apply, and push merged result. */
+/** @returns {{ ok: boolean, merged?: boolean, offline?: boolean, forbidden?: boolean }} */
 export async function syncAccountFromCloud(opts = {}) {
   const email = (G.playerEmail || '').toLowerCase().trim();
-  if (!G.playerRegistered || !email) return false;
+  if (!G.playerRegistered || !email) return { ok: false };
 
   const password = opts.password ?? load('playerPassword', '') ?? '';
   const authType = opts.authType || (password ? 'email' : 'google');
   const local = exportSaveSnapshot();
   const remote = await fetchCloudSave(email, password, authType);
-  if (remote?.forbidden || remote?.offline) return false;
+  if (remote?.forbidden) return { ok: false, forbidden: true };
+  if (remote?.offline) return { ok: false, offline: true };
 
   if (remote?.data) {
     applySaveSnapshot(mergeSaveSnapshots(local, remote.data));
@@ -184,5 +186,5 @@ export async function syncAccountFromCloud(opts = {}) {
 
   saveAll();
   await pushCloudSave({ authType, password });
-  return !!remote?.data;
+  return { ok: true, merged: !!remote?.data };
 }

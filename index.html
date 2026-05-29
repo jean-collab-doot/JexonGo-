@@ -16,12 +16,18 @@
 </head>
 <body>
   <script>
-    const isPhone = /iPhone|Android/i.test(navigator.userAgent)
-        && window.innerWidth < 768
-        && !(/iPad/i.test(navigator.userAgent))
-        && !(navigator.maxTouchPoints > 1 && window.innerWidth >= 768);
+    const ua = navigator.userAgent;
+    const isTabletGate = /iPad/i.test(ua)
+        || (/Macintosh/i.test(ua) && navigator.maxTouchPoints > 1)
+        || (/Android/i.test(ua) && !/Mobile/i.test(ua))
+        || (navigator.maxTouchPoints > 1 && window.innerWidth >= 768 && window.innerWidth <= 1400);
+    const isPhoneGate = !isTabletGate && (
+      /iPhone|iPod/i.test(ua)
+      || (/Android/i.test(ua) && /Mobile/i.test(ua))
+      || (('ontouchstart' in window) && window.innerWidth <= 768)
+    );
 
-    if (isPhone) {
+    if (isPhoneGate) {
       const password = prompt('JEXONGO BETA ACCESS CODE:');
       if (password !== 'JEXONGO2026') {
         document.body.innerHTML = `
@@ -51,14 +57,7 @@
       }
     }
 
-    const isTablet = (
-      /iPad/i.test(navigator.userAgent) ||
-      (/Macintosh/i.test(navigator.userAgent) && navigator.maxTouchPoints > 1) ||
-      (/Android/i.test(navigator.userAgent) && !/Mobile/i.test(navigator.userAgent)) ||
-      (navigator.maxTouchPoints > 1 && window.innerWidth >= 768)
-    );
-
-    if (isTablet) {
+    if (isTabletGate) {
       const banner = document.createElement('div');
       banner.innerHTML = `
       <div style="

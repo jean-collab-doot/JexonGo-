@@ -1,8 +1,5 @@
-// ── SPRITE-BASED PARTICLES ────────────────────────────────────────────────────
 import { drawFrame } from './sprites.js';
-import { isTouchMobile, MAX_PARTICLES_TOUCH } from '../utils/device.js';
-
-const MAX_PARTICLES = isTouchMobile ? MAX_PARTICLES_TOUCH : 24;
+import { isTouchMobile, maxParticlesTouch } from '../utils/device.js';
 
 export function spawnExplosion(particles, x, y, color, count = 14) {
   particles.push({
@@ -27,16 +24,18 @@ export function spawnHitSpark(particles, x, y) {
 }
 
 export function updateParticles(particles) {
+  const max = isTouchMobile() ? maxParticlesTouch() : 24;
   for (let i = particles.length - 1; i >= 0; i--) {
     const p = particles[i];
     p.frame += p.frameRate;
     if (p.frame >= p.totalFrames) particles.splice(i, 1);
   }
-  if (particles.length > MAX_PARTICLES) particles.splice(0, particles.length - MAX_PARTICLES);
+  if (particles.length > max) particles.splice(0, particles.length - max);
 }
 
 export function drawParticles(ctx, particles) {
-  const limit = Math.min(particles.length, MAX_PARTICLES);
+  const max = isTouchMobile() ? maxParticlesTouch() : 24;
+  const limit = Math.min(particles.length, max);
   for (let i = 0; i < limit; i++) {
     const p = particles[i];
     drawFrame(ctx, p.spriteKey, p.frame, p.x, p.y, p.size, p.size);

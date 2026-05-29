@@ -7,7 +7,7 @@ import { save, load } from '../utils/storage.js';
 import { getPilotInfo } from '../data/pilots.js';
 import { getPrestigeTier, getPrestigeBadgeHTML } from '../data/prestige.js';
 import { t, getLang, setLang, applyI18n } from '../i18n.js';
-import { isTouchMobile } from '../utils/device.js';
+import { isTouchMobile, touchMenuCanvasDpr } from '../utils/device.js';
 import { syncAccountFromCloud, flushCloudSave, fetchCloudSave,
          mergeSaveSnapshots, exportSaveSnapshot, applySaveSnapshot } from '../systems/cloud-save.js';
 
@@ -185,7 +185,8 @@ async function _handleLoginSubmit() {
     applySaveSnapshot(mergeSaveSnapshots(exportSaveSnapshot(), remote.data));
     saveAll();
   }
-  await syncAccountFromCloud({ authType: 'email', password: pwIn });
+  const sync = await syncAccountFromCloud({ authType: 'email', password: pwIn });
+  if (sync.offline) _showToast(t('syncOffline') || 'Offline — progress on this device only.');
   renderMenu();
   _showToast(t('welcomeBack').replace('{name}', G.playerName || 'PILOT'));
 }
@@ -195,7 +196,7 @@ const PLANE_PATH  = '/assets/menu/anim-3.png';
 const FIRE_PATH   = '/assets/menu/engine-fire.png';
 const FIRE_FRAMES = 4;
 
-const _isMenuMobile = isTouchMobile;
+function _isMenuMobile() { return isTouchMobile(); }
 let _menuFrame = 0;
 
 let _planeImg    = null;
@@ -209,7 +210,7 @@ function loadAssets() {
   if (_planeImg) return;
   _planeImg = new Image(); _planeImg.src = PLANE_PATH;
 
-  if (_isMenuMobile) return; // skip video and fire assets on mobile
+  if (_isMenuMobile()) return; // skip video and fire assets on mobile
 
   _fireImg = new Image(); _fireImg.src = FIRE_PATH;
 
@@ -341,15 +342,15 @@ function drawTick() {
   }
 
   _menuFrame++;
-  if (_isMenuMobile && _menuFrame % 2 !== 0) {
+  if (_isMenuMobile() && _menuFrame % 2 !== 0) {
     _raf = requestAnimationFrame(drawTick);
     return;
   }
 
   const dW = canvas.clientWidth  || 360;
   const dH = canvas.clientHeight || 640;
-  if (_isMenuMobile) {
-    const dpr = 0.6;
+  if (_isMenuMobile()) {
+    const dpr = touchMenuCanvasDpr();
     const pw = Math.round(dW * dpr);
     const ph = Math.round(dH * dpr);
     if (canvas.width !== pw || canvas.height !== ph) {
@@ -372,8 +373,8 @@ function drawTick() {
 
   // 0. Video crossfade — fully RAF-driven, no timeupdate, no black flash
   // On mobile: skip crossfade entirely (video is hidden/not loaded on mobile)
-  const vid  = _isMenuMobile ? null : document.getElementById('menu-bg-video');
-  const vid2 = _isMenuMobile ? null : document.getElementById('menu-bg-video2');
+  const vid  = _isMenuMobile() ? null : document.getElementById('menu-bg-video');
+  const vid2 = _isMenuMobile() ? null : document.getElementById('menu-bg-video2');
   const FADE_DUR  = 1.5;
   const FADE_STEP = 1 / (FADE_DUR * 60);
 
@@ -408,12 +409,12 @@ function drawTick() {
   }
 
   // 1. Drifting clouds (desktop only — costly on phone/tablet)
-  if (!_isMenuMobile) updateDrawClouds(ctx, cW, cH);
+  if (!_isMenuMobile()) updateDrawClouds(ctx, cW, cH);
 
   // 2. Planes + smoke + fire
   if (_planeImg && _planeImg.complete && _planeImg.naturalWidth) {
     const iw = _planeImg.naturalWidth, ih = _planeImg.naturalHeight;
-    const visiblePlanes = _isMenuMobile ? PLANES.slice(0, 1) : PLANES;
+    const visiblePlanes = _isMenuMobile() ? PLANES.slice(0, 1) : PLANES;
 
     for (const p of visiblePlanes) {
       const drawH = cH * p.scale;
@@ -421,10 +422,10 @@ function drawTick() {
       const bx    = cW * p.xFrac - drawW / 2;
 
       if (p.y === null) p.y = cH + drawH + p.startOffset;
-      p.y -= _isMenuMobile ? p.speed * 1.4 : p.speed;
+      p.y -= _isMenuMobile() ? p.speed * 1.4 : p.speed;
       if (p.y < -drawH * 2) { p.y = cH + drawH; p.smoke = []; }
 
-      if (!_isMenuMobile) {
+      if (!_isMenuMobile()) {
         // Accelerate smoke fade as plane nears the top
         const fadeRatio = p.y < 0 ? Math.max(0, 1 + p.y / drawH) : 1;
         if (fadeRatio < 1) {
@@ -883,6 +884,7 @@ function _showToast(msg) {
   if (_toastTimer) clearTimeout(_toastTimer);
   _toastTimer = setTimeout(() => el.classList.remove('toast-show'), 2200);
 }
+window._showToast = _showToast;
 
 function openPracticeSelect(nav) {
   const panel = $('practice-select');

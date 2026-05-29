@@ -66,6 +66,7 @@ export const G = {
   timeLeft: 10,
   timerInterval: null,
   animFrame: null,
+  mobileLoop: null,
   answerLocked: false,
   missileHitsReceived: 0,   // counts enemy missile hits this level (for 3-star)
 

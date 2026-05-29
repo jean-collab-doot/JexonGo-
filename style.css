@@ -3286,6 +3286,30 @@ body::after {
   #question-box { padding: 10px; }
 }
 
+/* Tablet + touch — larger tap targets (matches device.js touch detection) */
+html.touch-mobile #answer-buttons { gap: 10px; }
+html.touch-mobile .answer-btn {
+  padding: 16px 10px;
+  font-size: clamp(11px, 2.8vw, 15px);
+  min-height: 44px;
+}
+html.touch-mobile .arena-ans-btn {
+  font-size: 11px;
+  padding: 14px 8px;
+  min-height: 44px;
+}
+html.touch-mobile .map-node {
+  min-width: 56px;
+  min-height: 56px;
+}
+html.touch-mobile .map-node.boss {
+  min-width: 72px;
+  min-height: 72px;
+}
+html.touch-tablet .menu-top-left {
+  top: 52px;
+}
+
 /* ═══════════════════════════════════════════════════════════════════════════
    GRADE SELECTION SCREEN
    ═══════════════════════════════════════════════════════════════════════════ */
@@ -4759,7 +4783,7 @@ body::after {
 /* ── MOBILE / TABLET PERFORMANCE OPTIMIZATIONS ──────────────────────────────
    Touch devices: disable decorative infinite animations to save GPU cycles.
 ────────────────────────────────────────────────────────────────────────────── */
-@media (hover: none), (prefers-reduced-motion: reduce) {
+@media (hover: none) and (max-width: 1024px), (prefers-reduced-motion: reduce) {
   .prestige-badge-rainbow { animation: none !important; }
   .prestige-btn-pulse-el  { animation: none !important; }
   .prestige-modal-glow    { animation: none !important; }
@@ -4767,6 +4791,7 @@ body::after {
   .rk-live-dot            { animation: none !important; }
   .sr71-mission-card      { animation: none !important; }
   .offline-banner         { animation: none !important; }
+  .map-node-boss.available { animation: none !important; }
   .answer-btn { transition: transform 0.05s, background 0.05s !important; }
   .chest-card { transition: transform 0.15s ease !important; }
 }

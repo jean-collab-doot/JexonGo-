@@ -80,7 +80,8 @@ export function renderLevelMap() {
       el.style.opacity = '0.4';
       el.title = t('signInToUnlock');
       el.addEventListener('click', () => {
-        alert(t('signInAlert'));
+        if (window._showToast) window._showToast(t('signInAlert'));
+        else alert(t('signInAlert'));
       });
     } else if (node.state !== 'locked') {
       el.style.borderColor = BIOME_META[biome].accent;

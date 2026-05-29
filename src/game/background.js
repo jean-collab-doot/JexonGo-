@@ -1,38 +1,33 @@
 // ── PARALLAX BACKGROUND ──────────────────────────────────────────────────────
-// Two-level cache on mobile:
-//   Level 1 — per-layer tile canvas (pre-scaled image, built once per biome/resize)
-//   Level 2 — full-frame canvas (composite of all tiles, rebuilt every other frame)
-// Skipped frames blit the full-frame cache with a single drawImage call.
-// Desktop renders directly to ctx with no extra canvas overhead.
-
 import { getImage } from './sprites.js';
 import { isTouchMobile, isTablet, isPhone } from '../utils/device.js';
 
-// ── LAYER CONFIG ─────────────────────────────────────────────────────────────
-const _bgSpeed = isPhone ? 0.45 : isTablet ? 0.55 : 1.2;
+function _bgSpeed() {
+  if (isPhone()) return 0.45;
+  if (isTablet()) return 0.55;
+  return 1.2;
+}
+
 const LAYER_DEFS = {
-  ocean:  [{ key: 'ocean-bg',  speed: _bgSpeed }],
-  desert: [{ key: 'desert-bg', speed: _bgSpeed }],
-  city:   [{ key: 'city-bg',   speed: _bgSpeed }],
-  arctic: [{ key: 'arctic-bg', speed: _bgSpeed }],
-  space:  [{ key: 'space-bg',  speed: _bgSpeed }],
+  ocean:  [{ key: 'ocean-bg',  speed: _bgSpeed() }],
+  desert: [{ key: 'desert-bg', speed: _bgSpeed() }],
+  city:   [{ key: 'city-bg',   speed: _bgSpeed() }],
+  arctic: [{ key: 'arctic-bg', speed: _bgSpeed() }],
+  space:  [{ key: 'space-bg',  speed: _bgSpeed() }],
 };
 
-// ── STATE ─────────────────────────────────────────────────────────────────────
 let _layers      = [];
 let _lastCanvasW = 0;
-
 let _bgTick = 0;
 let _bgSkip = 0;
-
 let _frameCache    = null;
 let _frameCacheCtx = null;
-
-// ── PUBLIC API ────────────────────────────────────────────────────────────────
+let _activeBiome   = 'ocean';
 
 export function initBackground(biome) {
-  const defs = LAYER_DEFS[biome] ?? LAYER_DEFS.ocean;
-  _layers      = defs.map(d => ({ key: d.key, speed: d.speed, y: 0, offscreen: null, dh: 0 }));
+  _activeBiome = biome || 'ocean';
+  const defs = LAYER_DEFS[_activeBiome] ?? LAYER_DEFS.ocean;
+  _layers      = defs.map(d => ({ key: d.key, speed: _bgSpeed(), y: 0, offscreen: null, dh: 0 }));
   _lastCanvasW = 0;
   _frameCache  = null;
   _bgTick      = 0;
@@ -41,11 +36,9 @@ export function initBackground(biome) {
 
 export function updateBackground() {
   _bgTick++;
-  if (isTouchMobile) {
-    _bgSkip++;
-  }
-  const skipEvery = isPhone ? 3 : isTablet ? 2 : 1;
-  if (isTouchMobile && _bgSkip % skipEvery !== 0) return;
+  if (isTouchMobile()) _bgSkip++;
+  const skipEvery = isPhone() ? 3 : isTablet() ? 2 : 1;
+  if (isTouchMobile() && _bgSkip % skipEvery !== 0) return;
   for (const l of _layers) l.y += l.speed;
 }
 
@@ -59,14 +52,14 @@ export function drawBackground(ctx, canvas) {
     _lastCanvasW = cw;
   }
 
-  const drawEvery = isPhone ? 3 : 2;
-  if (isTouchMobile && _bgTick % drawEvery !== 0) {
+  const drawEvery = isPhone() ? 3 : 2;
+  if (isTouchMobile() && _bgTick % drawEvery !== 0) {
     if (_frameCache) ctx.drawImage(_frameCache, 0, 0);
     return;
   }
 
   let targetCtx = ctx;
-  if (isTouchMobile) {
+  if (isTouchMobile()) {
     if (!_frameCache || _frameCache.width !== cw || _frameCache.height !== ch) {
       _frameCache    = document.createElement('canvas');
       _frameCache.width  = cw;
@@ -102,5 +95,5 @@ export function drawBackground(ctx, canvas) {
     }
   }
 
-  if (isTouchMobile) ctx.drawImage(_frameCache, 0, 0);
+  if (isTouchMobile()) ctx.drawImage(_frameCache, 0, 0);
 }

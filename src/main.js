@@ -22,6 +22,7 @@ import { showDailyReward } from './screens/menu.js';
 import { canSendFeedback, markFeedbackSent, sendFeedback, sendNewPlayerNotification, _resetNewPlayer, _testEmailNow } from './systems/feedback.js';
 import { t, getLang, applyI18n } from './i18n.js';
 import { syncAccountFromCloud, flushCloudSave, pushCloudSave } from './systems/cloud-save.js';
+import { applyDeviceClasses } from './utils/device.js';
 import { inject } from '@vercel/analytics';
 
 // ── VIDEO BACKGROUND ─────────────────────────────────────────────────────────
@@ -136,6 +137,7 @@ const nav = {
 function cleanup() {
   _videoPause();
   if (G.animFrame)     { cancelAnimationFrame(G.animFrame); G.animFrame = null; }
+  if (G.mobileLoop)    { clearInterval(G.mobileLoop);       G.mobileLoop = null; }
   if (G.timerInterval) { clearInterval(G.timerInterval);    G.timerInterval = null; }
   if (_cleanup) { _cleanup(); _cleanup = null; }
 }
@@ -175,7 +177,9 @@ window._onGoogleCredential = async function(response) {
     save('playerRegistered', true);
 
     loadSave();
-    await syncAccountFromCloud({ authType: 'google' });
+    const sync = await syncAccountFromCloud({ authType: 'google' });
+    if (sync.offline) _showLoginToast(t('syncOffline') || 'Progress saved on this device only (offline).');
+    else if (sync.merged) _showLoginToast(t('syncOk') || 'Progress synced from your account.');
 
     if (wasRegistered) {
       renderMenu();
@@ -371,14 +375,20 @@ function showFeedbackPopup() {
 }
 
 // ── BOOT ──────────────────────────────────────────────────────────────────────
+applyDeviceClasses();
+window.addEventListener('resize', applyDeviceClasses);
+window.addEventListener('orientationchange', applyDeviceClasses);
 inject(); // Vercel Web Analytics (no-op in dev; enable Analytics in Vercel project)
 loadSave();
 loadSettings();
 preloadShips();
 
 if (G.playerRegistered && G.playerEmail) {
-  syncAccountFromCloud().then(synced => {
-    if (synced) renderMenu();
+  syncAccountFromCloud().then(sync => {
+    if (sync?.merged) renderMenu();
+    else if (sync?.offline && window._showToast) {
+      window._showToast(t('syncOffline') || 'Playing offline — progress saves on this device.');
+    }
   }).catch(() => {});
 }
 

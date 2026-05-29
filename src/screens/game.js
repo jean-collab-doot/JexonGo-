@@ -19,9 +19,9 @@ import { calcSpeedXP } from '../systems/xp.js';
 import { save } from '../utils/storage.js';
 import { t } from '../i18n.js';
 import {
-  isTouchMobile, gameCanvasDpr,
-  GAME_FPS_TOUCH, MAX_ENEMY_MISSILES_TOUCH,
+  isTouchMobile, gameCanvasDpr, GAME_FPS_TOUCH, MAX_ENEMY_MISSILES_TOUCH,
 } from '../utils/device.js';
+import { setSpriteCanvasWidth } from '../game/aircraft-draw.js';
 
 // ── GRADE-BASED MATH FILTER ───────────────────────────────────────────────────
 // Each grade has its own ops, number cap, and multiplication cap.
@@ -94,6 +94,7 @@ let _jsOrigin      = null;   // virtual joystick: touch-start position
 let _jsCurrent     = null;   // virtual joystick: current touch position
 let _jsVelX        = 0;
 let _jsVelY        = 0;
+let _touchId       = null;
 let velX = 0, velY = 0;
 const MOVE_SPEED   = 3.5;
 const ACCEL        = 0.4;
@@ -142,20 +143,29 @@ function _killBoss() {
 }
 
 function canvasPointer(e) {
-  const r   = canvas.getBoundingClientRect();
-  const src = e.touches ? e.touches[0] : e;
-  let x     = src.clientX - r.left;
-  let y     = src.clientY - r.top;
-  if (isTouchMobile) ({ x, y } = _cssToCanvas(x, y));
+  const r = canvas.getBoundingClientRect();
+  let src = e;
+  if (e.touches?.length) {
+    if (e.type === 'touchstart') _touchId = e.touches[0].identifier;
+    src = [...e.touches].find(t => t.identifier === _touchId) ?? e.touches[0];
+    if (e.type === 'touchend' || e.type === 'touchcancel') {
+      if (e.touches.length) {
+        _touchId = e.touches[0].identifier;
+        src = e.touches[0];
+      }
+    }
+  }
+  let x = src.clientX - r.left;
+  let y = src.clientY - r.top;
+  if (isTouchMobile()) ({ x, y } = _cssToCanvas(x, y));
 
   if (e.touches) {
-    // ── Virtual joystick ────────────────────────────────────────────────
     if (e.type === 'touchstart') {
       _jsOrigin  = { x, y };
       _jsCurrent = { x, y };
       _jsVelX = _jsVelY = 0;
       pointerTarget = null;
-    } else if (_jsOrigin) {
+    } else if (_jsOrigin && (e.type === 'touchmove' || e.touches.length)) {
       _jsCurrent = { x, y };
       const dx   = x - _jsOrigin.x;
       const dy   = y - _jsOrigin.y;
@@ -174,9 +184,14 @@ function canvasPointer(e) {
   }
 }
 
-function clearPointer() {
+function clearPointer(e) {
+  if (e?.touches?.length) {
+    _touchId = e.touches[0].identifier;
+    return;
+  }
   pointerTarget = null;
   _jsOrigin = _jsCurrent = null;
+  _touchId  = null;
   _jsVelX = _jsVelY = 0;
 }
 
@@ -215,9 +230,10 @@ function updatePlayerMovement() {
 function attachInputListeners() {
   window.addEventListener('keydown', onKeyDown);
   window.addEventListener('keyup',   onKeyUp);
-  canvas.addEventListener('touchstart', canvasPointer, { passive: true });
-  canvas.addEventListener('touchmove',  canvasPointer, { passive: true });
-  canvas.addEventListener('touchend',   clearPointer);
+  canvas.addEventListener('touchstart',  canvasPointer, { passive: true });
+  canvas.addEventListener('touchmove',   canvasPointer, { passive: true });
+  canvas.addEventListener('touchend',    clearPointer,  { passive: true });
+  canvas.addEventListener('touchcancel', clearPointer,  { passive: true });
 }
 
 function detachInputListeners() {
@@ -225,7 +241,8 @@ function detachInputListeners() {
   window.removeEventListener('keyup',   onKeyUp);
   canvas.removeEventListener('touchstart', canvasPointer);
   canvas.removeEventListener('touchmove',  canvasPointer);
-  canvas.removeEventListener('touchend',   clearPointer);
+  canvas.removeEventListener('touchend',    clearPointer);
+  canvas.removeEventListener('touchcancel', clearPointer);
 }
 
 // ── MOBILE GAME LOOP (phone + tablet only) ────────────────────────────────────
@@ -233,7 +250,7 @@ function _setCanvasSize(w, h) {
   const dpr = gameCanvasDpr();
   canvas.width  = Math.round(w * dpr);
   canvas.height = Math.round(h * dpr);
-  if (isTouchMobile) {
+  if (isTouchMobile()) {
     canvas.style.width          = w + 'px';
     canvas.style.height         = h + 'px';
     canvas.style.imageRendering = 'auto';
@@ -246,7 +263,7 @@ function _setCanvasSize(w, h) {
 function _canvasQboxH() {
   const cssH = canvas?.clientHeight || 640;
   const bh   = canvas?.height || cssH;
-  if (!isTouchMobile || cssH <= 0) return _qboxH || 180;
+  if (!isTouchMobile() || cssH <= 0) return _qboxH || 180;
   return Math.round((_qboxH || 180) * (bh / cssH));
 }
 
@@ -268,7 +285,7 @@ function _stopGameLoop() {
 
 function _startGameLoop(sid) {
   _stopGameLoop();
-  if (isTouchMobile) {
+  if (isTouchMobile()) {
     G.mobileLoop = setInterval(() => {
       if (_sessionId !== sid) { clearInterval(G.mobileLoop); G.mobileLoop = null; return; }
       frame(performance.now());
@@ -282,8 +299,9 @@ function _startGameLoop(sid) {
 function resize() {
   const w = canvas.clientWidth, h = canvas.clientHeight;
   if (!w || !h) return;
-  if (!isTouchMobile && G.animFrame) { cancelAnimationFrame(G.animFrame); G.animFrame = null; }
+  if (!isTouchMobile() && G.animFrame) { cancelAnimationFrame(G.animFrame); G.animFrame = null; }
   _setCanvasSize(w, h);
+  setSpriteCanvasWidth(canvas.width);
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   _qboxH = $('question-box').offsetHeight || 180;
   const bw = canvas.width;
@@ -291,7 +309,7 @@ function resize() {
   const qbox = _canvasQboxH();
   G.player.x = Math.max(16, Math.min(bw - 16,  G.player.x || bw / 2));
   G.player.y = Math.max(bh * 0.08, Math.min(bh - qbox - 80, G.player.y || bh - qbox - 60));
-  if (!_cutsceneActive && !isTouchMobile) G.animFrame = requestAnimationFrame(frame);
+  if (!_cutsceneActive && !isTouchMobile()) G.animFrame = requestAnimationFrame(frame);
 }
 
 function placePlayer() {
@@ -344,7 +362,7 @@ function frame(ts = 0) {
   }
 
   // ── Speed lines ────────────────────────────────────────────────────────
-  if (!isTouchMobile) {
+  if (!isTouchMobile()) {
     if (_speedLines.length === 0) initSpeedLines(canvas.width, canvas.height);
     drawSpeedLines(ctx, canvas.width, canvas.height);
   }
@@ -355,7 +373,7 @@ function frame(ts = 0) {
     const types = levelCfg.isBossLevel ? levelCfg.bossCompanionTypes : levelCfg.enemyTypes;
     const type  = types[Math.floor(Math.random() * types.length)];
     const e     = spawnEnemy(canvas.width, type);
-    e.speed        *= levelCfg.enemySpeedMult * (isTouchMobile ? 1 : (canvas.width < 500 ? 1.45 : 1));
+    e.speed        *= levelCfg.enemySpeedMult * (isTouchMobile() ? 1 : (canvas.width < 500 ? 1.45 : 1));
     e.fireRate      = Math.max(30, Math.floor(e.fireRate * levelCfg.enemyFireRateMult));
     e.fireCooldown  = e.fireRate + Math.floor(Math.random() * 40);
     G.enemies.push(e);
@@ -392,7 +410,7 @@ function frame(ts = 0) {
         if (e.bossBurstTimer <= 0 && e.bossBurstFired < e.bossBurstMax) {
           const ms = e._missileSpd  ?? 2.5;
           const mc = e._missileColor ?? '#ef4444';
-          if (!isTouchMobile || G.enemyMissiles.length < MAX_ENEMY_MISSILES_TOUCH) {
+          if (!isTouchMobile() || G.enemyMissiles.length < MAX_ENEMY_MISSILES_TOUCH) {
             const em = createMissile(e.x, e.y, G.player.x, G.player.y, ms, null, mc);
             em.guideTick = 180;
             G.enemyMissiles.push(em);
@@ -435,12 +453,12 @@ function frame(ts = 0) {
 
     } else {
       e.fireCooldown--;
-      const fireTop = canvas.height * (isTouchMobile ? 0.18 : 0.25);
-      const fireBot = canvas.height * (isTouchMobile ? 0.88 : 0.78);
+      const fireTop = canvas.height * (isTouchMobile() ? 0.18 : 0.25);
+      const fireBot = canvas.height * (isTouchMobile() ? 0.88 : 0.78);
       const inFireZone = e.y > fireTop && e.y < fireBot && e.y < G.player.y - 8;
       if (e.fireCooldown <= 0 && inFireZone && !_stealthActive) {
         e.fireCooldown = e.fireRate;
-        if (!isTouchMobile || G.enemyMissiles.length < MAX_ENEMY_MISSILES_TOUCH) {
+        if (!isTouchMobile() || G.enemyMissiles.length < MAX_ENEMY_MISSILES_TOUCH) {
           const _homing = Math.random() < _homingChance;
           const em = createMissile(e.x, e.y, G.player.x, G.player.y, 2.5, null, _homing ? '#f97316' : '#ef4444');
           if (_homing) em.guideTick = 180;
@@ -459,9 +477,9 @@ function frame(ts = 0) {
     drawEnemySprite(ctx, e, bankAngle);
     e.x = origX;
 
-    if (e.label && !isTouchMobile) {
+    if (e.label) {
       ctx.fillStyle    = 'rgba(255,255,255,0.8)';
-      ctx.font         = 'bold 9px monospace';
+      ctx.font         = isTouchMobile() ? 'bold 8px monospace' : 'bold 9px monospace';
       ctx.textAlign    = 'center';
       ctx.textBaseline = 'alphabetic';
       ctx.fillText(e.label, e.x + ox, e.y - e.size - 6);
@@ -523,7 +541,7 @@ function frame(ts = 0) {
         G.missiles.push(createMissile(G.player.x, G.player.y, t.x, t.y, 16, t.id, '#f97316'));
         SFX.missile();
       }
-      _mgFireTimer = 8; // ~7 shots/sec at 60 fps
+      _mgFireTimer = isTouchMobile() ? 4 : 8;
     }
   }
 
@@ -554,7 +572,7 @@ function frame(ts = 0) {
   const skinFilter    = activeLiveryData?.filter || '';
   const skinAircraft  = (activeSkinData ?? activeLiveryData)?.aircraft ?? G.activeAircraft;
 
-  if (!isTouchMobile) {
+  if (!isTouchMobile()) {
     _fireTick++;
     drawEngineFire(ctx, G.activeAircraft, G.player.x, G.player.y, _fireTick, bankAngle);
   }
@@ -660,7 +678,7 @@ function frame(ts = 0) {
   ctx.fillStyle = _topGrad;
   ctx.fillRect(0, 0, canvas.width, fadeH);
 
-  if (!_cutsceneActive && !isTouchMobile) G.animFrame = requestAnimationFrame(frame);
+  if (!_cutsceneActive && !isTouchMobile()) G.animFrame = requestAnimationFrame(frame);
 }
 
 // ── COMBAT ──────────────────────────────────────────────────────────────────
@@ -1326,9 +1344,8 @@ function endLevel(won) {
   _cutsceneActive = false;
   _sessionId++;
   clearInterval(G.timerInterval);
-  cancelAnimationFrame(G.animFrame);
+  _stopGameLoop();
   G.timerInterval = null;
-  G.animFrame     = null;
   G.answerLocked  = true;
   if (ctx) { ctx.setTransform(1,0,0,1,0,0); ctx.globalAlpha = 1; }
   if (won) trackMission('levels_won', 1);
@@ -1449,8 +1466,8 @@ export function initGame(levelNum, onComplete) {
   }
   updateStreakHUD();
 
-  spawnRate  = isTouchMobile ? Math.round(levelCfg.spawnRate * 2.2) : levelCfg.spawnRate;
-  maxEnemies = isTouchMobile ? Math.min(levelCfg.maxEnemies, 2) : levelCfg.maxEnemies;
+  spawnRate  = isTouchMobile() ? Math.round(levelCfg.spawnRate * 2.2) : levelCfg.spawnRate;
+  maxEnemies = isTouchMobile() ? Math.min(levelCfg.maxEnemies, 2) : levelCfg.maxEnemies;
   spawnTimer = 60;
 
   attachInputListeners();
@@ -1486,6 +1503,7 @@ export function initGame(levelNum, onComplete) {
     const cw = canvas.clientWidth, ch = canvas.clientHeight;
     if (!cw || !ch) { requestAnimationFrame(tryStart); return; }
     _setCanvasSize(cw, ch);
+    setSpriteCanvasWidth(canvas.width);
     ctx.setTransform(1, 0, 0, 1, 0, 0);
 
     // Animate loading screen while sprites download
@@ -1587,8 +1605,8 @@ export function initGame(levelNum, onComplete) {
       _stopGameLoop();
     } else if (!_cutsceneActive) {
       _lastFrameTs = 0;
-      if (isTouchMobile && !G.mobileLoop) _startGameLoop(sid);
-      else if (!isTouchMobile && !G.animFrame) G.animFrame = requestAnimationFrame(frame);
+      if (isTouchMobile() && !G.mobileLoop) _startGameLoop(sid);
+      else if (!isTouchMobile() && !G.animFrame) G.animFrame = requestAnimationFrame(frame);
     }
   };
   document.addEventListener('visibilitychange', _onVisibility);
@@ -1603,6 +1621,7 @@ export function initGame(levelNum, onComplete) {
     detachInputListeners();
     pointerTarget = null;
     _jsOrigin = _jsCurrent = null;
+    _touchId  = null;
     _jsVelX = _jsVelY = 0;
     velX = 0; velY = 0;
     Object.keys(keys).forEach(k => keys[k] = false);
