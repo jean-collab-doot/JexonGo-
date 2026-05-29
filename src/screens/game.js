@@ -144,8 +144,9 @@ function _killBoss() {
 function canvasPointer(e) {
   const r   = canvas.getBoundingClientRect();
   const src = e.touches ? e.touches[0] : e;
-  const x   = src.clientX - r.left;
-  const y   = src.clientY - r.top;
+  let x     = src.clientX - r.left;
+  let y     = src.clientY - r.top;
+  if (isTouchMobile) ({ x, y } = _cssToCanvas(x, y));
 
   if (e.touches) {
     // ── Virtual joystick ────────────────────────────────────────────────
@@ -182,7 +183,7 @@ function clearPointer() {
 function updatePlayerMovement() {
   const margin  = 16;
   const minY    = canvas.height * 0.08;
-  const maxY    = canvas.height - _qboxH - 80;
+  const maxY    = canvas.height - _canvasQboxH() - 80;
 
   if (_jsOrigin) {
     // Joystick touch: apply velocity directly, no lerp lag
@@ -241,6 +242,24 @@ function _setCanvasSize(w, h) {
   }
 }
 
+/** Question-box height in canvas pixel space (matches reduced internal resolution). */
+function _canvasQboxH() {
+  const cssH = canvas?.clientHeight || 640;
+  const bh   = canvas?.height || cssH;
+  if (!isTouchMobile || cssH <= 0) return _qboxH || 180;
+  return Math.round((_qboxH || 180) * (bh / cssH));
+}
+
+/** Map pointer/touch CSS coords → internal canvas coords. */
+function _cssToCanvas(cssX, cssY) {
+  const r = canvas.getBoundingClientRect();
+  if (!r.width || !r.height) return { x: cssX, y: cssY };
+  return {
+    x: cssX * (canvas.width / r.width),
+    y: cssY * (canvas.height / r.height),
+  };
+}
+
 function _stopGameLoop() {
   cancelAnimationFrame(G.animFrame);
   G.animFrame = null;
@@ -269,15 +288,15 @@ function resize() {
   _qboxH = $('question-box').offsetHeight || 180;
   const bw = canvas.width;
   const bh = canvas.height;
-  const qbox = isTouchMobile ? Math.round(_qboxH * (bh / h)) : _qboxH;
+  const qbox = _canvasQboxH();
   G.player.x = Math.max(16, Math.min(bw - 16,  G.player.x || bw / 2));
   G.player.y = Math.max(bh * 0.08, Math.min(bh - qbox - 80, G.player.y || bh - qbox - 60));
   if (!_cutsceneActive && !isTouchMobile) G.animFrame = requestAnimationFrame(frame);
 }
 
 function placePlayer() {
-  G.player.x = canvas.width  / 2;
-  G.player.y = canvas.height - _qboxH - 160;
+  G.player.x = canvas.width / 2;
+  G.player.y = canvas.height - _canvasQboxH() - Math.round(canvas.height * 0.22);
 }
 
 // ── LOADING SCREEN ──────────────────────────────────────────────────────────
@@ -416,7 +435,9 @@ function frame(ts = 0) {
 
     } else {
       e.fireCooldown--;
-      const inFireZone = e.y > canvas.height * 0.25 && e.y < canvas.height * 0.78 && e.y < G.player.y;
+      const fireTop = canvas.height * (isTouchMobile ? 0.18 : 0.25);
+      const fireBot = canvas.height * (isTouchMobile ? 0.88 : 0.78);
+      const inFireZone = e.y > fireTop && e.y < fireBot && e.y < G.player.y - 8;
       if (e.fireCooldown <= 0 && inFireZone && !_stealthActive) {
         e.fireCooldown = e.fireRate;
         if (!isTouchMobile || G.enemyMissiles.length < MAX_ENEMY_MISSILES_TOUCH) {
@@ -1479,6 +1500,7 @@ export function initGame(levelNum, onComplete) {
       cancelAnimationFrame(_loadRaf);
       if (_sessionId !== sid) return;
       initBackground(levelCfg.biome);
+      _qboxH = $('question-box').offsetHeight || 180;
       placePlayer();
 
       // Pre-load skin artwork if needed

@@ -23,4 +23,4 @@ export function gameCanvasDpr() {
 
 export const GAME_FPS_TOUCH = 30;
 export const MAX_PARTICLES_TOUCH = isPhone ? 3 : 4;
-export const MAX_ENEMY_MISSILES_TOUCH = 4;
+export const MAX_ENEMY_MISSILES_TOUCH = 8;
