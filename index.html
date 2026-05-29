@@ -27,55 +27,25 @@
       || (('ontouchstart' in window) && window.innerWidth <= 768)
     );
 
-    if (isPhoneGate) {
-      const password = prompt('JEXONGO BETA ACCESS CODE:');
-      if (password !== 'JEXONGO2026') {
-        document.body.innerHTML = `
-        <div style="
-            background: #0a0e1a;
-            color: #00d4ff;
-            font-family: monospace;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
-            text-align: center;
-            padding: 20px;
-            box-sizing: border-box;
-        ">
-            <div style="font-size: 48px; margin-bottom: 20px">✈️</div>
-            <div style="font-size: 16px; color: #ff4444; margin-bottom: 20px">
-                COMING SOON
-            </div>
-            <div style="font-size: 12px; color: #ffffff; line-height: 2">
-                JEXONGO mobile is coming soon.<br><br>
-                Play on desktop for now.<br>
-                jexongo.com
-            </div>
-        </div>`;
-      }
-    }
-
-    if (isTabletGate) {
+    if (isPhoneGate || isTabletGate) {
       const banner = document.createElement('div');
       banner.innerHTML = `
       <div style="
           position:fixed;
           top:0;left:0;right:0;
-          background:#f97316;
-          color:#000;
+          background:#0a0e1a;
+          color:#00d4ff;
           font-family:'Press Start 2P',monospace;
-          font-size:8px;
+          font-size:9px;
           text-align:center;
-          padding:8px;
+          padding:10px 8px;
           z-index:99999;
           cursor:pointer;
       " onclick="this.parentElement.remove()">
-          &#9888; Best experience on PC &#8212; Click to dismiss
+          ${isPhoneGate ? '&#128241; Mobile support enabled. Tap to start.' : '&#9888; Best experience on PC, but tablet support is available. Tap to dismiss.'}
       </div>`;
       document.body.appendChild(banner);
-      setTimeout(() => banner.remove(), 5000);
+      setTimeout(() => banner.remove(), 6000);
     }
   </script>
 
