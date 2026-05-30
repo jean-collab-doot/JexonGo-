@@ -19,7 +19,7 @@ import { calcSpeedXP } from '../systems/xp.js';
 import { save } from '../utils/storage.js';
 import { t } from '../i18n.js';
 import {
-  isTouchMobile, isPhone, isTablet, gameCanvasDpr, GAME_FPS_TOUCH, MAX_ENEMY_MISSILES_TOUCH,
+  isTouchMobile, gameCanvasDpr, GAME_FPS_TOUCH, MAX_ENEMY_MISSILES_TOUCH,
 } from '../utils/device.js';
 import { setSpriteCanvasWidth } from '../game/aircraft-draw.js';
 
@@ -362,10 +362,8 @@ function frame(ts = 0) {
   }
 
   // ── Speed lines ────────────────────────────────────────────────────────
-  if (!isTouchMobile()) {
-    if (_speedLines.length === 0) initSpeedLines(canvas.width, canvas.height);
-    drawSpeedLines(ctx, canvas.width, canvas.height);
-  }
+  if (_speedLines.length === 0) initSpeedLines(canvas.width, canvas.height);
+  drawSpeedLines(ctx, canvas.width, canvas.height);
 
   // ── Enemy spawn ────────────────────────────────────────────────────────
   spawnTimer--;
@@ -373,9 +371,9 @@ function frame(ts = 0) {
     const types = levelCfg.isBossLevel ? levelCfg.bossCompanionTypes : levelCfg.enemyTypes;
     const type  = types[Math.floor(Math.random() * types.length)];
     const e     = spawnEnemy(canvas.width, type);
-    e.speed        *= levelCfg.enemySpeedMult * (isTouchMobile() ? 1 : (canvas.width < 500 ? 1.45 : 1));
+    e.speed        *= levelCfg.enemySpeedMult;
     e.fireRate      = Math.max(30, Math.floor(e.fireRate * levelCfg.enemyFireRateMult));
-    e.fireCooldown  = e.fireRate + Math.floor(Math.random() * 40);
+    e.fireCooldown  = 45 + Math.floor(Math.random() * 45);
     G.enemies.push(e);
     spawnTimer = spawnRate;
   }
@@ -453,9 +451,9 @@ function frame(ts = 0) {
 
     } else {
       e.fireCooldown--;
-      const fireTop = canvas.height * (isTouchMobile() ? 0.18 : 0.25);
-      const fireBot = canvas.height * (isTouchMobile() ? 0.88 : 0.78);
-      const inFireZone = e.y > fireTop && e.y < fireBot && e.y < G.player.y - 8;
+      const fireTop = canvas.height * 0.08;
+      const fireBot = Math.min(canvas.height * 0.78, G.player.y - 80);
+      const inFireZone = e.y > fireTop && e.y < fireBot;
       if (e.fireCooldown <= 0 && inFireZone && !_stealthActive) {
         e.fireCooldown = e.fireRate;
         if (!isTouchMobile() || G.enemyMissiles.length < MAX_ENEMY_MISSILES_TOUCH) {
@@ -466,7 +464,7 @@ function frame(ts = 0) {
           SFX.missile();
         }
       } else if (e.fireCooldown <= 0) {
-        e.fireCooldown = e.fireRate;
+        e.fireCooldown = 18;
       }
     }
 
@@ -1466,12 +1464,8 @@ export function initGame(levelNum, onComplete) {
   }
   updateStreakHUD();
 
-  spawnRate = isTouchMobile()
-    ? Math.round(levelCfg.spawnRate * (isPhone() ? 1.05 : 1.0))
-    : levelCfg.spawnRate;
-  maxEnemies = isTouchMobile()
-    ? Math.min(levelCfg.maxEnemies, isPhone() ? 4 : 5)
-    : levelCfg.maxEnemies;
+  spawnRate = levelCfg.spawnRate;
+  maxEnemies = levelCfg.maxEnemies;
   spawnTimer = 60;
 
   attachInputListeners();

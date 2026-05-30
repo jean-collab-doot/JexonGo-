@@ -226,6 +226,7 @@ export const SFX = {
       '/assets/music/explosion.mp3',
       '/assets/music/purchase.mp3',
       '/assets/music/gameover.mp3',
+      '/assets/music/gameover2.mp3',
       '/assets/music/Buy.mp3',
     ].forEach(_loadBuf);
   },
@@ -268,10 +269,11 @@ export const SFX = {
     };
   })(),
   explode() {
-    _playBuf('/assets/music/explosion.mp3', 0.8, ctx => {
-      _noise(ctx, 0.4, 0.55);
-      _tone(ctx, 120, 'sawtooth', 0.3, 0.3);
-    });
+    _playBuf('/assets/music/explosion.mp3', 1.0, ctx => {
+      _noise(ctx, 0.55, 0.85);
+      _tone(ctx, 82, 'sawtooth', 0.45, 0.48);
+      _after(45, () => _tone(_ac(), 48, 'square', 0.28, 0.34));
+    }, 0.9);
   },
   levelWin() {
     [523, 659, 784, 1047, 1319].forEach((f, i) =>
@@ -293,10 +295,11 @@ export const SFX = {
       _after(i * 60, () => _tone(_ac(), f, 'sine', 0.2, 0.32)));
   },
   gameOver() {
-    _playBuf('/assets/music/gameover.mp3', 0.9, ctx => {
+    _playBuf('/assets/music/gameover.mp3', 1.0, ctx => {
       [400, 300, 200].forEach((f, i) =>
-        _after(i * 200, () => _tone(_ac(), f, 'sawtooth', 0.35, 0.3)));
-    });
+        _after(i * 190, () => _tone(_ac(), f, 'sawtooth', 0.45, 0.48)));
+      _after(620, () => _tone(_ac(), 95, 'square', 0.65, 0.42));
+    }, 2.2);
   },
   quitGame() {
     _clearFade();
