@@ -37,7 +37,7 @@ export function initBackground(biome) {
 export function updateBackground() {
   _bgTick++;
   if (isTouchMobile()) _bgSkip++;
-  const skipEvery = isPhone() ? 3 : isTablet() ? 2 : 1;
+  const skipEvery = isPhone() ? 2 : isTablet() ? 1 : 1;
   if (isTouchMobile() && _bgSkip % skipEvery !== 0) return;
   for (const l of _layers) l.y += l.speed;
 }
@@ -52,7 +52,7 @@ export function drawBackground(ctx, canvas) {
     _lastCanvasW = cw;
   }
 
-  const drawEvery = isPhone() ? 3 : 2;
+  const drawEvery = isPhone() ? 2 : isTablet() ? 1 : 1;
   if (isTouchMobile() && _bgTick % drawEvery !== 0) {
     if (_frameCache) ctx.drawImage(_frameCache, 0, 0);
     return;

@@ -195,7 +195,8 @@ export const SFX = {
   getVolume()       { return _sfxVol; },
   setMusicVolume(v) {
     _musicVol = Math.max(0, Math.min(1, v));
-    if (!_fadeInterval) _bgEl.volume = _musicVol;
+    _bgEl.volume = _musicVol;
+    if (_fadeInterval) _clearFade();
   },
   getMusicVolume()  { return _musicVol; },
 

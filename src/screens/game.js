@@ -19,7 +19,7 @@ import { calcSpeedXP } from '../systems/xp.js';
 import { save } from '../utils/storage.js';
 import { t } from '../i18n.js';
 import {
-  isTouchMobile, gameCanvasDpr, GAME_FPS_TOUCH, MAX_ENEMY_MISSILES_TOUCH,
+  isTouchMobile, isPhone, isTablet, gameCanvasDpr, GAME_FPS_TOUCH, MAX_ENEMY_MISSILES_TOUCH,
 } from '../utils/device.js';
 import { setSpriteCanvasWidth } from '../game/aircraft-draw.js';
 
@@ -1466,8 +1466,12 @@ export function initGame(levelNum, onComplete) {
   }
   updateStreakHUD();
 
-  spawnRate  = isTouchMobile() ? Math.round(levelCfg.spawnRate * 2.2) : levelCfg.spawnRate;
-  maxEnemies = isTouchMobile() ? Math.min(levelCfg.maxEnemies, 2) : levelCfg.maxEnemies;
+  spawnRate = isTouchMobile()
+    ? Math.round(levelCfg.spawnRate * (isPhone() ? 1.75 : 1.35))
+    : levelCfg.spawnRate;
+  maxEnemies = isTouchMobile()
+    ? Math.min(levelCfg.maxEnemies, isPhone() ? 3 : 4)
+    : levelCfg.maxEnemies;
   spawnTimer = 60;
 
   attachInputListeners();
