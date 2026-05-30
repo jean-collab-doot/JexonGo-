@@ -1467,10 +1467,10 @@ export function initGame(levelNum, onComplete) {
   updateStreakHUD();
 
   spawnRate = isTouchMobile()
-    ? Math.round(levelCfg.spawnRate * (isPhone() ? 1.75 : 1.35))
+    ? Math.round(levelCfg.spawnRate * (isPhone() ? 1.05 : 1.0))
     : levelCfg.spawnRate;
   maxEnemies = isTouchMobile()
-    ? Math.min(levelCfg.maxEnemies, isPhone() ? 3 : 4)
+    ? Math.min(levelCfg.maxEnemies, isPhone() ? 4 : 5)
     : levelCfg.maxEnemies;
   spawnTimer = 60;
 

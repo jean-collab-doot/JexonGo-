@@ -1,6 +1,6 @@
 // ── SPRITE-ONLY AIRCRAFT RENDERING ───────────────────────────────────────────
 import { drawFrame, AIRCRAFT_SPRITE } from './sprites.js';
-import { isTouchMobile } from '../utils/device.js';
+import { isPhone, isTablet, isTouchMobile } from '../utils/device.js';
 
 const ENGINE_OFFSETS = {
   f16:  [{ x:  0,     y:  0.38 }],
@@ -26,12 +26,21 @@ function _layoutWidth() {
   return _spriteCanvasW || window.innerWidth;
 }
 
+function _clamp(v, min, max) {
+  return Math.max(min, Math.min(max, v));
+}
+
 function getPlayerSize() {
   const w = _layoutWidth();
   if (_cachedPlayerSizeW !== w) {
     _cachedPlayerSizeW = w;
-    const narrow = isTouchMobile() ? w <= 300 : w <= 520;
-    _cachedPlayerSize = narrow ? 85 : 150;
+    if (isTouchMobile()) {
+      const max = isPhone() ? 66 : 82;
+      _cachedPlayerSize = Math.round(_clamp(w * 0.16, 46, max));
+    } else {
+      const narrow = w <= 520;
+      _cachedPlayerSize = narrow ? 85 : 150;
+    }
   }
   return _cachedPlayerSize;
 }
@@ -40,8 +49,12 @@ function getEnemyScale() {
   const w = _layoutWidth();
   if (_cachedEnemyScaleW !== w) {
     _cachedEnemyScaleW = w;
-    const narrow = isTouchMobile() ? w <= 300 : w <= 520;
-    _cachedEnemyScale = narrow ? 3.2 : 4.8;
+    if (isTouchMobile()) {
+      _cachedEnemyScale = isPhone() ? 1.8 : isTablet() ? 2.25 : 2.5;
+    } else {
+      const narrow = w <= 520;
+      _cachedEnemyScale = narrow ? 3.2 : 4.8;
+    }
   }
   return _cachedEnemyScale;
 }

@@ -26,16 +26,16 @@ export function isTouchMobile() {
 }
 
 export function gameCanvasDpr() {
-  if (isPhone()) return 0.55;
-  if (isTablet()) return 0.5;
+  if (isPhone()) return Math.min(window.devicePixelRatio || 1, 1);
+  if (isTablet()) return Math.min(window.devicePixelRatio || 1, 1);
   return Math.min(window.devicePixelRatio || 1, 1);
 }
 
 export function touchMenuCanvasDpr() {
-  return isPhone() ? 0.55 : isTablet() ? 0.5 : 1;
+  return isTouchMobile() ? Math.min(window.devicePixelRatio || 1, 1) : 1;
 }
 
-export const GAME_FPS_TOUCH = 30;
+export const GAME_FPS_TOUCH = 60;
 
 export function maxParticlesTouch() {
   return isPhone() ? 3 : 4;

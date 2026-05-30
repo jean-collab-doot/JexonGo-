@@ -1,10 +1,9 @@
 // ── PARALLAX BACKGROUND ──────────────────────────────────────────────────────
 import { getImage } from './sprites.js';
-import { isTouchMobile, isTablet, isPhone } from '../utils/device.js';
+import { isTouchMobile } from '../utils/device.js';
 
 function _bgSpeed() {
-  if (isPhone()) return 0.45;
-  if (isTablet()) return 0.55;
+  if (isTouchMobile()) return 1.15;
   return 1.2;
 }
 
@@ -18,8 +17,6 @@ const LAYER_DEFS = {
 
 let _layers      = [];
 let _lastCanvasW = 0;
-let _bgTick = 0;
-let _bgSkip = 0;
 let _frameCache    = null;
 let _frameCacheCtx = null;
 let _activeBiome   = 'ocean';
@@ -30,15 +27,9 @@ export function initBackground(biome) {
   _layers      = defs.map(d => ({ key: d.key, speed: _bgSpeed(), y: 0, offscreen: null, dh: 0 }));
   _lastCanvasW = 0;
   _frameCache  = null;
-  _bgTick      = 0;
-  _bgSkip      = 0;
 }
 
 export function updateBackground() {
-  _bgTick++;
-  if (isTouchMobile()) _bgSkip++;
-  const skipEvery = isPhone() ? 2 : isTablet() ? 1 : 1;
-  if (isTouchMobile() && _bgSkip % skipEvery !== 0) return;
   for (const l of _layers) l.y += l.speed;
 }
 
@@ -50,12 +41,6 @@ export function drawBackground(ctx, canvas) {
     for (const l of _layers) { l.offscreen = null; l.dh = 0; }
     _frameCache  = null;
     _lastCanvasW = cw;
-  }
-
-  const drawEvery = isPhone() ? 2 : isTablet() ? 1 : 1;
-  if (isTouchMobile() && _bgTick % drawEvery !== 0) {
-    if (_frameCache) ctx.drawImage(_frameCache, 0, 0);
-    return;
   }
 
   let targetCtx = ctx;

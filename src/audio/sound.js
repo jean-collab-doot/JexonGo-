@@ -2,6 +2,10 @@
 let _sfxVol   = 1;
 let _musicVol = 0.45;
 
+function _clamp01(v) {
+  return Math.max(0, Math.min(1, Number.isFinite(v) ? v : 0));
+}
+
 // ── WEB AUDIO CONTEXT ─────────────────────────────────────────────────────────
 let _actx = null;
 function _ac() {
@@ -132,6 +136,7 @@ function _startTrack(src) {
   _bgCurrent    = src;
   _bgEl.src     = src;
   _bgEl.volume  = 0;
+  _bgEl.muted   = _musicVol === 0;
   _bgEl.loop    = true;
   _bgEl.playbackRate = isGame ? GAME_PLAYBACK_RATE : 1.0;
   _bgEl.load();
@@ -191,12 +196,17 @@ if (_isMobileAudio) {
 
 // ── PUBLIC API ────────────────────────────────────────────────────────────────
 export const SFX = {
-  setVolume(v)      { _sfxVol   = Math.max(0, Math.min(1, v)); },
+  setVolume(v)      {
+    _sfxVol = _clamp01(v);
+    if (_sfxVol === 0) _stopAllSFX();
+  },
   getVolume()       { return _sfxVol; },
   setMusicVolume(v) {
-    _musicVol = Math.max(0, Math.min(1, v));
+    _musicVol = _clamp01(v);
+    _clearFade();
+    _bgEl.muted = _musicVol === 0;
     _bgEl.volume = _musicVol;
-    if (_fadeInterval) _clearFade();
+    if (_musicVol > 0 && _bgEl.src && _bgEl.paused) _bgEl.play().catch(() => {});
   },
   getMusicVolume()  { return _musicVol; },
 

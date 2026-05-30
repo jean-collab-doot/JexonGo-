@@ -51,7 +51,7 @@ function enemyTypesForLevel(n) {
   if (n <= 20)       return ['basic', 'fast', 'tank'];
   if (n <= 30)       return ['fast',  'tank', 'basic'];
   if (n <= 40)       return ['tank',  'fast', 'fast'];
-  return                    ['tank',  'fast', 'boss'];
+  return                    ['tank',  'fast', 'basic'];
 }
 
 // Regular companion enemies that appear alongside the boss
