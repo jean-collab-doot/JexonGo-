@@ -71,6 +71,15 @@ function _playBuf(url, vol, fallback, maxDur = Infinity) {
   }
 }
 
+function _playMediaShot(url, vol = 1) {
+  if (_sfxVol === 0) return;
+  try {
+    const el = new Audio(url);
+    el.volume = Math.min(1, vol * _sfxVol);
+    el.play().catch(() => {});
+  } catch (_) {}
+}
+
 function _tone(ctx, freq, type, dur, vol = 0.28, sweep = null) {
   try {
     const osc = ctx.createOscillator();
@@ -269,6 +278,12 @@ export const SFX = {
     };
   })(),
   explode() {
+    if (_sfxVol === 0) return;
+    const ctx = _ac();
+    _noise(ctx, 0.6, 0.95);
+    _tone(ctx, 76, 'sawtooth', 0.5, 0.58);
+    _after(45, () => _tone(_ac(), 42, 'square', 0.32, 0.42));
+    _playMediaShot('/assets/music/explosion.mp3', 1.0);
     _playBuf('/assets/music/explosion.mp3', 1.0, ctx => {
       _noise(ctx, 0.55, 0.85);
       _tone(ctx, 82, 'sawtooth', 0.45, 0.48);
@@ -295,6 +310,12 @@ export const SFX = {
       _after(i * 60, () => _tone(_ac(), f, 'sine', 0.2, 0.32)));
   },
   gameOver() {
+    if (_sfxVol === 0) return;
+    const ctx = _ac();
+    _tone(ctx, 360, 'sawtooth', 0.48, 0.5);
+    _after(190, () => _tone(_ac(), 230, 'sawtooth', 0.5, 0.5));
+    _after(420, () => _tone(_ac(), 95, 'square', 0.75, 0.48));
+    _playMediaShot('/assets/music/gameover.mp3', 1.0);
     _playBuf('/assets/music/gameover.mp3', 1.0, ctx => {
       [400, 300, 200].forEach((f, i) =>
         _after(i * 190, () => _tone(_ac(), f, 'sawtooth', 0.45, 0.48)));

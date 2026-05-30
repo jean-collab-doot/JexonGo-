@@ -3,7 +3,7 @@ import { getImage } from './sprites.js';
 import { isTouchMobile } from '../utils/device.js';
 
 function _bgSpeed() {
-  if (isTouchMobile()) return 1.15;
+  if (isTouchMobile()) return 1.65;
   return 1.2;
 }
 

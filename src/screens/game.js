@@ -102,6 +102,10 @@ const FRICTION     = 0.80;
 const LERP         = 0.12;
 const JS_RADIUS    = 72;     // max joystick drag radius (px on screen)
 
+function _moveSpeed() {
+  return isTouchMobile() ? 4.4 : MOVE_SPEED;
+}
+
 function normaliseKey(k) { return k.length === 1 ? k.toLowerCase() : k; }
 
 function _gameCheatHeld(keys) {
@@ -172,8 +176,9 @@ function canvasPointer(e) {
       const dist = Math.hypot(dx, dy);
       if (dist > 4) {
         const ratio = Math.min(dist, JS_RADIUS) / JS_RADIUS;
-        _jsVelX = (dx / dist) * ratio * MOVE_SPEED;
-        _jsVelY = (dy / dist) * ratio * MOVE_SPEED;
+        const spd = _moveSpeed();
+        _jsVelX = (dx / dist) * ratio * spd;
+        _jsVelY = (dy / dist) * ratio * spd;
       } else {
         _jsVelX = _jsVelY = 0;
       }
@@ -210,13 +215,14 @@ function updatePlayerMovement() {
     G.player.x += (pointerTarget.x - G.player.x) * LERP;
     G.player.y += (pointerTarget.y - G.player.y) * LERP;
   } else {
-    if (keys.ArrowLeft  || keys.a) velX = Math.max(velX - ACCEL, -MOVE_SPEED);
+    const spd = _moveSpeed();
+    if (keys.ArrowLeft  || keys.a) velX = Math.max(velX - ACCEL, -spd);
     else if (velX < 0)             velX *= FRICTION;
-    if (keys.ArrowRight || keys.d) velX = Math.min(velX + ACCEL,  MOVE_SPEED);
+    if (keys.ArrowRight || keys.d) velX = Math.min(velX + ACCEL,  spd);
     else if (velX > 0)             velX *= FRICTION;
-    if (keys.ArrowUp    || keys.w) velY = Math.max(velY - ACCEL, -MOVE_SPEED);
+    if (keys.ArrowUp    || keys.w) velY = Math.max(velY - ACCEL, -spd);
     else if (velY < 0)             velY *= FRICTION;
-    if (keys.ArrowDown  || keys.s) velY = Math.min(velY + ACCEL,  MOVE_SPEED);
+    if (keys.ArrowDown  || keys.s) velY = Math.min(velY + ACCEL,  spd);
     else if (velY > 0)             velY *= FRICTION;
     if (Math.abs(velX) < 0.05) velX = 0;
     if (Math.abs(velY) < 0.05) velY = 0;
@@ -371,9 +377,9 @@ function frame(ts = 0) {
     const types = levelCfg.isBossLevel ? levelCfg.bossCompanionTypes : levelCfg.enemyTypes;
     const type  = types[Math.floor(Math.random() * types.length)];
     const e     = spawnEnemy(canvas.width, type);
-    e.speed        *= levelCfg.enemySpeedMult;
+    e.speed        *= levelCfg.enemySpeedMult * (isTouchMobile() ? 1.30 : 1);
     e.fireRate      = Math.max(30, Math.floor(e.fireRate * levelCfg.enemyFireRateMult));
-    e.fireCooldown  = 45 + Math.floor(Math.random() * 45);
+    e.fireCooldown  = (isTouchMobile() ? 24 : 45) + Math.floor(Math.random() * (isTouchMobile() ? 32 : 45));
     G.enemies.push(e);
     spawnTimer = spawnRate;
   }
@@ -1464,9 +1470,9 @@ export function initGame(levelNum, onComplete) {
   }
   updateStreakHUD();
 
-  spawnRate = levelCfg.spawnRate;
+  spawnRate = isTouchMobile() ? Math.max(45, Math.round(levelCfg.spawnRate * 0.72)) : levelCfg.spawnRate;
   maxEnemies = levelCfg.maxEnemies;
-  spawnTimer = 60;
+  spawnTimer = isTouchMobile() ? 35 : 60;
 
   attachInputListeners();
 
