@@ -106,6 +106,14 @@ function _moveSpeed() {
   return isTouchMobile() ? 4.4 : MOVE_SPEED;
 }
 
+function _enemyMissileBurstCount() {
+  if (!isTouchMobile()) return 1;
+  if (G.currentLevel >= 41) return 4;
+  if (G.currentLevel >= 26) return 3;
+  if (G.currentLevel >= 11) return 2;
+  return 1;
+}
+
 function normaliseKey(k) { return k.length === 1 ? k.toLowerCase() : k; }
 
 function _gameCheatHeld(keys) {
@@ -462,14 +470,17 @@ function frame(ts = 0) {
       const inFireZone = e.y > fireTop && e.y < fireBot;
       if (e.fireCooldown <= 0 && inFireZone && !_stealthActive) {
         e.fireCooldown = e.fireRate;
-        if (!isTouchMobile() || G.enemyMissiles.length < MAX_ENEMY_MISSILES_TOUCH) {
+        const burstCount = _enemyMissileBurstCount();
+        const enemyMissileSpeed = isTouchMobile() ? 3.8 : 2.5;
+        for (let i = 0; i < burstCount; i++) {
+          if (isTouchMobile() && G.enemyMissiles.length >= MAX_ENEMY_MISSILES_TOUCH) break;
           const _homing = Math.random() < _homingChance;
-          const enemyMissileSpeed = isTouchMobile() ? 3.8 : 2.5;
-          const em = createMissile(e.x, e.y, G.player.x, G.player.y, enemyMissileSpeed, null, _homing ? '#f97316' : '#ef4444');
+          const spread = (i - (burstCount - 1) / 2) * 28;
+          const em = createMissile(e.x, e.y, G.player.x + spread, G.player.y, enemyMissileSpeed, null, _homing ? '#f97316' : '#ef4444');
           if (_homing) em.guideTick = 180;
           G.enemyMissiles.push(em);
-          SFX.missile();
         }
+        SFX.missile();
       } else if (e.fireCooldown <= 0) {
         e.fireCooldown = 18;
       }
