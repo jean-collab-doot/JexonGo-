@@ -15,11 +15,13 @@ const ENGINE_OFFSETS = {
 let _spriteCanvasW = 0;
 let _cachedPlayerSize = 0, _cachedPlayerSizeW = -1;
 let _cachedEnemyScale = 0, _cachedEnemyScaleW = -1;
+let _cachedEnemySize = 0, _cachedEnemySizeW = -1;
 
 export function setSpriteCanvasWidth(w) {
   _spriteCanvasW = w || 0;
   _cachedPlayerSizeW = -1;
   _cachedEnemyScaleW = -1;
+  _cachedEnemySizeW = -1;
 }
 
 function _layoutWidth() {
@@ -59,6 +61,17 @@ function getEnemyScale() {
   }
   return _cachedEnemyScale;
 }
+
+function getTouchEnemySize() {
+  const w = _layoutWidth();
+  if (_cachedEnemySizeW !== w) {
+    _cachedEnemySizeW = w;
+    const min = isPhone() ? 100 : 118;
+    const max = isPhone() ? 130 : 150;
+    _cachedEnemySize = Math.round(_clamp(w * 0.30, min, max));
+  }
+  return _cachedEnemySize;
+}
 export { getPlayerSize };
 
 export function drawAircraftSprite(ctx, aircraftId, cx, cy, frame, alpha = 1, bankAngle = 0, skinFilter = '') {
@@ -82,7 +95,7 @@ export function drawAircraftPreview(ctx, aircraftId, cx, cy, size) {
 }
 
 export function drawEnemySprite(ctx, enemy, bankAngle = 0) {
-  const size = enemy.size * getEnemyScale();
+  const size = isTouchMobile() ? getTouchEnemySize() : enemy.size * getEnemyScale();
   if (enemy.spriteFilter) {
     ctx.save();
     ctx.filter = enemy.spriteFilter;

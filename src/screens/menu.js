@@ -197,7 +197,6 @@ const FIRE_PATH   = '/assets/menu/engine-fire.png';
 const FIRE_FRAMES = 4;
 
 function _isMenuMobile() { return isTouchMobile(); }
-let _menuFrame = 0;
 
 let _planeImg    = null;
 let _fireImg     = null;
@@ -209,8 +208,6 @@ let _xfadeT      = -1;   // -1 = idle, 0..1 = crossfade progress
 function loadAssets() {
   if (_planeImg) return;
   _planeImg = new Image(); _planeImg.src = PLANE_PATH;
-
-  if (_isMenuMobile()) return; // skip video and fire assets on mobile
 
   _fireImg = new Image(); _fireImg.src = FIRE_PATH;
 
@@ -340,13 +337,6 @@ function drawTick() {
   if (!canvas || document.getElementById('s-menu')?.classList.contains('hidden')) {
     _raf = null; return;
   }
-
-  _menuFrame++;
-  if (_isMenuMobile() && _menuFrame % 2 !== 0) {
-    _raf = requestAnimationFrame(drawTick);
-    return;
-  }
-
   const dW = canvas.clientWidth  || 360;
   const dH = canvas.clientHeight || 640;
   if (_isMenuMobile()) {
@@ -372,9 +362,8 @@ function drawTick() {
   _tick++;
 
   // 0. Video crossfade — fully RAF-driven, no timeupdate, no black flash
-  // On mobile: skip crossfade entirely (video is hidden/not loaded on mobile)
-  const vid  = _isMenuMobile() ? null : document.getElementById('menu-bg-video');
-  const vid2 = _isMenuMobile() ? null : document.getElementById('menu-bg-video2');
+  const vid  = document.getElementById('menu-bg-video');
+  const vid2 = document.getElementById('menu-bg-video2');
   const FADE_DUR  = 1.5;
   const FADE_STEP = 1 / (FADE_DUR * 60);
 
@@ -409,7 +398,7 @@ function drawTick() {
   }
 
   // 1. Drifting clouds (desktop only — costly on phone/tablet)
-  if (!_isMenuMobile()) updateDrawClouds(ctx, cW, cH);
+  updateDrawClouds(ctx, cW, cH);
 
   // 2. Planes + smoke + fire
   if (_planeImg && _planeImg.complete && _planeImg.naturalWidth) {
@@ -419,36 +408,35 @@ function drawTick() {
     for (const p of visiblePlanes) {
       const drawH = cH * p.scale;
       const drawW = iw * (drawH / ih);
-      const bx    = cW * p.xFrac - drawW / 2;
+      const planeXFrac = _isMenuMobile() ? 0.50 : p.xFrac;
+      const bx    = cW * planeXFrac - drawW / 2;
 
       if (p.y === null) p.y = cH + drawH + p.startOffset;
       p.y -= _isMenuMobile() ? p.speed * 1.4 : p.speed;
       if (p.y < -drawH * 2) { p.y = cH + drawH; p.smoke = []; }
 
-      if (!_isMenuMobile()) {
-        // Accelerate smoke fade as plane nears the top
-        const fadeRatio = p.y < 0 ? Math.max(0, 1 + p.y / drawH) : 1;
-        if (fadeRatio < 1) {
-          for (const s of p.smoke) s.alpha -= 0.04 * (1 - fadeRatio);
-        }
+      // Accelerate smoke fade as plane nears the top
+      const fadeRatio = p.y < 0 ? Math.max(0, 1 + p.y / drawH) : 1;
+      if (fadeRatio < 1) {
+        for (const s of p.smoke) s.alpha -= 0.04 * (1 - fadeRatio);
+      }
 
-        const engineY  = p.y + drawH * 0.79;
-        const engineLX = bx + drawW * 0.47;
-        const engineRX = bx + drawW * 0.53;
+      const engineY  = p.y + drawH * 0.79;
+      const engineLX = bx + drawW * 0.47;
+      const engineRX = bx + drawW * 0.53;
 
-        if (_tick % 3 === 0 && p.y < cH && p.y + drawH > 0) {
-          spawnSmoke(p, engineLX, engineY);
-          spawnSmoke(p, engineLX, engineY);
-          spawnSmoke(p, engineRX, engineY);
-          spawnSmoke(p, engineRX, engineY);
-        }
+      if (_tick % 3 === 0 && p.y < cH && p.y + drawH > 0) {
+        spawnSmoke(p, engineLX, engineY);
+        spawnSmoke(p, engineLX, engineY);
+        spawnSmoke(p, engineRX, engineY);
+        spawnSmoke(p, engineRX, engineY);
+      }
 
-        updateDrawSmoke(ctx, p);
+      updateDrawSmoke(ctx, p);
 
-        if (p.y < cH && p.y + drawH > 0) {
-          drawEngineFire(ctx, engineLX, engineY, drawW * 0.06);
-          drawEngineFire(ctx, engineRX, engineY, drawW * 0.06);
-        }
+      if (p.y < cH && p.y + drawH > 0) {
+        drawEngineFire(ctx, engineLX, engineY, drawW * 0.06);
+        drawEngineFire(ctx, engineRX, engineY, drawW * 0.06);
       }
 
       ctx.save();
