@@ -412,7 +412,7 @@ function frame(ts = 0) {
       } else {
         e.bossBurstTimer--;
         if (e.bossBurstTimer <= 0 && e.bossBurstFired < e.bossBurstMax) {
-          const ms = e._missileSpd  ?? 2.5;
+          const ms = (e._missileSpd ?? 2.5) * (isTouchMobile() ? 1.45 : 1);
           const mc = e._missileColor ?? '#ef4444';
           if (!isTouchMobile() || G.enemyMissiles.length < MAX_ENEMY_MISSILES_TOUCH) {
             const em = createMissile(e.x, e.y, G.player.x, G.player.y, ms, null, mc);
@@ -464,7 +464,8 @@ function frame(ts = 0) {
         e.fireCooldown = e.fireRate;
         if (!isTouchMobile() || G.enemyMissiles.length < MAX_ENEMY_MISSILES_TOUCH) {
           const _homing = Math.random() < _homingChance;
-          const em = createMissile(e.x, e.y, G.player.x, G.player.y, 2.5, null, _homing ? '#f97316' : '#ef4444');
+          const enemyMissileSpeed = isTouchMobile() ? 3.8 : 2.5;
+          const em = createMissile(e.x, e.y, G.player.x, G.player.y, enemyMissileSpeed, null, _homing ? '#f97316' : '#ef4444');
           if (_homing) em.guideTick = 180;
           G.enemyMissiles.push(em);
           SFX.missile();
@@ -711,7 +712,7 @@ function nearestEnemies(n) {
 function fireEnemyMissile() {
   const enemy = nearestEnemy();
   if (!enemy) return;
-  const m = createMissile(enemy.x, enemy.y, G.player.x, G.player.y, 2.5, null, '#ef4444');
+  const m = createMissile(enemy.x, enemy.y, G.player.x, G.player.y, isTouchMobile() ? 3.8 : 2.5, null, '#ef4444');
   G.enemyMissiles.push(m);
   SFX.missile();
 }

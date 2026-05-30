@@ -202,6 +202,17 @@ body::after {
   box-shadow: 0 0 10px rgba(251,191,36,0.5);
   animation: offline-pulse 2s ease-in-out infinite;
 }
+
+html.touch-mobile .menu-offline-banner {
+  max-width: min(230px, 84vw);
+  font-size: 5px;
+  line-height: 1.45;
+  padding: 4px 7px;
+  margin-bottom: 6px;
+  letter-spacing: 0.5px;
+  border-width: 1px;
+  box-shadow: 0 0 6px rgba(251,191,36,0.4);
+}
 @keyframes offline-pulse {
   0%, 100% { box-shadow: 0 0 8px rgba(251,191,36,0.4); }
   50%       { box-shadow: 0 0 18px rgba(251,191,36,0.9); }
