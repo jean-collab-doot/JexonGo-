@@ -35,8 +35,9 @@ function getPlayerSize() {
   if (_cachedPlayerSizeW !== w) {
     _cachedPlayerSizeW = w;
     if (isTouchMobile()) {
-      const max = isPhone() ? 82 : 104;
-      _cachedPlayerSize = Math.round(_clamp(w * 0.19, 58, max));
+      const min = isPhone() ? 100 : 118;
+      const max = isPhone() ? 130 : 150;
+      _cachedPlayerSize = Math.round(_clamp(w * 0.30, min, max));
     } else {
       const narrow = w <= 520;
       _cachedPlayerSize = narrow ? 85 : 150;
@@ -50,7 +51,7 @@ function getEnemyScale() {
   if (_cachedEnemyScaleW !== w) {
     _cachedEnemyScaleW = w;
     if (isTouchMobile()) {
-      _cachedEnemyScale = isPhone() ? 2.25 : isTablet() ? 2.75 : 3.0;
+      _cachedEnemyScale = isPhone() ? 2.85 : isTablet() ? 3.35 : 3.6;
     } else {
       const narrow = w <= 520;
       _cachedEnemyScale = narrow ? 3.2 : 4.8;
