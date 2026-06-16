@@ -1,5 +1,12 @@
 import { load, save } from './utils/storage.js';
 
+// Air Cup event window - edit these two dates to reactivate for future events.
+export const AIR_CUP_START = new Date('2026-06-11T00:00:00Z').getTime();
+export const AIR_CUP_END   = new Date('2026-07-15T23:59:59Z').getTime();
+
+export const IS_AIR_CUP_ACTIVE =
+  Date.now() >= AIR_CUP_START && Date.now() <= AIR_CUP_END;
+
 export const G = {
   // --- Persisted ---
   xp: 0,

@@ -9,6 +9,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>JEXONGO — Combat Mathématique Aérien</title>
   <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="src/screens/worldcup-intro.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
   <script src="/assets/email.min.js"></script>
@@ -234,6 +235,7 @@
 
       <button id="btn-play" class="btn btn-primary" data-i18n="play">▶ PLAY</button>
       <button id="btn-hangar" class="btn btn-secondary" data-i18n="hangar">✈ HANGAR</button>
+      <button id="btn-aircup" class="btn btn-secondary btn-aircup hidden">🏆 AIR CUP</button>
       <button id="btn-shop" class="btn btn-secondary" data-i18n="shop">◆ SHOP</button>
       <button id="btn-practice" class="btn btn-secondary" data-i18n="practice">⚡ PRACTICE</button>
       <button id="btn-missions" class="btn btn-secondary btn-missions-menu">≡ MISSIONS</button>
@@ -509,6 +511,21 @@
     </div>
   </div>
 
+  <!-- AIR CUP EVENT -->
+  <div id="s-aircup" class="screen hidden">
+    <div class="top-bar">
+      <button id="btn-aircup-back" class="btn-icon">&#8592;</button>
+      <span class="top-bar-title aircup-title">AIR CUP 2026</span>
+      <span id="aircup-status" class="aircup-status">READY</span>
+    </div>
+    <div class="aircup-lobby">
+      <div class="aircup-logo">JEXONGO AIR CUP</div>
+      <div class="aircup-subtitle">TOURNAMENT OF ACES</div>
+      <div id="aircup-bracket" class="aircup-bracket"></div>
+      <button id="btn-aircup-join" class="btn btn-primary aircup-join">JOIN TOURNAMENT</button>
+    </div>
+  </div>
+
   <!-- MISSION BRIEFING -->
   <div id="s-briefing" class="screen hidden">
     <div class="briefing-topbar">
@@ -544,33 +561,6 @@
     </div>
     <div id="briefing-star-criteria" class="briefing-star-criteria"></div>
     <button id="btn-briefing-fly" class="briefing-fly-btn" data-i18n="fly">✈ FLY!</button>
-  </div>
-
-  <!-- CLASSROOM -->
-  <div id="s-classroom" class="screen hidden">
-    <div class="top-bar">
-      <button id="btn-classroom-back" class="btn-icon">&#8592;</button>
-      <span class="top-bar-title" style="color:#00d4ff" data-i18n="classroomTitle"># CLASSROOM</span>
-      <button id="btn-classroom-refresh" class="btn-icon" style="font-size:14px">↺</button>
-    </div>
-    <div id="classroom-landing" class="classroom-landing">
-      <div class="classroom-landing-title" data-i18n="joinYourClass">JOIN YOUR CLASS</div>
-      <input id="classroom-code-input" class="classroom-input" data-i18n-placeholder="enterCode" placeholder="ENTER CODE" maxlength="6" />
-      <button id="btn-classroom-join" class="classroom-btn classroom-btn-join" data-i18n="joinClass">JOIN CLASS</button>
-      <div class="classroom-divider">— OR —</div>
-      <input id="classroom-name-input" class="classroom-input" data-i18n-placeholder="teacherName" placeholder="TEACHER NAME" maxlength="20" />
-      <button id="btn-classroom-create" class="classroom-btn classroom-btn-create" data-i18n="createClass">CREATE CLASSROOM</button>
-      <div id="classroom-error" class="classroom-error"></div>
-      <div id="classroom-my-rooms" class="classroom-my-rooms"></div>
-    </div>
-    <div id="classroom-board" class="classroom-board hidden">
-      <div class="classroom-code-row">
-        <span class="classroom-code-label" data-i18n="classCode">CLASS CODE</span>
-        <span id="classroom-code-display" class="classroom-code-display">——————</span>
-      </div>
-      <div id="classroom-leaderboard" class="classroom-leaderboard-list"></div>
-      <button id="btn-classroom-leave" class="classroom-btn classroom-btn-leave" data-i18n="leaveClass">LEAVE CLASS</button>
-    </div>
   </div>
 
   <!-- GAME OVER SCREEN -->

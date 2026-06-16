@@ -12,6 +12,16 @@ import { fileURLToPath } from 'url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 8080;
 const SAVES_DIR = path.join(__dirname, 'data', 'saves');
+const AIR_CUP_START_SERVER = new Date('2026-06-11T00:00:00Z').getTime();
+const AIR_CUP_END_SERVER   = new Date('2026-07-15T23:59:59Z').getTime();
+
+const isAirCupActive = () => {
+  const now = Date.now();
+  return now >= AIR_CUP_START_SERVER && now <= AIR_CUP_END_SERVER;
+};
+
+const tournaments = new Map();
+let _tid = 0;
 
 function _ensureSavesDir() {
   fs.mkdirSync(SAVES_DIR, { recursive: true });
@@ -246,6 +256,8 @@ function _nextQ(room) {
     choices: q.choices,
   });
 
+  room._botCallback?.(q);
+
   if (room.timeout) clearTimeout(room.timeout);
   room.timeout = setTimeout(() => {
     if (rooms.has(room.id)) { room.qIdx++; _nextQ(room); }
@@ -321,19 +333,203 @@ function _endGame(room) {
     yourScore:room.p1Score, oppScore:room.p2Score,
     yourHP:room.p1HP,       oppHP:room.p2HP,
     lpChange: calcLP(p1Won, isDraw, p1Perf),
+    tournament: !!room.tournamentId,
   });
   send(room.p2, {
     type:'game_over', won:p2Won, draw:isDraw, isPerfect:p2Perf,
     yourScore:room.p2Score, oppScore:room.p1Score,
     yourHP:room.p2HP,       oppHP:room.p1HP,
     lpChange: calcLP(p2Won, isDraw, p2Perf),
+    tournament: !!room.tournamentId,
   });
+
+  const advancingSeat = winner === 'draw'
+    ? (Math.random() < 0.5 ? 'p1' : 'p2')
+    : winner;
+  room._onComplete?.(advancingSeat);
+}
+
+// ── AIR CUP TOURNAMENT ───────────────────────────────────────────────────────
+const BOT_NAMES = ['ACE-7','VIPER','GHOST','NOVA','STORM','BLAZE','RAVEN','FALCON'];
+
+function _createTournament(players) {
+  const tid = ++_tid;
+  const slots = [...players];
+  while (slots.length < 8) {
+    slots.push({
+      ws: null,
+      name: BOT_NAMES[(slots.length - players.length) % BOT_NAMES.length],
+      lp: randInt(120, 950),
+      bot: true,
+    });
+  }
+
+  const tournament = {
+    id: tid,
+    round: 0,
+    slots,
+    bracket: [
+      _makeBracketRound(slots, 4),
+      _makeBracketRound([], 2),
+      _makeBracketRound([], 1),
+    ],
+    activeRooms: new Set(),
+  };
+
+  tournaments.set(tid, tournament);
+  slots.forEach(p => { if (p.ws) p.ws._tournamentId = tid; });
+  _broadcastBracketUpdate(tournament);
+  setTimeout(() => _startTournamentRound(tournament), 900);
+  return tournament;
+}
+
+function _leaveCurrentRoom(ws, notifyOpponent = true) {
+  if (ws._rid) {
+    const r = rooms.get(ws._rid);
+    if (r) {
+      const opp = ws._seat === 'p1' ? r.p2 : r.p1;
+      if (notifyOpponent) send(opp, { type:'opponent_left' });
+      if (r.timeout) clearTimeout(r.timeout);
+      rooms.delete(ws._rid);
+    }
+    ws._rid = null;
+    ws._seat = null;
+  }
+}
+
+function _makeBracketRound(players, matches) {
+  return Array.from({ length: matches }, (_, i) => ({
+    a: players[i * 2]?.name || 'TBD',
+    b: players[i * 2 + 1]?.name || 'TBD',
+    winner: null,
+  }));
+}
+
+function _startTournamentRound(tournament) {
+  const players = tournament.round === 0
+    ? tournament.slots
+    : tournament.bracket[tournament.round - 1].map(m => m.winnerPlayer);
+
+  if (players.length <= 1) {
+    _broadcastTournamentResult(tournament, players[0]);
+    return;
+  }
+
+  tournament.activeRooms.clear();
+  for (let i = 0; i < players.length; i += 2) {
+    _createTournamentRoom(tournament, players[i], players[i + 1], i / 2);
+  }
+  _broadcastBracketUpdate(tournament);
+}
+
+function _createTournamentRoom(tournament, a, b, matchIndex) {
+  const id = ++_rid;
+  const diff = diffFromLP(Math.max(a.lp || 0, b.lp || 0)) + tournament.round;
+  const room = {
+    id,
+    p1: a.ws, p1Name: a.name, p1LP: a.lp || 0, p1HP: 3, p1Score: 0,
+    p2: b.ws, p2Name: b.name, p2LP: b.lp || 0, p2HP: 3, p2Score: 0,
+    questions: Array.from({ length: TOTAL_Q }, () => generateQuestion(diff)),
+    qIdx: 0,
+    answered: { p1: false, p2: false },
+    timeout: null,
+    rematch: { p1: false, p2: false },
+    tournamentId: tournament.id,
+    _onComplete: winnerSeat => _advanceTournament(tournament, matchIndex, winnerSeat, a, b),
+  };
+
+  rooms.set(id, room);
+  tournament.activeRooms.add(id);
+
+  if (a.ws) { a.ws._rid = id; a.ws._seat = 'p1'; }
+  if (b.ws) { b.ws._rid = id; b.ws._seat = 'p2'; }
+
+  send(a.ws, { type:'matched', roomId:id, opponentName:b.name, opponentLP:b.lp || 0, isP1:true, tournament:true, round:tournament.round + 1 });
+  send(b.ws, { type:'matched', roomId:id, opponentName:a.name, opponentLP:a.lp || 0, isP1:false, tournament:true, round:tournament.round + 1 });
+
+  _runBotInRoom(room, a.bot ? 'p1' : null, tournament.round);
+  _runBotInRoom(room, b.bot ? 'p2' : null, tournament.round);
+  setTimeout(() => { if (rooms.has(id)) _nextQ(room); }, 2600);
+}
+
+function _runBotInRoom(room, botSeat, round) {
+  if (!botSeat) return;
+  const accuracy = Math.min(0.90, 0.48 + round * 0.13);
+  const delayBase = Math.max(800, 3000 - round * 450);
+  const previous = room._botCallback;
+
+  room._botCallback = q => {
+    previous?.(q);
+    const missilesThisQuestion = Math.max(1, Math.min(3, round + 1));
+    const shouldAnswerCorrect = Math.random() < accuracy;
+    if (!shouldAnswerCorrect && missilesThisQuestion === 1) {
+      setTimeout(() => {
+        if (rooms.has(room.id) && !room.answered[botSeat]) _handleAnswer(room, botSeat, null);
+      }, delayBase + Math.random() * 1200);
+      return;
+    }
+
+    for (let i = 0; i < missilesThisQuestion; i++) {
+      setTimeout(() => {
+        if (!rooms.has(room.id) || room.answered[botSeat]) return;
+        _handleAnswer(room, botSeat, q.answer);
+      }, delayBase + i * 260 + Math.random() * 700);
+    }
+  };
+}
+
+function _advanceTournament(tournament, matchIndex, winnerSeat, a, b) {
+  tournament.activeRooms.delete([...tournament.activeRooms][matchIndex]);
+  const winner = winnerSeat === 'p1' ? a : b;
+  const match = tournament.bracket[tournament.round][matchIndex];
+  if (match) {
+    match.winner = winner.name;
+    match.winnerPlayer = winner;
+  }
+  _broadcastBracketUpdate(tournament);
+
+  const roundDone = tournament.bracket[tournament.round].every(m => m.winnerPlayer);
+  if (!roundDone) return;
+
+  const winners = tournament.bracket[tournament.round].map(m => m.winnerPlayer);
+  if (winners.length === 1) {
+    _broadcastTournamentResult(tournament, winners[0]);
+    tournaments.delete(tournament.id);
+    return;
+  }
+
+  tournament.round++;
+  tournament.bracket[tournament.round] = _makeBracketRound(winners, winners.length / 2);
+  setTimeout(() => _startTournamentRound(tournament), 1800);
+}
+
+function _broadcastBracketUpdate(tournament) {
+  const bracket = tournament.bracket.map(round => round.map(m => ({
+    a: m.a,
+    b: m.b,
+    winner: m.winner,
+  })));
+  tournament.slots.forEach(p => send(p.ws, {
+    type: 'bracket_update',
+    tournamentId: tournament.id,
+    round: tournament.round + 1,
+    bracket,
+  }));
+}
+
+function _broadcastTournamentResult(tournament, winner) {
+  tournament.slots.forEach(p => send(p.ws, {
+    type: 'tournament_end',
+    winner: winner?.name || 'TBD',
+    won: p.name === winner?.name,
+  }));
 }
 
 // ── WS EVENTS ─────────────────────────────────────────────────────────────────
 wss.on('connection', ws => {
   ws._rid  = null;
   ws._seat = null;
+  ws._tournamentId = null;
 
   ws.on('message', raw => {
     let msg;
@@ -343,15 +539,7 @@ wss.on('connection', ws => {
 
       case 'join': {
         // Leave any existing room
-        if (ws._rid) {
-          const r = rooms.get(ws._rid);
-          if (r) {
-            send(ws._seat === 'p1' ? r.p2 : r.p1, { type:'opponent_left' });
-            if (r.timeout) clearTimeout(r.timeout);
-            rooms.delete(ws._rid);
-          }
-          ws._rid = null; ws._seat = null;
-        }
+        _leaveCurrentRoom(ws);
         // Remove from queue if already there
         const qi = queue.findIndex(e => e.ws === ws);
         if (qi !== -1) queue.splice(qi, 1);
@@ -363,6 +551,27 @@ wss.on('connection', ws => {
         });
         send(ws, { type:'waiting', pos: queue.length });
         tryMatch();
+        break;
+      }
+
+      case 'join_tournament': {
+        if (!isAirCupActive()) {
+          send(ws, { type:'error', code:'AIR_CUP_INACTIVE', message:'AIR CUP IS NOT ACTIVE' });
+          break;
+        }
+
+        _leaveCurrentRoom(ws);
+        const qi = queue.findIndex(e => e.ws === ws);
+        if (qi !== -1) queue.splice(qi, 1);
+
+        const player = {
+          ws,
+          name: String(msg.name || 'PILOT').toUpperCase().slice(0, 14),
+          lp: Math.max(0, Number(msg.lp) || 0),
+          bot: false,
+        };
+        send(ws, { type:'tournament_joined', name: player.name });
+        _createTournament([player]);
         break;
       }
 
@@ -392,16 +601,11 @@ wss.on('connection', ws => {
       }
 
       case 'leave': {
-        const room = rooms.get(ws._rid);
-        if (room) {
-          const opp = ws._seat === 'p1' ? room.p2 : room.p1;
-          send(opp, { type:'opponent_left' });
-          if (room.timeout) clearTimeout(room.timeout);
-          rooms.delete(ws._rid);
-        }
+        _leaveCurrentRoom(ws);
         const qi = queue.findIndex(e => e.ws === ws);
         if (qi !== -1) queue.splice(qi, 1);
         ws._rid = null; ws._seat = null;
+        ws._tournamentId = null;
         break;
       }
 
@@ -413,15 +617,8 @@ wss.on('connection', ws => {
     const qi = queue.findIndex(e => e.ws === ws);
     if (qi !== -1) queue.splice(qi, 1);
 
-    if (ws._rid) {
-      const room = rooms.get(ws._rid);
-      if (room) {
-        const opp = ws._seat === 'p1' ? room.p2 : room.p1;
-        send(opp, { type:'opponent_left' });
-        if (room.timeout) clearTimeout(room.timeout);
-        rooms.delete(ws._rid);
-      }
-    }
+    _leaveCurrentRoom(ws);
+    ws._tournamentId = null;
   });
 
   ws.on('error', () => {});

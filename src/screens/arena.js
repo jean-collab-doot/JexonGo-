@@ -27,6 +27,8 @@ let _canvas  = null;
 let _ctx     = null;
 let _raf     = null;
 let _session = 0;       // incremented on every enter/leave to cancel stale cbs
+let _returnTarget = 'ranked';
+let _isTournamentMatch = false;
 
 // Player info
 let _isP1    = true;
@@ -69,6 +71,8 @@ export function initArena(nav) {
 export async function enterArena() {
   _session++;
   const sid = _session;
+  _returnTarget = 'ranked';
+  _isTournamentMatch = false;
 
   _canvas = $('arena-canvas');
   if (!_canvas) return;
@@ -81,6 +85,8 @@ export async function enterArena() {
   _showStatus(t('findingOpp'), true);
   _hide('arena-question-box');
   _hide('arena-result');
+  $('btn-arena-rematch')?.classList.remove('hidden');
+  if ($('btn-arena-lobby')) $('btn-arena-lobby').textContent = 'LOBBY';
 
   _myName  = (G.playerName || 'PILOT').toUpperCase();
   _oppName = '???';
@@ -99,6 +105,37 @@ export async function enterArena() {
     // ── AI FALLBACK ── server offline → run local match inside arena
     _startAiMatch(sid);
   }
+}
+
+export function enterArenaTournament(matchMsg) {
+  _session++;
+  const sid = _session;
+  _returnTarget = 'aircup';
+  _isTournamentMatch = true;
+
+  _canvas = $('arena-canvas');
+  if (!_canvas) return;
+  _ctx = _canvas.getContext('2d');
+
+  _resetMatch();
+  SFX.playMusic('arena');
+  _startLoop();
+
+  _hide('arena-question-box');
+  _hide('arena-result');
+  _hideStatus();
+  $('btn-arena-rematch')?.classList.add('hidden');
+  if ($('btn-arena-lobby')) $('btn-arena-lobby').textContent = 'AIR CUP';
+
+  _isP1    = matchMsg.isP1;
+  _myName  = (G.playerName || 'PILOT').toUpperCase();
+  _oppName = matchMsg.opponentName || 'ACE';
+  _oppLP   = matchMsg.opponentLP || 0;
+  _updateNameplates();
+  _updateHP();
+  _registerHandlers(sid);
+  _flashMidMsg(`CUP R${matchMsg.round || 1}`, 2600);
+  SFX.streak?.();
 }
 
 // ── LOCAL AI MATCH (no server needed) ────────────────────────────────────────
@@ -346,7 +383,7 @@ function _registerHandlers(sid) {
     _stopTimer();
     _lockAnswers();
     _hide('arena-question-box');
-    _applyLPChange(msg.lpChange, msg.won);
+    if (!msg.tournament) _applyLPChange(msg.lpChange, msg.won);
     setTimeout(() => {
       if (_session !== sid) return;
       _showResult(msg);
@@ -475,14 +512,18 @@ function _showResult(msg) {
     `${msg.yourScore ?? _myScore} — ${msg.oppScore ?? _oppScore}`;
 
   const sign = (msg.lpChange >= 0) ? '+' : '';
-  $('arena-result-lp').textContent  = `${sign}${msg.lpChange} LP`;
+  $('arena-result-lp').textContent  = msg.tournament
+    ? (msg.won ? 'ADVANCING' : 'ELIMINATED')
+    : `${sign}${msg.lpChange} LP`;
   $('arena-result-lp').style.color  = msg.lpChange >= 0 ? '#00e84b' : '#ff2233';
 
   const info = getRankInfo(G.rankedLP);
   $('arena-result-rank').textContent  = info.divLabel;
   $('arena-result-rank').style.color  = info.tier.color;
 
-  $('arena-rematch-status').textContent = '';
+  $('arena-rematch-status').textContent = msg.tournament ? 'Return to Air Cup lobby for bracket updates.' : '';
+  $('btn-arena-rematch').classList.toggle('hidden', !!msg.tournament);
+  $('btn-arena-lobby').textContent = msg.tournament ? 'AIR CUP' : 'LOBBY';
   _show('arena-result');
 
   if (msg.won || msg.opponentLeft) SFX.levelWin?.();
@@ -798,8 +839,10 @@ function _leaveArena() {
   _stopTimer();
   SFX.stopMusic();
   wsSend({ type: 'leave' });
-  wsDisconnect();
-  _nav.toRanked();
+  if (!_isTournamentMatch) wsDisconnect();
+  _isTournamentMatch = false;
+  if (_returnTarget === 'aircup') _nav.toAirCup();
+  else _nav.toRanked();
 }
 
 function _resetVisuals() {

@@ -3,6 +3,7 @@ import { save, load } from './utils/storage.js';
 import { showScreen } from './utils/dom.js';
 import { SFX } from './audio/sound.js';
 import { initMenu, renderMenu } from './screens/menu.js';
+import { playWorldCupIntro } from './screens/worldcup-intro.js';
 import { initLevelMap, renderLevelMap } from './screens/levelmap.js';
 import { initHangar, renderHangar } from './screens/hangar.js';
 import { initGame } from './screens/game.js';
@@ -14,8 +15,8 @@ import { initSettings, loadSettings } from './screens/settings.js';
 import { initProfile, renderProfile } from './screens/profile.js';
 import { initRanked, renderRankedLobby } from './screens/ranked.js';
 import { initBriefing, showBriefing } from './screens/briefing.js';
-import { initClassroom, renderClassroom } from './screens/classroom.js';
 import { initArena, enterArena } from './screens/arena.js';
+import { initAirCup, renderAirCup } from './screens/aircup.js';
 import { preloadShips } from './game/sprites.js';
 import { checkDailyLogin } from './systems/daily.js';
 import { showDailyReward } from './screens/menu.js';
@@ -23,7 +24,15 @@ import { canSendFeedback, markFeedbackSent, sendFeedback, sendNewPlayerNotificat
 import { t, getLang, applyI18n } from './i18n.js';
 import { syncAccountFromCloud, flushCloudSave, pushCloudSave } from './systems/cloud-save.js';
 import { applyDeviceClasses } from './utils/device.js';
-import { inject } from '@vercel/analytics';
+
+function injectAnalytics() {
+  // Keep VS Code / Live Server launches working; Vercel analytics is optional.
+  if (!/\.vercel\.app$/i.test(location.hostname)) return;
+  const s = document.createElement('script');
+  s.defer = true;
+  s.src = '/_vercel/insights/script.js';
+  document.head.appendChild(s);
+}
 
 // ── VIDEO BACKGROUND ─────────────────────────────────────────────────────────
 const _menuVideo  = document.getElementById('menu-bg-video');
@@ -111,16 +120,16 @@ const nav = {
     showScreen('s-briefing');
     SFX.playMusic('menu');
   },
-  toClassroom() {
-    cleanup();
-    renderClassroom();
-    showScreen('s-classroom');
-    SFX.playMusic('menu');
-  },
   toArena() {
     cleanup();
     showScreen('s-arena');
     enterArena();
+  },
+  toAirCup() {
+    cleanup();
+    renderAirCup();
+    showScreen('s-aircup');
+    SFX.playMusic('menu');
   },
   toProfile() {
     cleanup();
@@ -228,8 +237,8 @@ initShop(nav);
 initSettings();
 initRanked(nav);
 initBriefing(nav);
-initClassroom(nav);
 initArena(nav);
+initAirCup(nav);
 initProfile(nav);
 initGradeScreen();
 initRegistration();
@@ -378,7 +387,7 @@ function showFeedbackPopup() {
 applyDeviceClasses();
 window.addEventListener('resize', applyDeviceClasses);
 window.addEventListener('orientationchange', applyDeviceClasses);
-inject(); // Vercel Web Analytics (no-op in dev; enable Analytics in Vercel project)
+injectAnalytics();
 loadSave();
 loadSettings();
 preloadShips();
@@ -413,11 +422,13 @@ document.getElementById('btn-audio-start').addEventListener('click', () => {
   } else {
     renderMenu();
     showScreen('s-menu');
-    const _daily = checkDailyLogin();
-    if (_daily.isNewDay) {
-      setTimeout(() => showDailyReward(_daily.reward, _daily.streak), 600);
-    }
-    setTimeout(() => showFeedbackPopup(), 1200);
+    playWorldCupIntro(() => {
+      const _daily = checkDailyLogin();
+      if (_daily.isNewDay) {
+        setTimeout(() => showDailyReward(_daily.reward, _daily.streak), 600);
+      }
+      setTimeout(() => showFeedbackPopup(), 1200);
+    });
   }
 });
 

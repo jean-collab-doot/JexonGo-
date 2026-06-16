@@ -1,5 +1,5 @@
 import { $, showScreen } from '../utils/dom.js';
-import { G, loadSave, saveAll } from '../state.js';
+import { G, loadSave, saveAll, IS_AIR_CUP_ACTIVE } from '../state.js';
 import { LOGIN_REWARDS, claimDailyReward, getMissions, claimMission,
          hasPendingMissionClaim, getPlayerRank,
          getSr71MissionState, claimSr71Mission } from '../systems/daily.js';
@@ -719,6 +719,8 @@ export function initMenu(nav) {
   $('btn-shop').onclick    = () => nav.toShop();
   $('btn-practice').onclick = () => openPracticeSelect(nav);
   $('btn-pilot-card').onclick = () => nav.toProfile();
+  const airCupBtn = $('btn-aircup');
+  if (airCupBtn) airCupBtn.onclick = () => nav.toAirCup();
 
   const googleBtn = document.getElementById('btn-login-google');
   if (googleBtn) googleBtn.onclick = () => _handleLogin('google');
@@ -959,6 +961,8 @@ export function renderMenu() {
   _updateRankBadge();
   _updateMissionsBadge();
   _updatePrestigeBadge();
+  const airCupBtn = $('btn-aircup');
+  if (airCupBtn) airCupBtn.classList.toggle('hidden', !IS_AIR_CUP_ACTIVE);
   _updateProfile();
   _applyLang();
 
