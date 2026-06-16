@@ -61,7 +61,7 @@ export function playWorldCupIntro(onDone) {
       </div>
       <div class="wc-flag-corners" aria-hidden="true"></div>
       <div class="wc-flash" aria-hidden="true"></div>
-      <img class="wc-trophy" src="assets/World%20COPE/ChatGPT%20Image%2012%20juin%202026,%2021_35_52.png" alt="">
+      <img class="wc-trophy" src="/assets/World%20COPE/ChatGPT%20Image%2012%20juin%202026,%2021_35_52.png" alt="">
       <div class="wc-ball-layer" aria-hidden="true"></div>
       <div class="wc-plane-wrap">
         <span class="wc-engine-smoke wc-engine-smoke-left"></span>
@@ -70,7 +70,7 @@ export function playWorldCupIntro(onDone) {
         <span class="wc-engine-fire wc-engine-fire-right"></span>
         <span class="wc-wing-glow wc-wing-left"></span>
         <span class="wc-wing-glow wc-wing-right"></span>
-        <img class="wc-plane" src="assets/World%20COPE/F-18%20WC.png" alt="">
+        <img class="wc-plane" src="/assets/World%20COPE/F-18%20WC.png" alt="">
       </div>
     `;
 
@@ -182,7 +182,7 @@ function _startRandomFlags(root, ballRoot) {
       card.style.animationDelay = `${index * 0.12}s`;
 
       const image = document.createElement('img');
-      image.src = `Conutry%20Flag/${encodeURIComponent(flag)}`;
+      image.src = `/assets/Country%20Flag/${encodeURIComponent(flag)}`;
       image.alt = '';
 
       card.appendChild(image);
@@ -191,7 +191,7 @@ function _startRandomFlags(root, ballRoot) {
 
     const ball = document.createElement('img');
     ball.className = 'wc-soccer-ball wc-ball-roll';
-    ball.src = 'Conutry%20Flag/Ballon%20de%20foot.png';
+    ball.src = '/assets/Country%20Flag/Ballon%20de%20foot.png';
     ball.alt = '';
     (ballRoot || root).appendChild(ball);
   };

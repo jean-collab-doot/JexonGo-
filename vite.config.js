@@ -3,6 +3,7 @@ import { cpSync, existsSync, mkdirSync } from 'fs';
 const ASSET_DIRS = [
   'skins', 'music', 'ships', 'enemies', 'fx', 'bg',
   'chest', 'hangar', 'menu', 'planes', 'prestige', 'pilots',
+  'World COPE', 'Country Flag',
 ];
 
 const copyGameAssets = {

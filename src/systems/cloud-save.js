@@ -7,6 +7,11 @@ export const API_URL =
     ? `http://${location.hostname}:8080`
     : `${location.protocol}//${location.hostname}`;
 
+const CLOUD_SAVE_AVAILABLE =
+  location.hostname === 'localhost' ||
+  location.hostname === '127.0.0.1' ||
+  !location.hostname.endsWith('.vercel.app');
+
 const PERSIST_KEYS = [
   'xp', 'totalXpEarned', 'coins', 'blueprints', 'chestsWithoutEpic', 'levelStars',
   'unlockedAircraft', 'activeAircraft', 'ownedSkins', 'activeSkin', 'activeLivery',
@@ -116,6 +121,7 @@ function _authBody({ authType, password } = {}) {
 
 /** @returns {{ data?, updatedAt?, notFound?, forbidden?, offline? }} */
 export async function fetchCloudSave(email, password, authType) {
+  if (!CLOUD_SAVE_AVAILABLE) return { offline: true };
   try {
     const params = new URLSearchParams({
       email: email.toLowerCase().trim(),
@@ -136,6 +142,7 @@ export async function fetchCloudSave(email, password, authType) {
 export async function pushCloudSave(opts = {}) {
   const email = (G.playerEmail || '').toLowerCase().trim();
   if (!G.playerRegistered || !email) return false;
+  if (!CLOUD_SAVE_AVAILABLE) return false;
 
   const password = opts.password ?? load('playerPassword', '') ?? '';
   const authType = opts.authType || (password ? 'email' : 'google');
