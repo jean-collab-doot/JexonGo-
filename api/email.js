@@ -3,6 +3,8 @@ const RESEND_FROM = process.env.RESEND_FROM || 'JexonGo <onboarding@resend.dev>'
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'jeanlouisahyee72@gmail.com';
 const EMAILJS_SERVICE_ID = process.env.EMAILJS_SERVICE_ID || 'service_se9vi2q';
 const EMAILJS_TEMPLATE_ID = process.env.EMAILJS_FEEDBACK_TEMPLATE_ID || 'template_icrozxf';
+const EMAILJS_NEW_PLAYER_SERVICE_ID = process.env.EMAILJS_NEW_PLAYER_SERVICE_ID || 'service_mdhv776';
+const EMAILJS_NEW_PLAYER_TEMPLATE_ID = process.env.EMAILJS_NEW_PLAYER_TEMPLATE_ID || 'template_gl9depi';
 const EMAILJS_PUBLIC_KEY = process.env.EMAILJS_PUBLIC_KEY || 'tKhT13eitJ6j1EdHo';
 
 function send(res, status, body) {
@@ -87,6 +89,44 @@ async function sendFeedbackWithEmailJs(body) {
   return { ok: true };
 }
 
+async function sendNewPlayerWithEmailJs(body) {
+  const templateParams = {
+    type: 'new-player',
+    player_name: body.playerName || 'PILOT',
+    player_email: body.playerEmail || '(no email)',
+    player_grade: String(body.playerGrade || '0'),
+    language: body.language || 'unknown',
+    date: body.date || new Date().toLocaleDateString(),
+    time: body.time || new Date().toLocaleTimeString(),
+  };
+  templateParams.message = [
+    `New JexonGo pilot`,
+    `Name: ${templateParams.player_name}`,
+    `Email: ${templateParams.player_email}`,
+    `Grade: ${templateParams.player_grade}`,
+    `Language: ${templateParams.language}`,
+    `Date: ${templateParams.date}`,
+    `Time: ${templateParams.time}`,
+  ].join('\n');
+
+  const response = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      service_id: EMAILJS_NEW_PLAYER_SERVICE_ID,
+      template_id: EMAILJS_NEW_PLAYER_TEMPLATE_ID,
+      user_id: EMAILJS_PUBLIC_KEY,
+      template_params: templateParams,
+    }),
+  });
+
+  if (!response.ok) {
+    const details = await response.text().catch(() => '');
+    throw new Error(details || `EmailJS new-player failed (${response.status})`);
+  }
+  return { ok: true };
+}
+
 export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return send(res, 204, {});
   if (req.method !== 'POST') return send(res, 405, { error: 'method not allowed' });
@@ -97,41 +137,8 @@ export default async function handler(req, res) {
     const now = new Date();
 
     if (type === 'new-player') {
-      const playerName = escapeHtml(body.playerName || 'PILOT');
-      const playerEmail = escapeHtml(body.playerEmail || '(no email)');
-      const playerGrade = escapeHtml(body.playerGrade || '0');
-      const language = escapeHtml(body.language || 'unknown');
-      const adminHtml = `
-        <h2>New JexonGo pilot</h2>
-        <p><strong>Name:</strong> ${playerName}</p>
-        <p><strong>Email:</strong> ${playerEmail}</p>
-        <p><strong>Grade:</strong> ${playerGrade}</p>
-        <p><strong>Language:</strong> ${language}</p>
-        <p><strong>Date:</strong> ${now.toLocaleString()}</p>
-      `;
-
-      await sendResendEmail({
-        to: ADMIN_EMAIL,
-        subject: `New JexonGo pilot: ${playerName}`,
-        html: adminHtml,
-      });
-
-      let playerTemplateSent = false;
-      if (body.playerEmail && String(body.playerEmail).includes('@')) {
-        await sendResendEmail({
-          to: body.playerEmail,
-          subject: 'Bienvenue sur JexonGo',
-          html: `
-            <h2>Bienvenue, ${playerName}!</h2>
-            <p>Ton compte JexonGo est pret. Bon vol, pilote.</p>
-            <p><strong>Nom:</strong> ${playerName}</p>
-            <p><strong>Niveau:</strong> ${playerGrade}</p>
-          `,
-        });
-        playerTemplateSent = true;
-      }
-
-      return send(res, 200, { ok: true, playerTemplateSent });
+      await sendNewPlayerWithEmailJs({ ...body, date: body.date || now.toLocaleDateString(), time: body.time || now.toLocaleTimeString() });
+      return send(res, 200, { ok: true, playerTemplateSent: true });
     }
 
     if (type === 'feedback') {
