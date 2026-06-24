@@ -17,7 +17,7 @@ const AIR_CUP_END_SERVER   = new Date('2026-07-15T23:59:59Z').getTime();
 const RESEND_API_KEY = process.env.RESEND_API_KEY || '';
 const RESEND_FROM = process.env.RESEND_FROM || 'JexonGo <onboarding@resend.dev>';
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'jeanlouisahyee72@gmail.com';
-const SUPABASE_REST_URL = process.env.SUPABASE_REST_URL || 'https://aoqudnezloywiauabnnt.supabase.co/rest/v1/';
+const SUPABASE_REST_URL = process.env.SUPABASE_REST_URL || 'https://sndpzdqijuxaagjdcgfx.supabase.co/rest/v1/';
 const SUPABASE_ACCESS_TOKEN = process.env.SUPABASE_ACCESS_TOKEN || '';
 
 const isAirCupActive = () => {

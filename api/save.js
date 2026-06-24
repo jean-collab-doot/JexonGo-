@@ -1,6 +1,6 @@
 import crypto from 'node:crypto';
 
-const SUPABASE_REST_URL = process.env.SUPABASE_REST_URL || 'https://aoqudnezloywiauabnnt.supabase.co/rest/v1/';
+const SUPABASE_REST_URL = process.env.SUPABASE_REST_URL || 'https://sndpzdqijuxaagjdcgfx.supabase.co/rest/v1/';
 const SUPABASE_ACCESS_TOKEN = process.env.SUPABASE_ACCESS_TOKEN || '';
 const SAVES_TABLE = process.env.SUPABASE_SAVES_TABLE || 'saves';
 
