@@ -1,6 +1,8 @@
 const EMAILJS_PUBLIC_KEY = process.env.EMAILJS_PUBLIC_KEY || '';
+const EMAILJS_FEEDBACK_PUBLIC_KEY = process.env.EMAILJS_FEEDBACK_PUBLIC_KEY || EMAILJS_PUBLIC_KEY;
 const EMAILJS_FEEDBACK_SERVICE_ID = process.env.EMAILJS_FEEDBACK_SERVICE_ID || '';
 const EMAILJS_FEEDBACK_TEMPLATE_ID = process.env.EMAILJS_FEEDBACK_TEMPLATE_ID || '';
+const EMAILJS_NEW_PLAYER_PUBLIC_KEY = process.env.EMAILJS_NEW_PLAYER_PUBLIC_KEY || EMAILJS_PUBLIC_KEY;
 const EMAILJS_NEW_PLAYER_SERVICE_ID = process.env.EMAILJS_NEW_PLAYER_SERVICE_ID || '';
 const EMAILJS_NEW_PLAYER_TEMPLATE_ID = process.env.EMAILJS_NEW_PLAYER_TEMPLATE_ID || '';
 
@@ -9,12 +11,13 @@ function send(res, status, body) {
 }
 
 function requireEmailJsConfig(type) {
-  if (!EMAILJS_PUBLIC_KEY) return 'missing EMAILJS_PUBLIC_KEY';
   if (type === 'new-player') {
+    if (!EMAILJS_NEW_PLAYER_PUBLIC_KEY) return 'missing EMAILJS_NEW_PLAYER_PUBLIC_KEY';
     if (!EMAILJS_NEW_PLAYER_SERVICE_ID) return 'missing EMAILJS_NEW_PLAYER_SERVICE_ID';
     if (!EMAILJS_NEW_PLAYER_TEMPLATE_ID) return 'missing EMAILJS_NEW_PLAYER_TEMPLATE_ID';
     return '';
   }
+  if (!EMAILJS_FEEDBACK_PUBLIC_KEY) return 'missing EMAILJS_FEEDBACK_PUBLIC_KEY';
   if (!EMAILJS_FEEDBACK_SERVICE_ID) return 'missing EMAILJS_FEEDBACK_SERVICE_ID';
   if (!EMAILJS_FEEDBACK_TEMPLATE_ID) return 'missing EMAILJS_FEEDBACK_TEMPLATE_ID';
   return '';
@@ -84,14 +87,15 @@ function newPlayerParams(body) {
   return params;
 }
 
-async function sendEmailJs({ serviceId, templateId, params }) {
+async function sendEmailJs({ serviceId, templateId, publicKey, params }) {
   const response = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       service_id: serviceId,
       template_id: templateId,
-      user_id: EMAILJS_PUBLIC_KEY,
+      user_id: publicKey,
+      public_key: publicKey,
       template_params: params,
     }),
   });
@@ -116,6 +120,7 @@ export default async function handler(req, res) {
       await sendEmailJs({
         serviceId: EMAILJS_NEW_PLAYER_SERVICE_ID,
         templateId: EMAILJS_NEW_PLAYER_TEMPLATE_ID,
+        publicKey: EMAILJS_NEW_PLAYER_PUBLIC_KEY,
         params: newPlayerParams(body),
       });
       return send(res, 200, { ok: true, playerTemplateSent: true });
@@ -124,6 +129,7 @@ export default async function handler(req, res) {
     await sendEmailJs({
       serviceId: EMAILJS_FEEDBACK_SERVICE_ID,
       templateId: EMAILJS_FEEDBACK_TEMPLATE_ID,
+      publicKey: EMAILJS_FEEDBACK_PUBLIC_KEY,
       params: feedbackParams(body),
     });
     return send(res, 200, { ok: true });

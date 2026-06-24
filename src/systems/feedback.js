@@ -1,6 +1,6 @@
 import { API_URL } from './cloud-save.js';
 
-const NEW_PLAYER_KEY = 'jexongo_new_player_disabled_v1';
+const NEW_PLAYER_KEY = 'jexongo_new_player_emailjs_v4';
 const FEEDBACK_SENT_KEY = 'jexongo_feedback_date';
 
 function _todayStr() {
