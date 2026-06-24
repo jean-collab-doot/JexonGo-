@@ -2,6 +2,9 @@ import { API_URL } from './cloud-save.js';
 
 const NEW_PLAYER_KEY = 'jexongo_new_player';
 const FEEDBACK_SENT_KEY = 'jexongo_feedback_date';
+const EMAILJS_SERVICE_ID = 'service_se9vi2q';
+const EMAILJS_TEMPLATE_ID = 'template_icrozxf';
+const EMAILJS_PUBLIC_KEY = 'tKhT13eitJ6j1EdHo';
 
 function _todayStr() {
   return new Date().toISOString().slice(0, 10);
@@ -21,6 +24,51 @@ async function _sendEmail(payload) {
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data?.error || `Email failed (${res.status})`);
   return data;
+}
+
+async function _sendFeedbackWithEmailJs(payload) {
+  const templateParams = {
+    type: payload.type,
+    player_name: payload.playerName,
+    player_email: payload.playerEmail,
+    grade: payload.grade,
+    date: payload.date,
+    rating: payload.rating,
+    comment: payload.comment,
+    level: payload.level,
+    xp: payload.xp,
+    aircraft: payload.aircraft,
+    playtime: payload.playtime,
+    message: [
+      `Player: ${payload.playerName}`,
+      `Email: ${payload.playerEmail}`,
+      `Grade: ${payload.grade}`,
+      `Stars: ${payload.rating}`,
+      `Comment: ${payload.comment}`,
+      `Level: ${payload.level}`,
+      `XP: ${payload.xp}`,
+      `Aircraft: ${payload.aircraft}`,
+      `Playtime: ${payload.playtime}`,
+      `Date: ${payload.date}`,
+    ].join('\n'),
+  };
+
+  const res = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      service_id: EMAILJS_SERVICE_ID,
+      template_id: EMAILJS_TEMPLATE_ID,
+      user_id: EMAILJS_PUBLIC_KEY,
+      template_params: templateParams,
+    }),
+  });
+
+  if (!res.ok) {
+    const details = await res.text().catch(() => '');
+    throw new Error(details || `EmailJS failed (${res.status})`);
+  }
+  return { ok: true };
 }
 
 export function canSendFeedback() {
@@ -98,6 +146,6 @@ export function sendFeedback({
     playtime: playtime || '0 min',
   };
 
-  console.log('[Resend] Sending feedback...', payload);
-  return _sendEmail(payload);
+  console.log('[EmailJS] Sending feedback...', payload);
+  return _sendFeedbackWithEmailJs(payload);
 }
