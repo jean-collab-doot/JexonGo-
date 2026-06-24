@@ -1,6 +1,6 @@
 import { API_URL } from './cloud-save.js';
 
-const NEW_PLAYER_KEY = 'jexongo_new_player';
+const NEW_PLAYER_KEY = 'jexongo_new_player_emailjs_v2';
 const FEEDBACK_SENT_KEY = 'jexongo_feedback_date';
 const EMAILJS_SERVICE_ID = 'service_se9vi2q';
 const EMAILJS_TEMPLATE_ID = 'template_icrozxf';
@@ -121,10 +121,10 @@ export function _testEmailNow(name = 'TEST PILOT', email = 'test@test.com', grad
     time: now.toLocaleTimeString(),
     language: navigator.language.startsWith('fr') ? 'french' : 'english',
   };
-  console.log('[Resend] Sending test email...', payload);
+  console.log('[EmailJS] Sending test new-player email...', payload);
   return _sendEmail(payload)
-    .then(result => console.log('[Resend] Test sent', result))
-    .catch(err => console.error('[Resend] Test failed:', err));
+    .then(result => console.log('[EmailJS] Test new-player sent', result))
+    .catch(err => console.error('[EmailJS] Test new-player failed:', err));
 }
 
 export function sendFeedback({

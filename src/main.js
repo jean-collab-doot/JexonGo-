@@ -265,7 +265,7 @@ window._onGoogleCredential = async function(response) {
 
     loadSave();
     const sync = await syncAccountFromCloud({ authType: 'google' });
-    const shouldNotifyNewGooglePlayer = !sync?.offline && !sync?.merged && (!wasRegistered || previousEmail !== email);
+    const shouldNotifyNewGooglePlayer = !sync?.merged && (!wasRegistered || previousEmail !== email);
     if (sync.offline) _showLoginToast(t('syncOffline') || 'Progress saved on this device only (offline).');
     else if (sync.merged) _showLoginToast(t('syncOk') || 'Progress synced from your account.');
 

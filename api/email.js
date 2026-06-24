@@ -101,6 +101,8 @@ async function sendNewPlayerWithEmailJs(body) {
     player_email: playerEmail,
     email: playerEmail,
     to_email: playerEmail,
+    recipient_email: playerEmail,
+    user_email: playerEmail,
     to_name: body.playerName || 'PILOT',
     reply_to: playerEmail,
     player_grade: String(body.playerGrade || '0'),
