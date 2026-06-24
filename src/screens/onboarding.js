@@ -1,7 +1,8 @@
 import { G } from '../state.js';
 import { save } from '../utils/storage.js';
+import { getLang, setLang } from '../i18n.js';
 
-export function showOnboarding(onComplete) {
+function legacyShowOnboarding(onComplete) {
   const overlay = document.createElement('div');
   overlay.id = 'onboarding-overlay';
   document.body.appendChild(overlay);
@@ -167,9 +168,6 @@ export function showOnboarding(onComplete) {
   // Start on welcome
   render();
 }
-import { G } from '../state.js';
-import { save } from '../utils/storage.js';
-import { getLang, setLang } from '../i18n.js';
 
 function introLang() {
   return getLang();
