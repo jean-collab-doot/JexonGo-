@@ -266,7 +266,7 @@ window._onGoogleCredential = async function(response) {
     loadSave();
     const sync = await syncAccountFromCloud({ authType: 'google' });
     const shouldNotifyNewGooglePlayer = !sync?.merged && (!wasRegistered || previousEmail !== email);
-    if (sync.offline) _showLoginToast(t('syncOffline') || 'Progress saved on this device only (offline).');
+    if (sync.offline) _showLoginToast(t('syncOffline') || 'Account connected - progress saves on this device.');
     else if (sync.merged) _showLoginToast(t('syncOk') || 'Progress synced from your account.');
 
     if (shouldStartRecommended && recommendedPlan?.startLevel) {
@@ -485,7 +485,7 @@ if (G.playerRegistered && G.playerEmail) {
   syncAccountFromCloud().then(sync => {
     if (sync?.merged) renderMenu();
     else if (sync?.offline && window._showToast) {
-      window._showToast(t('syncOffline') || 'Playing offline — progress saves on this device.');
+      window._showToast(t('syncOffline') || 'Account connected - progress saves on this device.');
     }
   }).catch(() => {});
 }

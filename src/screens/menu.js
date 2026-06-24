@@ -190,7 +190,7 @@ async function _handleLoginSubmit() {
     saveAll();
   }
   const sync = await syncAccountFromCloud({ authType: 'email', password: pwIn });
-  if (sync.offline) _showToast(t('syncOffline') || 'Offline — progress on this device only.');
+  if (sync.offline) _showToast(t('syncOffline') || 'Account connected - progress saves on this device.');
   renderMenu();
   _showToast(t('welcomeBack').replace('{name}', G.playerName || 'PILOT'));
 }
