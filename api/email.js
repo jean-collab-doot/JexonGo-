@@ -90,10 +90,19 @@ async function sendFeedbackWithEmailJs(body) {
 }
 
 async function sendNewPlayerWithEmailJs(body) {
+  const playerEmail = String(body.playerEmail || '').trim();
+  if (!playerEmail || !playerEmail.includes('@')) {
+    return { ok: false, skipped: true };
+  }
+
   const templateParams = {
     type: 'new-player',
     player_name: body.playerName || 'PILOT',
-    player_email: body.playerEmail || '(no email)',
+    player_email: playerEmail,
+    email: playerEmail,
+    to_email: playerEmail,
+    to_name: body.playerName || 'PILOT',
+    reply_to: playerEmail,
     player_grade: String(body.playerGrade || '0'),
     language: body.language || 'unknown',
     date: body.date || new Date().toLocaleDateString(),
