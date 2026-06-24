@@ -1,6 +1,9 @@
 const RESEND_API_KEY = process.env.RESEND_API_KEY || '';
 const RESEND_FROM = process.env.RESEND_FROM || 'JexonGo <onboarding@resend.dev>';
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'jeanlouisahyee72@gmail.com';
+const EMAILJS_SERVICE_ID = process.env.EMAILJS_SERVICE_ID || 'service_se9vi2q';
+const EMAILJS_TEMPLATE_ID = process.env.EMAILJS_FEEDBACK_TEMPLATE_ID || 'template_icrozxf';
+const EMAILJS_PUBLIC_KEY = process.env.EMAILJS_PUBLIC_KEY || 'tKhT13eitJ6j1EdHo';
 
 function send(res, status, body) {
   res.status(status).json(body);
@@ -37,6 +40,51 @@ async function sendResendEmail({ to, subject, html }) {
     throw new Error(payload?.message || payload?.error || `Resend failed (${response.status})`);
   }
   return payload;
+}
+
+async function sendFeedbackWithEmailJs(body) {
+  const templateParams = {
+    type: 'feedback',
+    player_name: body.playerName || 'PILOT',
+    player_email: body.playerEmail || '(no email)',
+    grade: String(body.grade || '0'),
+    date: body.date || new Date().toLocaleDateString(),
+    rating: String(body.rating || '0'),
+    comment: body.comment || '(no comment)',
+    level: String(body.level || '0'),
+    xp: String(body.xp || '0'),
+    aircraft: Array.isArray(body.aircraft) ? body.aircraft.join(', ') : String(body.aircraft || ''),
+    playtime: body.playtime || '0 min',
+  };
+  templateParams.message = [
+    `Player: ${templateParams.player_name}`,
+    `Email: ${templateParams.player_email}`,
+    `Grade: ${templateParams.grade}`,
+    `Stars: ${templateParams.rating}`,
+    `Comment: ${templateParams.comment}`,
+    `Level: ${templateParams.level}`,
+    `XP: ${templateParams.xp}`,
+    `Aircraft: ${templateParams.aircraft}`,
+    `Playtime: ${templateParams.playtime}`,
+    `Date: ${templateParams.date}`,
+  ].join('\n');
+
+  const response = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      service_id: EMAILJS_SERVICE_ID,
+      template_id: EMAILJS_TEMPLATE_ID,
+      user_id: EMAILJS_PUBLIC_KEY,
+      template_params: templateParams,
+    }),
+  });
+
+  if (!response.ok) {
+    const details = await response.text().catch(() => '');
+    throw new Error(details || `EmailJS failed (${response.status})`);
+  }
+  return { ok: true };
 }
 
 export default async function handler(req, res) {
@@ -87,27 +135,7 @@ export default async function handler(req, res) {
     }
 
     if (type === 'feedback') {
-      const playerName = escapeHtml(body.playerName || 'PILOT');
-      const playerEmail = escapeHtml(body.playerEmail || '(no email)');
-      const html = `
-        <h2>JexonGo feedback</h2>
-        <p><strong>Player:</strong> ${playerName}</p>
-        <p><strong>Email:</strong> ${playerEmail}</p>
-        <p><strong>Grade:</strong> ${escapeHtml(body.grade || '0')}</p>
-        <p><strong>Stars:</strong> ${escapeHtml(body.rating || '0')}</p>
-        <p><strong>Comment:</strong> ${escapeHtml(body.comment || '(no comment)')}</p>
-        <p><strong>Level:</strong> ${escapeHtml(body.level || '0')}</p>
-        <p><strong>XP:</strong> ${escapeHtml(body.xp || '0')}</p>
-        <p><strong>Aircraft:</strong> ${escapeHtml(body.aircraft || '')}</p>
-        <p><strong>Playtime:</strong> ${escapeHtml(body.playtime || '0 min')}</p>
-        <p><strong>Date:</strong> ${now.toLocaleString()}</p>
-      `;
-
-      await sendResendEmail({
-        to: ADMIN_EMAIL,
-        subject: `JexonGo feedback: ${body.rating || 0} stars`,
-        html,
-      });
+      await sendFeedbackWithEmailJs({ ...body, date: body.date || now.toLocaleDateString() });
       return send(res, 200, { ok: true });
     }
 
