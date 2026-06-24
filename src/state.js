@@ -1,6 +1,6 @@
 import { load, save } from './utils/storage.js';
 
-// Air Cup event window - edit these two dates to reactivate for future events.
+// Tournament event window - edit these two dates to reactivate for future events.
 export const AIR_CUP_START = new Date('2026-06-11T00:00:00Z').getTime();
 export const AIR_CUP_END   = new Date('2026-07-15T23:59:59Z').getTime();
 
@@ -34,6 +34,8 @@ export const G = {
   dailyStreak:      0,
   dailyMissions:    null,
   dailyMissionDate: null,
+  playMinutesByDay: {},
+  monthlyChallenge: null,
   claimedRanks:     [],
 
   // --- Ranked ---
@@ -55,6 +57,21 @@ export const G = {
   pilotMotto:       '',
   profileTheme:     'default',
   currentWeather: null,
+  hasSeenOnboarding: false,
+  hasSeenBriefing: false,
+  likesMath: true,
+  onboardingAgeGroup: 0,
+  onboardingGrade: 1,
+  focusOperation: null,
+  focusOperations: [],
+  pendingPlacement: false,
+  tutorialMode: false,
+  onboardingStartMode: 'bases',
+  onboardingLevelLength: 'normal',
+  dailyGoalMinutes: 5,
+  tutorialPlan: null,
+  tutorialProgress: null,
+  postTutorialConnectPrompt: false,
 
   // --- Session ---
   currentLevel: 1,
@@ -74,6 +91,7 @@ export const G = {
   timerInterval: null,
   animFrame: null,
   mobileLoop: null,
+  pausedGameResume: null,
   answerLocked: false,
   missileHitsReceived: 0,   // counts enemy missile hits this level (for 3-star)
 
@@ -97,6 +115,22 @@ export function loadSave() {
   G.pilotMotto        = load('pilotMotto', '');
   G.profileTheme      = load('profileTheme', 'default');
   G.practiceTimeLimit = load('practiceTimeLimit', 10);
+  G.hasSeenOnboarding = load('hasSeenOnboarding', false);
+  G.hasSeenBriefing   = load('hasSeenBriefing', false);
+  G.likesMath         = load('likesMath', true);
+  G.onboardingAgeGroup = load('onboardingAgeGroup', 0);
+  G.onboardingGrade   = load('onboardingGrade', 1);
+  G.focusOperation    = load('focusOperation', '') || null;
+  G.focusOperations   = load('focusOperations', []);
+  if (!G.focusOperations.length && G.focusOperation) G.focusOperations = [G.focusOperation];
+  G.pendingPlacement  = load('pendingPlacement', false);
+  G.tutorialMode      = load('tutorialMode', false);
+  G.onboardingStartMode = load('onboardingStartMode', 'bases');
+  G.onboardingLevelLength = load('onboardingLevelLength', 'normal');
+  G.dailyGoalMinutes  = load('dailyGoalMinutes', 5);
+  G.tutorialPlan      = load('tutorialPlan', null);
+  G.tutorialProgress  = load('tutorialProgress', null);
+  G.postTutorialConnectPrompt = load('postTutorialConnectPrompt', false);
 
   if (!G.playerRegistered) {
     // Guest — reset all progression to zero, never load saved progress
@@ -137,6 +171,8 @@ export function loadSave() {
   G.dailyStreak       = load('dailyStreak', 0);
   G.dailyMissions     = load('dailyMissions', null);
   G.dailyMissionDate  = load('dailyMissionDate', null);
+  G.playMinutesByDay  = load('playMinutesByDay', {});
+  G.monthlyChallenge  = load('monthlyChallenge', null);
   G.claimedRanks      = load('claimedRanks', []);
   G.rankedLP            = load('rankedLP', 0);
   G.rankedWins          = load('rankedWins', 0);
@@ -171,11 +207,28 @@ export function saveAll() {
   save('pilotMotto',        G.pilotMotto);
   save('profileTheme',      G.profileTheme);
   save('highestLevel',      G.highestLevel);
+  save('hasSeenOnboarding', G.hasSeenOnboarding);
+  save('hasSeenBriefing',   G.hasSeenBriefing);
+  save('likesMath',         G.likesMath);
+  save('onboardingAgeGroup', G.onboardingAgeGroup);
+  save('onboardingGrade',   G.onboardingGrade);
+  save('focusOperation',    G.focusOperation || '');
+  save('focusOperations',   G.focusOperations || []);
+  save('pendingPlacement',  G.pendingPlacement);
+  save('tutorialMode',      G.tutorialMode);
+  save('onboardingStartMode', G.onboardingStartMode);
+  save('onboardingLevelLength', G.onboardingLevelLength);
+  save('dailyGoalMinutes',  G.dailyGoalMinutes);
+  save('tutorialPlan',      G.tutorialPlan);
+  save('tutorialProgress',  G.tutorialProgress);
+  save('postTutorialConnectPrompt', G.postTutorialConnectPrompt);
   save('practiceTimeLimit', G.practiceTimeLimit);
   save('dailyLastLogin',    G.dailyLastLogin);
   save('dailyStreak',       G.dailyStreak);
   save('dailyMissions',     G.dailyMissions);
   save('dailyMissionDate',  G.dailyMissionDate);
+  save('playMinutesByDay',  G.playMinutesByDay);
+  save('monthlyChallenge',  G.monthlyChallenge);
   save('claimedRanks',      G.claimedRanks);
   save('rankedLP',          G.rankedLP);
   save('rankedWins',        G.rankedWins);
@@ -204,6 +257,21 @@ export function autoSave() {
   save('ownedSkins',      G.ownedSkins);
   save('activeSkin',      G.activeSkin);
   save('activeLivery',    G.activeLivery);
+  save('hasSeenOnboarding', G.hasSeenOnboarding);
+  save('hasSeenBriefing', G.hasSeenBriefing);
+  save('likesMath',       G.likesMath);
+  save('onboardingAgeGroup', G.onboardingAgeGroup);
+  save('onboardingGrade', G.onboardingGrade);
+  save('focusOperation',  G.focusOperation || '');
+  save('focusOperations', G.focusOperations || []);
+  save('pendingPlacement', G.pendingPlacement);
+  save('tutorialMode',    G.tutorialMode);
+  save('onboardingStartMode', G.onboardingStartMode);
+  save('onboardingLevelLength', G.onboardingLevelLength);
+  save('dailyGoalMinutes', G.dailyGoalMinutes);
+  save('tutorialPlan',    G.tutorialPlan);
+  save('tutorialProgress', G.tutorialProgress);
+  save('postTutorialConnectPrompt', G.postTutorialConnectPrompt);
 }
 
 export function resetLevel() {

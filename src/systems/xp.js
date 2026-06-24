@@ -32,8 +32,8 @@ export function streakBonus(streak) {
 }
 
 export function getTournamentReward(round) {
-  if (round >= 3) return { xp: 500, title: 'Air Cup Champion' };
-  if (round === 2) return { xp: 250, title: 'Air Cup Finalist' };
-  if (round === 1) return { xp: 120, title: 'Air Cup Ace' };
-  return { xp: 50, title: 'Air Cup Pilot' };
+  if (round >= 3) return { xp: 500, title: 'Tournament Champion' };
+  if (round === 2) return { xp: 250, title: 'Tournament Finalist' };
+  if (round === 1) return { xp: 120, title: 'Tournament Ace' };
+  return { xp: 50, title: 'Tournament Pilot' };
 }

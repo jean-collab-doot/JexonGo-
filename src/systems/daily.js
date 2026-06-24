@@ -6,6 +6,67 @@ function todayStr() {
   return new Date().toISOString().slice(0, 10);
 }
 
+function monthStr(date = new Date()) {
+  return date.toISOString().slice(0, 7);
+}
+
+function daysInCurrentMonth() {
+  const now = new Date();
+  return new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+}
+
+function dateToStr(date) {
+  return date.toISOString().slice(0, 10);
+}
+
+function dateOffset(daysBack) {
+  const d = new Date();
+  d.setDate(d.getDate() - daysBack);
+  return dateToStr(d);
+}
+
+function weekStartMonday(date = new Date()) {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  const daysSinceMonday = (d.getDay() + 6) % 7;
+  d.setDate(d.getDate() - daysSinceMonday);
+  return d;
+}
+
+function addDays(date, amount) {
+  const d = new Date(date);
+  d.setDate(d.getDate() + amount);
+  return d;
+}
+
+const WEEKDAY_LABELS = {
+  en: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+  fr: ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'],
+};
+
+function configuredOpsLabel() {
+  const ops = Array.isArray(G.focusOperations) && G.focusOperations.length
+    ? G.focusOperations
+    : G.focusOperation ? [G.focusOperation] : ['+', '-', '*', '/'];
+  return ops.map(op => ({ '+': 'ADD', '-': 'SUB', '*': 'MUL', '/': 'DIV' })[op] || op).join(' + ');
+}
+
+function configuredOpsLabelFr() {
+  const ops = Array.isArray(G.focusOperations) && G.focusOperations.length
+    ? G.focusOperations
+    : G.focusOperation ? [G.focusOperation] : ['+', '-', '*', '/'];
+  return ops.map(op => ({ '+': 'ADD', '-': 'SOU', '*': 'MUL', '/': 'DIV' })[op] || op).join(' + ');
+}
+
+function prunePlayMinutes() {
+  const data = G.playMinutesByDay || {};
+  const keep = new Set(Array.from({ length: 45 }, (_, i) => dateOffset(i)));
+  for (const day of Object.keys(data)) {
+    if (!keep.has(day)) delete data[day];
+  }
+  G.playMinutesByDay = data;
+}
+
 // ── 7-DAY LOGIN REWARD CYCLE ──────────────────────────────────────────────────
 export const LOGIN_REWARDS = [
   { day: 1, coins: 150,  xp: 0,    icon: '◎', desc: '150 COINS' },
@@ -71,6 +132,7 @@ function seededPick(dateStr) {
 // ── PUBLIC API ────────────────────────────────────────────────────────────────
 
 export function checkDailyLogin() {
+  if (!G.playerRegistered) return { isNewDay: false };
   const today     = todayStr();
   const lastLogin = G.dailyLastLogin;
   if (lastLogin === today) return { isNewDay: false };
@@ -100,12 +162,14 @@ export function checkDailyLogin() {
 }
 
 export function claimDailyReward(reward) {
+  if (!G.playerRegistered) return false;
   G.coins          += reward.coins || 0;
   G.xp             += reward.xp    || 0;
   G.dailyLastLogin  = todayStr();
   save('coins',          G.coins);
   save('xp',             G.xp);
   save('dailyLastLogin', G.dailyLastLogin);
+  return true;
 }
 
 export function getMissions() {
@@ -117,6 +181,68 @@ export function getMissions() {
     save('dailyMissionDate', today);
   }
   return G.dailyMissions;
+}
+
+export function recordPlayMinute(amount = 1) {
+  const n = Math.max(1, Math.round(amount || 1));
+  const today = todayStr();
+  G.playMinutesByDay = G.playMinutesByDay || {};
+  G.playMinutesByDay[today] = Math.max(0, (G.playMinutesByDay[today] || 0) + n);
+  prunePlayMinutes();
+  save('playMinutesByDay', G.playMinutesByDay);
+}
+
+export function getPlayMinuteStats(lang = 'en') {
+  prunePlayMinutes();
+  const goal = Math.max(1, Number(G.dailyGoalMinutes || 5));
+  const weekStart = weekStartMonday();
+  const labels = WEEKDAY_LABELS[lang === 'fr' ? 'fr' : 'en'];
+  const days = Array.from({ length: 7 }, (_, i) => {
+    const date = dateToStr(addDays(weekStart, i));
+    const minutes = Math.max(0, Math.round((G.playMinutesByDay || {})[date] || 0));
+    return {
+      date,
+      label: labels[i],
+      minutes,
+      pct: Math.min(100, Math.round((minutes / goal) * 100)),
+      isToday: date === todayStr(),
+    };
+  });
+  const weekTotal = days.reduce((sum, day) => sum + day.minutes, 0);
+  const currentMonth = monthStr();
+  const monthTotal = Object.entries(G.playMinutesByDay || {})
+    .filter(([date]) => date.startsWith(currentMonth))
+    .reduce((sum, [, minutes]) => sum + Math.max(0, Number(minutes || 0)), 0);
+  const monthTarget = Math.max(goal * daysInCurrentMonth(), goal * 7);
+  return {
+    goal,
+    days,
+    weekStart: dateToStr(weekStart),
+    weekTotal: Math.round(weekTotal),
+    monthTotal: Math.round(monthTotal),
+    monthTarget,
+    monthPct: Math.min(100, Math.round((monthTotal / Math.max(1, monthTarget)) * 100)),
+  };
+}
+
+export function getMonthlyConfigChallenge(lang = 'en') {
+  const stats = getPlayMinuteStats(lang);
+  const isFr = lang === 'fr';
+  const grade = G.onboardingGrade || G.playerGrade || 1;
+  const ops = isFr ? configuredOpsLabelFr() : configuredOpsLabel();
+  const length = G.onboardingLevelLength || 'normal';
+  return {
+    title: isFr ? 'DÉFI DU MOIS' : 'MONTH CHALLENGE',
+    subtitle: isFr
+      ? `Objectif: ${stats.monthTarget} min ce mois-ci`
+      : `Goal: ${stats.monthTarget} min this month`,
+    config: isFr
+      ? `Config: année ${grade}, ${ops}, ${length}`
+      : `Config: grade ${grade}, ${ops}, ${length}`,
+    progress: stats.monthTotal,
+    target: stats.monthTarget,
+    pct: stats.monthPct,
+  };
 }
 
 export function trackMission(type, amount = 1) {
@@ -137,6 +263,7 @@ export function trackMission(type, amount = 1) {
 export function claimMission(missionId) {
   const m = (G.dailyMissions || []).find(x => x.id === missionId);
   if (!m || m.claimed || m.progress < m.target) return false;
+  if (!G.playerRegistered) return false;
   m.claimed  = true;
   G.coins   += m.coins || 0;
   G.xp      += m.xp    || 0;
@@ -173,6 +300,7 @@ export function getSr71MissionState() {
 
 export function claimSr71Mission() {
   if (!G.sr71Earned || G.sr71MissionClaimed) return false;
+  if (!G.playerRegistered) return false;
   G.sr71MissionClaimed = true;
   G.coins         += SR71_MISSION.coins;
   G.xp            += SR71_MISSION.xp;

@@ -1,5 +1,7 @@
 import { SFX } from '../audio/sound.js';
 import { t } from '../i18n.js';
+import { resetIntroBriefing } from './intro-briefing.js';
+import { showEquationConfig } from './onboarding.js';
 
 const KEY = 'jexongo_settings';
 
@@ -86,9 +88,32 @@ export function initSettings() {
     _save(); _apply();
   });
 
+  document.getElementById('sett-volume-slider').addEventListener('change', e => {
+    settings.volume = Number(e.target.value);
+    _save(); _apply(); _refresh();
+  });
+
+  document.getElementById('sett-music-slider').addEventListener('change', e => {
+    settings.music = Number(e.target.value);
+    _save(); _apply(); _refresh();
+  });
+
   // Effects toggle
   document.getElementById('sett-effects').addEventListener('click', () => {
     settings.effects = !settings.effects;
     _save(); _refresh(); _apply();
+  });
+
+  document.getElementById('btn-replay-briefing')?.addEventListener('click', () => {
+    resetIntroBriefing();
+    hide();
+    if (window._showToast) window._showToast('Briefing will replay on Level 1.');
+  });
+
+  document.getElementById('btn-change-equations')?.addEventListener('click', () => {
+    hide();
+    showEquationConfig(() => {
+      if (window._showToast) window._showToast('Configuration des equations sauvegardee.');
+    });
   });
 }

@@ -4,18 +4,23 @@ import { t } from '../i18n.js';
 import { SFX } from '../audio/sound.js';
 
 export function initGameover(nav) {
+  $('btn-continue-game')?.addEventListener('click', () => {
+    setTimeout(() => SFX.stopSFX(), 150);
+    if (G.pausedGameResume) G.pausedGameResume();
+  });
+
   $('btn-retry').onclick = () => {
     setTimeout(() => SFX.stopSFX(), 150);
-    if (window._gameResume) {
-      window._gameResume();
-    } else {
-      G.continueState = null;
-      nav.toGame(G.currentLevel, G.practiceMode);
-    }
+    window._gameResume = null;
+    G.pausedGameResume = null;
+    G.continueState = null;
+    nav.toGame(G.currentLevel, G.practiceMode);
   };
+
   $('btn-go-map').onclick = () => {
     SFX.stopSFX();
     window._gameResume = null;
+    G.pausedGameResume = null;
     G.continueState = null;
     nav.toMenu();
   };
@@ -36,6 +41,8 @@ export function showGameover() {
   $('gameover-score').textContent = `${G.correctAnswers} ${t('correctKeepPracticing')}`;
 
   // Update button labels to current language
+  const continueBtn = $('btn-continue-game');
+  if (continueBtn) continueBtn.classList.add('hidden');
   const retryBtn = $('btn-retry');
   if (retryBtn) retryBtn.textContent = t('retry');
   const mapBtn = $('btn-go-map');

@@ -223,6 +223,7 @@ const STRINGS = {
     regNamePh:         'CALL SIGN / NAME',
     regEmailPh:        'EMAIL ADDRESS',
     regPasswordPh:     'PASSWORD (6+ CHARS)',
+    regConfirmPasswordPh: 'CONFIRM PASSWORD',
     regAgePh:          '-- SELECT YOUR AGE --',
     regGradePh:        '-- SELECT SCHOOL GRADE --',
     regTos:            'I AGREE TO THE TERMS OF SERVICE',
@@ -230,6 +231,7 @@ const STRINGS = {
     regErrName:        'ENTER YOUR CALL SIGN',
     regErrEmail:       'ENTER A VALID EMAIL',
     regErrPassword:    'PASSWORD MUST BE 6+ CHARS',
+    regErrPasswordMatch: 'PASSWORDS DO NOT MATCH',
     regErrAge:         'SELECT YOUR AGE',
     regErrGrade:       'SELECT YOUR SCHOOL GRADE',
     regErrTos:         'ACCEPT THE TERMS TO CONTINUE',
@@ -485,6 +487,7 @@ const STRINGS = {
     regNamePh:         'INDICATIF / NOM',
     regEmailPh:        'ADRESSE EMAIL',
     regPasswordPh:     'MOT DE PASSE (6+ CAR.)',
+    regConfirmPasswordPh: 'CONFIRMER LE MOT DE PASSE',
     regAgePh:          '-- SÉLECTIONNEZ VOTRE ÂGE --',
     regGradePh:        '-- CHOISIR VOTRE NIVEAU --',
     regTos:            'J\'ACCEPTE LES CONDITIONS D\'UTILISATION',
@@ -492,6 +495,7 @@ const STRINGS = {
     regErrName:        'ENTREZ VOTRE INDICATIF',
     regErrEmail:       'EMAIL INVALIDE',
     regErrPassword:    'MOT DE PASSE 6 CAR. MIN.',
+    regErrPasswordMatch: 'LES MOTS DE PASSE NE CORRESPONDENT PAS',
     regErrAge:         'SÉLECTIONNEZ VOTRE ÂGE',
     regErrGrade:       'CHOISISSEZ VOTRE NIVEAU',
     regErrTos:         'ACCEPTEZ LES CONDITIONS',
@@ -524,7 +528,7 @@ const STRINGS = {
   },
 };
 
-let _lang = localStorage.getItem('jexongo_lang') || 'en';
+let _lang = localStorage.getItem('jexongo_lang') || 'fr';
 
 export function getLang() { return _lang; }
 

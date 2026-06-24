@@ -11,13 +11,14 @@ import { getPrestigeBadgeHTML } from '../data/prestige.js';
 import { getLevel } from '../data/levels.js';
 import { SFX } from '../audio/sound.js';
 import { preloadBiome } from '../game/sprites.js';
+import { shouldShowIntroBriefing, showIntroBriefing } from './intro-briefing.js';
 import { initBackground, updateBackground, drawBackground } from '../game/background.js';
 import { trackMission } from '../systems/daily.js';
 import { getPilotGrade } from '../data/pilots.js';
 import { applyAgeModifiers } from '../systems/age-modifiers.js';
 import { calcSpeedXP } from '../systems/xp.js';
-import { save } from '../utils/storage.js';
-import { t } from '../i18n.js';
+import { load, save } from '../utils/storage.js';
+import { t, getLang } from '../i18n.js';
 import {
   isTouchMobile, gameCanvasDpr, GAME_FPS_TOUCH, MAX_ENEMY_MISSILES_TOUCH,
 } from '../utils/device.js';
@@ -35,15 +36,469 @@ const GRADE_PROFILES = {
   6: { ops: ['+', '-', '*', '/'], cap: 500, mCap: 15 }, // challenge level
 };
 
+const REASONABLE_GRADE_PROFILES = {
+  1: { ops: ['+'],                cap: 20,  mCap: 4  },
+  2: { ops: ['+', '-'],           cap: 30,  mCap: 5  },
+  3: { ops: ['+', '-', '*'],      cap: 45,  mCap: 7  },
+  4: { ops: ['+', '-', '*', '/'], cap: 70,  mCap: 9  },
+  5: { ops: ['+', '-', '*', '/'], cap: 100, mCap: 11 },
+  6: { ops: ['+', '-', '*', '/'], cap: 140, mCap: 12 },
+};
+
+function normalizeOps(ops) {
+  const map = {
+    '+': '+', add: '+', addition: '+',
+    '-': '-', sub: '-', subtraction: '-',
+    '*': '*', x: '*', '×': '*', mul: '*', multiplication: '*',
+    '/': '/', '÷': '/', div: '/', division: '/',
+  };
+  const list = Array.isArray(ops) ? ops : [ops];
+  return [...new Set(list.map(op => map[String(op || '').toLowerCase().trim()]).filter(Boolean))];
+}
+
 function applyGradeToQuestion(ops, cap, mCap, grade) {
-  if (!grade) return { ops, cap, mCap };
-  const p = GRADE_PROFILES[grade] || GRADE_PROFILES[6];
-  const allowedOps = ops.filter(o => p.ops.includes(o));
+  const selectedOps = G.practiceMode ? normalizeOps(ops) : selectedFocusOperations();
+  const selectedAllowedOps = selectedOps.filter(op => ['+', '-', '*', '/'].includes(op));
+  if (!grade && !selectedAllowedOps.length) return { ops, cap, mCap };
+  const p = REASONABLE_GRADE_PROFILES[grade] || REASONABLE_GRADE_PROFILES[6];
+  // Pilot setup choices apply for every grade; grade only keeps the numbers reasonable.
+  const allowedOps = selectedAllowedOps.length
+    ? selectedAllowedOps
+    : ops.filter(o => p.ops.includes(o));
+  const needsTables = allowedOps.some(op => op === '*' || op === '/');
+  const selectedCap = Math.min(cap, p.cap);
+  const selectedMCap = needsTables
+    ? Math.max(2, Math.min(mCap || p.mCap || 12, p.mCap))
+    : Math.min(mCap, p.mCap);
   return {
     ops:  allowedOps.length ? allowedOps : ['+'],
-    cap:  Math.min(cap,  p.cap),
-    mCap: Math.min(mCap, p.mCap),
+    cap:  selectedCap,
+    mCap: selectedMCap,
   };
+}
+
+function selectedFocusOperations() {
+  const list = Array.isArray(G.focusOperations) && G.focusOperations.length
+    ? G.focusOperations
+    : G.focusOperation ? [G.focusOperation] : [];
+  return [...new Set(list.filter(Boolean))];
+}
+
+function applyOnboardingFocus(ops) {
+  const selectedOps = selectedFocusOperations();
+  const focusOps = selectedOps.length ? selectedOps : [];
+  if (G.practiceMode || !focusOps.length) return ops;
+  return [...focusOps, ...focusOps, ...focusOps];
+}
+
+function applyOnboardingLevelLength(cfg) {
+  if (G.practiceMode || cfg.isBossLevel) return cfg;
+  const next = { ...cfg };
+  if (G.onboardingLevelLength === 'short') {
+    next.questionCount = Math.max(3, cfg.questionCount - 2);
+  } else if (G.onboardingLevelLength === 'long') {
+    next.questionCount = cfg.questionCount + 2;
+  }
+  return next;
+}
+
+function getOnboardingTimerBonus() {
+  let bonus = 0;
+  if (G.likesMath === false) bonus += 4;
+  if (G.pendingPlacement) bonus += 2;
+  return bonus;
+}
+
+function isTutorialActive() {
+  return _tutorialActive && G.tutorialMode;
+}
+
+function shouldForceIntroBriefingBeforeFirstRound() {
+  if (!isTutorialActive()) return false;
+  const progress = G.tutorialProgress || load('tutorialProgress', null);
+  const round = progress?.round || _tutorialRound || 1;
+  const answered = progress?.questionsAnswered || G.questionsAnswered || 0;
+  return round === 1 && answered === 0;
+}
+
+function introLang() {
+  return getLang();
+}
+
+const TUTORIAL_COPY = {
+  en: {
+    round1Label: 'TUTORIAL ROUND 1 - EASY',
+    round2Label: 'TUTORIAL ROUND 2 - SPEED',
+    round1Hint: 'No timer. No game over. Choose the best answer.',
+    round2Hint: 'Timer on. Harder questions. Show your level.',
+    good: ['Nice shot!', 'Good answer!', 'Captain Jexongo approves!'],
+    bad: ['Not this one. Look at the equation.', 'Good try. Captain shows the answer.'],
+    timeout: ['Time is up. Watch the board.', 'Too slow. Try the next one.'],
+    captain: 'CAPTAIN JEXONGO',
+    starting: 'TUTORIAL STARTING',
+    lookBoard: 'Look at the equation board.',
+    tapAnswer: 'Tap the correct answer case to shoot.',
+    round1Rules: 'Round 1 has no timer and no game over.',
+    computer: 'COMPUTER',
+    phone: 'PHONE',
+    arrows: 'or arrow keys',
+    phoneMove: 'move with the fighter',
+    continue: 'CONTINUE',
+    round1Complete: 'ROUND 1 COMPLETE',
+    round2Harder: 'Round 2 is faster and harder.',
+    round2Detail: 'Timer is ON. Questions use bigger numbers and more mixed operations.',
+    startRound2: 'START ROUND 2',
+    planMessage: (level, weakName) => `Plan JexonGo: start level ${level}, practice ${weakName}, then increase speed.`,
+    tipSlow: 'Take extra time first, then train speed.',
+    tipReady: 'Accuracy is ready. Train speed next.',
+    ops: { '+': 'additions', '-': 'subtractions', '*': 'multiplications', '/': 'divisions' },
+  },
+  fr: {
+    round1Label: 'TUTORIEL ROUND 1 - FACILE',
+    round2Label: 'TUTORIEL ROUND 2 - VITESSE',
+    round1Hint: 'Pas de timer. Pas de game over. Choisis la bonne reponse.',
+    round2Hint: 'Timer active. Questions plus difficiles. Montre ton niveau.',
+    good: ['Beau tir!', 'Bonne reponse!', 'Capitaine Jexongo approuve!'],
+    bad: ["Pas celle-la. Regarde l'equation.", 'Bon essai. Le capitaine montre la reponse.'],
+    timeout: ['Temps termine. Regarde le tableau.', 'Trop lent. Essaie la prochaine.'],
+    captain: 'CAPITAINE JEXONGO',
+    starting: 'DEBUT DU TUTORIEL',
+    lookBoard: "Regarde le tableau d'equation.",
+    tapAnswer: 'Tape la bonne case pour tirer.',
+    round1Rules: 'Round 1 sans timer et sans game over.',
+    computer: 'ORDINATEUR',
+    phone: 'TELEPHONE',
+    arrows: 'ou les fleches',
+    phoneMove: "bouge avec l'avion",
+    continue: 'CONTINUER',
+    round1Complete: 'ROUND 1 COMPLETE',
+    round2Harder: 'Le round 2 est plus rapide et plus difficile.',
+    round2Detail: 'Timer active. Questions avec plus grands nombres et operations melangees.',
+    startRound2: 'COMMENCER ROUND 2',
+    planMessage: (level, weakName) => `Plan JexonGo: commence niveau ${level}, pratique ${weakName}, puis augmente la vitesse.`,
+    tipSlow: "Prends plus de temps d'abord, puis entraine la vitesse.",
+    tipReady: 'La precision est prete. Entraine la vitesse maintenant.',
+    ops: { '+': 'additions', '-': 'soustractions', '*': 'multiplications', '/': 'divisions' },
+  },
+};
+
+function tutorialCopy() {
+  return TUTORIAL_COPY[introLang()];
+}
+
+function emptyTutorialStats() {
+  return { total: 0, correct: 0, timeouts: 0, ops: {} };
+}
+
+function getStoredTutorialProgress() {
+  const progress = G.tutorialProgress || load('tutorialProgress', null);
+  return progress?.active ? progress : null;
+}
+
+function saveTutorialProgress() {
+  if (!isTutorialActive()) return;
+  G.tutorialProgress = {
+    active: true,
+    round: _tutorialRound,
+    questionsAnswered: G.questionsAnswered,
+    correctAnswers: G.correctAnswers,
+    stats: _tutorialStats || emptyTutorialStats(),
+    currentLevel: G.currentLevel,
+  };
+  save('tutorialProgress', G.tutorialProgress);
+  save('tutorialMode', true);
+}
+
+function clearTutorialProgress() {
+  G.tutorialProgress = null;
+  save('tutorialProgress', null);
+}
+
+function tutorialQuestionTarget() {
+  return 10;
+}
+
+function tutorialAgeProfile() {
+  const grade = Math.min(6, Math.max(1, Number(G.onboardingGrade || G.playerGrade || 1)));
+  const profiles = {
+    1: [
+      { ops: ['+'], cap: 5, mCap: 0 },
+      { ops: ['+'], cap: 8, mCap: 0 },
+    ],
+    2: [
+      { ops: ['+'], cap: 8, mCap: 0 },
+      { ops: ['+', '-'], cap: 12, mCap: 0 },
+    ],
+    3: [
+      { ops: ['+', '-'], cap: 15, mCap: 0 },
+      { ops: ['+', '-', '*'], cap: 20, mCap: 4 },
+    ],
+    4: [
+      { ops: ['+', '-', '*'], cap: 25, mCap: 5 },
+      { ops: ['+', '-', '*', '/'], cap: 35, mCap: 6 },
+    ],
+    5: [
+      { ops: ['+', '-', '*', '/'], cap: 45, mCap: 7 },
+      { ops: ['+', '-', '*', '/'], cap: 60, mCap: 8 },
+    ],
+    6: [
+      { ops: ['+', '-', '*', '/'], cap: 60, mCap: 8 },
+      { ops: ['+', '-', '*', '/'], cap: 80, mCap: 10 },
+    ],
+  };
+  return profiles[grade][_tutorialRound === 1 ? 0 : 1];
+}
+
+function addReasonableFocusOp(ops) {
+  const missingFocus = selectedFocusOperations().filter(op => !ops.includes(op));
+  if (!missingFocus.length) return ops;
+  return [...ops, ...missingFocus];
+}
+
+function focusWeightedOps(ops) {
+  const withFocus = addReasonableFocusOp(ops);
+  const focusOps = selectedFocusOperations().filter(op => withFocus.includes(op));
+  if (!focusOps.length) return withFocus;
+  return [...focusOps, ...focusOps, ...focusOps, ...focusOps];
+}
+
+function tutorialMathConfig(ops, cap, mCap) {
+  if (!isTutorialActive()) return { ops: applyOnboardingFocus(ops), cap, mCap };
+  const profile = tutorialAgeProfile();
+  const selectedOps = selectedFocusOperations();
+  const questionOps = selectedOps.length ? selectedOps : focusWeightedOps(profile.ops);
+  const needsTables = questionOps.some(op => op === '*' || op === '/');
+  return {
+    ops: questionOps,
+    cap: profile.cap,
+    mCap: needsTables ? Math.max(2, profile.mCap || Math.min(4, profile.cap)) : profile.mCap,
+  };
+}
+
+function updateTutorialHUD() {
+  const hud = document.getElementById('tutorial-hud');
+  if (!hud) return;
+  hud.classList.toggle('hidden', !isTutorialActive());
+  if (!isTutorialActive()) return;
+  const copy = tutorialCopy();
+  const target = tutorialQuestionTarget();
+  const progress = Math.min(target, G.questionsAnswered);
+  const pct = Math.min(100, (progress / target) * 100);
+  $('tutorial-round-label').textContent = _tutorialRound === 1 ? copy.round1Label : copy.round2Label;
+  $('tutorial-progress-label').textContent = `${progress}/${target}`;
+  $('tutorial-progress-fill').style.width = `${pct}%`;
+  $('tutorial-hint').textContent = _tutorialRound === 1 ? copy.round1Hint : copy.round2Hint;
+}
+
+function recordTutorialAnswer(op, correct, timedOut = false) {
+  if (!isTutorialActive() || !_tutorialStats) return;
+  _tutorialStats.total++;
+  const bucket = _tutorialStats.ops[op] || { total: 0, correct: 0 };
+  bucket.total++;
+  if (correct) bucket.correct++;
+  _tutorialStats.ops[op] = bucket;
+  if (correct) _tutorialStats.correct++;
+  if (timedOut) _tutorialStats.timeouts++;
+  saveTutorialProgress();
+}
+
+function tutorialRoundProgress() {
+  const target = tutorialQuestionTarget();
+  const correct = Math.max(0, Math.min(target, G.correctAnswers));
+  const answered = Math.max(0, Math.min(target, G.questionsAnswered));
+  const pct = Math.round((correct / Math.max(1, answered || target)) * 100);
+  return { target, correct, answered, pct };
+}
+
+function showTutorialFeedback(correct, timedOut = false) {
+  if (!isTutorialActive()) return;
+  const copy = tutorialCopy();
+  const panel = $('tutorial-feedback');
+  const messages = correct
+    ? copy.good
+    : timedOut
+      ? copy.timeout
+      : copy.bad;
+  const msg = messages[Math.floor(Math.random() * messages.length)];
+  panel.innerHTML = `
+    <div class="tutorial-feedback-card ${correct ? 'tutorial-feedback-good' : 'tutorial-feedback-bad'}">
+      <span class="tutorial-feedback-title">${copy.captain}</span>
+      <span>${msg}</span>
+    </div>
+  `;
+  panel.classList.remove('hidden');
+  clearTimeout(panel._hideTimer);
+  panel._hideTimer = setTimeout(() => panel.classList.add('hidden'), 1300);
+}
+
+function showStartCountdown(done) {
+  _cutsceneActive = true;
+  _stopGameLoop();
+  G.enemyMissiles = [];
+  const targetX = canvas.width / 2;
+  const targetY = canvas.height * 0.5;
+  _countdownPlaneAnim = {
+    start: performance.now(),
+    duration: 2600,
+    fromX: targetX,
+    fromY: canvas.height + getPlayerSize() * 0.9,
+    toX: targetX,
+    toY: targetY,
+  };
+  drawCountdownSafeFrame();
+  _startGameLoop(_sessionId);
+  const el = $('tutorial-countdown');
+  const copy = isTutorialActive()
+    ? tutorialCopy()
+    : {
+        starting: getLang() === 'fr' ? 'MISSION EN APPROCHE' : 'MISSION STARTING',
+        captain: getLang() === 'fr' ? 'GO' : 'GO',
+      };
+  let count = 3;
+  el.innerHTML = `<span class="tutorial-count-caption">${copy.starting}</span><strong>${count}</strong>`;
+  SFX.countdownTick?.();
+  el.classList.remove('hidden');
+  const tickDown = () => {
+    count--;
+    if (count <= 0) {
+      el.innerHTML = `<span class="tutorial-count-caption">${copy.captain}</span><strong>GO</strong>`;
+      SFX.countdownGo?.();
+      setTimeout(() => {
+        el.classList.add('hidden');
+        if (_countdownPlaneAnim) {
+          G.player.x = _countdownPlaneAnim.toX;
+          G.player.y = _countdownPlaneAnim.toY;
+        }
+        _countdownPlaneAnim = null;
+        _cutsceneActive = false;
+        _lastFrameTs = 0;
+        _startGameLoop(_sessionId);
+        done();
+      }, 420);
+      return;
+    }
+    el.classList.remove('tutorial-count-pop');
+    void el.offsetWidth;
+    el.innerHTML = `<span class="tutorial-count-caption">${copy.starting}</span><strong>${count}</strong>`;
+    el.classList.add('tutorial-count-pop');
+    SFX.countdownTick?.();
+    setTimeout(tickDown, 760);
+  };
+  setTimeout(tickDown, 760);
+}
+
+const showTutorialCountdown = showStartCountdown;
+
+function showCaptainTutorialGuide(done) {
+  if (!isTutorialActive() || _tutorialRound !== 1 || G.questionsAnswered > 0) {
+    done();
+    return;
+  }
+  _cutsceneActive = true;
+  _stopGameLoop();
+  const copy = tutorialCopy();
+  const panel = $('tutorial-captain-guide');
+  panel.innerHTML = `
+    <div class="tutorial-captain-card">
+      <img class="tutorial-captain-plane" src="/assets/ships/player/f18.png" alt="">
+      <div class="tutorial-captain-text">
+        <div class="tutorial-captain-title">${copy.captain}</div>
+      </div>
+      <button id="tutorial-guide-start" class="btn btn-primary" type="button">${copy.continue}</button>
+    </div>
+  `;
+  panel.classList.remove('hidden');
+  $('tutorial-guide-start').onclick = () => {
+    panel.classList.add('hidden');
+    _cutsceneActive = false;
+    _lastFrameTs = 0;
+    _startGameLoop(_sessionId);
+    done();
+  };
+}
+
+function showRoundOneSummary(done) {
+  if (!isTutorialActive()) {
+    done();
+    return;
+  }
+  _cutsceneActive = true;
+  _stopGameLoop();
+  if (G.timerInterval) {
+    clearInterval(G.timerInterval);
+    G.timerInterval = null;
+  }
+  saveTutorialProgress();
+  const copy = tutorialCopy();
+  const panel = $('tutorial-round-summary');
+  const progress = tutorialRoundProgress();
+  panel.innerHTML = `
+    <div class="tutorial-summary-card">
+      <div class="tutorial-captain-title">${copy.round1Complete}</div>
+      <div class="tutorial-summary-score">${progress.correct}/${progress.target}</div>
+      <div class="tutorial-summary-bar"><span style="width:${Math.min(100, progress.pct)}%"></span></div>
+      <p>${copy.round2Harder}</p>
+      <p>${copy.round2Detail}</p>
+      <button id="tutorial-summary-continue" class="btn btn-primary" type="button">${copy.startRound2}</button>
+    </div>
+  `;
+  panel.classList.remove('hidden');
+  $('tutorial-summary-continue').onclick = () => {
+    panel.classList.add('hidden');
+    _cutsceneActive = false;
+    _lastFrameTs = 0;
+    _startGameLoop(_sessionId);
+    done();
+  };
+}
+
+function buildTutorialPlan() {
+  const stats = _tutorialStats || { total: G.questionsAnswered, correct: G.correctAnswers, timeouts: 0, ops: {} };
+  const copy = tutorialCopy();
+  const total = Math.max(1, stats.total || G.questionsAnswered);
+  const score = Math.round((stats.correct / total) * 100);
+  const weak = Object.entries(stats.ops)
+    .sort((a, b) => (a[1].correct / Math.max(1, a[1].total)) - (b[1].correct / Math.max(1, b[1].total)))[0]?.[0] || selectedFocusOperations()[0] || '+';
+  const weakName = copy.ops[weak] || 'math';
+  const grade = Math.min(6, Math.max(1, Number(G.onboardingGrade || G.playerGrade || 1)));
+  const levelByGrade = {
+    1: { low: 1,  mid: 3,  high: 5  },
+    2: { low: 2,  mid: 5,  high: 8  },
+    3: { low: 4,  mid: 8,  high: 12 },
+    4: { low: 6,  mid: 11, high: 16 },
+    5: { low: 8,  mid: 14, high: 20 },
+    6: { low: 10, mid: 18, high: 26 },
+  };
+  const gradeLevels = levelByGrade[grade];
+  const startLevel = score >= 80 ? gradeLevels.high : score >= 55 ? gradeLevels.mid : gradeLevels.low;
+  return {
+    score,
+    focusOperation: weak,
+    startLevel,
+    message: copy.planMessage(startLevel, weakName),
+    tips: stats.timeouts > 1 ? copy.tipSlow : copy.tipReady,
+  };
+}
+
+function showTutorialAnalysis() {
+  const plan = buildTutorialPlan();
+  const originalFocusOps = selectedFocusOperations();
+  G.tutorialPlan = plan;
+  G.focusOperation = plan.focusOperation;
+  G.focusOperations = originalFocusOps.length ? originalFocusOps : [plan.focusOperation];
+  G.currentLevel = plan.startLevel;
+  G.pendingPlacement = false;
+  G.tutorialMode = false;
+  G.postTutorialConnectPrompt = true;
+  clearTutorialProgress();
+  save('tutorialPlan', plan);
+  save('focusOperation', G.focusOperation || '');
+  save('focusOperations', G.focusOperations || []);
+  save('currentLevel', G.currentLevel);
+  save('pendingPlacement', false);
+  save('tutorialMode', false);
+  save('postTutorialConnectPrompt', true);
+  endLevel(true);
 }
 
 let canvas, ctx, levelCfg;
@@ -53,6 +508,7 @@ let shakeFrames = 0;
 let _onComplete = null;
 let spawnTimer  = 0;
 let _cutsceneActive = false;
+let _countdownPlaneAnim = null;
 let _maxLives = 3;
 let _fireTick    = 0;
 let _bankTilt    = 0;   // current tilt in radians (smoothed)
@@ -66,6 +522,11 @@ let _lastLiveryId     = null;
 let spawnRate   = 150;
 let maxEnemies  = 5;
 let _sessionId    = 0;
+let _activeSessionId = 0;
+let _gamePausedFromQuit = false;
+let _tutorialActive = false;
+let _tutorialRound = 1;
+let _tutorialStats = null;
 let _invincible   = 0;
 let _stealthActive  = false;
 let _stealthTicks   = 0;   // 60 ticks = 1 second
@@ -297,15 +758,35 @@ function _stopGameLoop() {
   if (G.mobileLoop) { clearInterval(G.mobileLoop); G.mobileLoop = null; }
 }
 
+function _isActiveSid(sid = _activeSessionId) {
+  return !!sid && _sessionId === sid && _activeSessionId === sid;
+}
+
+function _canRunSid(sid = _activeSessionId) {
+  return _isActiveSid(sid) && !_gamePausedFromQuit;
+}
+
+function _queueDesktopFrame(sid = _activeSessionId) {
+  if (isTouchMobile() || !_canRunSid(sid)) return;
+  G.animFrame = requestAnimationFrame(ts => {
+    if (!_canRunSid(sid)) {
+      G.animFrame = null;
+      return;
+    }
+    frame(ts);
+  });
+}
+
 function _startGameLoop(sid) {
   _stopGameLoop();
+  if (!_canRunSid(sid)) return;
   if (isTouchMobile()) {
     G.mobileLoop = setInterval(() => {
-      if (_sessionId !== sid) { clearInterval(G.mobileLoop); G.mobileLoop = null; return; }
+      if (!_canRunSid(sid)) { clearInterval(G.mobileLoop); G.mobileLoop = null; return; }
       frame(performance.now());
     }, 1000 / GAME_FPS_TOUCH);
   } else {
-    G.animFrame = requestAnimationFrame(frame);
+    _queueDesktopFrame(sid);
   }
 }
 
@@ -323,7 +804,7 @@ function resize() {
   const qbox = _canvasQboxH();
   G.player.x = Math.max(16, Math.min(bw - 16,  G.player.x || bw / 2));
   G.player.y = Math.max(bh * 0.08, Math.min(bh - qbox - 80, G.player.y || bh - qbox - 60));
-  if (!_cutsceneActive && !isTouchMobile()) G.animFrame = requestAnimationFrame(frame);
+  if (!_cutsceneActive) _queueDesktopFrame();
 }
 
 function placePlayer() {
@@ -347,8 +828,48 @@ function drawLoadingScreen() {
   ctx.restore();
 }
 
+function drawCountdownSafeFrame() {
+  ctx.globalAlpha = 1;
+  ctx.imageSmoothingEnabled = false;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  updateBackground();
+  drawBackground(ctx, canvas);
+  if (_speedLines.length === 0) initSpeedLines(canvas.width, canvas.height);
+  drawSpeedLines(ctx, canvas.width, canvas.height);
+  const plane = countdownPlanePosition();
+  drawAircraftSprite(ctx, G.activeAircraft, plane.x, plane.y, _shipFrame, 1, 0);
+}
+
+function playerFloatOffset() {
+  return {
+    x: Math.sin(tick * 0.035) * 1.2,
+    y: Math.sin(tick * 0.045) * 4,
+  };
+}
+
+function easeOutCubic(t) {
+  return 1 - Math.pow(1 - t, 3);
+}
+
+function countdownPlanePosition(now = performance.now()) {
+  const float = playerFloatOffset();
+  if (!_countdownPlaneAnim) {
+    return { x: G.player.x + float.x, y: G.player.y + float.y };
+  }
+  const t = Math.min(1, Math.max(0, (now - _countdownPlaneAnim.start) / _countdownPlaneAnim.duration));
+  const eased = easeOutCubic(t);
+  return {
+    x: _countdownPlaneAnim.fromX + (_countdownPlaneAnim.toX - _countdownPlaneAnim.fromX) * eased + float.x,
+    y: _countdownPlaneAnim.fromY + (_countdownPlaneAnim.toY - _countdownPlaneAnim.fromY) * eased + float.y,
+  };
+}
+
 // ── GAME LOOP ───────────────────────────────────────────────────────────────
 function frame(ts = 0) {
+  if (!_canRunSid()) {
+    G.animFrame = null;
+    return;
+  }
   _lastFrameTs = ts;
 
   tick++;
@@ -358,7 +879,7 @@ function frame(ts = 0) {
   ctx.imageSmoothingEnabled = false;
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  const shaking = shakeFrames > 0;
+  const shaking = !_cutsceneActive && shakeFrames > 0;
   if (shaking) {
     ctx.save();
     ctx.translate((Math.random() - 0.5) * 7, (Math.random() - 0.5) * 7);
@@ -378,6 +899,14 @@ function frame(ts = 0) {
   // ── Speed lines ────────────────────────────────────────────────────────
   if (_speedLines.length === 0) initSpeedLines(canvas.width, canvas.height);
   drawSpeedLines(ctx, canvas.width, canvas.height);
+
+  if (_cutsceneActive) {
+    const plane = countdownPlanePosition(ts || performance.now());
+    drawAircraftSprite(ctx, G.activeAircraft, plane.x, plane.y, _shipFrame, 1, 0);
+    if (shaking) ctx.restore();
+    _queueDesktopFrame();
+    return;
+  }
 
   // ── Enemy spawn ────────────────────────────────────────────────────────
   spawnTimer--;
@@ -587,10 +1116,13 @@ function frame(ts = 0) {
   const activeLiveryData = _cachedLiveryData;
   const skinFilter    = activeLiveryData?.filter || '';
   const skinAircraft  = (activeSkinData ?? activeLiveryData)?.aircraft ?? G.activeAircraft;
+  const playerFloat = playerFloatOffset();
+  const playerDrawX = G.player.x + playerFloat.x;
+  const playerDrawY = G.player.y + playerFloat.y;
 
   if (!isTouchMobile()) {
     _fireTick++;
-    drawEngineFire(ctx, G.activeAircraft, G.player.x, G.player.y, _fireTick, bankAngle);
+    drawEngineFire(ctx, G.activeAircraft, playerDrawX, playerDrawY, _fireTick, bankAngle);
   }
 
   const _inGameImg = activeSkinData?.skinImg || activeSkinData?.offerImg;
@@ -601,15 +1133,15 @@ function frame(ts = 0) {
       const sz = getPlayerSize();
       ctx.save();
       if (flashAlpha !== 1) ctx.globalAlpha = flashAlpha;
-      ctx.translate(G.player.x, G.player.y);
+      ctx.translate(playerDrawX, playerDrawY);
       if (bankAngle) ctx.rotate(bankAngle);
       ctx.drawImage(cached, -sz / 2, -sz / 2, sz, sz);
       ctx.restore();
     } else {
-      drawAircraftSprite(ctx, skinAircraft, G.player.x, G.player.y, _shipFrame, flashAlpha, bankAngle, skinFilter);
+      drawAircraftSprite(ctx, skinAircraft, playerDrawX, playerDrawY, _shipFrame, flashAlpha, bankAngle, skinFilter);
     }
   } else {
-    drawAircraftSprite(ctx, skinAircraft, G.player.x, G.player.y, _shipFrame, flashAlpha, bankAngle, skinFilter);
+    drawAircraftSprite(ctx, skinAircraft, playerDrawX, playerDrawY, _shipFrame, flashAlpha, bankAngle, skinFilter);
   }
 
   ctx.globalAlpha = 1;
@@ -694,7 +1226,7 @@ function frame(ts = 0) {
   ctx.fillStyle = _topGrad;
   ctx.fillRect(0, 0, canvas.width, fadeH);
 
-  if (!_cutsceneActive && !isTouchMobile()) G.animFrame = requestAnimationFrame(frame);
+  if (!_cutsceneActive) _queueDesktopFrame();
 }
 
 // ── COMBAT ──────────────────────────────────────────────────────────────────
@@ -780,7 +1312,23 @@ function onMissileHit(enemy, missile) {
 // ── QUESTION CYCLE ───────────────────────────────────────────────────────────
 function nextQuestion() {
   if (_transitioning) return;
-  if (!levelCfg.isBossLevel && G.questionsAnswered >= levelCfg.questionCount) { endLevel(true); return; }
+  const questionTarget = isTutorialActive() ? tutorialQuestionTarget() : levelCfg.questionCount;
+  if (!levelCfg.isBossLevel && G.questionsAnswered >= questionTarget) {
+    if (isTutorialActive() && _tutorialRound === 1) {
+      showRoundOneSummary(() => {
+        _tutorialRound = 2;
+        G.questionsAnswered = 0;
+        G.correctAnswers = 0;
+        saveTutorialProgress();
+        updateTutorialHUD();
+        showTutorialCountdown(nextQuestion);
+      });
+      return;
+    }
+    if (isTutorialActive()) { showTutorialAnalysis(); return; }
+    endLevel(true);
+    return;
+  }
   _transitioning = true;
   G.answerLocked = false;
   const _nqSid = _sessionId; // capture session at start of transition
@@ -796,7 +1344,7 @@ function nextQuestion() {
   // Undim and resume game loop
   const overlay = $('game-pause-overlay');
   overlay.classList.remove('dimmed');
-  if (!G.animFrame && !_cutsceneActive) G.animFrame = requestAnimationFrame(frame);
+  if (!G.animFrame && !_cutsceneActive) _queueDesktopFrame(_nqSid);
 
   const reveal = $('correct-answer-reveal');
   const qbox   = $('question-box');
@@ -816,7 +1364,8 @@ function nextQuestion() {
     const rawCap  = G.practiceMode ? 20 : levelCfg.mathCap;
     const rawMCap = G.practiceMode ? 12 : levelCfg.mathMultCap;
     const { ops, cap, mCap } = applyGradeToQuestion(rawOps, rawCap, rawMCap, G.playerGrade);
-    G.question = newQuestion(ops, cap, mCap);
+    const mathCfg = tutorialMathConfig(ops, cap, mCap);
+    G.question = newQuestion(mathCfg.ops, mathCfg.cap, mathCfg.mCap);
     $('question-text').textContent = G.question.text;
     const btns = $('answer-buttons');
     btns.innerHTML = '';
@@ -832,33 +1381,53 @@ function nextQuestion() {
     qbox.classList.remove('fading');
     qbox.classList.add('appearing');
     setTimeout(() => { qbox.classList.remove('appearing'); _transitioning = false; }, 730);
+    updateTutorialHUD();
     startTimer();
   }, 620);
 }
 
-function startTimer() {
+function startTimer(resetTime = true) {
   if (G.timerInterval) clearInterval(G.timerInterval);
 
   // Practice unlimited mode — freeze timer bar, no countdown
   if (G.practiceMode && G.practiceTimeLimit === null) {
-    G.timeLeft  = 9999;
-    _timerTotal = 9999;
+    if (resetTime) {
+      G.timeLeft  = 9999;
+      _timerTotal = 9999;
+    }
     $('timer-bar').style.width      = '100%';
     $('timer-bar').style.background = 'var(--dim, #334155)';
     return;
   }
+  if (isTutorialActive() && _tutorialRound === 1) {
+    if (resetTime) {
+      G.timeLeft  = 9999;
+      _timerTotal = 9999;
+    }
+    $('timer-bar-wrap').classList.add('tutorial-no-timer');
+    $('timer-bar').style.width      = '100%';
+    $('timer-bar').style.background = 'var(--dim, #334155)';
+    return;
+  }
+  $('timer-bar-wrap').classList.remove('tutorial-no-timer');
 
   const aircraft   = AIRCRAFT[G.activeAircraft] || AIRCRAFT.t6;
   const baseTime   = G.practiceMode
     ? G.practiceTimeLimit
     : levelCfg.timeLimit + (levelCfg.weather?.timeMod || 0);
+  const adjustedBaseTime = isTutorialActive()
+    ? Math.max(9, baseTime + 4)
+    : G.practiceMode ? baseTime : baseTime + getOnboardingTimerBonus();
   const timerLimit = aircraft.timerOverride != null
-    ? Math.min(aircraft.timerOverride, baseTime)
-    : baseTime;
-  G.timeLeft  = Math.max(3, timerLimit);
-  _timerTotal = G.timeLeft;
-  $('timer-bar').style.width      = '100%';
-  $('timer-bar').style.background = 'var(--accent)';
+    ? Math.min(aircraft.timerOverride, adjustedBaseTime)
+    : adjustedBaseTime;
+  if (resetTime) {
+    G.timeLeft  = Math.max(3, timerLimit);
+    _timerTotal = G.timeLeft;
+  }
+  const currentPct = resetTime ? 100 : Math.max(0, G.timeLeft / _timerTotal) * 100;
+  $('timer-bar').style.width      = currentPct + '%';
+  $('timer-bar').style.background = currentPct < 25 ? 'var(--red)' : currentPct < 55 ? 'var(--yellow)' : 'var(--accent)';
   _runTimer();
 }
 
@@ -867,7 +1436,11 @@ function _runTimer() {
   const bar      = $('timer-bar');
   const timerSid = _sessionId;
   G.timerInterval = setInterval(() => {
-    if (_sessionId !== timerSid) { clearInterval(G.timerInterval); return; }
+    if (!_isActiveSid(timerSid) || _gamePausedFromQuit) {
+      clearInterval(G.timerInterval);
+      G.timerInterval = null;
+      return;
+    }
     if (G.answerLocked) return;
     G.timeLeft -= 0.1;
     const pct = Math.max(0, G.timeLeft / _timerTotal) * 100;
@@ -893,7 +1466,9 @@ function handleAnswer(choice, btn) {
     SFX.correct();
     G.correctAnswers++;
     G.questionsAnswered++;
-    G.sessionXP += calcSpeedXP(G.timeLeft, _timerTotal);
+    recordTutorialAnswer(G.question.op, true);
+    showTutorialFeedback(true);
+    G.sessionXP += calcSpeedXP(G.timeLeft, _timerTotal) + (G.likesMath ? 1 : 0);
     G.streak++;
     updateStreakHUD();
     if (G.streak === 3 || G.streak === 5) SFX.streak();
@@ -943,16 +1518,17 @@ function handleAnswer(choice, btn) {
                        : 1;
     const missileColor = G.prestige >= 3 ? '#a855f7' : '#00d4ff';
     const target       = nearestEnemy();
+    const shotSid      = _sessionId;
     if (target) {
       if (aircraft.ability === 'multiShot' || aircraft.ability === 'multiStealth') {
         nearestEnemies(2).forEach((t, i) => {
           G.missiles.push(createMissile(G.player.x, G.player.y, t.x, t.y, speed, t.id, missileColor, damage));
-          setTimeout(() => SFX.missile(), i * 60);
+          setTimeout(() => { if (_sessionId === shotSid) SFX.missile(); }, i * 60);
         });
       } else if (aircraft.ability === 'tripleShot') {
         nearestEnemies(3).forEach((t, i) => {
           G.missiles.push(createMissile(G.player.x, G.player.y, t.x, t.y, speed, t.id, missileColor, damage));
-          setTimeout(() => SFX.missile(), i * 60);
+          setTimeout(() => { if (_sessionId === shotSid) SFX.missile(); }, i * 60);
         });
       } else {
         G.missiles.push(createMissile(G.player.x, G.player.y, target.x, target.y, speed, target.id, missileColor, damage));
@@ -962,6 +1538,8 @@ function handleAnswer(choice, btn) {
   } else {
     SFX.wrong();
     G.questionsAnswered++;
+    recordTutorialAnswer(G.question.op, false);
+    showTutorialFeedback(false);
     G.streak = 0;
     updateStreakHUD();
     revealCorrectAnswer();
@@ -975,18 +1553,19 @@ function handleAnswer(choice, btn) {
   }
 
   const sid = _sessionId;
-  const delay = correct ? (_nukeAnim > 0 ? 2000 : 600) : 10000;
+  const delay = correct ? (_nukeAnim > 0 ? 2000 : 600) : (isTutorialActive() ? 1800 : 10000);
   _revealTimer = setTimeout(() => {
     if (_sessionId !== sid) return;
     if (correct) {
-      if (levelCfg.isBossLevel || G.questionsAnswered < levelCfg.questionCount) nextQuestion();
+      if (isTutorialActive()) nextQuestion();
+      else if (levelCfg.isBossLevel || G.questionsAnswered < levelCfg.questionCount) nextQuestion();
       else endLevel(true);
     } else {
       loseLife();
     }
   }, delay);
 
-  if (!correct) {
+  if (!correct && !isTutorialActive()) {
     _skipHandler = () => {
       document.removeEventListener('pointerdown', _skipHandler, true);
       _skipHandler = null;
@@ -1053,13 +1632,16 @@ function handleTimeout() {
   if (G.answerLocked) return;
   G.answerLocked = true;
   G.questionsAnswered++;
+  recordTutorialAnswer(G.question?.op || '+', false, true);
+  showTutorialFeedback(false, true);
   G.streak = 0;
   updateStreakHUD();
   SFX.wrong();
   document.querySelectorAll('.answer-btn').forEach(b => { b.classList.add('wrong'); b.disabled = true; });
   revealCorrectAnswer();
   const sid = _sessionId;
-  _revealTimer = setTimeout(() => { if (_sessionId === sid) loseLife(); }, 10000);
+  _revealTimer = setTimeout(() => { if (_sessionId === sid) loseLife(); }, isTutorialActive() ? 1800 : 10000);
+  if (isTutorialActive()) return;
   _skipHandler = () => {
     document.removeEventListener('pointerdown', _skipHandler, true);
     _skipHandler = null;
@@ -1085,6 +1667,7 @@ function _loadFrames(base, count) {
 
 function playDeathCutscene(onDone) {
   _cutsceneActive = true;
+  const cutSid = _sessionId;
   SFX.stopMusic();
   $('question-box').style.visibility = 'hidden';
   $('game-hud').style.visibility = 'hidden';
@@ -1146,6 +1729,10 @@ function playDeathCutscene(onDone) {
   }
 
   function step() {
+    if (!_isActiveSid(cutSid)) {
+      cancelAnimationFrame(cutRaf);
+      return;
+    }
     phaseTick++;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.globalAlpha = 1;
@@ -1296,6 +1883,15 @@ function playDeathCutscene(onDone) {
 }
 
 function loseLife() {
+  if (isTutorialActive()) {
+    shakeFrames = 6;
+    G.streak = 0;
+    updateStreakHUD();
+    updateTutorialHUD();
+    const sid = _sessionId;
+    setTimeout(() => { if (_sessionId === sid) nextQuestion(); }, 650);
+    return;
+  }
   if (_godMode) {
     shakeFrames = 8;
     _invincible = 120;
@@ -1359,6 +1955,9 @@ function updateStreakHUD() {
 function endLevel(won) {
   _cutsceneActive = false;
   _sessionId++;
+  _activeSessionId = 0;
+  _gamePausedFromQuit = false;
+  G.pausedGameResume = null;
   clearInterval(G.timerInterval);
   _stopGameLoop();
   G.timerInterval = null;
@@ -1405,6 +2004,9 @@ function drawSpeedLines(ctx, cw, ch) {
 
 export function initGame(levelNum, onComplete) {
   _sessionId++;
+  _activeSessionId = _sessionId;
+  _gamePausedFromQuit = false;
+  G.pausedGameResume = null;
   _cutsceneActive = false;
   $('question-box').style.visibility  = '';
   $('game-hud').style.visibility      = '';
@@ -1422,6 +2024,16 @@ export function initGame(levelNum, onComplete) {
   _nukeApplied = false;
   _nukeAnswers = 0;
   _godMode     = false;
+  _tutorialActive = !!G.tutorialMode;
+  const savedTutorial = _tutorialActive ? getStoredTutorialProgress() : null;
+  _tutorialRound = savedTutorial?.round || 1;
+  _tutorialStats = _tutorialActive ? (savedTutorial?.stats || emptyTutorialStats()) : null;
+  document.getElementById('tutorial-analysis')?.classList.add('hidden');
+  document.getElementById('tutorial-countdown')?.classList.add('hidden');
+  document.getElementById('tutorial-feedback')?.classList.add('hidden');
+  document.getElementById('tutorial-captain-guide')?.classList.add('hidden');
+  document.getElementById('tutorial-round-summary')?.classList.add('hidden');
+  document.getElementById('tutorial-hud')?.classList.toggle('hidden', !_tutorialActive);
   _gameCT.clear();
   const godBadge = document.getElementById('hud-godmode');
   if (godBadge) godBadge.classList.add('hidden');
@@ -1434,6 +2046,11 @@ export function initGame(levelNum, onComplete) {
   G.continueState = null;
   resetLevel();
   G.currentLevel = levelNum;
+  if (savedTutorial) {
+    G.currentLevel = savedTutorial.currentLevel || levelNum;
+    G.questionsAnswered = Math.max(0, savedTutorial.questionsAnswered || 0);
+    G.correctAnswers = Math.max(0, savedTutorial.correctAnswers || 0);
+  }
   // Reset SR-71 run tracker when starting level 1 (non-practice)
   if (levelNum === 1 && !G.practiceMode) {
     G.sr71WrongAnswers = 0;
@@ -1443,7 +2060,7 @@ export function initGame(levelNum, onComplete) {
     save('sr71MissileHits',  0);
     save('sr71CleanLevels',  []);
   }
-  levelCfg       = applyAgeModifiers(getLevel(levelNum), G.playerAge);
+  levelCfg       = applyOnboardingLevelLength(applyAgeModifiers(getLevel(levelNum), G.playerAge));
   const aircraft = AIRCRAFT[G.activeAircraft] || AIRCRAFT.t6;
   if (!snap && aircraft.lives) G.lives = aircraft.lives;
   _maxLives = G.lives;
@@ -1467,12 +2084,17 @@ export function initGame(levelNum, onComplete) {
   });
   ro.observe(canvas);
 
-  $('hud-level').textContent = G.practiceMode ? t('practice_label')
+  $('hud-level').textContent = isTutorialActive() ? 'TUTORIAL'
+    : G.practiceMode ? t('practice_label')
     : levelCfg.isBossLevel ? `${t('bossLevel')}${levelNum}` : `${t('level')} ${levelNum}`;
   const _hudPrestige = document.getElementById('hud-prestige');
   if (_hudPrestige) _hudPrestige.innerHTML = getPrestigeBadgeHTML(G.prestige);
 
-  if (G.practiceMode && !G.practiceHearts) {
+  if (isTutorialActive()) {
+    G.lives = 99;
+    _maxLives = 1;
+    $('hud-lives').innerHTML = '<span class="tutorial-safe-life">TRAINING</span>';
+  } else if (G.practiceMode && !G.practiceHearts) {
     $('hud-lives').innerHTML = '<span style="opacity:0.3">∞</span>';
   } else {
     updateLivesHUD();
@@ -1482,31 +2104,58 @@ export function initGame(levelNum, onComplete) {
   }
   updateStreakHUD();
 
-  spawnRate = isTouchMobile() ? Math.max(45, Math.round(levelCfg.spawnRate * 0.72)) : levelCfg.spawnRate;
-  maxEnemies = levelCfg.maxEnemies;
+  spawnRate = isTutorialActive() ? 170 : isTouchMobile() ? Math.max(45, Math.round(levelCfg.spawnRate * 0.72)) : levelCfg.spawnRate;
+  maxEnemies = isTutorialActive() ? 2 : levelCfg.maxEnemies;
   spawnTimer = isTouchMobile() ? 35 : 60;
 
   attachInputListeners();
 
   const quitBtn = $('btn-quit-game');
   quitBtn.onclick = () => {
+    _gamePausedFromQuit = true;
     clearInterval(G.timerInterval);
     G.timerInterval = null;
+    if (_resizeTimer) {
+      clearTimeout(_resizeTimer);
+      _resizeTimer = null;
+    }
+    if (_skipHandler) {
+      document.removeEventListener('pointerdown', _skipHandler, true);
+      _skipHandler = null;
+    }
     _stopGameLoop();
-    SFX.stopSFX();
-    SFX.quitGame();
-    window._gameResume = () => {
-      window._gameResume = null;
-      SFX.stopSFX();
+    _countdownPlaneAnim = null;
+    pointerTarget = null;
+    _jsOrigin = _jsCurrent = null;
+    _touchId  = null;
+    _jsVelX = _jsVelY = 0;
+    velX = 0; velY = 0;
+    Object.keys(keys).forEach(k => keys[k] = false);
+    G.pausedGameResume = () => {
+      if (!_isActiveSid(sid)) return;
+      _gamePausedFromQuit = false;
       showScreen('s-game');
+      SFX.stopSFX();
       SFX.playMusic('game');
-      _runTimer();
+      _lastFrameTs = 0;
+      if (!G.answerLocked) startTimer(false);
       _startGameLoop(sid);
     };
-    $('gameover-title').textContent = 'PAUSED';
-    $('gameover-score').textContent = '';
-    $('btn-retry').textContent = 'CONTINUE';
-    $('btn-go-map').textContent = 'LOBBY';
+    window._gameResume = G.pausedGameResume;
+    SFX.stopSFX();
+    SFX.stopMusic();
+    $('gameover-title').textContent = getLang() === 'fr' ? 'PARTIE ARRETEE' : 'GAME STOPPED';
+    $('gameover-score').textContent = getLang() === 'fr'
+      ? 'Choisis continuer, recommencer ou retourner au lobby.'
+      : 'Choose continue, restart, or go back to the lobby.';
+    const continueBtn = $('btn-continue-game');
+    if (continueBtn) {
+      continueBtn.classList.remove('hidden');
+      continueBtn.textContent = getLang() === 'fr' ? 'CONTINUER' : 'CONTINUE';
+      continueBtn.onclick = () => G.pausedGameResume?.();
+    }
+    $('btn-retry').textContent = getLang() === 'fr' ? 'RECOMMENCER' : 'RETRY';
+    $('btn-go-map').textContent = getLang() === 'fr' ? 'LOBBY' : 'LOBBY';
     showScreen('s-gameover');
   };
 
@@ -1515,7 +2164,7 @@ export function initGame(levelNum, onComplete) {
   const sid = _sessionId;
 
   function tryStart() {
-    if (_sessionId !== sid) return;
+    if (!_isActiveSid(sid)) return;
     const cw = canvas.clientWidth, ch = canvas.clientHeight;
     if (!cw || !ch) { requestAnimationFrame(tryStart); return; }
     _setCanvasSize(cw, ch);
@@ -1524,7 +2173,7 @@ export function initGame(levelNum, onComplete) {
 
     // Animate loading screen while sprites download
     let _loadRaf = requestAnimationFrame(function loadTick() {
-      if (_sessionId !== sid) return;
+      if (!_isActiveSid(sid)) return;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       drawLoadingScreen();
       _loadRaf = requestAnimationFrame(loadTick);
@@ -1532,7 +2181,7 @@ export function initGame(levelNum, onComplete) {
 
     preloadBiome(levelCfg.biome).then(() => {
       cancelAnimationFrame(_loadRaf);
-      if (_sessionId !== sid) return;
+      if (!_isActiveSid(sid)) return;
       initBackground(levelCfg.biome);
       _qboxH = $('question-box').offsetHeight || 180;
       placePlayer();
@@ -1610,7 +2259,18 @@ export function initGame(levelNum, onComplete) {
       }
 
       _startGameLoop(sid);
-      nextQuestion();
+      updateTutorialHUD();
+      const startLevelFlow = () => {
+        _cutsceneActive = false;
+        _lastFrameTs = 0;
+        if (_isActiveSid(sid)) _startGameLoop(sid);
+        showStartCountdown(nextQuestion);
+      };
+      if (shouldForceIntroBriefingBeforeFirstRound() || shouldShowIntroBriefing(levelNum)) {
+        _cutsceneActive = true;
+        _stopGameLoop();
+        showIntroBriefing(startLevelFlow);
+      } else startLevelFlow();
     });
   }
   requestAnimationFrame(tryStart);
@@ -1619,17 +2279,31 @@ export function initGame(levelNum, onComplete) {
   const _onVisibility = () => {
     if (document.hidden) {
       _stopGameLoop();
-    } else if (!_cutsceneActive) {
+    } else if (!_cutsceneActive && _canRunSid(sid)) {
       _lastFrameTs = 0;
       if (isTouchMobile() && !G.mobileLoop) _startGameLoop(sid);
-      else if (!isTouchMobile() && !G.animFrame) G.animFrame = requestAnimationFrame(frame);
+      else if (!isTouchMobile() && !G.animFrame) _queueDesktopFrame(sid);
     }
   };
   document.addEventListener('visibilitychange', _onVisibility);
 
   return () => {
     _sessionId++;
+    _countdownPlaneAnim = null;
+    if (_activeSessionId === sid) _activeSessionId = 0;
+    _gamePausedFromQuit = false;
+    G.pausedGameResume = null;
     clearInterval(G.timerInterval);
+    clearTimeout(_revealTimer);
+    _revealTimer = null;
+    if (_resizeTimer) {
+      clearTimeout(_resizeTimer);
+      _resizeTimer = null;
+    }
+    if (_skipHandler) {
+      document.removeEventListener('pointerdown', _skipHandler, true);
+      _skipHandler = null;
+    }
     _stopGameLoop();
     document.removeEventListener('visibilitychange', _onVisibility);
     G.timerInterval = null;

@@ -151,6 +151,10 @@ export function rollChest() {
 // ── APPLY REWARD TO STATE ─────────────────────────────────────────────────────
 export function applyReward(reward) {
   const newlyUnlocked = [];
+  if (!G.playerRegistered) {
+    reward._locked = true;
+    return newlyUnlocked;
+  }
 
   if (reward.type === 'coins') {
     G.coins = (G.coins || 0) + reward.amount;

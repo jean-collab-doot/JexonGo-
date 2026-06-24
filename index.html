@@ -1,18 +1,17 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <link rel="icon" type="image/png" sizes="32x32" href="./favicon.png">
-  <link rel="icon" type="image/png" sizes="192x192" href="./JEXONGO.png">
-  <link rel="shortcut icon" href="./favicon.png">
-  <link rel="apple-touch-icon" href="./JEXONGO.png">
+  <link rel="icon" type="image/png" sizes="64x64" href="./favicon.png?v=3">
+  <link rel="icon" type="image/png" sizes="512x512" href="./JEXONGO.png?v=3">
+  <link rel="shortcut icon" href="./favicon.png?v=3">
+  <link rel="apple-touch-icon" sizes="512x512" href="./JEXONGO.png?v=3">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>JEXONGO — Combat Mathématique Aérien</title>
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="src/screens/worldcup-intro.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
-  <script src="/assets/email.min.js"></script>
   <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
@@ -57,9 +56,17 @@
         <div class="audio-splash-logo">JEXON<span>GO</span></div>
         <div class="mc-splash">V1!</div>
       </div>
-      <div class="audio-splash-sub">AERIAL MATH COMBAT</div>
-      <button id="btn-audio-start" class="audio-splash-btn">▶ TAP TO START</button>
+      <div class="audio-splash-sub">COMBAT MATH AERIEN</div>
+      <button id="btn-audio-start" class="audio-splash-btn">▶ TAPE POUR COMMENCER</button>
     </div>
+  </div>
+
+  <div id="phone-landscape-gate" class="phone-landscape-gate" aria-hidden="true">
+    <div class="plg-phone">
+      <div class="plg-screen"></div>
+    </div>
+    <div class="plg-title">TOURNE TON TELEPHONE</div>
+    <div class="plg-sub">Joue horizontalement pour piloter et repondre.</div>
   </div>
 
   <!-- DAILY LOGIN REWARD -->
@@ -184,6 +191,8 @@
         <div class="sett-key-row"><span class="sett-key">WASD</span><span class="sett-key-desc" data-i18n="move">MOVE</span></div>
         <div class="sett-key-row"><span class="sett-key">TAP</span><span class="sett-key-desc" data-i18n="move">MOVE</span></div>
       </div>
+      <button id="btn-change-equations" class="sett-action-btn" type="button">CHANGER LES EQUATIONS</button>
+      <button id="btn-replay-briefing" class="sett-action-btn" type="button">REPLAY BRIEFING</button>
     </div>
   </div>
 
@@ -202,7 +211,7 @@
     </script>
     <canvas id="menu-canvas"></canvas>
     <div class="menu-top-left">
-      <button id="btn-lang" class="lang-toggle-btn" aria-label="Toggle language">EN</button>
+      <button id="btn-lang" class="lang-toggle-btn" aria-label="Toggle language">FR</button>
       <button id="btn-feedback-menu" class="feedback-menu-btn" aria-label="Feedback" data-i18n="feedbackBtn">★ FEEDBACK</button>
 
       <!-- PROFILE SQUARE (top bar, next to feedback) -->
@@ -230,17 +239,16 @@
       </div>
       <div class="menu-subtitle" data-i18n="subtitle">AERIAL MATH COMBAT</div>
       <div id="menu-rank-badge" class="menu-rank-badge"></div>
+      <div id="menu-playtime-dashboard" class="menu-playtime-dashboard"></div>
 
       <div id="menu-offline-banner" class="menu-offline-banner hidden" data-i18n="offlineBanner">✈ Sign in with Google to save your progress and unlock all 50 levels</div>
 
-      <button id="btn-play" class="btn btn-primary" data-i18n="play">▶ PLAY</button>
-      <button id="btn-hangar" class="btn btn-secondary" data-i18n="hangar">✈ HANGAR</button>
-      <button id="btn-aircup" class="btn btn-secondary btn-aircup hidden">🏆 AIR CUP</button>
-      <button id="btn-shop" class="btn btn-secondary" data-i18n="shop">◆ SHOP</button>
-      <button id="btn-practice" class="btn btn-secondary" data-i18n="practice">⚡ PRACTICE</button>
-      <button id="btn-missions" class="btn btn-secondary btn-missions-menu">≡ MISSIONS</button>
-      <button id="btn-pilot-card" class="btn btn-secondary btn-pilot-card">✈ PILOT</button>
-      <button id="btn-prestige" class="btn btn-prestige hidden">⚡ PRESTIGE</button>
+      <button id="btn-play" class="btn btn-primary" data-i18n="play">PLAY</button>
+      <button id="btn-hangar" class="btn btn-secondary" data-i18n="hangar">HANGAR</button>
+      <button id="btn-shop" class="btn btn-secondary" data-i18n="shop">SHOP</button>
+      <button id="btn-practice" class="btn btn-secondary" data-i18n="practice">PRACTICE</button>
+      <button id="btn-missions" class="btn btn-secondary btn-missions-menu">MISSIONS</button>
+      <button id="btn-prestige" class="btn btn-prestige hidden">PRESTIGE</button>
       <div id="menu-prestige-badge" class="menu-prestige-badge"></div>
 
       <div class="login-divider"><span>— SIGN IN —</span></div>
@@ -288,6 +296,19 @@
     <div id="timer-bar-wrap"><div id="timer-bar"></div></div>
     <div id="game-canvas-wrap">
       <canvas id="game-canvas"></canvas>
+      <div id="tutorial-hud" class="tutorial-hud hidden">
+        <div class="tutorial-hud-top">
+          <span id="tutorial-round-label">TUTORIAL</span>
+          <span id="tutorial-progress-label">0/10</span>
+        </div>
+        <div class="tutorial-progress-track"><div id="tutorial-progress-fill"></div></div>
+        <div id="tutorial-hint">Take your time. No game over in tutorial.</div>
+      </div>
+      <div id="tutorial-countdown" class="tutorial-countdown hidden">3</div>
+      <div id="tutorial-feedback" class="tutorial-feedback hidden"></div>
+      <div id="tutorial-captain-guide" class="tutorial-captain-guide hidden"></div>
+      <div id="tutorial-round-summary" class="tutorial-round-summary hidden"></div>
+      <div id="tutorial-analysis" class="tutorial-analysis hidden"></div>
       <div id="game-pause-overlay"></div>
       <div id="question-box">
         <div id="question-text"></div>
@@ -319,7 +340,9 @@
     <div id="result-xp"></div>
     <div id="result-coins" class="result-coins"></div>
     <div id="result-correct"></div>
+    <div id="result-summary-grid" class="result-summary-grid"></div>
     <div id="result-star-detail" class="result-star-detail"></div>
+    <div id="result-credits" class="result-credits"></div>
     <div id="result-promo-banner" class="result-promo-banner hidden"></div>
     <div id="result-unlock-banner" class="result-unlock-banner hidden"></div>
     <button id="btn-result-continue" class="btn btn-primary" data-i18n="continueBtn">CONTINUE</button>
@@ -511,27 +534,13 @@
     </div>
   </div>
 
-  <!-- AIR CUP EVENT -->
-  <div id="s-aircup" class="screen hidden">
-    <div class="top-bar">
-      <button id="btn-aircup-back" class="btn-icon">&#8592;</button>
-      <span class="top-bar-title aircup-title">AIR CUP 2026</span>
-      <span id="aircup-status" class="aircup-status">READY</span>
-    </div>
-    <div class="aircup-lobby">
-      <div class="aircup-logo">JEXONGO AIR CUP</div>
-      <div class="aircup-subtitle">TOURNAMENT OF ACES</div>
-      <div id="aircup-bracket" class="aircup-bracket"></div>
-      <button id="btn-aircup-join" class="btn btn-primary aircup-join">JOIN TOURNAMENT</button>
-    </div>
-  </div>
-
   <!-- MISSION BRIEFING -->
   <div id="s-briefing" class="screen hidden">
     <div class="briefing-topbar">
       <button id="btn-briefing-back" class="btn-icon">&#8592;</button>
       <span class="briefing-topbar-title" data-i18n="briefingTitle">MISSION BRIEFING</span>
     </div>
+
     <div class="briefing-pilot-row">
       <span id="briefing-pilot-avatar" class="briefing-pilot-avatar">▷</span>
       <div class="briefing-pilot-info">
@@ -567,6 +576,7 @@
   <div id="s-gameover" class="screen hidden">
     <div id="gameover-title">GAME OVER</div>
     <div id="gameover-score"></div>
+    <button id="btn-continue-game" class="btn btn-primary hidden">CONTINUE</button>
     <button id="btn-retry" class="btn btn-primary" data-i18n="retry">RETRY</button>
     <button id="btn-go-map" class="btn btn-secondary" data-i18n="backToMenu">LOBBY</button>
   </div>
@@ -584,6 +594,10 @@
         <div class="pw-field-wrap">
           <input id="reg-password" type="password" class="reg-input" placeholder="PASSWORD (6+ CHARS)" data-i18n-placeholder="regPasswordPh" autocomplete="new-password">
           <button type="button" class="pw-eye-btn" id="btn-reg-pw-toggle" aria-label="Show password">👁</button>
+        </div>
+        <div class="pw-field-wrap">
+          <input id="reg-password-confirm" type="password" class="reg-input" placeholder="CONFIRM PASSWORD" data-i18n-placeholder="regConfirmPasswordPh" autocomplete="new-password">
+          <button type="button" class="pw-eye-btn" id="btn-reg-confirm-pw-toggle" aria-label="Show password">👁</button>
         </div>
         <select id="reg-age" class="reg-input reg-select">
           <option value="" data-i18n="regAgePh">-- SELECT YOUR AGE --</option>

@@ -1,7 +1,20 @@
 function rnd(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
 
+function normalizeOps(ops) {
+  const map = {
+    '+': '+', add: '+', addition: '+',
+    '-': '-', sub: '-', subtraction: '-',
+    '*': '*', x: '*', '×': '*', mul: '*', multiplication: '*',
+    '/': '/', '÷': '/', div: '/', division: '/',
+  };
+  const list = Array.isArray(ops) ? ops : [ops];
+  const normalized = [...new Set(list.map(op => map[String(op || '').toLowerCase().trim()]).filter(Boolean))];
+  return normalized.length ? normalized : ['+'];
+}
+
 function makeQuestion(ops, cap, multCap) {
-  const op = ops[rnd(0, ops.length - 1)];
+  const safeOps = normalizeOps(ops);
+  const op = safeOps[rnd(0, safeOps.length - 1)];
   let a, b, answer;
 
   switch (op) {

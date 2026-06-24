@@ -1,15 +1,19 @@
 import { $, showScreen } from '../utils/dom.js';
-import { G, loadSave, saveAll, IS_AIR_CUP_ACTIVE } from '../state.js';
+import { G, loadSave, saveAll } from '../state.js';
 import { LOGIN_REWARDS, claimDailyReward, getMissions, claimMission,
          hasPendingMissionClaim, getPlayerRank,
-         getSr71MissionState, claimSr71Mission } from '../systems/daily.js';
+         getSr71MissionState, claimSr71Mission,
+         getPlayMinuteStats, getMonthlyConfigChallenge } from '../systems/daily.js';
 import { save, load } from '../utils/storage.js';
+import { AIRCRAFT } from '../data/aircraft.js';
+import { SKINS } from '../data/skins.js';
 import { getPilotInfo } from '../data/pilots.js';
 import { getPrestigeTier, getPrestigeBadgeHTML } from '../data/prestige.js';
 import { t, getLang, setLang, applyI18n } from '../i18n.js';
 import { isTouchMobile, touchMenuCanvasDpr } from '../utils/device.js';
 import { syncAccountFromCloud, flushCloudSave, fetchCloudSave,
          mergeSaveSnapshots, exportSaveSnapshot, applySaveSnapshot } from '../systems/cloud-save.js';
+import { SFX } from '../audio/sound.js';
 
 // ── GOOGLE SIGN-IN ───────────────────────────────────────────────────────────
 const GOOGLE_CLIENT_ID = '182729505930-rulb73m14t9qvfpjfbplknrcgn0fqvci.apps.googleusercontent.com';
@@ -481,6 +485,36 @@ function _applyLang() {
   const dividerSpan = document.querySelector('.login-divider span');
   if (dividerSpan) dividerSpan.textContent = t('signIn');
 
+  const tabLabels = lang === 'fr'
+    ? { play: 'JOUER', base: 'BASE', pilot: 'PILOTE' }
+    : { play: 'PLAY', base: 'BASE', pilot: 'PILOT' };
+  document.querySelectorAll('.menu-section-tab').forEach(tab => {
+    const key = tab.dataset.menuSection;
+    tab.textContent = tabLabels[key] || key;
+  });
+
+}
+
+function _initMenuSections() {
+  const tabs = [...document.querySelectorAll('.menu-section-tab')];
+  const panels = [...document.querySelectorAll('.menu-section-panel')];
+  if (!tabs.length || !panels.length) return;
+
+  const showSection = section => {
+    tabs.forEach(tab => {
+      const active = tab.dataset.menuSection === section;
+      tab.classList.toggle('mst-active', active);
+      tab.setAttribute('aria-selected', active ? 'true' : 'false');
+    });
+    panels.forEach(panel => {
+      panel.classList.toggle('msp-active', panel.dataset.menuPanel === section);
+    });
+  };
+
+  tabs.forEach(tab => {
+    tab.addEventListener('click', () => showSection(tab.dataset.menuSection || 'play'));
+  });
+  showSection('play');
 }
 
 // ── PRESTIGE ─────────────────────────────────────────────────────────────────
@@ -714,14 +748,11 @@ function _showPrestigeCelebration(tier) {
 // ── PUBLIC API ────────────────────────────────────────────────────────────────
 export function initMenu(nav) {
   loadAssets();
+  _initMenuSections();
   $('btn-play').onclick    = () => nav.toMap();
   $('btn-hangar').onclick  = () => nav.toHangar();
   $('btn-shop').onclick    = () => nav.toShop();
   $('btn-practice').onclick = () => openPracticeSelect(nav);
-  $('btn-pilot-card').onclick = () => nav.toProfile();
-  const airCupBtn = $('btn-aircup');
-  if (airCupBtn) airCupBtn.onclick = () => nav.toAirCup();
-
   const googleBtn = document.getElementById('btn-login-google');
   if (googleBtn) googleBtn.onclick = () => _handleLogin('google');
 
@@ -757,6 +788,7 @@ export function initMenu(nav) {
   }
   _makePwToggle('btn-login-pw-toggle', 'login-modal-password');
   _makePwToggle('btn-reg-pw-toggle',   'reg-password');
+  _makePwToggle('btn-reg-confirm-pw-toggle', 'reg-password-confirm');
 
   const prestigeBtn = document.getElementById('btn-prestige');
   if (prestigeBtn) prestigeBtn.onclick = _openPrestigeConfirm;
@@ -857,6 +889,10 @@ export function initMenu(nav) {
     // B + H + Q + A → +5000 coins
     if (_held('b','h','q','a')) {
       _clearKeys('b','h','q','a');
+      if (!G.playerRegistered) {
+        _showToast(getLang() === 'fr' ? 'Connexion requise' : 'Sign in required');
+        return;
+      }
       G.coins = (G.coins || 0) + 5000;
       save('coins', G.coins);
       _showToast('◎ +5000 coins');
@@ -876,9 +912,22 @@ function _showToast(msg) {
 }
 window._showToast = _showToast;
 
+function _normalizePracticeOps(ops) {
+  const map = {
+    '+': '+', add: '+', addition: '+',
+    '-': '-', sub: '-', subtraction: '-',
+    '*': '*', x: '*', '×': '*', mul: '*', multiplication: '*',
+    '/': '/', '÷': '/', div: '/', division: '/',
+  };
+  const list = Array.isArray(ops) ? ops : [ops];
+  const normalized = [...new Set(list.map(op => map[String(op || '').toLowerCase().trim()]).filter(Boolean))];
+  return normalized.length ? normalized : ['+'];
+}
+
 function openPracticeSelect(nav) {
   const panel = $('practice-select');
   panel.classList.remove('hidden');
+  G.practiceOps = _normalizePracticeOps(G.practiceOps);
 
   // Sync buttons to current G.practiceOps
   panel.querySelectorAll('.practice-op-btn').forEach(btn => {
@@ -959,15 +1008,27 @@ export function renderMenu() {
   _raf = requestAnimationFrame(drawTick);
 
   _updateRankBadge();
+  _updateLobbyDashboard();
   _updateMissionsBadge();
   _updatePrestigeBadge();
-  const airCupBtn = $('btn-aircup');
-  if (airCupBtn) airCupBtn.classList.toggle('hidden', !IS_AIR_CUP_ACTIVE);
   _updateProfile();
   _applyLang();
 
   const offlineBanner = document.getElementById('menu-offline-banner');
-  if (offlineBanner) offlineBanner.classList.toggle('hidden', !!G.playerRegistered);
+  if (offlineBanner) {
+    const needsTutorialConnect = !!G.postTutorialConnectPrompt && !G.playerRegistered;
+    const isFr = getLang() === 'fr';
+    const level = G.tutorialPlan?.startLevel || G.currentLevel || 1;
+    offlineBanner.classList.toggle('hidden', !!G.playerRegistered && !needsTutorialConnect);
+    offlineBanner.classList.toggle('menu-connect-important', needsTutorialConnect);
+    offlineBanner.textContent = needsTutorialConnect
+      ? isFr
+        ? `La connexion est importante: connecte-toi avec Google pour sauvegarder ton plan Captain Jexongo et continuer au niveau ${level}.`
+        : `Connection is important: sign in with Google to save your Captain Jexongo plan and continue at level ${level}.`
+      : '✈ Sign in with Google to save your progress and unlock all 50 levels';
+  }
+  const googleBtn = document.getElementById('btn-login-google');
+  if (googleBtn) googleBtn.classList.toggle('login-important', !!G.postTutorialConnectPrompt && !G.playerRegistered);
 }
 
 function _updateRankBadge() {
@@ -981,6 +1042,103 @@ function _updateRankBadge() {
     <div class="mrb-xp-bar-wrap"><div class="mrb-xp-bar" style="width:${pct}%;background:${tier.color}"></div></div>
     <span class="mrb-rank">${(G.xp || 0).toLocaleString()} XP</span>
   `;
+}
+
+function _updateLobbyDashboard() {
+  const earned = G.totalXpEarned || G.xp || 0;
+  const { tier, pct } = getPilotInfo(earned);
+  const nameEl = document.getElementById('menu-hud-name');
+  const avatarEl = document.getElementById('menu-hud-avatar');
+  const xpFill = document.getElementById('menu-hud-xp-fill');
+  const coinsEl = document.getElementById('menu-hud-coins');
+  const xpEl = document.getElementById('menu-hud-xp');
+  const levelEl = document.getElementById('menu-hud-level');
+  const seasonFill = document.getElementById('menu-season-fill');
+  const seasonText = document.getElementById('menu-season-text');
+  const dailyPreview = document.getElementById('menu-daily-preview');
+  const planeImg = document.getElementById('menu-selected-plane');
+  const planeName = document.getElementById('menu-selected-plane-name');
+  const widgetTitles = document.querySelectorAll('.menu-widget-title');
+  if (widgetTitles[0]) widgetTitles[0].textContent = getLang() === 'fr' ? 'NIVEAU' : 'LEVEL';
+  if (widgetTitles[1]) widgetTitles[1].textContent = getLang() === 'fr' ? 'DEFIS QUOTIDIENS' : 'DAILY MISSIONS';
+
+  if (nameEl) nameEl.textContent = (G.playerName && G.playerName !== 'PILOT') ? G.playerName : tier.name;
+  if (avatarEl) {
+    avatarEl.textContent = (G.playerName || tier.name || 'P')[0].toUpperCase();
+    avatarEl.style.color = tier.color || '#06101f';
+  }
+  if (xpFill) xpFill.style.width = `${Math.max(4, Math.min(100, pct || 0))}%`;
+  if (coinsEl) coinsEl.textContent = (G.coins || 0).toLocaleString();
+  if (xpEl) xpEl.textContent = (G.xp || 0).toLocaleString();
+  const level = Math.max(1, Math.min(50, G.currentLevel || G.highestLevel || 1));
+  if (levelEl) levelEl.textContent = `${level}/50`;
+  if (seasonFill) seasonFill.style.width = `${Math.round((level / 50) * 100)}%`;
+  if (seasonText) seasonText.textContent = `${level} / 50`;
+  _updateSelectedPlaneShowcase(planeImg, planeName);
+
+  if (dailyPreview) {
+    const missions = getMissions().slice(0, 3);
+    dailyPreview.innerHTML = missions.map(m => {
+      const pctDone = Math.min(100, Math.round((m.progress / Math.max(1, m.target)) * 100));
+      const label = getLang() === 'fr' ? (m.labelFr || m.label) : m.label;
+      return `
+        <div class="menu-daily-row">
+          <div>
+            <div>${label}</div>
+            <div class="menu-daily-bar"><span style="width:${pctDone}%"></span></div>
+          </div>
+          <div class="menu-daily-reward">◎ ${m.coins}</div>
+        </div>
+      `;
+    }).join('');
+  }
+  _updatePlaytimeDashboard();
+}
+
+function _updatePlaytimeDashboard() {
+  const el = document.getElementById('menu-playtime-dashboard');
+  if (!el) return;
+  const isFr = getLang() === 'fr';
+  const stats = getPlayMinuteStats(getLang());
+  const today = stats.days.find(d => d.isToday)?.minutes || 0;
+  const maxMinutes = Math.max(stats.goal, ...stats.days.map(d => d.minutes), 1);
+  el.innerHTML = `
+    <div class="mpt-head">
+      <span>${isFr ? 'TEMPS DE JEU' : 'PLAY TIME'}</span>
+      <strong>${today} ${isFr ? 'min auj.' : 'min today'}</strong>
+    </div>
+    <div class="mpt-bars">
+      ${stats.days.map(d => {
+        const h = Math.min(96, Math.max(8, Math.round((d.minutes / maxMinutes) * 100)));
+        return `
+          <div class="mpt-day ${d.isToday ? 'mpt-today' : ''}">
+            <div class="mpt-value">${d.minutes}</div>
+            <div class="mpt-track"><span style="height:${h}%"></span></div>
+            <div class="mpt-label">${d.label}</div>
+          </div>
+        `;
+      }).join('')}
+    </div>
+    <div class="mpt-foot">${isFr ? 'Repart chaque lundi' : 'Resets every Monday'}</div>
+  `;
+}
+
+function _updateSelectedPlaneShowcase(imgEl, nameEl) {
+  const aircraftId = G.activeAircraft || 't6';
+  const aircraft = AIRCRAFT[aircraftId] || AIRCRAFT.t6;
+  const skin = SKINS.find(s => s.id === G.activeLivery || s.id === G.activeSkin);
+  const customImg = skin?.skinImg || skin?.offerImg;
+
+  if (imgEl) {
+    imgEl.src = customImg || `/assets/hangar/${aircraftId}.png`;
+    imgEl.style.filter = (!customImg && skin?.filter)
+      ? `${skin.filter} drop-shadow(0 16px 0 rgba(0,0,0,0.23)) drop-shadow(0 0 18px rgba(125,211,252,0.28))`
+      : '';
+  }
+  if (nameEl) {
+    const label = skin?.name ? `${aircraft.name} / ${skin.name}` : aircraft.name;
+    nameEl.textContent = label.toUpperCase();
+  }
 }
 
 function _updateMissionsBadge() {
@@ -1034,6 +1192,7 @@ export function showDailyReward(reward, streak) {
   $('btn-daily-claim').textContent = t('claimReward');
   $('btn-daily-claim').onclick = () => {
     claimDailyReward(reward);
+    SFX.bonusHeart?.();
     overlay.classList.add('hidden');
     _updateRankBadge();
   };
@@ -1079,14 +1238,17 @@ function _startMissionsTimer() {
 function _renderMissions() {
   const list     = $('missions-list');
   const missions = getMissions();
+  const isConnected = !!G.playerRegistered;
+  const connectLabel = getLang() === 'fr' ? 'CONNEXION' : 'SIGN IN';
   list.innerHTML = '';
+  _renderPlayStatsCard(list);
 
   missions.forEach(m => {
     const pct  = Math.min(100, Math.round((m.progress / m.target) * 100));
     const done = m.progress >= m.target;
 
     const missionLabel = getLang() === 'fr' ? (m.labelFr || m.label) : m.label;
-    const claimBtnText = m.claimed ? t('claimed') : done ? t('claim') : t('locked');
+    const claimBtnText = !isConnected ? connectLabel : m.claimed ? t('claimed') : done ? t('claim') : t('locked');
 
     const card = document.createElement('div');
     card.className = 'mission-card' + (m.claimed ? ' mc-claimed' : '');
@@ -1100,8 +1262,8 @@ function _renderMissions() {
       </div>
       <div class="mission-reward-row">
         <span class="mission-reward-text">◎ ${m.coins}  ⚡ ${m.xp} XP</span>
-        <button class="mission-claim-btn ${m.claimed ? 'mcb-claimed' : done ? 'mcb-ready' : 'mcb-locked'}"
-                data-id="${m.id}" ${!done || m.claimed ? 'disabled' : ''}>
+        <button class="mission-claim-btn ${m.claimed ? 'mcb-claimed' : (done && isConnected) ? 'mcb-ready' : 'mcb-locked'}"
+                data-id="${m.id}" ${!done || m.claimed || !isConnected ? 'disabled' : ''}>
           ${claimBtnText}
         </button>
       </div>
@@ -1113,7 +1275,7 @@ function _renderMissions() {
   const sr71 = getSr71MissionState();
   const sr71Done  = sr71.progress >= 1;
   const sr71Label = getLang() === 'fr' ? sr71.labelFr : sr71.label;
-  const sr71BtnText = sr71.claimed ? t('claimed') : sr71Done ? t('claim') : t('locked');
+  const sr71BtnText = !isConnected ? connectLabel : sr71.claimed ? t('claimed') : sr71Done ? t('claim') : t('locked');
   const cleanSet  = new Set(sr71.cleanLevels || []);
   const cubesHTML = Array.from({ length: 30 }, (_, i) => {
     const lvl  = i + 1;
@@ -1129,8 +1291,8 @@ function _renderMissions() {
     <div class="sr71-cube-count">${sr71.cleanLevels.length} / 30 levels</div>
     <div class="mission-reward-row">
       <span class="mission-reward-text">◎ ${sr71.coins}  ⚡ ${sr71.xp} XP</span>
-      <button class="mission-claim-btn ${sr71.claimed ? 'mcb-claimed' : sr71Done ? 'mcb-ready' : 'mcb-locked'}"
-              data-id="sr71_challenge" ${!sr71Done || sr71.claimed ? 'disabled' : ''}>
+      <button class="mission-claim-btn ${sr71.claimed ? 'mcb-claimed' : (sr71Done && isConnected) ? 'mcb-ready' : 'mcb-locked'}"
+              data-id="sr71_challenge" ${!sr71Done || sr71.claimed || !isConnected ? 'disabled' : ''}>
         ${sr71BtnText}
       </button>
     </div>
@@ -1143,10 +1305,57 @@ function _renderMissions() {
         ? claimSr71Mission()
         : claimMission(btn.dataset.id);
       if (claimed) {
+        SFX.buy?.();
         _renderMissions();
         _updateMissionsBadge();
         _updateRankBadge();
       }
     };
   });
+}
+
+function _renderPlayStatsCard(list) {
+  const isFr = getLang() === 'fr';
+  const stats = getPlayMinuteStats(getLang());
+  const month = getMonthlyConfigChallenge(getLang());
+  const maxMinutes = Math.max(stats.goal, ...stats.days.map(d => d.minutes), 1);
+  const bars = stats.days.map(d => {
+    const h = Math.max(8, Math.round((d.minutes / maxMinutes) * 54));
+    const title = `${d.label}: ${d.minutes} min`;
+    return `
+      <div class="play-day${d.isToday ? ' play-day-today' : ''}" title="${title}">
+        <div class="play-bar-shell">
+          <div class="play-bar-fill" style="height:${h}px"></div>
+          <div class="play-goal-line" style="bottom:${Math.min(100, Math.round((stats.goal / maxMinutes) * 100))}%"></div>
+        </div>
+        <span class="play-day-min">${d.minutes}</span>
+        <span class="play-day-label">${d.isToday ? (isFr ? 'auj' : 'now') : d.label}</span>
+      </div>
+    `;
+  }).join('');
+
+  const card = document.createElement('div');
+  card.className = 'mission-card play-stats-card';
+  card.innerHTML = `
+    <div class="play-stats-head">
+      <div>
+        <div class="mission-label play-stats-title">${isFr ? 'TEMPS DE JEU' : 'PLAY TIME'}</div>
+        <div class="play-stats-sub">${isFr ? `Objectif jour: ${stats.goal} min` : `Daily goal: ${stats.goal} min`}</div>
+      </div>
+      <div class="play-stats-total">${stats.days.find(d => d.isToday)?.minutes || 0}<span>min</span></div>
+    </div>
+    <div class="play-graph">${bars}</div>
+    <div class="monthly-challenge">
+      <div class="monthly-title">${month.title}</div>
+      <div class="monthly-config">${month.config}</div>
+      <div class="mission-progress-row">
+        <div class="mission-bar-wrap">
+          <div class="mission-bar-fill" style="width:${month.pct}%"></div>
+        </div>
+        <span class="mission-count">${month.progress}/${month.target} min</span>
+      </div>
+      <div class="monthly-sub">${month.subtitle}</div>
+    </div>
+  `;
+  list.appendChild(card);
 }

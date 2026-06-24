@@ -17,10 +17,14 @@ const PERSIST_KEYS = [
   'unlockedAircraft', 'activeAircraft', 'ownedSkins', 'activeSkin', 'activeLivery',
   'prestige', 'sr71Earned', 'sr71MissionClaimed', 'sr71WrongAnswers', 'sr71MissileHits',
   'sr71CleanLevels', 'highestLevel', 'dailyLastLogin', 'dailyStreak', 'dailyMissions',
-  'dailyMissionDate', 'claimedRanks', 'rankedLP', 'rankedWins', 'rankedLosses',
+  'dailyMissionDate', 'playMinutesByDay', 'monthlyChallenge', 'claimedRanks', 'rankedLP', 'rankedWins', 'rankedLosses',
   'rankedWinStreak', 'rankedGamesPlayed', 'rankedSeasonStart', 'rankedFirstWinToday',
   'playerName', 'playerEmail', 'playerPhoto', 'playerAge', 'playerGrade',
   'pilotEmblem', 'pilotMotto', 'profileTheme', 'practiceTimeLimit',
+  'hasSeenOnboarding', 'likesMath', 'onboardingAgeGroup', 'onboardingGrade',
+  'focusOperation', 'focusOperations', 'pendingPlacement', 'tutorialMode',
+  'onboardingStartMode', 'onboardingLevelLength', 'dailyGoalMinutes',
+  'tutorialPlan', 'tutorialProgress', 'postTutorialConnectPrompt', 'currentLevel',
 ];
 
 let _pushTimer = null;
@@ -43,6 +47,32 @@ export function applySaveSnapshot(snap) {
 
 function _union(a, b) {
   return [...new Set([...(a || []), ...(b || [])])];
+}
+
+function _hasPilotConfig(snap) {
+  return !!(
+    snap?.hasSeenOnboarding ||
+    snap?.playerGrade ||
+    snap?.onboardingGrade ||
+    snap?.focusOperation ||
+    snap?.focusOperations?.length
+  );
+}
+
+function _applyPilotConfig(out, source) {
+  const keys = [
+    'hasSeenOnboarding', 'likesMath', 'onboardingAgeGroup', 'onboardingGrade',
+    'focusOperation', 'focusOperations', 'pendingPlacement', 'tutorialMode',
+    'onboardingStartMode', 'onboardingLevelLength', 'dailyGoalMinutes',
+    'tutorialPlan', 'tutorialProgress', 'postTutorialConnectPrompt',
+    'practiceTimeLimit', 'currentLevel',
+  ];
+  for (const key of keys) {
+    if (source[key] !== undefined) out[key] = source[key];
+  }
+  if (!out.focusOperations?.length && out.focusOperation) {
+    out.focusOperations = [out.focusOperation];
+  }
 }
 
 export function mergeSaveSnapshots(local, remote) {
@@ -78,6 +108,12 @@ export function mergeSaveSnapshots(local, remote) {
   out.sr71WrongAnswers   = Math.min(local.sr71WrongAnswers ?? 999, remote.sr71WrongAnswers ?? 999);
   out.sr71MissileHits    = Math.min(local.sr71MissileHits ?? 999, remote.sr71MissileHits ?? 999);
 
+  out.playMinutesByDay = { ...(local.playMinutesByDay || {}) };
+  for (const [day, minutes] of Object.entries(remote.playMinutesByDay || {})) {
+    out.playMinutesByDay[day] = Math.max(out.playMinutesByDay[day] || 0, minutes || 0);
+  }
+  out.monthlyChallenge = remote.monthlyChallenge || local.monthlyChallenge || null;
+
   const lGames = local.rankedGamesPlayed || 0;
   const rGames = remote.rankedGamesPlayed || 0;
   if (rGames > lGames) {
@@ -108,6 +144,9 @@ export function mergeSaveSnapshots(local, remote) {
   out.playerPhoto = local.playerPhoto || remote.playerPhoto;
   out.playerGrade = Math.max(local.playerGrade || 0, remote.playerGrade || 0);
   out.playerAge   = Math.max(local.playerAge || 0, remote.playerAge || 0);
+
+  const pilotConfigSource = _hasPilotConfig(local) ? local : remote;
+  if (_hasPilotConfig(pilotConfigSource)) _applyPilotConfig(out, pilotConfigSource);
 
   return out;
 }

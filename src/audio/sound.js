@@ -36,6 +36,7 @@ function _loadBuf(url) {
 // ── SFX CANCELLATION ──────────────────────────────────────────────────────────
 const _timers  = [];
 const _sources = [];
+const _mediaShots = [];
 
 function _after(ms, fn) {
   const id = setTimeout(() => { fn(); _timers.splice(_timers.indexOf(id), 1); }, ms);
@@ -47,6 +48,13 @@ function _stopAllSFX() {
   _timers.length = 0;
   _sources.forEach(s => { try { s.stop(); } catch (_) {} });
   _sources.length = 0;
+  _mediaShots.forEach(el => {
+    try {
+      el.pause();
+      el.currentTime = 0;
+    } catch (_) {}
+  });
+  _mediaShots.length = 0;
 }
 
 // ── PLAY HELPERS ──────────────────────────────────────────────────────────────
@@ -76,6 +84,13 @@ function _playMediaShot(url, vol = 1) {
   try {
     const el = new Audio(url);
     el.volume = Math.min(1, vol * _sfxVol);
+    _mediaShots.push(el);
+    const forget = () => {
+      const i = _mediaShots.indexOf(el);
+      if (i >= 0) _mediaShots.splice(i, 1);
+    };
+    el.addEventListener('ended', forget, { once: true });
+    el.addEventListener('pause', forget, { once: true });
     el.play().catch(() => {});
   } catch (_) {}
 }
@@ -237,6 +252,7 @@ export const SFX = {
       '/assets/music/gameover.mp3',
       '/assets/music/gameover2.mp3',
       '/assets/music/Buy.mp3',
+      '/assets/music/Choose a level.mp3',
     ].forEach(_loadBuf);
   },
 
@@ -256,6 +272,13 @@ export const SFX = {
   click() {
     _playBuf('/assets/music/click.mp3', 0.7,
       ctx => _tone(ctx, 800, 'sine', 0.08, 0.35));
+  },
+  chooseLevel() {
+    _playBuf('/assets/music/Choose a level.mp3', 0.9,
+      ctx => {
+        _tone(ctx, 520, 'triangle', 0.12, 0.28);
+        _after(85, () => _tone(_ac(), 760, 'triangle', 0.16, 0.25));
+      }, 1.4);
   },
   correct() {
     _playBuf('/assets/music/correct.mp3', 0.9, ctx => {
@@ -342,6 +365,17 @@ export const SFX = {
   },
   timerWarn() {
     _tone(_ac(), 880, 'triangle', 0.07, 0.18);
+  },
+  countdownTick() {
+    const ctx = _ac();
+    _tone(ctx, 620, 'square', 0.11, 0.24);
+    _after(60, () => _tone(_ac(), 930, 'triangle', 0.08, 0.18));
+  },
+  countdownGo() {
+    const ctx = _ac();
+    _tone(ctx, 780, 'square', 0.13, 0.28);
+    _after(75, () => _tone(_ac(), 1170, 'triangle', 0.18, 0.24));
+    _after(150, () => _tone(_ac(), 1560, 'sine', 0.18, 0.2));
   },
   buy() {
     _playBuf('/assets/music/Buy.mp3', 0.9,

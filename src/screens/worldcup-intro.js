@@ -111,6 +111,31 @@ export function playWorldCupIntro(onDone) {
   }, 10300);
 }
 
+export function stopWorldCupIntro() {
+  clearTimeout(_worldCupIntroTimer);
+  clearInterval(_windTimer);
+  clearTimeout(_flashTimer);
+  cancelAnimationFrame(_shakeFrame);
+  clearInterval(_flagTimer);
+  clearTimeout(_confettiTimer);
+  clearTimeout(_confettiCleanupTimer);
+  _worldCupIntroTimer = null;
+  _windTimer = null;
+  _flashTimer = null;
+  _shakeFrame = null;
+  _flagTimer = null;
+  _confettiTimer = null;
+  _confettiCleanupTimer = null;
+
+  document.getElementById('world-cup-intro')?.remove();
+  document.getElementById('wc-confetti-layer')?.remove();
+  const menu = document.getElementById('s-menu');
+  if (menu) {
+    menu.classList.remove('wc-intro-only');
+    menu.style.transform = '';
+  }
+}
+
 function _startConfetti(root, durationMs) {
   if (!root) return;
   clearTimeout(_confettiTimer);

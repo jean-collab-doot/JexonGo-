@@ -3,6 +3,7 @@ import { G } from '../state.js';
 import { getLevel, TOTAL_LEVELS, BIOMES, BIOME_META } from '../data/levels.js';
 import { levelState } from '../systems/progression.js';
 import { t } from '../i18n.js';
+import { SFX } from '../audio/sound.js';
 
 const GUEST_MAX_LEVEL = 3;
 
@@ -86,7 +87,10 @@ export function renderLevelMap() {
     } else if (node.state !== 'locked') {
       el.style.borderColor = BIOME_META[biome].accent;
       if (node.state === 'available') el.style.boxShadow = `0 0 14px ${BIOME_META[biome].accent}66`;
-      el.addEventListener('click', () => window._nav.toBriefing(node.num));
+      el.addEventListener('click', () => {
+        SFX.chooseLevel?.();
+        window._nav.toBriefing(node.num);
+      });
     }
 
     container.appendChild(el);

@@ -3,7 +3,8 @@ import { save, load } from './utils/storage.js';
 import { showScreen } from './utils/dom.js';
 import { SFX } from './audio/sound.js';
 import { initMenu, renderMenu } from './screens/menu.js';
-import { playWorldCupIntro } from './screens/worldcup-intro.js';
+import { playWorldCupIntro, stopWorldCupIntro } from './screens/worldcup-intro.js';
+import { showOnboarding } from './screens/onboarding.js';
 import { initLevelMap, renderLevelMap } from './screens/levelmap.js';
 import { initHangar, renderHangar } from './screens/hangar.js';
 import { initGame } from './screens/game.js';
@@ -12,26 +13,31 @@ import { initChest, showChest, setChestReturn } from './screens/chest.js';
 import { initGameover, showGameover } from './screens/gameover.js';
 import { initShop, renderShop } from './screens/shop.js';
 import { initSettings, loadSettings } from './screens/settings.js';
-import { initProfile, renderProfile } from './screens/profile.js';
 import { initRanked, renderRankedLobby } from './screens/ranked.js';
 import { initBriefing, showBriefing } from './screens/briefing.js';
 import { initArena, enterArena } from './screens/arena.js';
-import { initAirCup, renderAirCup } from './screens/aircup.js';
+import { resetIntroBriefing } from './screens/intro-briefing.js';
 import { preloadShips } from './game/sprites.js';
-import { checkDailyLogin } from './systems/daily.js';
+import { checkDailyLogin, recordPlayMinute } from './systems/daily.js';
 import { showDailyReward } from './screens/menu.js';
 import { canSendFeedback, markFeedbackSent, sendFeedback, sendNewPlayerNotification, _resetNewPlayer, _testEmailNow } from './systems/feedback.js';
 import { t, getLang, applyI18n } from './i18n.js';
 import { syncAccountFromCloud, flushCloudSave, pushCloudSave } from './systems/cloud-save.js';
 import { applyDeviceClasses } from './utils/device.js';
 
-function injectAnalytics() {
+async function injectVercelInsights() {
   // Keep VS Code / Live Server launches working; Vercel analytics is optional.
   if (!/\.vercel\.app$/i.test(location.hostname)) return;
-  const s = document.createElement('script');
-  s.defer = true;
-  s.src = '/_vercel/insights/script.js';
-  document.head.appendChild(s);
+  try {
+    const [{ inject }, { injectSpeedInsights }] = await Promise.all([
+      import('@vercel/analytics'),
+      import('@vercel/speed-insights'),
+    ]);
+    inject({ framework: 'vite' });
+    injectSpeedInsights({ framework: 'vite' });
+  } catch (err) {
+    console.warn('[Vercel] Insights unavailable:', err);
+  }
 }
 
 // ── VIDEO BACKGROUND ─────────────────────────────────────────────────────────
@@ -77,10 +83,24 @@ const nav = {
     SFX.playMusic('game');
     _cleanup = initGame(levelNum, (won) => {
       cleanup();
+      if (won && G.postTutorialConnectPrompt && !G.playerRegistered) {
+        showMissionCompleteTransition(() => {
+          renderMenu();
+          showScreen('s-menu');
+          SFX.playMusic('menu');
+          const level = G.tutorialPlan?.startLevel || G.currentLevel || 1;
+          _showLoginToast(deviceIntroLang() === 'fr'
+            ? `La connexion est importante. Connecte-toi avec Google pour continuer au niveau ${level}.`
+            : `Connection is important. Sign in with Google to continue at level ${level}.`, 5200);
+        });
+        return;
+      }
       if (won) {
-        showResult(true);
-        showScreen('s-result');
-        SFX.stopMusic();
+        showMissionCompleteTransition(() => {
+          showResult(true);
+          showScreen('s-result');
+          SFX.stopMusic();
+        });
       } else {
         showGameover();
         showScreen('s-gameover');
@@ -125,23 +145,55 @@ const nav = {
     showScreen('s-arena');
     enterArena();
   },
-  toAirCup() {
-    cleanup();
-    renderAirCup();
-    showScreen('s-aircup');
-    SFX.playMusic('menu');
-  },
-  toProfile() {
-    cleanup();
-    renderProfile();
-    showScreen('s-profile');
-    SFX.playMusic('menu');
-  },
   toGradeSelect() {
     cleanup();
     showScreen('s-grade');
   },
 };
+
+function showMissionCompleteTransition(onDone) {
+  document.querySelector('.mission-complete-transition')?.remove();
+  const overlay = document.createElement('div');
+  overlay.className = 'mission-complete-transition mct-win';
+  overlay.innerHTML = `
+    <div class="mct-panel">
+      <span class="mct-kicker">MISSION</span>
+      <strong>COMPLETE</strong>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  requestAnimationFrame(() => overlay.classList.add('mct-show'));
+  setTimeout(() => overlay.classList.add('mct-leave'), 900);
+  setTimeout(() => {
+    overlay.remove();
+    onDone?.();
+  }, 1220);
+}
+
+function showAfterIntroPopups() {
+  const _daily = checkDailyLogin();
+  if (_daily.isNewDay) {
+    setTimeout(() => showDailyReward(_daily.reward, _daily.streak), 600);
+  }
+  setTimeout(() => showFeedbackPopup(), 1200);
+}
+
+function deviceIntroLang() {
+  return getLang();
+}
+
+function showNewPlayerIntroFlow(onDone = null) {
+  renderMenu();
+  showScreen('s-menu');
+  SFX.playMusic('menu');
+  playWorldCupIntro(() => {
+    showOnboarding(() => {
+      save('hasSeenOnboarding', true);
+      if (onDone) onDone();
+      else nav.toGame(G.currentLevel || 1);
+    });
+  });
+}
 
 function cleanup() {
   _videoPause();
@@ -155,6 +207,30 @@ window._nav = nav;
 window._showFeedbackPopup  = () => showFeedbackPopup();
 window._resetNewPlayer     = _resetNewPlayer;
 window._testEmailNow       = _testEmailNow;
+window._resetIntroBriefing = resetIntroBriefing;
+
+function restartFullIntroFromStart() {
+  cleanup();
+  stopWorldCupIntro();
+  document.getElementById('onboarding-overlay')?.remove();
+  document.getElementById('brief-overlay')?.remove();
+  resetIntroBriefing();
+  G.hasSeenOnboarding = false;
+  G.tutorialMode = false;
+  G.tutorialProgress = null;
+  save('hasSeenOnboarding', false);
+  save('tutorialMode', false);
+  save('tutorialProgress', null);
+  renderMenu();
+  showScreen('s-menu');
+  SFX.playMusic('menu');
+  showNewPlayerIntroFlow(() => nav.toGame(G.currentLevel || 1));
+}
+window._restartFullIntro = restartFullIntroFromStart;
+
+function isTextEntryTarget(el) {
+  return !!el?.closest?.('input, textarea, select, [contenteditable="true"]');
+}
 
 function _showLoginToast(msg, duration = 2800) {
   const el = document.getElementById('login-toast');
@@ -173,7 +249,9 @@ window._onGoogleCredential = async function(response) {
     const photo   = payload.picture || '';
 
     const wasRegistered = G.playerRegistered;
-    const hadGrade      = !!load('playerGrade', 0);
+    const previousEmail = (load('playerEmail', '') || '').toLowerCase();
+    const shouldStartRecommended = !!load('postTutorialConnectPrompt', false);
+    const recommendedPlan = load('tutorialPlan', null);
 
     // Always persist identity first so loadSave can read them back
     G.playerName       = name;
@@ -187,16 +265,29 @@ window._onGoogleCredential = async function(response) {
 
     loadSave();
     const sync = await syncAccountFromCloud({ authType: 'google' });
+    const shouldNotifyNewGooglePlayer = !sync?.offline && !sync?.merged && (!wasRegistered || previousEmail !== email);
     if (sync.offline) _showLoginToast(t('syncOffline') || 'Progress saved on this device only (offline).');
     else if (sync.merged) _showLoginToast(t('syncOk') || 'Progress synced from your account.');
+
+    if (shouldStartRecommended && recommendedPlan?.startLevel) {
+      G.currentLevel = recommendedPlan.startLevel;
+      G.postTutorialConnectPrompt = false;
+      save('currentLevel', G.currentLevel);
+      save('postTutorialConnectPrompt', false);
+      _showLoginToast(deviceIntroLang() === 'fr'
+        ? `Connecte. Debut de ton niveau recommande ${G.currentLevel}.`
+        : `Connected. Starting your recommended level ${G.currentLevel}.`, 3600);
+      nav.toGame(G.currentLevel || 1);
+      return;
+    }
 
     if (wasRegistered) {
       renderMenu();
       _showLoginToast(t('welcomeBack').replace('{name}', name));
     } else if (!G.playerGrade) {
-      nav.toGradeSelect();
+      showNewPlayerIntroFlow(() => nav.toGame(G.currentLevel || 1));
     } else {
-      if (!hadGrade) {
+      if (shouldNotifyNewGooglePlayer) {
         sendNewPlayerNotification({ playerName: name, playerEmail: email, playerGrade: G.playerGrade });
       }
       nav.toMenu();
@@ -238,8 +329,6 @@ initSettings();
 initRanked(nav);
 initBriefing(nav);
 initArena(nav);
-initAirCup(nav);
-initProfile(nav);
 initGradeScreen();
 initRegistration();
 initFeedback();
@@ -261,6 +350,7 @@ function initRegistration() {
     const name  = (document.getElementById('reg-name').value  || '').trim().toUpperCase();
     const email = (document.getElementById('reg-email').value || '').trim().toLowerCase();
     const pw    = (document.getElementById('reg-password').value || '');
+    const pwConfirm = (document.getElementById('reg-password-confirm').value || '');
     const age   = parseInt(document.getElementById('reg-age').value, 10);
     const grade = parseInt(document.getElementById('reg-grade').value, 10);
     const tos   = document.getElementById('reg-tos').checked;
@@ -269,6 +359,7 @@ function initRegistration() {
     if (!name)                          { err.textContent = t('regErrName');     return; }
     if (!email || !email.includes('@')) { err.textContent = t('regErrEmail');    return; }
     if (pw.length < 6)                  { err.textContent = t('regErrPassword'); return; }
+    if (pw !== pwConfirm)               { err.textContent = t('regErrPasswordMatch'); return; }
     if (!age)                           { err.textContent = t('regErrAge');      return; }
     if (!grade)                         { err.textContent = t('regErrGrade');    return; }
     if (!tos)                           { err.textContent = t('regErrTos');      return; }
@@ -356,9 +447,7 @@ function initFeedback() {
       }, 3000);
     } catch (err) {
       console.error('[Feedback] Send failed:', err);
-      errEl.textContent = err?.message?.includes('not loaded')
-        ? '❌ EmailJS not loaded — check CDN'
-        : '❌ Send failed — check console';
+      errEl.textContent = t('feedbackErrConn');
       btn.disabled = false;
       btn.textContent = t('feedbackSubmit');
     }
@@ -387,7 +476,7 @@ function showFeedbackPopup() {
 applyDeviceClasses();
 window.addEventListener('resize', applyDeviceClasses);
 window.addEventListener('orientationchange', applyDeviceClasses);
-injectAnalytics();
+injectVercelInsights();
 loadSave();
 loadSettings();
 preloadShips();
@@ -404,6 +493,13 @@ if (G.playerRegistered && G.playerEmail) {
 // Auto-save every 30 seconds for registered players
 setInterval(() => { if (G.playerRegistered) saveAll(); }, 30000);
 
+// Track play minutes only while the player is actively in a game.
+setInterval(() => {
+  if (document.hidden) return;
+  const activeScreen = document.querySelector('.screen:not(.hidden)')?.id;
+  if (activeScreen === 's-game') recordPlayMinute(1);
+}, 60000);
+
 // Save when tab closes
 window.addEventListener('beforeunload', () => {
   if (G.playerRegistered) {
@@ -412,24 +508,23 @@ window.addEventListener('beforeunload', () => {
   }
 });
 
-document.getElementById('btn-audio-start').addEventListener('click', () => {
+document.getElementById('btn-audio-start').addEventListener('click', async () => {
   SFX.unlock();
   SFX.playMusic('menu');
   document.getElementById('audio-splash').classList.add('hidden');
 
-  if (!G.playerGrade) {
-    showScreen('s-grade');
-  } else {
-    renderMenu();
-    showScreen('s-menu');
-    playWorldCupIntro(() => {
-      const _daily = checkDailyLogin();
-      if (_daily.isNewDay) {
-        setTimeout(() => showDailyReward(_daily.reward, _daily.streak), 600);
-      }
-      setTimeout(() => showFeedbackPopup(), 1200);
-    });
+  const tutorialProgress = load('tutorialProgress', null);
+  if (tutorialProgress?.active) {
+    G.tutorialMode = true;
+    G.tutorialProgress = tutorialProgress;
+    G.currentLevel = tutorialProgress.currentLevel || G.currentLevel || 1;
+    nav.toGame(G.currentLevel || 1);
+    return;
   }
+
+  showNewPlayerIntroFlow(() => {
+    nav.toGame(G.currentLevel || 1);
+  });
 });
 
 // Patch shop's chest button to return to shop

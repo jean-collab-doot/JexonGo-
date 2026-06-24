@@ -4,6 +4,7 @@ import { getStory } from '../data/story.js';
 import { getPilotInfo, getPilotGrade } from '../data/pilots.js';
 import { G } from '../state.js';
 import { t, tOp, getLang } from '../i18n.js';
+import { SFX } from '../audio/sound.js';
 
 let _nav = null;
 let _levelNum = 1;
@@ -11,7 +12,7 @@ let _levelNum = 1;
 export function initBriefing(nav) {
   _nav = nav;
   $('btn-briefing-back').onclick = () => _nav.toMap();
-  $('btn-briefing-fly').onclick  = () => _nav.toGame(_levelNum);
+  $('btn-briefing-fly').onclick  = () => { SFX.chooseLevel?.(); _nav.toGame(_levelNum); };
 }
 
 export function showBriefing(levelNum) {
@@ -35,11 +36,15 @@ export function showBriefing(levelNum) {
   const flyBtn = $('btn-briefing-fly');
   if (flyBtn) flyBtn.textContent = t('fly');
 
+  const configuredOps = Array.isArray(G.focusOperations) && G.focusOperations.length
+    ? G.focusOperations
+    : G.focusOperation ? [G.focusOperation] : [];
+  const opsToShow = configuredOps.length ? configuredOps : levelCfg.ops;
   const opSymbols = { '+': '+', '-': '−', '*': '×', '/': '÷' };
-  const opsLabel  = levelCfg.ops.map(op => opSymbols[op] || op).join('  ');
+  const opsLabel  = opsToShow.map(op => opSymbols[op] || op).join('  ');
+
   $('briefing-ops').textContent = opsLabel;
 
-  // Pilot avatar & grade
   $('briefing-pilot-avatar').textContent  = grade.emoji;
   $('briefing-pilot-avatar').style.color  = grade.color;
   $('briefing-pilot-avatar').style.textShadow = `0 0 18px ${grade.color}`;
