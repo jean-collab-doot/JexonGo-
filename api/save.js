@@ -60,7 +60,7 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return send(res, 204, {});
 
   if (!SUPABASE_ACCESS_TOKEN) {
-    return send(res, 503, { error: 'missing SUPABASE_ACCESS_TOKEN' });
+    return send(res, 200, { ok: false, offline: true, error: 'missing SUPABASE_ACCESS_TOKEN' });
   }
 
   try {

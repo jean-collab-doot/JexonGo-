@@ -28,6 +28,7 @@ const PERSIST_KEYS = [
 ];
 
 let _pushTimer = null;
+let _cloudSaveOffline = false;
 
 export function exportSaveSnapshot() {
   const snap = {};
@@ -160,6 +161,7 @@ function _authBody({ authType, password } = {}) {
 
 /** @returns {{ data?, updatedAt?, notFound?, forbidden?, offline? }} */
 export async function fetchCloudSave(email, password, authType) {
+  if (_cloudSaveOffline) return { offline: true };
   if (!CLOUD_SAVE_AVAILABLE) return { offline: true };
   try {
     const params = new URLSearchParams({
@@ -170,10 +172,19 @@ export async function fetchCloudSave(email, password, authType) {
     const res = await fetch(`${API_URL}/api/save?${params}`, { method: 'GET' });
     if (res.status === 404) return { notFound: true };
     if (res.status === 403) return { forbidden: true };
+    if (res.status === 503) {
+      _cloudSaveOffline = true;
+      return { offline: true };
+    }
     if (!res.ok) return { error: true };
     const json = await res.json();
+    if (json?.offline) {
+      _cloudSaveOffline = true;
+      return { offline: true };
+    }
     return { data: json.data, updatedAt: json.updatedAt };
   } catch (_) {
+    _cloudSaveOffline = true;
     return { offline: true };
   }
 }
@@ -181,6 +192,7 @@ export async function fetchCloudSave(email, password, authType) {
 export async function pushCloudSave(opts = {}) {
   const email = (G.playerEmail || '').toLowerCase().trim();
   if (!G.playerRegistered || !email) return false;
+  if (_cloudSaveOffline) return false;
   if (!CLOUD_SAVE_AVAILABLE) return false;
 
   const password = opts.password ?? load('playerPassword', '') ?? '';
@@ -196,8 +208,18 @@ export async function pushCloudSave(opts = {}) {
         updatedAt: Date.now(),
       }),
     });
+    if (res.status === 503) {
+      _cloudSaveOffline = true;
+      return false;
+    }
+    const json = await res.clone().json().catch(() => ({}));
+    if (json?.offline) {
+      _cloudSaveOffline = true;
+      return false;
+    }
     return res.ok;
   } catch (_) {
+    _cloudSaveOffline = true;
     return false;
   }
 }
