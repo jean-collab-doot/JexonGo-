@@ -14,11 +14,6 @@ const PORT = process.env.PORT || 8080;
 const SAVES_DIR = path.join(__dirname, 'data', 'saves');
 const AIR_CUP_START_SERVER = new Date('2026-06-11T00:00:00Z').getTime();
 const AIR_CUP_END_SERVER   = new Date('2026-07-15T23:59:59Z').getTime();
-const RESEND_API_KEY = process.env.RESEND_API_KEY || '';
-const RESEND_FROM = process.env.RESEND_FROM || 'JexonGo <onboarding@resend.dev>';
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'jeanlouisahyee72@gmail.com';
-const SUPABASE_REST_URL = process.env.SUPABASE_REST_URL || 'https://sndpzdqijuxaagjdcgfx.supabase.co/rest/v1/';
-const SUPABASE_ACCESS_TOKEN = process.env.SUPABASE_ACCESS_TOKEN || '';
 
 const isAirCupActive = () => {
   const now = Date.now();
@@ -72,41 +67,6 @@ function _loadAccount(email) {
   catch { return null; }
 }
 
-function _escapeHtml(value) {
-  return String(value ?? '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
-
-async function _sendResendEmail({ to, subject, html }) {
-  if (!RESEND_API_KEY) {
-    throw new Error('missing RESEND_API_KEY');
-  }
-
-  const response = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${RESEND_API_KEY}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      from: RESEND_FROM,
-      to: Array.isArray(to) ? to : [to],
-      subject,
-      html,
-    }),
-  });
-
-  const payload = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    throw new Error(payload?.message || payload?.error || `Resend failed (${response.status})`);
-  }
-  return payload;
-}
-
 async function _handleEmailApi(req, res) {
   const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
   if (url.pathname !== '/api/email') return false;
@@ -127,82 +87,13 @@ async function _handleEmailApi(req, res) {
   try { body = await _readBody(req); }
   catch { _json(res, 400, { error: 'bad request' }); return true; }
 
-  try {
-    const type = body.type || 'feedback';
-    const now = new Date();
-
-    if (type === 'new-player') {
-      const playerName = _escapeHtml(body.playerName || 'PILOT');
-      const playerEmail = _escapeHtml(body.playerEmail || '(no email)');
-      const playerGrade = _escapeHtml(body.playerGrade || '0');
-      const language = _escapeHtml(body.language || 'unknown');
-      const html = `
-        <h2>New JexonGo pilot</h2>
-        <p><strong>Name:</strong> ${playerName}</p>
-        <p><strong>Email:</strong> ${playerEmail}</p>
-        <p><strong>Grade:</strong> ${playerGrade}</p>
-        <p><strong>Language:</strong> ${language}</p>
-        <p><strong>Date:</strong> ${now.toLocaleString()}</p>
-      `;
-
-      _sendResendEmail({
-          to: ADMIN_EMAIL,
-          subject: `New JexonGo pilot: ${playerName}`,
-          html,
-      }).catch(err => console.warn('[Email] Admin new-player notification failed:', err?.message || err));
-
-      let playerTemplateSent = false;
-      if (body.playerEmail && String(body.playerEmail).includes('@')) {
-        await _sendResendEmail({
-          to: body.playerEmail,
-          subject: 'Bienvenue sur JexonGo',
-          html: `
-            <h2>Bienvenue, ${playerName}!</h2>
-            <p>Ton compte JexonGo est pret. Bon vol, pilote.</p>
-            <p><strong>Nom:</strong> ${playerName}</p>
-            <p><strong>Niveau:</strong> ${playerGrade}</p>
-          `,
-        });
-        playerTemplateSent = true;
-      }
-
-      _json(res, 200, { ok: true, playerTemplateSent });
-      return true;
-    }
-
-    if (type === 'feedback') {
-      const playerName = _escapeHtml(body.playerName || 'PILOT');
-      const playerEmail = _escapeHtml(body.playerEmail || '(no email)');
-      const html = `
-        <h2>JexonGo feedback</h2>
-        <p><strong>Player:</strong> ${playerName}</p>
-        <p><strong>Email:</strong> ${playerEmail}</p>
-        <p><strong>Grade:</strong> ${_escapeHtml(body.grade || '0')}</p>
-        <p><strong>Stars:</strong> ${_escapeHtml(body.rating || '0')}</p>
-        <p><strong>Comment:</strong> ${_escapeHtml(body.comment || '(no comment)')}</p>
-        <p><strong>Level:</strong> ${_escapeHtml(body.level || '0')}</p>
-        <p><strong>XP:</strong> ${_escapeHtml(body.xp || '0')}</p>
-        <p><strong>Aircraft:</strong> ${_escapeHtml(body.aircraft || '')}</p>
-        <p><strong>Playtime:</strong> ${_escapeHtml(body.playtime || '0 min')}</p>
-        <p><strong>Date:</strong> ${now.toLocaleString()}</p>
-      `;
-
-      await _sendResendEmail({
-        to: ADMIN_EMAIL,
-        subject: `JexonGo feedback: ${body.rating || 0} stars`,
-        html,
-      });
-      _json(res, 200, { ok: true });
-      return true;
-    }
-
-    _json(res, 400, { error: 'unknown email type' });
-    return true;
-  } catch (err) {
-    console.error('[Resend] email failed:', err);
-    _json(res, 500, { error: err?.message || 'email failed' });
-    return true;
-  }
+  _json(res, 200, {
+    ok: true,
+    disabled: true,
+    type: body.type || 'feedback',
+    message: 'Email delivery is disabled.',
+  });
+  return true;
 }
 
 function _authAccount(record, { authType, password }) {
