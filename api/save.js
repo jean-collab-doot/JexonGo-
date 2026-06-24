@@ -1,7 +1,11 @@
 import crypto from 'node:crypto';
 
-const SUPABASE_REST_URL = process.env.SUPABASE_REST_URL || '';
-const SUPABASE_ACCESS_TOKEN = process.env.SUPABASE_ACCESS_TOKEN || '';
+const SUPABASE_PROJECT_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+const SUPABASE_REST_URL = process.env.SUPABASE_REST_URL
+  || (SUPABASE_PROJECT_URL ? `${SUPABASE_PROJECT_URL.replace(/\/$/, '')}/rest/v1/` : '');
+const SUPABASE_ACCESS_TOKEN = process.env.SUPABASE_ACCESS_TOKEN
+  || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+  || '';
 const SAVES_TABLE = process.env.SUPABASE_SAVES_TABLE || 'saves';
 
 function send(res, status, body) {
