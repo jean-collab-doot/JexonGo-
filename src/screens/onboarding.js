@@ -529,6 +529,7 @@ function applyOnboardingAnswers(answers) {
   G.practiceTimeLimit = G.likesMath ? 10 : 14;
   G.pendingPlacement = wantsPlacement;
   G.tutorialMode = true;
+  G.tutorialCompleted = false;
   G.onboardingStartMode = G.pendingPlacement ? 'placement' : 'bases';
   G.tutorialProgress = {
     active: true,
@@ -555,6 +556,7 @@ function applyOnboardingAnswers(answers) {
   save('focusOperations', G.focusOperations ?? []);
   save('pendingPlacement', !!G.pendingPlacement);
   save('tutorialMode', !!G.tutorialMode);
+  save('tutorialCompleted', false);
   save('tutorialProgress', G.tutorialProgress);
   save('onboardingStartMode', G.onboardingStartMode);
   save('dailyGoalMinutes', G.dailyGoalMinutes);
@@ -578,6 +580,7 @@ function applyEquationConfigAnswers(answers) {
   G.onboardingStartMode = G.pendingPlacement ? 'placement' : 'bases';
   G.currentLevel = G.pendingPlacement ? (placementMap[grade] ?? 1) : 1;
   G.tutorialMode = G.pendingPlacement;
+  G.tutorialCompleted = !G.pendingPlacement;
   G.tutorialProgress = G.pendingPlacement ? {
     active: true,
     round: 1,
@@ -593,6 +596,7 @@ function applyEquationConfigAnswers(answers) {
   save('onboardingStartMode', G.onboardingStartMode);
   save('currentLevel', G.currentLevel);
   save('tutorialMode', !!G.tutorialMode);
+  save('tutorialCompleted', !!G.tutorialCompleted);
   save('tutorialProgress', G.tutorialProgress);
 
   if (G.playerRegistered) {

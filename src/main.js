@@ -217,9 +217,11 @@ function restartFullIntroFromStart() {
   resetIntroBriefing();
   G.hasSeenOnboarding = false;
   G.tutorialMode = false;
+  G.tutorialCompleted = false;
   G.tutorialProgress = null;
   save('hasSeenOnboarding', false);
   save('tutorialMode', false);
+  save('tutorialCompleted', false);
   save('tutorialProgress', null);
   renderMenu();
   showScreen('s-menu');
@@ -516,11 +518,23 @@ document.getElementById('btn-audio-start').addEventListener('click', async () =>
   document.getElementById('audio-splash').classList.add('hidden');
 
   const tutorialProgress = load('tutorialProgress', null);
-  if (tutorialProgress?.active) {
+  const tutorialCompleted = !!load('tutorialCompleted', false);
+  const tutorialMode = !!load('tutorialMode', false);
+  if (tutorialCompleted && tutorialProgress?.active) {
+    G.tutorialMode = false;
+    G.tutorialProgress = null;
+    save('tutorialMode', false);
+    save('tutorialProgress', null);
+  } else if (tutorialMode && tutorialProgress?.active) {
     G.tutorialMode = true;
     G.tutorialProgress = tutorialProgress;
     G.currentLevel = tutorialProgress.currentLevel || G.currentLevel || 1;
     nav.toGame(G.currentLevel || 1);
+    return;
+  }
+
+  if (G.hasSeenOnboarding || load('hasSeenOnboarding', false)) {
+    nav.toMenu();
     return;
   }
 

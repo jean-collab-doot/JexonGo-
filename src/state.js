@@ -71,6 +71,7 @@ export const G = {
   dailyGoalMinutes: 5,
   tutorialPlan: null,
   tutorialProgress: null,
+  tutorialCompleted: false,
   postTutorialConnectPrompt: false,
 
   // --- Session ---
@@ -130,6 +131,7 @@ export function loadSave() {
   G.dailyGoalMinutes  = load('dailyGoalMinutes', 5);
   G.tutorialPlan      = load('tutorialPlan', null);
   G.tutorialProgress  = load('tutorialProgress', null);
+  G.tutorialCompleted = load('tutorialCompleted', false);
   G.postTutorialConnectPrompt = load('postTutorialConnectPrompt', false);
 
   if (!G.playerRegistered) {
@@ -221,6 +223,7 @@ export function saveAll() {
   save('dailyGoalMinutes',  G.dailyGoalMinutes);
   save('tutorialPlan',      G.tutorialPlan);
   save('tutorialProgress',  G.tutorialProgress);
+  save('tutorialCompleted', G.tutorialCompleted);
   save('postTutorialConnectPrompt', G.postTutorialConnectPrompt);
   save('practiceTimeLimit', G.practiceTimeLimit);
   save('dailyLastLogin',    G.dailyLastLogin);
@@ -271,6 +274,7 @@ export function autoSave() {
   save('dailyGoalMinutes', G.dailyGoalMinutes);
   save('tutorialPlan',    G.tutorialPlan);
   save('tutorialProgress', G.tutorialProgress);
+  save('tutorialCompleted', G.tutorialCompleted);
   save('postTutorialConnectPrompt', G.postTutorialConnectPrompt);
 }
 

@@ -24,7 +24,7 @@ const PERSIST_KEYS = [
   'hasSeenOnboarding', 'likesMath', 'onboardingAgeGroup', 'onboardingGrade',
   'focusOperation', 'focusOperations', 'pendingPlacement', 'tutorialMode',
   'onboardingStartMode', 'onboardingLevelLength', 'dailyGoalMinutes',
-  'tutorialPlan', 'tutorialProgress', 'postTutorialConnectPrompt', 'currentLevel',
+  'tutorialPlan', 'tutorialProgress', 'tutorialCompleted', 'postTutorialConnectPrompt', 'currentLevel',
 ];
 
 let _pushTimer = null;
@@ -65,7 +65,7 @@ function _applyPilotConfig(out, source) {
     'hasSeenOnboarding', 'likesMath', 'onboardingAgeGroup', 'onboardingGrade',
     'focusOperation', 'focusOperations', 'pendingPlacement', 'tutorialMode',
     'onboardingStartMode', 'onboardingLevelLength', 'dailyGoalMinutes',
-    'tutorialPlan', 'tutorialProgress', 'postTutorialConnectPrompt',
+    'tutorialPlan', 'tutorialProgress', 'tutorialCompleted', 'postTutorialConnectPrompt',
     'practiceTimeLimit', 'currentLevel',
   ];
   for (const key of keys) {

@@ -192,6 +192,7 @@ function emptyTutorialStats() {
 
 function getStoredTutorialProgress() {
   const progress = G.tutorialProgress || load('tutorialProgress', null);
+  if (G.tutorialCompleted || load('tutorialCompleted', false)) return null;
   return progress?.active ? progress : null;
 }
 
@@ -209,8 +210,12 @@ function saveTutorialProgress() {
   save('tutorialMode', true);
 }
 
-function clearTutorialProgress() {
+function clearTutorialProgress(completed = false) {
   G.tutorialProgress = null;
+  if (completed) {
+    G.tutorialCompleted = true;
+    save('tutorialCompleted', true);
+  }
   save('tutorialProgress', null);
 }
 
@@ -490,13 +495,14 @@ function showTutorialAnalysis() {
   G.pendingPlacement = false;
   G.tutorialMode = false;
   G.postTutorialConnectPrompt = true;
-  clearTutorialProgress();
+  clearTutorialProgress(true);
   save('tutorialPlan', plan);
   save('focusOperation', G.focusOperation || '');
   save('focusOperations', G.focusOperations || []);
   save('currentLevel', G.currentLevel);
   save('pendingPlacement', false);
   save('tutorialMode', false);
+  save('tutorialCompleted', true);
   save('postTutorialConnectPrompt', true);
   endLevel(true);
 }
