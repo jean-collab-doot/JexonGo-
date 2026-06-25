@@ -53,6 +53,19 @@ function send(res, status, body) {
   res.status(status).json(body);
 }
 
+function requestBody(req) {
+  const body = req.body || {};
+  if (typeof body === 'string') {
+    if (!body.trim()) return {};
+    return JSON.parse(body);
+  }
+  if (body instanceof Uint8Array) {
+    const text = new TextDecoder().decode(body);
+    return text.trim() ? JSON.parse(text) : {};
+  }
+  return body;
+}
+
 function requireEmailJsConfig(type) {
   if (type === 'new-player') {
     if (!EMAILJS_NEW_PLAYER_PUBLIC_KEY) return 'missing EMAILJS_NEW_PLAYER_PUBLIC_KEY';
@@ -165,7 +178,6 @@ async function sendEmailJs({ serviceId, templateId, publicKey, params }) {
       service_id: serviceId,
       template_id: templateId,
       user_id: publicKey,
-      public_key: publicKey,
       template_params: params,
     }),
   });
@@ -182,7 +194,7 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') return send(res, 405, { error: 'method not allowed' });
 
   try {
-    const body = req.body || {};
+    const body = requestBody(req);
     const type = body.type === 'new-player' ? 'new-player' : 'feedback';
     const configError = requireEmailJsConfig(type);
     if (configError) return send(res, 503, { ok: false, error: configError });
