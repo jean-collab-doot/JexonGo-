@@ -35,13 +35,13 @@ export function touchMenuCanvasDpr() {
   return isTouchMobile() ? Math.min(window.devicePixelRatio || 1, 1) : 1;
 }
 
-export const GAME_FPS_TOUCH = 60;
+export const GAME_FPS_TOUCH = 45;
 
 export function maxParticlesTouch() {
-  return isPhone() ? 3 : 4;
+  return isPhone() ? 2 : 3;
 }
 
-export const MAX_ENEMY_MISSILES_TOUCH = 8;
+export const MAX_ENEMY_MISSILES_TOUCH = 5;
 
 /** Apply .touch-mobile / .touch-tablet on <html> for CSS. */
 export function applyDeviceClasses() {

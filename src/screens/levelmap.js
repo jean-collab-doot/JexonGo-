@@ -4,8 +4,9 @@ import { getLevel, TOTAL_LEVELS, BIOMES, BIOME_META } from '../data/levels.js';
 import { levelState } from '../systems/progression.js';
 import { t } from '../i18n.js';
 import { SFX } from '../audio/sound.js';
+import { load } from '../utils/storage.js';
 
-const GUEST_MAX_LEVEL = 3;
+const GUEST_FREE_GAMES = 3;
 
 const ZIG = 55;
 
@@ -74,7 +75,9 @@ export function renderLevelMap() {
       el.appendChild(stars);
     }
 
-    const guestLocked = !G.playerRegistered && node.num > GUEST_MAX_LEVEL;
+    const guestGamesPlayed = Number(load('guestGamesPlayed', 0)) || 0;
+    const guestTrialUsed = !G.playerRegistered && guestGamesPlayed >= GUEST_FREE_GAMES;
+    const guestLocked = !G.playerRegistered && guestTrialUsed;
 
     if (guestLocked) {
       el.classList.add('locked');

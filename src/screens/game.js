@@ -24,6 +24,21 @@ import {
 } from '../utils/device.js';
 import { setSpriteCanvasWidth } from '../game/aircraft-draw.js';
 
+const GUEST_FREE_GAMES = 3;
+
+function guestGamesPlayed() {
+  return Number(load('guestGamesPlayed', 0)) || 0;
+}
+
+function hasGuestTrialLeft() {
+  return G.playerRegistered || guestGamesPlayed() < GUEST_FREE_GAMES;
+}
+
+function recordGuestGamePlayed() {
+  if (G.playerRegistered || G.practiceMode || isTutorialActive()) return;
+  save('guestGamesPlayed', Math.min(GUEST_FREE_GAMES, guestGamesPlayed() + 1));
+}
+
 // ── GRADE-BASED MATH FILTER ───────────────────────────────────────────────────
 // Each grade has its own ops, number cap, and multiplication cap.
 // Level config values are clamped DOWN to the grade ceiling — never up.
@@ -2002,6 +2017,7 @@ function endLevel(won) {
   G.timerInterval = null;
   G.answerLocked  = true;
   if (ctx) { ctx.setTransform(1,0,0,1,0,0); ctx.globalAlpha = 1; }
+  recordGuestGamePlayed();
   if (won) trackMission('levels_won', 1);
   if (_onComplete) _onComplete(won);
 }
@@ -2013,13 +2029,13 @@ const _skinImgCache = {};
 let _lastFrameTs = 0;
 let   _qboxH         = 180;  // cached question-box height — updated in resize()
 function initSpeedLines(cw, ch) {
-  const count = window.innerWidth <= 768 ? 12 : 28;
+  const count = isTouchMobile() ? 6 : 28;
   _speedLines = Array.from({ length: count }, () => ({
     x:      Math.random() * cw,
     y:      Math.random() * ch,
     len:    30 + Math.random() * 80,
     speed:  8  + Math.random() * 10,
-    alpha:  0.08 + Math.random() * 0.14,
+    alpha:  isTouchMobile() ? 0.05 + Math.random() * 0.08 : 0.08 + Math.random() * 0.14,
     width:  0.5 + Math.random() * 1.0,
   }));
 }
@@ -2042,6 +2058,11 @@ function drawSpeedLines(ctx, cw, ch) {
 }
 
 export function initGame(levelNum, onComplete) {
+  if (!hasGuestTrialLeft()) {
+    if (window._showToast) window._showToast(t('signInAlert'));
+    window._nav?.toMenu?.();
+    return () => {};
+  }
   _sessionId++;
   _activeSessionId = _sessionId;
   _gamePausedFromQuit = false;

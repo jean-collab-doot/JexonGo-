@@ -1,6 +1,6 @@
 import { $ } from '../utils/dom.js';
 import { G, autoSave } from '../state.js';
-import { save } from '../utils/storage.js';
+import { save, load } from '../utils/storage.js';
 import { SFX } from '../audio/sound.js';
 import { calcStars } from '../systems/xp.js';
 import { saveProgress } from '../systems/progression.js';
@@ -35,6 +35,8 @@ export function showResult(won) {
   const hits      = G.missileHitsReceived || 0;
   const isBoss    = G.currentLevel % 10 === 0;
   const isConnected = !!G.playerRegistered;
+  const guestGamesPlayed = Number(load('guestGamesPlayed', 0)) || 0;
+  const shouldAskGuestConnect = !isConnected && !G.practiceMode && guestGamesPlayed >= 3;
   const canEarnRewards = !G.practiceMode && isConnected;
 
   const xp    = G.sessionXP || 0;
@@ -106,7 +108,14 @@ export function showResult(won) {
   }
 
   const rewardLockLabel = getLang() === 'fr' ? 'CONNECTE-TOI POUR GAGNER' : 'SIGN IN TO EARN';
-  $('result-xp').textContent = G.practiceMode ? t('noXpPractice') : (canEarnRewards ? `+ ${xp} XP` : `${rewardLockLabel} XP`);
+  const guestTrialLabel = getLang() === 'fr' ? `ESSAI INVITE ${guestGamesPlayed}/3` : `GUEST TRIAL ${guestGamesPlayed}/3`;
+  $('result-xp').textContent = G.practiceMode
+    ? t('noXpPractice')
+    : canEarnRewards
+      ? `+ ${xp} XP`
+      : shouldAskGuestConnect
+        ? `${rewardLockLabel} XP`
+        : guestTrialLabel;
   const coinsEl = $('result-coins');
   if (coinsEl) coinsEl.textContent = (!G.practiceMode && coinsEarned > 0) ? `◎ + ${coinsEarned}` : '';
   const total = isBoss ? answered : 10;
@@ -115,8 +124,10 @@ export function showResult(won) {
   if (summaryGrid) {
     const rewardLabel = G.practiceMode
       ? (getLang() === 'fr' ? 'ENTRAÎNEMENT' : 'PRACTICE')
-      : !canEarnRewards
+      : !canEarnRewards && shouldAskGuestConnect
         ? rewardLockLabel
+        : !canEarnRewards
+          ? guestTrialLabel
       : window._currentLevelCfg?.isChestLevel
         ? (getLang() === 'fr' ? 'COFFRE' : 'CHEST')
         : (coinsEarned > 0 ? `◎ ${coinsEarned}` : '--');
