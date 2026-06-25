@@ -1,10 +1,14 @@
 import crypto from 'node:crypto';
 
-const SUPABASE_PROJECT_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+const DEFAULT_SUPABASE_PROJECT_URL = 'https://sndpzdqijuxaagjdcgfx.supabase.co';
+const DEFAULT_SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_ibmq3oSAhc_xGYYXXH9qsw_GSPjth8K';
+
+const SUPABASE_PROJECT_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || DEFAULT_SUPABASE_PROJECT_URL;
 const SUPABASE_REST_URL = process.env.SUPABASE_REST_URL
   || (SUPABASE_PROJECT_URL ? `${SUPABASE_PROJECT_URL.replace(/\/$/, '')}/rest/v1/` : '');
 const SUPABASE_ACCESS_TOKEN = process.env.SUPABASE_ACCESS_TOKEN
   || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+  || DEFAULT_SUPABASE_PUBLISHABLE_KEY
   || '';
 const SAVES_TABLE = process.env.SUPABASE_SAVES_TABLE || 'saves';
 
