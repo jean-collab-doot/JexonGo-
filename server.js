@@ -8,6 +8,7 @@ import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
 import { fileURLToPath } from 'url';
+import emailHandler from './api/email.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 8080;
@@ -71,27 +72,29 @@ async function _handleEmailApi(req, res) {
   const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
   if (url.pathname !== '/api/email') return false;
 
+  _cors(res);
+
   if (req.method === 'OPTIONS') {
-    _cors(res);
     res.writeHead(204);
     res.end();
     return true;
   }
 
-  if (req.method !== 'POST') {
-    _json(res, 405, { error: 'method not allowed' });
-    return true;
+  let body = {};
+  if (req.method === 'POST') {
+    try { body = await _readBody(req); }
+    catch { _json(res, 400, { error: 'bad request' }); return true; }
   }
 
-  let body;
-  try { body = await _readBody(req); }
-  catch { _json(res, 400, { error: 'bad request' }); return true; }
-
-  _json(res, 200, {
-    ok: true,
-    disabled: true,
-    type: body.type || 'feedback',
-    message: 'Email delivery is disabled.',
+  await emailHandler({ method: req.method, body }, {
+    status(code) {
+      res.statusCode = code;
+      return this;
+    },
+    json(payload) {
+      res.writeHead(res.statusCode || 200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(payload));
+    },
   });
   return true;
 }
