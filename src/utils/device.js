@@ -46,6 +46,12 @@ export const MAX_ENEMY_MISSILES_TOUCH = 8;
 /** Apply .touch-mobile / .touch-tablet on <html> for CSS. */
 export function applyDeviceClasses() {
   const root = document.documentElement;
+  const viewport = window.visualViewport;
+  const width = viewport?.width || window.innerWidth;
+  const height = viewport?.height || window.innerHeight;
+
+  root.style.setProperty('--app-width', `${Math.round(width)}px`);
+  root.style.setProperty('--app-height', `${Math.round(height)}px`);
   root.classList.toggle('touch-mobile', isTouchMobile());
   root.classList.toggle('touch-phone', isPhone());
   root.classList.toggle('touch-tablet', isTablet() && !isPhone());

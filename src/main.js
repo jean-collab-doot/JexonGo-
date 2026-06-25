@@ -476,6 +476,8 @@ function showFeedbackPopup() {
 applyDeviceClasses();
 window.addEventListener('resize', applyDeviceClasses);
 window.addEventListener('orientationchange', applyDeviceClasses);
+window.visualViewport?.addEventListener('resize', applyDeviceClasses);
+window.visualViewport?.addEventListener('scroll', applyDeviceClasses);
 injectVercelInsights();
 loadSave();
 loadSettings();

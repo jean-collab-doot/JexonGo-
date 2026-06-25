@@ -9573,3 +9573,264 @@ html.touch-tablet .menu-top-left {
 #onboarding-overlay .ob-btn.ob-btn-selected .ob-btn-label {
   color: #b7ffcb;
 }
+
+/* Device-adaptive phone sizing: keep the whole game usable across short/tall phones. */
+@media (orientation: portrait) and (max-width: 768px) {
+  html,
+  body {
+    width: var(--app-width, 100vw);
+    height: var(--app-height, 100dvh);
+    overflow: hidden;
+  }
+
+  .screen,
+  .audio-splash,
+  .sett-backdrop,
+  #onboarding-overlay,
+  #brief-overlay {
+    left: 0 !important;
+    top: 0 !important;
+    right: auto !important;
+    bottom: auto !important;
+    width: var(--app-width, 100vw) !important;
+    height: var(--app-height, 100dvh) !important;
+    min-height: var(--app-height, 100dvh) !important;
+    max-width: none !important;
+    max-height: none !important;
+    box-sizing: border-box;
+  }
+
+  .screen {
+    overflow: hidden;
+  }
+
+  #s-menu .menu-top-left,
+  #s-menu .settings-gear-btn {
+    top: max(8px, env(safe-area-inset-top)) !important;
+  }
+
+  #s-menu .menu-top-left {
+    left: max(8px, env(safe-area-inset-left)) !important;
+    right: 58px !important;
+    height: 42px;
+    align-items: center;
+    gap: 7px;
+  }
+
+  #s-menu .lang-toggle-btn,
+  #s-menu .feedback-menu-btn,
+  #s-menu .settings-gear-btn {
+    height: 42px !important;
+    min-height: 42px !important;
+    box-sizing: border-box;
+  }
+
+  #s-menu .lang-toggle-btn {
+    width: 46px !important;
+    flex: 0 0 46px;
+    font-size: 6px !important;
+  }
+
+  #s-menu .feedback-menu-btn {
+    display: flex !important;
+    width: clamp(82px, 27vw, 116px) !important;
+    padding: 0 8px !important;
+    font-size: clamp(5px, 1.8vw, 7px) !important;
+    letter-spacing: 0 !important;
+  }
+
+  #s-menu .settings-gear-btn {
+    right: max(8px, env(safe-area-inset-right)) !important;
+    width: 42px !important;
+  }
+
+  #s-menu .menu-content {
+    height: var(--app-height, 100dvh);
+    min-height: var(--app-height, 100dvh);
+    justify-content: flex-start !important;
+    gap: clamp(9px, 1.25dvh, 14px) !important;
+    padding:
+      max(58px, calc(env(safe-area-inset-top) + 50px))
+      max(14px, env(safe-area-inset-right))
+      max(18px, calc(env(safe-area-inset-bottom) + 12px))
+      max(14px, env(safe-area-inset-left)) !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+  }
+
+  #s-menu .menu-logo {
+    font-size: clamp(30px, 12vw, 48px) !important;
+    line-height: 1.08 !important;
+    letter-spacing: 2px !important;
+  }
+
+  #s-menu .menu-subtitle {
+    margin-bottom: clamp(2px, 0.8dvh, 8px) !important;
+    font-size: clamp(5px, 1.9vw, 7px) !important;
+    line-height: 1.4 !important;
+  }
+
+  #s-menu .menu-content > .btn,
+  #s-menu .login-btn,
+  #s-menu .login-auth-row,
+  #s-menu .menu-offline-banner,
+  #s-menu .menu-playtime-dashboard {
+    width: min(360px, calc(100vw - 30px)) !important;
+  }
+
+  #s-menu .menu-content > .btn {
+    min-height: clamp(46px, 6.5dvh, 58px) !important;
+    padding: 10px 16px !important;
+    font-size: clamp(7px, 2.15vw, 9px) !important;
+    line-height: 1.35 !important;
+    letter-spacing: 1px !important;
+  }
+
+  #s-menu .menu-offline-banner {
+    padding: 7px 10px !important;
+    font-size: clamp(5px, 1.55vw, 6px) !important;
+    line-height: 1.5 !important;
+  }
+
+  #s-menu .login-btn {
+    min-height: clamp(40px, 5.8dvh, 50px) !important;
+    padding: 9px 12px !important;
+    font-size: clamp(5.5px, 1.7vw, 7px) !important;
+  }
+
+  #s-menu .login-auth-row {
+    gap: 9px !important;
+  }
+
+  #s-menu .login-auth-btn {
+    min-height: clamp(36px, 5.1dvh, 44px) !important;
+    padding: 8px 6px !important;
+    font-size: clamp(5px, 1.55vw, 6px) !important;
+  }
+
+  #s-menu .menu-playtime-dashboard {
+    position: static !important;
+    order: 30;
+    margin-top: clamp(8px, 1.2dvh, 14px) !important;
+    padding: 8px 10px !important;
+  }
+
+  .mpt-bars {
+    height: clamp(42px, 7dvh, 58px) !important;
+  }
+
+  #game-hud {
+    min-height: clamp(42px, 6.2dvh, 52px) !important;
+    padding: max(6px, env(safe-area-inset-top)) 8px 6px !important;
+    gap: 6px !important;
+  }
+
+  #hud-lives,
+  #hud-streak {
+    min-width: 58px !important;
+    font-size: clamp(11px, 3.2vw, 14px) !important;
+  }
+
+  #hud-level {
+    max-width: 38vw !important;
+    font-size: clamp(6px, 1.75vw, 8px) !important;
+  }
+
+  #question-box {
+    left: max(10px, env(safe-area-inset-left)) !important;
+    right: max(10px, env(safe-area-inset-right)) !important;
+    bottom: max(14px, calc(env(safe-area-inset-bottom) + 10px)) !important;
+    width: auto !important;
+    max-height: min(46dvh, 330px) !important;
+    padding: clamp(9px, 2.6vw, 13px) !important;
+    overflow: hidden;
+  }
+
+  #question-text {
+    font-size: clamp(14px, 4.8vw, 20px) !important;
+    line-height: 1.32 !important;
+    margin-bottom: clamp(8px, 1.4dvh, 12px) !important;
+    overflow-wrap: anywhere;
+  }
+
+  #answer-buttons {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: clamp(8px, 2.2vw, 12px) !important;
+  }
+
+  .answer-btn {
+    min-height: clamp(46px, 7.2dvh, 62px) !important;
+    padding: 9px 7px !important;
+    font-size: clamp(12px, 4vw, 17px) !important;
+    line-height: 1.2 !important;
+    overflow-wrap: anywhere;
+  }
+
+  #s-briefing,
+  #s-result,
+  #s-gameover,
+  #s-shop,
+  #s-hangar,
+  #s-levelmap,
+  #s-ranked,
+  #s-arena {
+    padding:
+      max(10px, env(safe-area-inset-top))
+      max(10px, env(safe-area-inset-right))
+      max(14px, env(safe-area-inset-bottom))
+      max(10px, env(safe-area-inset-left)) !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+  }
+
+  .briefing-pilot-row,
+  .briefing-card,
+  .briefing-conditions,
+  .briefing-star-criteria,
+  .briefing-fly-btn,
+  .result-summary-grid,
+  .result-credits {
+    width: min(440px, calc(100vw - 22px)) !important;
+  }
+
+  .briefing-fly-btn {
+    min-height: clamp(46px, 6.6dvh, 58px) !important;
+  }
+
+  #onboarding-overlay {
+    padding: max(12px, env(safe-area-inset-top)) 12px max(12px, env(safe-area-inset-bottom)) !important;
+    overflow-y: auto !important;
+  }
+
+  #onboarding-overlay .ob-panel {
+    width: min(440px, calc(100vw - 24px)) !important;
+    max-height: calc(var(--app-height, 100dvh) - 28px) !important;
+    overflow-y: auto !important;
+  }
+
+  #onboarding-overlay .ob-btn {
+    min-height: clamp(50px, 7.1dvh, 64px) !important;
+  }
+}
+
+@media (orientation: portrait) and (max-width: 380px), (orientation: portrait) and (max-height: 700px) {
+  #s-menu .menu-content {
+    gap: 8px !important;
+  }
+
+  #s-menu .menu-logo {
+    font-size: clamp(27px, 11vw, 38px) !important;
+  }
+
+  #s-menu .menu-content > .btn {
+    min-height: 43px !important;
+  }
+
+  #s-menu .menu-playtime-dashboard {
+    padding: 6px 8px !important;
+  }
+
+  .mpt-bars {
+    height: 38px !important;
+  }
+}
