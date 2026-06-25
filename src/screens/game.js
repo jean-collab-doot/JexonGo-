@@ -503,13 +503,14 @@ function buildTutorialPlan() {
 function showTutorialAnalysis() {
   const plan = buildTutorialPlan();
   const originalFocusOps = selectedFocusOperations();
+  const shouldConnectAfterTutorial = !G.playerRegistered && guestGamesPlayed() + 1 >= GUEST_FREE_GAMES;
   G.tutorialPlan = plan;
   G.focusOperation = plan.focusOperation;
   G.focusOperations = originalFocusOps.length ? originalFocusOps : [plan.focusOperation];
   G.currentLevel = plan.startLevel;
   G.pendingPlacement = false;
   G.tutorialMode = false;
-  G.postTutorialConnectPrompt = true;
+  G.postTutorialConnectPrompt = shouldConnectAfterTutorial;
   clearTutorialProgress(true);
   save('tutorialPlan', plan);
   save('focusOperation', G.focusOperation || '');
@@ -518,7 +519,7 @@ function showTutorialAnalysis() {
   save('pendingPlacement', false);
   save('tutorialMode', false);
   save('tutorialCompleted', true);
-  save('postTutorialConnectPrompt', true);
+  save('postTutorialConnectPrompt', shouldConnectAfterTutorial);
   endLevel(true);
 }
 
@@ -936,9 +937,9 @@ function frame(ts = 0) {
     const types = levelCfg.isBossLevel ? levelCfg.bossCompanionTypes : levelCfg.enemyTypes;
     const type  = types[Math.floor(Math.random() * types.length)];
     const e     = spawnEnemy(canvas.width, type);
-    e.speed        *= levelCfg.enemySpeedMult * (isTouchMobile() ? 1.30 : 1);
-    e.fireRate      = Math.max(30, Math.floor(e.fireRate * levelCfg.enemyFireRateMult));
-    e.fireCooldown  = (isTouchMobile() ? 24 : 45) + Math.floor(Math.random() * (isTouchMobile() ? 32 : 45));
+    e.speed        *= levelCfg.enemySpeedMult * (isTouchMobile() ? 0.95 : 1);
+    e.fireRate      = Math.max(isTouchMobile() ? 64 : 30, Math.floor(e.fireRate * levelCfg.enemyFireRateMult));
+    e.fireCooldown  = (isTouchMobile() ? 70 : 45) + Math.floor(Math.random() * (isTouchMobile() ? 70 : 45));
     G.enemies.push(e);
     spawnTimer = spawnRate;
   }
@@ -2029,7 +2030,7 @@ const _skinImgCache = {};
 let _lastFrameTs = 0;
 let   _qboxH         = 180;  // cached question-box height — updated in resize()
 function initSpeedLines(cw, ch) {
-  const count = isTouchMobile() ? 6 : 28;
+  const count = isTouchMobile() ? 0 : 28;
   _speedLines = Array.from({ length: count }, () => ({
     x:      Math.random() * cw,
     y:      Math.random() * ch,
@@ -2041,6 +2042,7 @@ function initSpeedLines(cw, ch) {
 }
 
 function drawSpeedLines(ctx, cw, ch) {
+  if (isTouchMobile() || !_speedLines.length) return;
   ctx.save();
   ctx.strokeStyle = '#ffffff';
   ctx.lineCap     = 'round';
@@ -2164,7 +2166,7 @@ export function initGame(levelNum, onComplete) {
   }
   updateStreakHUD();
 
-  spawnRate = isTutorialActive() ? 170 : isTouchMobile() ? Math.max(45, Math.round(levelCfg.spawnRate * 0.72)) : levelCfg.spawnRate;
+  spawnRate = isTutorialActive() ? 170 : isTouchMobile() ? Math.max(90, Math.round(levelCfg.spawnRate * 1.15)) : levelCfg.spawnRate;
   maxEnemies = isTutorialActive() ? 2 : levelCfg.maxEnemies;
   spawnTimer = isTouchMobile() ? 35 : 60;
 

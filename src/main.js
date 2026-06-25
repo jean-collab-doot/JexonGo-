@@ -94,7 +94,7 @@ const nav = {
     SFX.playMusic('game');
     _cleanup = initGame(levelNum, (won) => {
       cleanup();
-      if (won && G.postTutorialConnectPrompt && !G.playerRegistered) {
+      if (won && G.postTutorialConnectPrompt && !G.playerRegistered && guestTrialUsed()) {
         showMissionCompleteTransition(() => {
           renderMenu();
           showScreen('s-menu');
@@ -193,6 +193,10 @@ function deviceIntroLang() {
   return getLang();
 }
 
+function guestTrialUsed() {
+  return !G.playerRegistered && (Number(load('guestGamesPlayed', 0)) || 0) >= 3;
+}
+
 function showNewPlayerIntroFlow(onDone = null) {
   renderMenu();
   showScreen('s-menu');
@@ -261,14 +265,12 @@ window._onGoogleCredential = async function(response) {
     const email   = (payload.email || '').toLowerCase();
     const photo   = payload.picture || '';
 
+    let supabaseGoogleReady = true;
     try {
       await signInWithGoogleIdToken(response.credential);
     } catch (err) {
       console.warn('[Supabase] Google auth failed:', err);
-      _showLoginToast(deviceIntroLang() === 'fr'
-        ? 'Connexion Google Supabase non configuree.'
-        : 'Supabase Google login is not configured.');
-      return;
+      supabaseGoogleReady = false;
     }
 
     const wasRegistered = G.playerRegistered;
@@ -287,7 +289,9 @@ window._onGoogleCredential = async function(response) {
     save('playerRegistered', true);
 
     loadSave();
-    const sync = await syncAccountFromCloud({ authType: 'google' });
+    const sync = supabaseGoogleReady
+      ? await syncAccountFromCloud({ authType: 'google' })
+      : { offline: true };
     const shouldNotifyNewGooglePlayer = !sync?.merged && (!wasRegistered || previousEmail !== email);
     if (sync.offline) _showLoginToast(t('syncOffline') || 'Account connected - progress saves on this device.');
     else if (sync.merged) _showLoginToast(t('syncOk') || 'Progress synced from your account.');

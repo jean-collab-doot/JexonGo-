@@ -1050,7 +1050,7 @@ export function renderMenu() {
     }
   }
   const googleBtn = document.getElementById('btn-login-google');
-  if (googleBtn) googleBtn.classList.toggle('login-important', !!G.postTutorialConnectPrompt && !G.playerRegistered);
+  if (googleBtn) googleBtn.classList.toggle('login-important', !!G.postTutorialConnectPrompt && !G.playerRegistered && guestTrialUsed);
 }
 
 function _updateRankBadge() {

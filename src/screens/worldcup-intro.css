@@ -481,15 +481,17 @@ html.touch-mobile .wc-plane {
 }
 html.touch-mobile .wc-flag-corners {
   z-index: 130 !important;
+  isolation: isolate;
 }
 html.touch-mobile .wc-flag-card {
-  z-index: 131 !important;
+  z-index: 132 !important;
 }
 html.touch-mobile .wc-ball-layer {
   z-index: 120 !important;
 }
 html.touch-mobile .wc-plane-wrap {
-  z-index: 10 !important;
+  z-index: 2 !important;
+  opacity: 0.92;
 }
 html.touch-mobile .wc-plane,
 html.touch-mobile .wc-plane-wrap::after,
@@ -497,4 +499,16 @@ html.touch-mobile .wc-engine-smoke,
 html.touch-mobile .wc-engine-fire,
 html.touch-mobile .wc-wing-glow {
   z-index: 0 !important;
+}
+
+html.touch-mobile .world-cup-intro.wc-active .wc-plane-wrap {
+  animation-name: wc-plane-translate-mobile;
+}
+
+@keyframes wc-plane-translate-mobile {
+  0% { top: 132%; transform: translate(-50%, -50%) scale(0.82) rotate(0deg); opacity: 0; }
+  14% { opacity: 0.92; }
+  46% { top: 54%; transform: translate(-50%, -50%) scale(0.9) rotate(0deg); opacity: 0.9; }
+  72% { top: 38%; transform: translate(-50%, -50%) scale(0.86) rotate(0deg); opacity: 0.74; }
+  100% { top: -20%; transform: translate(-50%, -50%) scale(0.72) rotate(0deg); opacity: 0; }
 }

@@ -10173,3 +10173,71 @@ html.touch-tablet .menu-top-left {
     margin-left: 28px;
   }
 }
+
+@media (max-width: 430px), (max-height: 720px) {
+  .privacy-shell {
+    width: calc(100% - 10px);
+    padding-top: 8px;
+    padding-bottom: 18px;
+  }
+  .privacy-back-btn {
+    width: 100%;
+    padding: 10px 12px;
+    font-size: 8px;
+    margin-bottom: 8px;
+  }
+  .privacy-hero {
+    padding: 14px;
+    border-radius: 12px;
+  }
+  .privacy-logo {
+    font-size: clamp(18px, 9vw, 28px);
+  }
+  .privacy-kicker {
+    margin-top: 8px;
+    font-size: 7px;
+    letter-spacing: 1px;
+  }
+  .privacy-hero h1 {
+    margin: 12px 0 7px;
+    font-size: clamp(17px, 7.3vw, 25px);
+    line-height: 1.15;
+  }
+  .privacy-hero p,
+  .privacy-card p,
+  .privacy-card li {
+    font-size: 11px;
+    line-height: 1.48;
+  }
+  .privacy-language-grid {
+    gap: 10px;
+    margin-top: 10px;
+  }
+  .privacy-language-title {
+    padding: 10px 12px;
+    margin-bottom: 8px;
+    font-size: 12px;
+  }
+  .privacy-grid {
+    gap: 8px;
+  }
+  .privacy-card {
+    padding: 12px;
+    border-radius: 12px;
+  }
+  .privacy-card h3 {
+    margin-bottom: 7px;
+    font-size: 13px;
+    line-height: 1.18;
+  }
+  .privacy-plane {
+    width: 26px;
+    height: 26px;
+    margin-bottom: 7px;
+  }
+  .privacy-footer {
+    margin-top: 10px;
+    padding: 12px;
+    font-size: 8px;
+  }
+}
