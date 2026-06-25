@@ -58,13 +58,19 @@ async function checkSupabaseConnection() {
   const url = supabaseUrl(`${SAVES_TABLE}?select=email&limit=1`);
   const response = await fetch(url, { headers: supabaseHeaders() });
   const data = await response.json().catch(() => null);
+  const error = response.ok ? undefined : (data?.message || data?.error || 'Supabase connection failed.');
   return {
     ok: response.ok,
     configured: true,
     connected: response.ok,
     table: SAVES_TABLE,
     status: response.status,
-    error: response.ok ? undefined : (data?.message || data?.error || 'Supabase connection failed.'),
+    error,
+    fix: response.ok ? undefined : (
+      response.status === 404
+        ? 'Create the public.saves table using supabase/migrations/001_create_saves.sql.'
+        : 'Check Supabase URL, publishable key, table permissions, and RLS policies.'
+    ),
   };
 }
 
