@@ -3,7 +3,8 @@
 // Rocket image points upper-left (~135° in canvas), so offset rotation by -π*0.75
 // to align nose upward for player missiles, downward for enemy missiles.
 
-import { drawFrame, getImage } from './sprites.js';
+import { drawFrame } from './sprites.js';
+import { isTouchMobile } from '../utils/device.js';
 
 // Rocket image points NW (~225° canvas CW). Offset to point straight up (-90°):
 const ROCKET_ANGLE   = (3 * Math.PI) / 4;  // image native angle from +X axis
@@ -45,9 +46,10 @@ export function updateMissiles(missiles, onHit) {
 // ── DRAW ──────────────────────────────────────────────────────────────────────
 
 export function drawMissiles(ctx, missiles, isEnemy = false) {
+  const size = isTouchMobile() ? 28 : BOLT_W;
   for (const m of missiles) {
     const travelAngle = Math.atan2(m.vy, m.vx);
     const rot = travelAngle - ROCKET_ANGLE + Math.PI;
-    drawFrame(ctx, 'bolt', 0, m.x, m.y, BOLT_W, BOLT_H, { rotate: rot });
+    drawFrame(ctx, 'bolt', 0, m.x, m.y, size, size, { rotate: rot });
   }
 }

@@ -568,6 +568,21 @@ let _shipFrame  = 0;   // player ship animation (0–4, cycled every tick)
 let _godMode    = false;
 const _gameCT   = new Map(); // cheat key timestamps
 
+function activeRegularEnemyCount() {
+  let count = 0;
+  for (const e of G.enemies) {
+    if (e.active && e.type !== 'boss') count++;
+  }
+  return count;
+}
+
+function pruneEnemies(limitY = Infinity) {
+  for (let i = G.enemies.length - 1; i >= 0; i--) {
+    const e = G.enemies[i];
+    if (!e.active || (e.type !== 'boss' && e.y >= limitY)) G.enemies.splice(i, 1);
+  }
+}
+
 // ── INPUT ───────────────────────────────────────────────────────────────────
 const keys = {
   ArrowLeft: false, ArrowRight: false, ArrowUp: false, ArrowDown: false,
@@ -926,7 +941,7 @@ function frame(ts = 0) {
 
   // ── Enemy spawn ────────────────────────────────────────────────────────
   spawnTimer--;
-  if (spawnTimer <= 0 && G.enemies.filter(e => e.type !== 'boss' && e.active).length < maxEnemies) {
+  if (spawnTimer <= 0 && activeRegularEnemyCount() < maxEnemies) {
     const types = levelCfg.isBossLevel ? levelCfg.bossCompanionTypes : levelCfg.enemyTypes;
     const type  = types[Math.floor(Math.random() * types.length)];
     const e     = spawnEnemy(canvas.width, type);
@@ -936,7 +951,7 @@ function frame(ts = 0) {
     G.enemies.push(e);
     spawnTimer = spawnRate;
   }
-  G.enemies = G.enemies.filter(e => e.type === 'boss' || e.y < canvas.height + 80);
+  pruneEnemies(canvas.height + 80);
 
   // Level-based missile guidance strength and homing probability
   const _guideF = G.currentLevel >= 50 ? 0.10
@@ -1333,7 +1348,7 @@ function onMissileHit(enemy, missile) {
     spawnExplosion(G.particles, enemy.x, enemy.y, enemy.color, 18);
     enemy.active = false;
     shakeFrames  = 6;
-    G.enemies    = G.enemies.filter(e => e.active);
+    pruneEnemies(canvas.height + 80);
     // Boss killed → win the boss level immediately
     if (enemy.type === 'boss' && levelCfg.isBossLevel) {
       setTimeout(() => endLevel(true), 800);

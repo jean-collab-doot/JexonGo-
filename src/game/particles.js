@@ -2,17 +2,19 @@ import { drawFrame } from './sprites.js';
 import { isTouchMobile, maxParticlesTouch } from '../utils/device.js';
 
 export function spawnExplosion(particles, x, y, color, count = 14) {
+  const mobile = isTouchMobile();
   particles.push({
     spriteKey:   'enemy-death',
     x, y,
     frame:       0,
-    frameRate:   0.35,
+    frameRate:   mobile ? 0.6 : 0.35,
     totalFrames: 7,
-    size:        Math.max(44, count * 3.5),
+    size:        mobile ? Math.max(28, count * 2.2) : Math.max(44, count * 3.5),
   });
 }
 
 export function spawnHitSpark(particles, x, y) {
+  if (isTouchMobile()) return;
   particles.push({
     spriteKey:   'spark',
     x, y,
