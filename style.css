@@ -721,7 +721,24 @@ html.touch-mobile .menu-offline-banner {
 .login-google:hover {
   box-shadow: 2px 2px 0 #1a3370, 0 0 18px rgba(66,133,244,0.55);
 }
-.login-google.login-important {
+.login-game {
+  background: #061622;
+  border-color: #00e5ff;
+  color: #e0fbff;
+  box-shadow: 3px 3px 0 #00384a, 0 0 12px rgba(0,229,255,0.35);
+}
+.login-game:hover {
+  box-shadow: 2px 2px 0 #00384a, 0 0 18px rgba(0,229,255,0.55);
+}
+.login-game-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #00e5ff;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 14px;
+}
+.login-btn.login-important {
   border-color: #fbbf24;
   box-shadow: 4px 4px 0 rgba(0,0,0,0.75), 0 0 20px rgba(251,191,36,0.75);
   animation: login-important-pulse 1.35s ease-in-out infinite;

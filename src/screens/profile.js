@@ -148,6 +148,16 @@ function _triggerGoogleSignIn() {
   google.accounts.id.prompt();
 }
 
+function _openGameLoginOverlay() {
+  const modal = document.getElementById('login-modal');
+  if (!modal) return;
+  document.getElementById('login-modal-email').value = '';
+  document.getElementById('login-modal-password').value = '';
+  document.getElementById('login-modal-error').textContent = '';
+  modal.classList.remove('hidden');
+  document.getElementById('login-modal-email').focus();
+}
+
 function _buildAccountSection() {
   const el = document.getElementById('pce-account-display');
   if (!el) return;
@@ -181,11 +191,11 @@ function _buildAccountSection() {
         <div class="pce-acc-guest-sub">Link an account to save your pilot identity</div>
       </div>
       <div class="pce-acc-btns">
-        <button id="btn-pce-google" class="pce-google-btn">G  GOOGLE SIGN IN</button>
+        <button id="btn-pce-login" class="pce-google-btn">@  LOG IN</button>
         <button id="btn-pce-register" class="pce-register-btn">✎ REGISTER</button>
       </div>
     `;
-    document.getElementById('btn-pce-google')?.addEventListener('click', _triggerGoogleSignIn);
+    document.getElementById('btn-pce-login')?.addEventListener('click', _openGameLoginOverlay);
     document.getElementById('btn-pce-register')?.addEventListener('click', () => showScreen('s-register'));
   }
 }

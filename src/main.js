@@ -100,8 +100,8 @@ const nav = {
           SFX.playMusic('menu');
           const level = G.tutorialPlan?.startLevel || G.currentLevel || 1;
           _showLoginToast(deviceIntroLang() === 'fr'
-            ? `La connexion est importante. Connecte-toi avec Google pour continuer au niveau ${level}.`
-            : `Connection is important. Sign in with Google to continue at level ${level}.`, 5200);
+            ? `La connexion est importante. Connecte-toi avec ton compte JexonGo pour continuer au niveau ${level}.`
+            : `Connection is important. Sign in with your JexonGo account to continue at level ${level}.`, 5200);
         });
         return;
       }
