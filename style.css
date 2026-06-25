@@ -10040,7 +10040,7 @@ html.touch-tablet .menu-top-left {
 }
 .privacy-hero h1 {
   margin: 26px 0 10px;
-  font-size: clamp(28px, 5vw, 56px);
+  font-size: clamp(24px, 4.4vw, 52px);
   letter-spacing: 0;
 }
 .privacy-hero p {
@@ -10048,16 +10048,35 @@ html.touch-tablet .menu-top-left {
   color: #dff8ff;
   font-size: clamp(14px, 2vw, 18px);
 }
-.privacy-grid {
+.privacy-language-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
+  gap: clamp(14px, 2vw, 22px);
   margin-top: 18px;
+}
+.privacy-language-panel {
+  min-width: 0;
+}
+.privacy-language-title {
+  margin: 0 0 12px;
+  padding: 14px 16px;
+  border: 2px solid rgba(255,255,255,0.75);
+  border-radius: 14px;
+  background: rgba(3,26,48,0.86);
+  color: #fff4df;
+  font-size: clamp(14px, 2.4vw, 22px);
+  letter-spacing: 0;
+  box-shadow: 0 12px 28px rgba(10,61,98,0.22);
+}
+.privacy-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
 }
 .privacy-card {
   position: relative;
-  min-height: 210px;
-  padding: 24px;
+  min-height: 0;
+  padding: clamp(16px, 2.4vw, 22px);
   border: 1px solid rgba(255,255,255,0.78);
   border-radius: 18px;
   background: rgba(255,255,255,0.9);
@@ -10082,14 +10101,14 @@ html.touch-tablet .menu-top-left {
   color: #ffcc33;
   box-shadow: 0 0 14px rgba(255,204,51,0.36);
 }
-.privacy-card h2 {
+.privacy-card h3 {
   margin: 0 0 12px;
-  font-size: clamp(18px, 2.6vw, 25px);
+  font-size: clamp(15px, 1.7vw, 20px);
   letter-spacing: 0;
 }
 .privacy-card p,
 .privacy-card li {
-  font-size: clamp(14px, 1.8vw, 16px);
+  font-size: clamp(13px, 1.28vw, 15px);
   line-height: 1.6;
 }
 .privacy-card ul {
@@ -10114,18 +10133,37 @@ html.touch-tablet .menu-top-left {
 }
 @media (max-width: 760px) {
   .privacy-shell {
-    width: min(100% - 18px, 560px);
+    width: min(100% - 16px, 560px);
     padding-top: 12px;
   }
+  .privacy-language-grid,
   .privacy-grid {
     grid-template-columns: 1fr;
   }
   .privacy-card {
     min-height: 0;
-    padding: 18px;
+    padding: 16px;
   }
   .privacy-kicker {
     letter-spacing: 2px;
+  }
+  .privacy-hero {
+    padding: 18px;
+    border-radius: 14px;
+  }
+  .privacy-hero h1 {
+    margin-top: 18px;
+    font-size: clamp(20px, 8vw, 32px);
+  }
+  .privacy-hero p,
+  .privacy-card p,
+  .privacy-card li {
+    font-size: clamp(12px, 3.7vw, 14px);
+  }
+  .privacy-plane {
+    width: 32px;
+    height: 32px;
+    margin-bottom: 10px;
   }
   .reg-tos-row {
     flex-wrap: wrap;
