@@ -360,6 +360,9 @@ function initRegistration() {
   document.getElementById('btn-reg-privacy')?.addEventListener('click', () => {
     showScreen('s-privacy');
   });
+  document.getElementById('btn-menu-privacy')?.addEventListener('click', () => {
+    showScreen('s-privacy');
+  });
   document.getElementById('btn-privacy-back')?.addEventListener('click', () => {
     renderMenu();
     showScreen('s-menu');
