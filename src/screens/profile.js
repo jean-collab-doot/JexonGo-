@@ -191,10 +191,12 @@ function _buildAccountSection() {
         <div class="pce-acc-guest-sub">Link an account to save your pilot identity</div>
       </div>
       <div class="pce-acc-btns">
+        <button id="btn-pce-google" class="pce-google-btn">G  GOOGLE</button>
         <button id="btn-pce-login" class="pce-google-btn">@  LOG IN</button>
         <button id="btn-pce-register" class="pce-register-btn">✎ REGISTER</button>
       </div>
     `;
+    document.getElementById('btn-pce-google')?.addEventListener('click', _triggerGoogleSignIn);
     document.getElementById('btn-pce-login')?.addEventListener('click', _openGameLoginOverlay);
     document.getElementById('btn-pce-register')?.addEventListener('click', () => showScreen('s-register'));
   }

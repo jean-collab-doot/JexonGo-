@@ -760,8 +760,8 @@ export function initMenu(nav) {
   $('btn-hangar').onclick  = () => nav.toHangar();
   $('btn-shop').onclick    = () => nav.toShop();
   $('btn-practice').onclick = () => openPracticeSelect(nav);
-  const accountBtn = document.getElementById('btn-login-google');
-  if (accountBtn) accountBtn.onclick = () => _openLoginOverlay();
+  const googleBtn = document.getElementById('btn-login-google');
+  if (googleBtn) googleBtn.onclick = () => _handleLogin('google');
 
   const signupBtn = document.getElementById('btn-signup');
   if (signupBtn) signupBtn.onclick = () => showScreen('s-register');
@@ -1034,8 +1034,8 @@ export function renderMenu() {
         : `Connection is important: sign in with your JexonGo account to save your Captain Jexongo plan and continue at level ${level}.`
       : '✈ Sign in with your JexonGo account to save your progress and unlock all 50 levels';
   }
-  const accountBtn = document.getElementById('btn-login-google');
-  if (accountBtn) accountBtn.classList.toggle('login-important', !!G.postTutorialConnectPrompt && !G.playerRegistered);
+  const googleBtn = document.getElementById('btn-login-google');
+  if (googleBtn) googleBtn.classList.toggle('login-important', !!G.postTutorialConnectPrompt && !G.playerRegistered);
 }
 
 function _updateRankBadge() {
