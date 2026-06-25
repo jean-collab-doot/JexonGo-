@@ -20,7 +20,7 @@ import { calcSpeedXP } from '../systems/xp.js';
 import { load, save } from '../utils/storage.js';
 import { t, getLang } from '../i18n.js';
 import {
-  isTouchMobile, gameCanvasDpr, GAME_FPS_TOUCH, MAX_ENEMY_MISSILES_TOUCH,
+  isTouchMobile, gameCanvasDpr, MAX_ENEMY_MISSILES_TOUCH,
 } from '../utils/device.js';
 import { setSpriteCanvasWidth } from '../game/aircraft-draw.js';
 
@@ -789,8 +789,8 @@ function _canRunSid(sid = _activeSessionId) {
   return _isActiveSid(sid) && !_gamePausedFromQuit;
 }
 
-function _queueDesktopFrame(sid = _activeSessionId) {
-  if (isTouchMobile() || !_canRunSid(sid)) return;
+function _queueFrame(sid = _activeSessionId) {
+  if (!_canRunSid(sid)) return;
   G.animFrame = requestAnimationFrame(ts => {
     if (!_canRunSid(sid)) {
       G.animFrame = null;
@@ -803,21 +803,14 @@ function _queueDesktopFrame(sid = _activeSessionId) {
 function _startGameLoop(sid) {
   _stopGameLoop();
   if (!_canRunSid(sid)) return;
-  if (isTouchMobile()) {
-    G.mobileLoop = setInterval(() => {
-      if (!_canRunSid(sid)) { clearInterval(G.mobileLoop); G.mobileLoop = null; return; }
-      frame(performance.now());
-    }, 1000 / GAME_FPS_TOUCH);
-  } else {
-    _queueDesktopFrame(sid);
-  }
+  _queueFrame(sid);
 }
 
 // ── RESIZE ─────────────────────────────────────────────────────────────────
 function resize() {
   const w = canvas.clientWidth, h = canvas.clientHeight;
   if (!w || !h) return;
-  if (!isTouchMobile() && G.animFrame) { cancelAnimationFrame(G.animFrame); G.animFrame = null; }
+  if (G.animFrame) { cancelAnimationFrame(G.animFrame); G.animFrame = null; }
   _setCanvasSize(w, h);
   setSpriteCanvasWidth(canvas.width);
   ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -827,7 +820,7 @@ function resize() {
   const qbox = _canvasQboxH();
   G.player.x = Math.max(16, Math.min(bw - 16,  G.player.x || bw / 2));
   G.player.y = Math.max(bh * 0.08, Math.min(bh - qbox - 80, G.player.y || bh - qbox - 60));
-  if (!_cutsceneActive) _queueDesktopFrame();
+  if (!_cutsceneActive) _queueFrame();
 }
 
 function placePlayer() {
@@ -927,7 +920,7 @@ function frame(ts = 0) {
     const plane = countdownPlanePosition(ts || performance.now());
     drawAircraftSprite(ctx, G.activeAircraft, plane.x, plane.y, _shipFrame, 1, 0);
     if (shaking) ctx.restore();
-    _queueDesktopFrame();
+    _queueFrame();
     return;
   }
 
@@ -1045,7 +1038,7 @@ function frame(ts = 0) {
     drawEnemySprite(ctx, e, bankAngle);
     e.x = origX;
 
-    if (e.label) {
+    if (!isTouchMobile() && e.label) {
       ctx.fillStyle    = 'rgba(255,255,255,0.8)';
       ctx.font         = isTouchMobile() ? 'bold 8px monospace' : 'bold 9px monospace';
       ctx.textAlign    = 'center';
@@ -1249,7 +1242,7 @@ function frame(ts = 0) {
   ctx.fillStyle = _topGrad;
   ctx.fillRect(0, 0, canvas.width, fadeH);
 
-  if (!_cutsceneActive) _queueDesktopFrame();
+  if (!_cutsceneActive) _queueFrame();
 }
 
 // ── COMBAT ──────────────────────────────────────────────────────────────────
@@ -1386,7 +1379,7 @@ function nextQuestion() {
   // Undim and resume game loop
   const overlay = $('game-pause-overlay');
   overlay.classList.remove('dimmed');
-  if (!G.animFrame && !_cutsceneActive) _queueDesktopFrame(_nqSid);
+  if (!G.animFrame && !_cutsceneActive) _queueFrame(_nqSid);
 
   const reveal = $('correct-answer-reveal');
   const qbox   = $('question-box');
@@ -2343,8 +2336,7 @@ export function initGame(levelNum, onComplete) {
       _stopGameLoop();
     } else if (!_cutsceneActive && _canRunSid(sid)) {
       _lastFrameTs = 0;
-      if (isTouchMobile() && !G.mobileLoop) _startGameLoop(sid);
-      else if (!isTouchMobile() && !G.animFrame) _queueDesktopFrame(sid);
+      if (!G.animFrame) _startGameLoop(sid);
     }
   };
   document.addEventListener('visibilitychange', _onVisibility);

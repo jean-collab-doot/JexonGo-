@@ -3,7 +3,7 @@ import { getImage } from './sprites.js';
 import { isTouchMobile } from '../utils/device.js';
 
 function _bgSpeed() {
-  if (isTouchMobile()) return 1.65;
+  if (isTouchMobile()) return 0.95;
   return 1.2;
 }
 
@@ -17,8 +17,6 @@ const LAYER_DEFS = {
 
 let _layers      = [];
 let _lastCanvasW = 0;
-let _frameCache    = null;
-let _frameCacheCtx = null;
 let _activeBiome   = 'ocean';
 
 export function initBackground(biome) {
@@ -26,7 +24,6 @@ export function initBackground(biome) {
   const defs = LAYER_DEFS[_activeBiome] ?? LAYER_DEFS.ocean;
   _layers      = defs.map(d => ({ key: d.key, speed: _bgSpeed(), y: 0, offscreen: null, dh: 0 }));
   _lastCanvasW = 0;
-  _frameCache  = null;
 }
 
 export function updateBackground() {
@@ -39,20 +36,7 @@ export function drawBackground(ctx, canvas) {
 
   if (_lastCanvasW !== cw) {
     for (const l of _layers) { l.offscreen = null; l.dh = 0; }
-    _frameCache  = null;
     _lastCanvasW = cw;
-  }
-
-  let targetCtx = ctx;
-  if (isTouchMobile()) {
-    if (!_frameCache || _frameCache.width !== cw || _frameCache.height !== ch) {
-      _frameCache    = document.createElement('canvas');
-      _frameCache.width  = cw;
-      _frameCache.height = ch;
-      _frameCacheCtx = _frameCache.getContext('2d');
-    }
-    _frameCacheCtx.clearRect(0, 0, cw, ch);
-    targetCtx = _frameCacheCtx;
   }
 
   for (const l of _layers) {
@@ -75,10 +59,8 @@ export function drawBackground(ctx, canvas) {
     const offset = l.y % dh;
     let startY   = offset - dh;
     while (startY < ch) {
-      targetCtx.drawImage(off, 0, startY);
+      ctx.drawImage(off, 0, startY);
       startY += dh;
     }
   }
-
-  if (isTouchMobile()) ctx.drawImage(_frameCache, 0, 0);
 }
