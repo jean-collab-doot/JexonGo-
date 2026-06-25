@@ -36,6 +36,34 @@ function supabaseHeaders(extra = {}) {
   };
 }
 
+function isSupabaseConfigured() {
+  return Boolean(SUPABASE_REST_URL && SUPABASE_ACCESS_TOKEN);
+}
+
+async function checkSupabaseConnection() {
+  if (!isSupabaseConfigured()) {
+    return {
+      ok: false,
+      configured: false,
+      connected: false,
+      table: SAVES_TABLE,
+      message: 'Supabase environment variables are missing.',
+    };
+  }
+
+  const url = supabaseUrl(`${SAVES_TABLE}?select=email&limit=1`);
+  const response = await fetch(url, { headers: supabaseHeaders() });
+  const data = await response.json().catch(() => null);
+  return {
+    ok: response.ok,
+    configured: true,
+    connected: response.ok,
+    table: SAVES_TABLE,
+    status: response.status,
+    error: response.ok ? undefined : (data?.message || data?.error || 'Supabase connection failed.'),
+  };
+}
+
 async function readAccount(email) {
   const url = supabaseUrl(`${SAVES_TABLE}?email=eq.${encodeURIComponent(email)}&select=*`);
   const response = await fetch(url, { headers: supabaseHeaders() });
@@ -63,7 +91,12 @@ async function writeAccount(record) {
 export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return send(res, 204, {});
 
-  if (!SUPABASE_REST_URL || !SUPABASE_ACCESS_TOKEN) {
+  if (req.method === 'GET' && (req.query.health === '1' || req.query.status === '1')) {
+    const health = await checkSupabaseConnection();
+    return send(res, health.connected ? 200 : 503, health);
+  }
+
+  if (!isSupabaseConfigured()) {
     return send(res, 200, {
       ok: false,
       offline: true,

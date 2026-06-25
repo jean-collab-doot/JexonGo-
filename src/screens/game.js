@@ -546,6 +546,7 @@ let _nukeApplied    = false;
 let _nukeAnswers    = 0;
 let _revealTimer  = null;
 let _skipHandler  = null;
+let _correctionWaiting = false;
 let _transitioning = false;
 let _shipFrame  = 0;   // player ship animation (0–4, cycled every tick)
 let _godMode    = false;
@@ -1295,6 +1296,24 @@ function onEnemyMissileHit() {
   spawnExplosion(G.particles, G.player.x, G.player.y, '#ef4444', 14);
   SFX.explode();
   shakeFrames = 14;
+  if (!G.answerLocked && G.question) {
+    G.answerLocked = true;
+    G.questionsAnswered++;
+    recordTutorialAnswer(G.question.op, false);
+    showTutorialFeedback(false);
+    G.streak = 0;
+    updateStreakHUD();
+    clearInterval(G.timerInterval);
+    G.timerInterval = null;
+    G.enemyMissiles = [];
+    document.querySelectorAll('.answer-btn').forEach(b => {
+      b.classList.add('wrong');
+      b.disabled = true;
+    });
+    revealCorrectAnswer();
+    waitForCorrectionContinue(() => loseLife(), _sessionId);
+    return;
+  }
   loseLife();
 }
 
@@ -1344,6 +1363,7 @@ function nextQuestion() {
     document.removeEventListener('pointerdown', _skipHandler, true);
     _skipHandler = null;
   }
+  _correctionWaiting = false;
   clearTimeout(_revealTimer);
   _revealTimer = null;
 
@@ -1463,7 +1483,10 @@ function handleAnswer(choice, btn) {
   if (G.answerLocked) return;
   G.answerLocked = true;
   clearInterval(G.timerInterval);
-  document.querySelectorAll('.answer-btn').forEach(b => b.disabled = true);
+  document.querySelectorAll('.answer-btn').forEach(b => {
+    b.disabled = true;
+    b.style.pointerEvents = 'none';
+  });
 
   const correct = choice === G.question.answer;
   btn.classList.add(correct ? 'correct' : 'wrong');
@@ -1559,30 +1582,20 @@ function handleAnswer(choice, btn) {
   }
 
   const sid = _sessionId;
-  const delay = correct ? (_nukeAnim > 0 ? 2000 : 600) : (isTutorialActive() ? 1800 : 10000);
-  _revealTimer = setTimeout(() => {
+  const delay = correct ? (_nukeAnim > 0 ? 2000 : 600) : 0;
+  if (correct) _revealTimer = setTimeout(() => {
     if (_sessionId !== sid) return;
-    if (correct) {
-      if (isTutorialActive()) nextQuestion();
-      else if (levelCfg.isBossLevel || G.questionsAnswered < levelCfg.questionCount) nextQuestion();
-      else endLevel(true);
-    } else {
-      loseLife();
-    }
+    if (isTutorialActive()) nextQuestion();
+    else if (levelCfg.isBossLevel || G.questionsAnswered < levelCfg.questionCount) nextQuestion();
+    else endLevel(true);
   }, delay);
 
-  if (!correct && !isTutorialActive()) {
-    _skipHandler = () => {
-      document.removeEventListener('pointerdown', _skipHandler, true);
-      _skipHandler = null;
-      clearTimeout(_revealTimer);
-      _revealTimer = null;
-      if (_sessionId !== sid) return;
-      loseLife();
-    };
-    setTimeout(() => {
-      if (_skipHandler) document.addEventListener('pointerdown', _skipHandler, true);
-    }, 50);
+  if (!correct) {
+    if (isTutorialActive()) {
+      _revealTimer = setTimeout(() => { if (_sessionId === sid) loseLife(); }, 1800);
+    } else {
+      waitForCorrectionContinue(() => loseLife(), sid);
+    }
   }
 }
 
@@ -1610,6 +1623,13 @@ function revealCorrectAnswer() {
 
   const banner = $('correct-answer-reveal');
   banner.classList.remove('hidden', 'hiding');
+  const continueBtn = $('btn-correction-continue');
+  if (continueBtn) {
+    continueBtn.textContent = getLang() === 'fr' ? 'CONTINUER' : 'CONTINUE';
+    continueBtn.disabled = false;
+    continueBtn.style.display = isTutorialActive() ? 'none' : 'block';
+    continueBtn.onclick = null;
+  }
 
   const s1 = $('car-step1'), s2 = $('car-step2'), s3 = $('car-step3');
   s1.className = 'car-step car-step-wrong';
@@ -1634,6 +1654,27 @@ function revealCorrectAnswer() {
   }, 600);
 }
 
+function waitForCorrectionContinue(onContinue, sid) {
+  const btn = $('btn-correction-continue');
+  if (!btn) {
+    _revealTimer = setTimeout(() => { if (_sessionId === sid) onContinue(); }, 10000);
+    return;
+  }
+  _correctionWaiting = true;
+  btn.disabled = false;
+  btn.style.display = 'block';
+  btn.onclick = e => {
+    e.stopPropagation();
+    if (!_correctionWaiting || _sessionId !== sid) return;
+    _correctionWaiting = false;
+    btn.disabled = true;
+    btn.onclick = null;
+    clearTimeout(_revealTimer);
+    _revealTimer = null;
+    onContinue();
+  };
+}
+
 function handleTimeout() {
   if (G.answerLocked) return;
   G.answerLocked = true;
@@ -1646,19 +1687,11 @@ function handleTimeout() {
   document.querySelectorAll('.answer-btn').forEach(b => { b.classList.add('wrong'); b.disabled = true; });
   revealCorrectAnswer();
   const sid = _sessionId;
-  _revealTimer = setTimeout(() => { if (_sessionId === sid) loseLife(); }, isTutorialActive() ? 1800 : 10000);
-  if (isTutorialActive()) return;
-  _skipHandler = () => {
-    document.removeEventListener('pointerdown', _skipHandler, true);
-    _skipHandler = null;
-    clearTimeout(_revealTimer);
-    _revealTimer = null;
-    if (_sessionId !== sid) return;
-    loseLife();
-  };
-  setTimeout(() => {
-    if (_skipHandler) document.addEventListener('pointerdown', _skipHandler, true);
-  }, 50);
+  if (isTutorialActive()) {
+    _revealTimer = setTimeout(() => { if (_sessionId === sid) loseLife(); }, 1800);
+    return;
+  }
+  waitForCorrectionContinue(() => loseLife(), sid);
 }
 
 // ── LIVES ────────────────────────────────────────────────────────────────────

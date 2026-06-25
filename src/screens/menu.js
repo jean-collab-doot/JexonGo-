@@ -374,6 +374,13 @@ function drawTick() {
   if (vid && vid2) {
     const primary   = _activeVid === 'v1' ? vid  : vid2;
     const secondary = _activeVid === 'v1' ? vid2 : vid;
+    if ((primary.paused || primary.ended) && document.visibilityState !== 'hidden') {
+      if (primary.ended) primary.currentTime = 0;
+      primary.play().catch(() => {});
+    }
+    if (_xfadeT >= 0 && secondary.paused && document.visibilityState !== 'hidden') {
+      secondary.play().catch(() => {});
+    }
 
     if (_xfadeT < 0) {
       // Idle — watch for near-end of primary

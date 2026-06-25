@@ -41,16 +41,26 @@ async function injectVercelInsights() {
 }
 
 // ── VIDEO BACKGROUND ─────────────────────────────────────────────────────────
-const _menuVideo  = document.getElementById('menu-bg-video');
 const _isMobileUA = /iPhone|iPad|Android/i.test(navigator.userAgent) || window.innerWidth < 768;
 
 // Video plays on all devices including mobile
 
+function _menuVideos() {
+  return ['menu-bg-video', 'menu-bg-video2']
+    .map(id => document.getElementById(id))
+    .filter(Boolean);
+}
+
 function _videoPause() {
-  if (_menuVideo && !_menuVideo.paused) _menuVideo.pause();
+  _menuVideos().forEach(video => {
+    if (!video.paused) video.pause();
+  });
 }
 function _videoResume() {
-  if (_menuVideo) _menuVideo.play().catch(() => {});
+  _menuVideos().forEach(video => {
+    if (video.readyState === 0) video.load();
+    if (video.paused || video.ended) video.play().catch(() => {});
+  });
 }
 
 // ── SESSION TIMER ────────────────────────────────────────────────────────────

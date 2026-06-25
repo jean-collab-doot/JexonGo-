@@ -1416,6 +1416,25 @@ html.touch-mobile .menu-offline-banner {
 .car-step-wrong  { color: #ff6b6b; background: rgba(239,68,68,0.1); border-left: 3px solid #ff6b6b; }
 .car-step-how    { color: #facc15; background: rgba(250,204,21,0.08); border-left: 3px solid #facc15; }
 .car-step-answer { color: #4ade80; background: rgba(34,197,94,0.12); border-left: 3px solid #4ade80; }
+.correction-continue-btn {
+  margin: 10px auto 0;
+  min-height: 38px;
+  min-width: 160px;
+  padding: 9px 16px;
+  display: block;
+  border: 2px solid var(--accent);
+  background: linear-gradient(180deg, #fbbf24, #ff8c00);
+  color: #140800;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 8px;
+  letter-spacing: 1px;
+  cursor: pointer;
+  box-shadow: 3px 3px 0 #5b2600, 0 0 12px rgba(255,140,0,0.35);
+}
+.correction-continue-btn:active {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0 #5b2600;
+}
 @keyframes fadeInUp {
   from { opacity: 0; transform: translateY(10px) scale(0.97); }
   to   { opacity: 1; transform: translateY(0) scale(1); }
