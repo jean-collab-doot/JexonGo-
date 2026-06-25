@@ -15,40 +15,6 @@
   <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
-  <script>
-    const ua = navigator.userAgent;
-    const isTabletGate = /iPad/i.test(ua)
-        || (/Macintosh/i.test(ua) && navigator.maxTouchPoints > 1)
-        || (/Android/i.test(ua) && !/Mobile/i.test(ua))
-        || (navigator.maxTouchPoints > 1 && window.innerWidth >= 768 && window.innerWidth <= 1400);
-    const isPhoneGate = !isTabletGate && (
-      /iPhone|iPod/i.test(ua)
-      || (/Android/i.test(ua) && /Mobile/i.test(ua))
-      || (('ontouchstart' in window) && window.innerWidth <= 768)
-    );
-
-    if (isPhoneGate || isTabletGate) {
-      const banner = document.createElement('div');
-      banner.innerHTML = `
-      <div style="
-          position:fixed;
-          top:0;left:0;right:0;
-          background:#0a0e1a;
-          color:#00d4ff;
-          font-family:'Press Start 2P',monospace;
-          font-size:9px;
-          text-align:center;
-          padding:10px 8px;
-          z-index:99999;
-          cursor:pointer;
-      " onclick="this.parentElement.remove()">
-          ${isPhoneGate ? '&#128241; Mobile support enabled. Tap to start.' : '&#9888; Best experience on PC, but tablet support is available. Tap to dismiss.'}
-      </div>`;
-      document.body.appendChild(banner);
-      setTimeout(() => banner.remove(), 6000);
-    }
-  </script>
-
   <!-- AUDIO SPLASH (tap-to-start, guarantees audio unlock) -->
   <div id="audio-splash" class="audio-splash">
     <div class="audio-splash-inner">
