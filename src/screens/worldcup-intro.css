@@ -479,3 +479,22 @@ html.touch-mobile .world-cup-intro {
 html.touch-mobile .wc-plane {
   width: clamp(92px, 28vw, 140px);
 }
+html.touch-mobile .wc-flag-corners {
+  z-index: 130 !important;
+}
+html.touch-mobile .wc-flag-card {
+  z-index: 131 !important;
+}
+html.touch-mobile .wc-ball-layer {
+  z-index: 120 !important;
+}
+html.touch-mobile .wc-plane-wrap {
+  z-index: 10 !important;
+}
+html.touch-mobile .wc-plane,
+html.touch-mobile .wc-plane-wrap::after,
+html.touch-mobile .wc-engine-smoke,
+html.touch-mobile .wc-engine-fire,
+html.touch-mobile .wc-wing-glow {
+  z-index: 0 !important;
+}
