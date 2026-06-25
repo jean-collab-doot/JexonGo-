@@ -357,6 +357,13 @@ function initRegistration() {
     renderMenu();
     showScreen('s-menu');
   });
+  document.getElementById('btn-reg-privacy')?.addEventListener('click', () => {
+    showScreen('s-privacy');
+  });
+  document.getElementById('btn-privacy-back')?.addEventListener('click', () => {
+    renderMenu();
+    showScreen('s-menu');
+  });
 
   document.getElementById('btn-reg-submit').addEventListener('click', async () => {
     const name  = (document.getElementById('reg-name').value  || '').trim().toUpperCase();
@@ -366,6 +373,7 @@ function initRegistration() {
     const age   = parseInt(document.getElementById('reg-age').value, 10);
     const grade = parseInt(document.getElementById('reg-grade').value, 10);
     const tos   = document.getElementById('reg-tos').checked;
+    const privacy = document.getElementById('reg-privacy').checked;
     const err   = document.getElementById('reg-error');
 
     if (!name)                          { err.textContent = t('regErrName');     return; }
@@ -375,6 +383,7 @@ function initRegistration() {
     if (!age)                           { err.textContent = t('regErrAge');      return; }
     if (!grade)                         { err.textContent = t('regErrGrade');    return; }
     if (!tos)                           { err.textContent = t('regErrTos');      return; }
+    if (!privacy)                       { err.textContent = t('regErrPrivacy');  return; }
 
     err.textContent       = '';
     G.playerName          = name;

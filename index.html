@@ -224,11 +224,6 @@
         <span class="login-btn-text" data-i18n="signInGoogle">SIGN IN WITH GOOGLE</span>
       </button>
 
-      <div class="login-auth-row" id="login-auth-row">
-        <button class="login-auth-btn login-auth-signup" id="btn-signup" data-i18n="signUp">✦ SIGN UP</button>
-        <button class="login-auth-btn login-auth-login"  id="btn-login" data-i18n="logIn">▶ LOG IN</button>
-      </div>
-
     </div>
   </div>
 
@@ -591,8 +586,88 @@
           <input type="checkbox" id="reg-tos" class="reg-tos-check">
           <label for="reg-tos" class="reg-tos-label" data-i18n="regTos">I AGREE TO THE TERMS OF SERVICE</label>
         </div>
+        <div class="reg-tos-row">
+          <input type="checkbox" id="reg-privacy" class="reg-tos-check">
+          <label for="reg-privacy" class="reg-tos-label" data-i18n="regPrivacy">I HAVE READ AND ACCEPT THE PRIVACY POLICY.</label>
+          <button id="btn-reg-privacy" type="button" class="reg-policy-link" data-i18n="privacyPolicyLink">PRIVACY POLICY</button>
+        </div>
         <div id="reg-error" class="reg-error"></div>
         <button id="btn-reg-submit" class="btn btn-primary" data-i18n="regSubmit">▶ CREATE PILOT</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- PRIVACY POLICY SCREEN -->
+  <div id="s-privacy" class="screen hidden">
+    <div class="privacy-sky">
+      <div class="privacy-cloud privacy-cloud-a"></div>
+      <div class="privacy-cloud privacy-cloud-b"></div>
+      <div class="privacy-shell">
+        <button id="btn-privacy-back" class="privacy-back-btn" type="button">← RETOUR A L'ACCUEIL</button>
+        <header class="privacy-hero">
+          <div class="privacy-logo">JEXON<span>GO</span></div>
+          <div class="privacy-kicker">AERIAL MATH COMBAT</div>
+          <h1>Politique de confidentialite</h1>
+          <p>Derniere mise a jour : Juin 2026</p>
+        </header>
+
+        <div class="privacy-grid">
+          <section class="privacy-card">
+            <span class="privacy-plane">✈</span>
+            <h2>1. Introduction</h2>
+            <p>Bienvenue sur JexonGO. Chez JexonGO, nous accordons une grande importance a la protection de votre vie privee. Cette politique explique quelles informations sont collectees, pourquoi elles sont utilisees et comment elles sont protegees.</p>
+          </section>
+          <section class="privacy-card">
+            <span class="privacy-plane">✈</span>
+            <h2>2. Informations collectees</h2>
+            <p>Lors de la creation d'un compte, nous pouvons collecter :</p>
+            <ul>
+              <li>Adresse e-mail</li>
+              <li>Nom d'utilisateur ou pseudo</li>
+              <li>Niveau scolaire</li>
+              <li>Progression dans le jeu</li>
+              <li>XP, pieces, recompenses et statistiques de jeu</li>
+            </ul>
+          </section>
+          <section class="privacy-card">
+            <span class="privacy-plane">✈</span>
+            <h2>3. Utilisation de vos informations</h2>
+            <p>Vos informations sont utilisees pour creer et gerer votre compte, sauvegarder votre progression, afficher votre profil, votre niveau et votre classement, envoyer un e-mail de bienvenue ou lie au compte, ameliorer JexonGO, corriger les bugs et assurer le support.</p>
+          </section>
+          <section class="privacy-card">
+            <span class="privacy-plane">✈</span>
+            <h2>4. Partage des donnees</h2>
+            <p>JexonGO ne vend jamais vos informations personnelles. Certaines donnees sont traitees uniquement par des services necessaires au fonctionnement du jeu :</p>
+            <ul>
+              <li>Supabase : authentification et base de donnees</li>
+              <li>Vercel : hebergement</li>
+              <li>EmailJS : e-mails de bienvenue</li>
+            </ul>
+          </section>
+          <section class="privacy-card">
+            <span class="privacy-plane">✈</span>
+            <h2>5. Securite</h2>
+            <p>Nous mettons en place des mesures raisonnables pour proteger vos informations personnelles. Les mots de passe sont geres de maniere securisee grace a Supabase Authentication et ne sont jamais accessibles en clair.</p>
+          </section>
+          <section class="privacy-card">
+            <span class="privacy-plane">✈</span>
+            <h2>6. Vos droits</h2>
+            <p>Vous pouvez demander a tout moment l'acces a vos informations, la correction de vos informations, ou la suppression de votre compte et de vos donnees associees.</p>
+          </section>
+          <section class="privacy-card">
+            <span class="privacy-plane">✈</span>
+            <h2>7. Contact</h2>
+            <p>Pour toute question concernant votre compte ou la confidentialite de vos donnees :</p>
+            <a class="privacy-email" href="mailto:jeanlouisahyee72@gmail.com">jeanlouisahyee72@gmail.com</a>
+          </section>
+          <section class="privacy-card">
+            <span class="privacy-plane">✈</span>
+            <h2>8. Mise a jour de cette politique</h2>
+            <p>Cette politique de confidentialite peut etre modifiee afin de refleter les evolutions de JexonGO. La date de la derniere mise a jour sera affichee en haut de cette page.</p>
+          </section>
+        </div>
+
+        <footer class="privacy-footer">© 2026 JexonGO. Tous droits reserves.</footer>
       </div>
     </div>
   </div>

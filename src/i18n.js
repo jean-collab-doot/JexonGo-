@@ -228,6 +228,8 @@ const STRINGS = {
     regAgePh:          '-- SELECT YOUR AGE --',
     regGradePh:        '-- SELECT SCHOOL GRADE --',
     regTos:            'I AGREE TO THE TERMS OF SERVICE',
+    regPrivacy:        'I HAVE READ AND ACCEPT THE PRIVACY POLICY.',
+    privacyPolicyLink: 'PRIVACY POLICY',
     regSubmit:         '▶ CREATE PILOT',
     regErrName:        'ENTER YOUR CALL SIGN',
     regErrEmail:       'ENTER A VALID EMAIL',
@@ -236,6 +238,7 @@ const STRINGS = {
     regErrAge:         'SELECT YOUR AGE',
     regErrGrade:       'SELECT YOUR SCHOOL GRADE',
     regErrTos:         'ACCEPT THE TERMS TO CONTINUE',
+    regErrPrivacy:     'ACCEPT THE PRIVACY POLICY',
 
     // Login toasts & alerts
     welcomeBack:       '✓ WELCOME BACK, {name}!',
@@ -493,6 +496,8 @@ const STRINGS = {
     regAgePh:          '-- SÉLECTIONNEZ VOTRE ÂGE --',
     regGradePh:        '-- CHOISIR VOTRE NIVEAU --',
     regTos:            'J\'ACCEPTE LES CONDITIONS D\'UTILISATION',
+    regPrivacy:        'J\'AI LU ET J\'ACCEPTE LA POLITIQUE DE CONFIDENTIALITE.',
+    privacyPolicyLink: 'POLITIQUE DE CONFIDENTIALITE',
     regSubmit:         '▶ CRÉER MON PILOTE',
     regErrName:        'ENTREZ VOTRE INDICATIF',
     regErrEmail:       'EMAIL INVALIDE',
@@ -501,6 +506,7 @@ const STRINGS = {
     regErrAge:         'SÉLECTIONNEZ VOTRE ÂGE',
     regErrGrade:       'CHOISISSEZ VOTRE NIVEAU',
     regErrTos:         'ACCEPTEZ LES CONDITIONS',
+    regErrPrivacy:     'ACCEPTEZ LA POLITIQUE DE CONFIDENTIALITE',
 
     // Login toasts & alerts
     welcomeBack:       '✓ BIENVENUE, {name} !',
