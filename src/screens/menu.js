@@ -13,6 +13,7 @@ import { t, getLang, setLang, applyI18n } from '../i18n.js';
 import { isTouchMobile, touchMenuCanvasDpr } from '../utils/device.js';
 import { syncAccountFromCloud, flushCloudSave, fetchCloudSave,
          mergeSaveSnapshots, exportSaveSnapshot, applySaveSnapshot } from '../systems/cloud-save.js';
+import { signInWithEmail, signOutSupabase } from '../systems/supabase-client.js';
 import { SFX } from '../audio/sound.js';
 
 // ── GOOGLE SIGN-IN ───────────────────────────────────────────────────────────
@@ -130,10 +131,12 @@ function _updateProfile() {
 
 async function _handleSignOut() {
   await flushCloudSave();
+  await signOutSupabase();
   G.playerPhoto      = '';
   G.playerRegistered = false;
   save('playerPhoto',      '');
   save('playerRegistered', false);
+  save('playerPassword',   '');
   _gsiReady = false;
   if (typeof google !== 'undefined' && google.accounts) {
     google.accounts.id.disableAutoSelect();
@@ -164,15 +167,21 @@ async function _handleLoginSubmit() {
   if (!emailIn || !emailIn.includes('@')) { errEl.textContent = t('loginErrEmail'); return; }
   if (!pwIn)                              { errEl.textContent = t('loginErrPw');    return; }
 
-  const remote = await fetchCloudSave(emailIn, pwIn, 'email');
+  try {
+    await signInWithEmail(emailIn, pwIn);
+  } catch (_) {
+    errEl.textContent = t('loginErrWrong');
+    return;
+  }
+
+  const remote = await fetchCloudSave(emailIn, '', 'email');
 
   if (remote?.forbidden) { errEl.textContent = t('loginErrWrong'); return; }
 
   if (remote?.offline) {
     const storedEmail = (load('playerEmail', '') || '').toLowerCase();
-    const storedPw    = load('playerPassword', '');
     if (!storedEmail)                                  { errEl.textContent = t('loginErrNone');  return; }
-    if (emailIn !== storedEmail || pwIn !== storedPw)  { errEl.textContent = t('loginErrWrong'); return; }
+    if (emailIn !== storedEmail)                       { errEl.textContent = t('loginErrWrong'); return; }
   } else if (remote?.notFound) {
     errEl.textContent = t('loginErrNone');
     return;
@@ -183,13 +192,12 @@ async function _handleLoginSubmit() {
   G.playerEmail      = emailIn;
   save('playerRegistered', true);
   save('playerEmail',      emailIn);
-  save('playerPassword',   pwIn);
   loadSave();
   if (remote?.data) {
     applySaveSnapshot(mergeSaveSnapshots(exportSaveSnapshot(), remote.data));
     saveAll();
   }
-  const sync = await syncAccountFromCloud({ authType: 'email', password: pwIn });
+  const sync = await syncAccountFromCloud({ authType: 'email' });
   if (sync.offline) _showToast(t('syncOffline') || 'Account connected - progress saves on this device.');
   renderMenu();
   _showToast(t('welcomeBack').replace('{name}', G.playerName || 'PILOT'));

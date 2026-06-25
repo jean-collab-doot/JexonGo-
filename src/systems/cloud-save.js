@@ -1,6 +1,7 @@
 // Cloud progression sync — keyed by player email (server: server.js /api/save)
 import { G, saveAll } from '../state.js';
-import { save, load } from '../utils/storage.js';
+import { save } from '../utils/storage.js';
+import { getSupabaseAccessToken } from './supabase-client.js';
 
 export const API_URL =
   (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
@@ -152,26 +153,29 @@ export function mergeSaveSnapshots(local, remote) {
   return out;
 }
 
-function _authBody({ authType, password } = {}) {
+function _authBody({ authType } = {}) {
   const email = (G.playerEmail || '').toLowerCase().trim();
-  const body = { email, authType: authType || (password ? 'email' : 'google') };
-  if (password) body.password = password;
+  const body = { email, authType: authType || 'supabase' };
   return body;
 }
 
 /** @returns {{ data?, updatedAt?, notFound?, forbidden?, offline? }} */
-export async function fetchCloudSave(email, password, authType) {
+export async function fetchCloudSave(email, _password, authType) {
   if (_cloudSaveOffline) return { offline: true };
   if (!CLOUD_SAVE_AVAILABLE) return { offline: true };
   try {
+    const token = await getSupabaseAccessToken();
+    if (!token) return { forbidden: true };
     const params = new URLSearchParams({
       email: email.toLowerCase().trim(),
-      authType: authType || (password ? 'email' : 'google'),
+      authType: authType || 'supabase',
     });
-    if (password) params.set('password', password);
-    const res = await fetch(`${API_URL}/api/save?${params}`, { method: 'GET' });
+    const res = await fetch(`${API_URL}/api/save?${params}`, {
+      method: 'GET',
+      headers: { Authorization: `Bearer ${token}` },
+    });
     if (res.status === 404) return { notFound: true };
-    if (res.status === 403) return { forbidden: true };
+    if (res.status === 401 || res.status === 403) return { forbidden: true };
     if (res.status === 503) {
       _cloudSaveOffline = true;
       return { offline: true };
@@ -195,15 +199,16 @@ export async function pushCloudSave(opts = {}) {
   if (_cloudSaveOffline) return false;
   if (!CLOUD_SAVE_AVAILABLE) return false;
 
-  const password = opts.password ?? load('playerPassword', '') ?? '';
-  const authType = opts.authType || (password ? 'email' : 'google');
+  const authType = opts.authType || 'supabase';
 
   try {
+    const token = await getSupabaseAccessToken();
+    if (!token) return false;
     const res = await fetch(`${API_URL}/api/save`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify({
-        ..._authBody({ authType, password }),
+        ..._authBody({ authType }),
         data: exportSaveSnapshot(),
         updatedAt: Date.now(),
       }),
@@ -241,10 +246,9 @@ export async function syncAccountFromCloud(opts = {}) {
   const email = (G.playerEmail || '').toLowerCase().trim();
   if (!G.playerRegistered || !email) return { ok: false };
 
-  const password = opts.password ?? load('playerPassword', '') ?? '';
-  const authType = opts.authType || (password ? 'email' : 'google');
+  const authType = opts.authType || 'supabase';
   const local = exportSaveSnapshot();
-  const remote = await fetchCloudSave(email, password, authType);
+  const remote = await fetchCloudSave(email, '', authType);
   if (remote?.forbidden) return { ok: false, forbidden: true };
   if (remote?.offline) return { ok: false, offline: true };
 
@@ -253,6 +257,6 @@ export async function syncAccountFromCloud(opts = {}) {
   }
 
   saveAll();
-  await pushCloudSave({ authType, password });
+  await pushCloudSave({ authType });
   return { ok: true, merged: !!remote?.data };
 }

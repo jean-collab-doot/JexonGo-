@@ -2,6 +2,7 @@ import { $, showScreen } from '../utils/dom.js';
 import { G } from '../state.js';
 import { save } from '../utils/storage.js';
 import { flushCloudSave } from '../systems/cloud-save.js';
+import { signOutSupabase } from '../systems/supabase-client.js';
 import { SFX } from '../audio/sound.js';
 import { getPilotGrade } from '../data/pilots.js';
 import { AIRCRAFT } from '../data/aircraft.js';
@@ -129,10 +130,12 @@ function _buildThemeGrid() {
 
 async function _signOut() {
   await flushCloudSave();
+  await signOutSupabase();
   G.playerPhoto      = '';
   G.playerRegistered = false;
   save('playerPhoto',      '');
   save('playerRegistered', false);
+  save('playerPassword',   '');
   if (typeof google !== 'undefined' && google?.accounts) {
     google.accounts.id.disableAutoSelect();
   }

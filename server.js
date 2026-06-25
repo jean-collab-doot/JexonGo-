@@ -9,6 +9,7 @@ import path from 'path';
 import crypto from 'crypto';
 import { fileURLToPath } from 'url';
 import emailHandler from './api/email.js';
+import saveHandler from './api/save.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 8080;
@@ -52,7 +53,7 @@ function _readBody(req) {
 function _cors(res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 }
 
 function _json(res, status, obj) {
@@ -107,8 +108,8 @@ function _authAccount(record, { authType, password }) {
 }
 
 async function _handleSaveApi(req, res) {
-  _ensureSavesDir();
   const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+  if (url.pathname !== '/api/save') return false;
 
   if (req.method === 'OPTIONS') {
     _cors(res);
@@ -117,47 +118,29 @@ async function _handleSaveApi(req, res) {
     return;
   }
 
-  if (req.method === 'GET' && url.pathname === '/api/save') {
-    const email = (url.searchParams.get('email') || '').toLowerCase().trim();
-    const password = url.searchParams.get('password') || '';
-    const authType = url.searchParams.get('authType') || 'email';
-    if (!email || !email.includes('@')) return _json(res, 400, { error: 'invalid email' });
-
-    const record = _loadAccount(email);
-    if (!record) return _json(res, 404, { error: 'not found' });
-    if (!_authAccount(record, { authType, password })) return _json(res, 403, { error: 'unauthorized' });
-
-    return _json(res, 200, { data: record.data, updatedAt: record.updatedAt });
-  }
-
-  if (req.method === 'POST' && url.pathname === '/api/save') {
-    let body;
+  let body = {};
+  if (req.method === 'POST') {
     try { body = await _readBody(req); }
     catch { return _json(res, 400, { error: 'bad request' }); }
-
-    const email = (body.email || '').toLowerCase().trim();
-    const password = body.password || '';
-    const authType = body.authType || 'email';
-    if (!email || !email.includes('@')) return _json(res, 400, { error: 'invalid email' });
-    if (!body.data || typeof body.data !== 'object') return _json(res, 400, { error: 'missing data' });
-
-    const file = _accountFile(email);
-    let record = _loadAccount(email);
-
-    if (record && !_authAccount(record, { authType, password })) {
-      return _json(res, 403, { error: 'unauthorized' });
-    }
-
-    const updatedAt = Math.max(Number(body.updatedAt) || 0, record?.updatedAt || 0, Date.now());
-    const passwordHash = record?.passwordHash
-      || (authType === 'email' && password ? _hashPassword(password) : null);
-
-    record = { email, passwordHash, authType: record?.authType || authType, data: body.data, updatedAt };
-    fs.writeFileSync(file, JSON.stringify(record), 'utf8');
-    return _json(res, 200, { ok: true, updatedAt });
   }
 
-  return false;
+  _cors(res);
+  await saveHandler({
+    method: req.method,
+    query: Object.fromEntries(url.searchParams.entries()),
+    body,
+    headers: req.headers,
+  }, {
+    status(code) {
+      res.statusCode = code;
+      return this;
+    },
+    json(payload) {
+      res.writeHead(res.statusCode || 200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(payload));
+    },
+  });
+  return true;
 }
 
 const server = http.createServer(async (req, res) => {

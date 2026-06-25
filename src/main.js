@@ -23,6 +23,7 @@ import { showDailyReward } from './screens/menu.js';
 import { canSendFeedback, markFeedbackSent, sendFeedback, sendNewPlayerNotification, _resetNewPlayer, _testEmailNow } from './systems/feedback.js';
 import { t, getLang, applyI18n } from './i18n.js';
 import { syncAccountFromCloud, flushCloudSave, pushCloudSave } from './systems/cloud-save.js';
+import { signInWithGoogleIdToken, signUpWithEmail } from './systems/supabase-client.js';
 import { applyDeviceClasses } from './utils/device.js';
 
 async function injectVercelInsights() {
@@ -260,6 +261,16 @@ window._onGoogleCredential = async function(response) {
     const email   = (payload.email || '').toLowerCase();
     const photo   = payload.picture || '';
 
+    try {
+      await signInWithGoogleIdToken(response.credential);
+    } catch (err) {
+      console.warn('[Supabase] Google auth failed:', err);
+      _showLoginToast(deviceIntroLang() === 'fr'
+        ? 'Connexion Google Supabase non configuree.'
+        : 'Supabase Google login is not configured.');
+      return;
+    }
+
     const wasRegistered = G.playerRegistered;
     const previousEmail = (load('playerEmail', '') || '').toLowerCase();
     const shouldStartRecommended = !!load('postTutorialConnectPrompt', false);
@@ -389,16 +400,32 @@ function initRegistration() {
     if (!privacy)                       { err.textContent = t('regErrPrivacy');  return; }
 
     err.textContent       = '';
+    try {
+      const auth = await signUpWithEmail(email, pw, {
+        player_name: name,
+        player_grade: grade,
+        player_age: age,
+      });
+      if (!auth?.session) {
+        err.textContent = getLang() === 'fr'
+          ? 'CONFIRMEZ VOTRE EMAIL AVANT DE JOUER'
+          : 'CONFIRM YOUR EMAIL BEFORE PLAYING';
+        return;
+      }
+    } catch (authErr) {
+      err.textContent = authErr?.message || (getLang() === 'fr' ? 'COMPTE IMPOSSIBLE A CREER' : 'ACCOUNT CREATION FAILED');
+      return;
+    }
+
     G.playerName          = name;
     G.playerEmail         = email;
     G.playerAge           = age;
     G.playerGrade         = grade;
     G.playerRegistered    = true;
 
-    save('playerPassword',   pw);
     saveAll();
     loadSave();
-    await pushCloudSave({ authType: 'email', password: pw });
+    await pushCloudSave({ authType: 'email' });
 
     sendNewPlayerNotification({ playerName: name, playerEmail: email, playerGrade: grade });
 

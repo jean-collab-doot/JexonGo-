@@ -1,13 +1,13 @@
-import crypto from 'node:crypto';
-
 const DEFAULT_SUPABASE_PROJECT_URL = 'https://sndpzdqijuxaagjdcgfx.supabase.co';
 const DEFAULT_SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_ibmq3oSAhc_xGYYXXH9qsw_GSPjth8K';
 
-const SUPABASE_PROJECT_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || DEFAULT_SUPABASE_PROJECT_URL;
+const SUPABASE_PROJECT_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
+  || process.env.VITE_SUPABASE_URL
+  || DEFAULT_SUPABASE_PROJECT_URL;
 const SUPABASE_REST_URL = process.env.SUPABASE_REST_URL
   || (SUPABASE_PROJECT_URL ? `${SUPABASE_PROJECT_URL.replace(/\/$/, '')}/rest/v1/` : '');
-const SUPABASE_ACCESS_TOKEN = process.env.SUPABASE_ACCESS_TOKEN
-  || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+const SUPABASE_PUBLISHABLE_KEY = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+  || process.env.VITE_SUPABASE_PUBLISHABLE_KEY
   || DEFAULT_SUPABASE_PUBLISHABLE_KEY
   || '';
 const SAVES_TABLE = process.env.SUPABASE_SAVES_TABLE || 'saves';
@@ -16,94 +16,87 @@ function send(res, status, body) {
   res.status(status).json(body);
 }
 
-function hashPassword(password) {
-  return crypto.createHash('sha256').update(String(password)).digest('hex');
-}
-
-function authRecord(record, { authType, password }) {
-  if (!record) return false;
-  if (authType === 'google') return true;
-  if (!record.password_hash) return true;
-  return password && hashPassword(password) === record.password_hash;
-}
-
 function supabaseUrl(path) {
   return `${SUPABASE_REST_URL.replace(/\/$/, '')}/${path}`;
 }
 
-function supabaseHeaders(extra = {}) {
+function bearerFrom(req) {
+  const header = req.headers?.authorization || req.headers?.Authorization || '';
+  return String(header).startsWith('Bearer ') ? String(header).slice(7).trim() : '';
+}
+
+function supabaseHeaders(token, extra = {}) {
   return {
-    apikey: SUPABASE_ACCESS_TOKEN,
-    Authorization: `Bearer ${SUPABASE_ACCESS_TOKEN}`,
+    apikey: SUPABASE_PUBLISHABLE_KEY,
+    Authorization: `Bearer ${token}`,
     'Content-Type': 'application/json',
     ...extra,
   };
 }
 
 function isSupabaseConfigured() {
-  return Boolean(SUPABASE_REST_URL && SUPABASE_ACCESS_TOKEN);
+  return Boolean(SUPABASE_REST_URL && SUPABASE_PUBLISHABLE_KEY);
 }
 
-async function checkSupabaseConnection() {
-  if (!isSupabaseConfigured()) {
-    return {
-      ok: false,
-      configured: false,
-      connected: false,
-      table: SAVES_TABLE,
-      message: 'Supabase environment variables are missing.',
-    };
-  }
-
-  const url = supabaseUrl(`${SAVES_TABLE}?select=email&limit=1`);
-  const response = await fetch(url, { headers: supabaseHeaders() });
-  const data = await response.json().catch(() => null);
-  const error = response.ok ? undefined : (data?.message || data?.error || 'Supabase connection failed.');
-  return {
-    ok: response.ok,
-    configured: true,
-    connected: response.ok,
-    table: SAVES_TABLE,
-    status: response.status,
-    error,
-    fix: response.ok ? undefined : (
-      response.status === 404
-        ? 'Create the public.saves table using supabase/migrations/001_create_saves.sql.'
-        : 'Check Supabase URL, publishable key, table permissions, and RLS policies.'
-    ),
-  };
-}
-
-async function readAccount(email) {
-  const url = supabaseUrl(`${SAVES_TABLE}?email=eq.${encodeURIComponent(email)}&select=*`);
-  const response = await fetch(url, { headers: supabaseHeaders() });
+async function requestJson(url, options) {
+  const response = await fetch(url, options);
   const data = await response.json().catch(() => null);
   if (!response.ok) {
-    throw new Error(data?.message || data?.error || `Cloud save read failed (${response.status})`);
+    throw new Error(data?.message || data?.error || `Supabase request failed (${response.status})`);
   }
+  return data;
+}
+
+async function getAuthenticatedUser(token) {
+  const data = await requestJson(`${SUPABASE_PROJECT_URL.replace(/\/$/, '')}/auth/v1/user`, {
+    headers: {
+      apikey: SUPABASE_PUBLISHABLE_KEY,
+      Authorization: `Bearer ${token}`,
+    },
+  });
+  if (!data?.id || !data?.email) throw new Error('invalid Supabase user');
+  return data;
+}
+
+async function readSave(token, userId, email) {
+  const encodedEmail = encodeURIComponent(String(email || '').toLowerCase());
+  const url = supabaseUrl(`${SAVES_TABLE}?or=(user_id.eq.${encodeURIComponent(userId)},email.eq.${encodedEmail})&select=*&limit=1`);
+  const data = await requestJson(url, { headers: supabaseHeaders(token) });
   return Array.isArray(data) ? data[0] || null : null;
 }
 
-async function writeAccount(record) {
-  const url = supabaseUrl(`${SAVES_TABLE}?on_conflict=email`);
-  const response = await fetch(url, {
+async function insertSave(token, record) {
+  const url = supabaseUrl(SAVES_TABLE);
+  return requestJson(url, {
     method: 'POST',
-    headers: supabaseHeaders({ Prefer: 'resolution=merge-duplicates,return=representation' }),
+    headers: supabaseHeaders(token, { Prefer: 'return=representation' }),
     body: JSON.stringify(record),
   });
-  const data = await response.json().catch(() => null);
-  if (!response.ok) {
-    throw new Error(data?.message || data?.error || `Cloud save write failed (${response.status})`);
-  }
-  return data;
+}
+
+async function updateSave(token, column, value, record) {
+  const url = supabaseUrl(`${SAVES_TABLE}?${column}=eq.${encodeURIComponent(value)}`);
+  return requestJson(url, {
+    method: 'PATCH',
+    headers: supabaseHeaders(token, { Prefer: 'return=representation' }),
+    body: JSON.stringify(record),
+  });
 }
 
 export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return send(res, 204, {});
 
   if (req.method === 'GET' && (req.query.health === '1' || req.query.status === '1')) {
-    const health = await checkSupabaseConnection();
-    return send(res, health.connected ? 200 : 503, health);
+    return send(res, isSupabaseConfigured() ? 200 : 503, {
+      ok: isSupabaseConfigured(),
+      configured: isSupabaseConfigured(),
+      connected: isSupabaseConfigured(),
+      table: SAVES_TABLE,
+      auth: 'supabase',
+      message: isSupabaseConfigured()
+        ? 'Supabase is configured. Authenticated saves require a logged-in user token.'
+        : 'Supabase environment variables are missing.',
+    });
   }
 
   if (!isSupabaseConfigured()) {
@@ -115,44 +108,36 @@ export default async function handler(req, res) {
     });
   }
 
+  const token = bearerFrom(req);
+  if (!token) return send(res, 401, { error: 'missing Supabase session' });
+
   try {
+    const user = await getAuthenticatedUser(token);
+
     if (req.method === 'GET') {
-      const email = String(req.query.email || '').toLowerCase().trim();
-      const password = String(req.query.password || '');
-      const authType = String(req.query.authType || 'email');
-      if (!email || !email.includes('@')) return send(res, 400, { error: 'invalid email' });
-
-      const record = await readAccount(email);
+      const record = await readSave(token, user.id, user.email);
       if (!record) return send(res, 404, { error: 'not found' });
-      if (!authRecord(record, { authType, password })) return send(res, 403, { error: 'unauthorized' });
-
       return send(res, 200, { data: record.data, updatedAt: record.updated_at });
     }
 
     if (req.method === 'POST') {
       const body = req.body || {};
-      const email = String(body.email || '').toLowerCase().trim();
-      const password = String(body.password || '');
-      const authType = String(body.authType || 'email');
-      if (!email || !email.includes('@')) return send(res, 400, { error: 'invalid email' });
       if (!body.data || typeof body.data !== 'object') return send(res, 400, { error: 'missing data' });
 
-      const existing = await readAccount(email);
-      if (existing && !authRecord(existing, { authType, password })) {
-        return send(res, 403, { error: 'unauthorized' });
-      }
-
+      const existing = await readSave(token, user.id, user.email);
       const updatedAt = Math.max(Number(body.updatedAt) || 0, Number(existing?.updated_at) || 0, Date.now());
-      const passwordHash = existing?.password_hash
-        || (authType === 'email' && password ? hashPassword(password) : null);
-
-      await writeAccount({
-        email,
-        password_hash: passwordHash,
-        auth_type: existing?.auth_type || authType,
+      const record = {
+        email: String(user.email || '').toLowerCase(),
+        user_id: user.id,
+        auth_type: body.authType || 'supabase',
         data: body.data,
         updated_at: updatedAt,
-      });
+      };
+
+      if (existing) {
+        await updateSave(token, existing.user_id ? 'user_id' : 'email', existing.user_id || existing.email, record);
+      }
+      else await insertSave(token, record);
 
       return send(res, 200, { ok: true, updatedAt });
     }
