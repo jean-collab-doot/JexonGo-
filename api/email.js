@@ -102,6 +102,8 @@ function emailHealth() {
       templateId: EMAILJS_NEW_PLAYER_TEMPLATE_ID,
       hasPublicKey: Boolean(EMAILJS_NEW_PLAYER_PUBLIC_KEY),
       recipientField: 'to_email',
+      recipientFields: ['to_email', 'email', 'player_email', 'recipient_email', 'user_email', 'to', 'toEmail', 'recipient'],
+      templateRequirement: 'Set the EmailJS template "To Email" field to {{to_email}} so the welcome email goes to the new player.',
     },
   };
 }
@@ -151,6 +153,9 @@ function newPlayerParams(body) {
     to_email: playerEmail,
     recipient_email: playerEmail,
     user_email: playerEmail,
+    to: playerEmail,
+    toEmail: playerEmail,
+    recipient: playerEmail,
     to_name: body.playerName || 'PILOT',
     reply_to: playerEmail,
     player_grade: String(body.playerGrade || '0'),
