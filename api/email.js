@@ -6,12 +6,18 @@ function env(...names) {
   return '';
 }
 
+const DEFAULT_EMAILJS_PUBLIC_KEY = 'tKhT13eitJ6j1EdHo';
+const DEFAULT_EMAILJS_FEEDBACK_SERVICE_ID = 'service_se9vi2q';
+const DEFAULT_EMAILJS_FEEDBACK_TEMPLATE_ID = 'template_icrozxf';
+const DEFAULT_EMAILJS_NEW_PLAYER_SERVICE_ID = 'service_mdhv776';
+const DEFAULT_EMAILJS_NEW_PLAYER_TEMPLATE_ID = 'template_gl9depi';
+
 const EMAILJS_PUBLIC_KEY = env(
   'EMAILJS_PUBLIC_KEY',
   'EMAILJS_USER_ID',
   'NEXT_PUBLIC_EMAILJS_PUBLIC_KEY',
   'VITE_EMAILJS_PUBLIC_KEY',
-);
+) || DEFAULT_EMAILJS_PUBLIC_KEY;
 const EMAILJS_FEEDBACK_PUBLIC_KEY = env(
   'EMAILJS_FEEDBACK_PUBLIC_KEY',
   'NEXT_PUBLIC_EMAILJS_FEEDBACK_PUBLIC_KEY',
@@ -21,12 +27,12 @@ const EMAILJS_FEEDBACK_SERVICE_ID = env(
   'EMAILJS_FEEDBACK_SERVICE_ID',
   'NEXT_PUBLIC_EMAILJS_FEEDBACK_SERVICE_ID',
   'VITE_EMAILJS_FEEDBACK_SERVICE_ID',
-);
+) || DEFAULT_EMAILJS_FEEDBACK_SERVICE_ID;
 const EMAILJS_FEEDBACK_TEMPLATE_ID = env(
   'EMAILJS_FEEDBACK_TEMPLATE_ID',
   'NEXT_PUBLIC_EMAILJS_FEEDBACK_TEMPLATE_ID',
   'VITE_EMAILJS_FEEDBACK_TEMPLATE_ID',
-);
+) || DEFAULT_EMAILJS_FEEDBACK_TEMPLATE_ID;
 const EMAILJS_NEW_PLAYER_PUBLIC_KEY = env(
   'EMAILJS_NEW_PLAYER_PUBLIC_KEY',
   'NEXT_PUBLIC_EMAILJS_NEW_PLAYER_PUBLIC_KEY',
@@ -36,12 +42,12 @@ const EMAILJS_NEW_PLAYER_SERVICE_ID = env(
   'EMAILJS_NEW_PLAYER_SERVICE_ID',
   'NEXT_PUBLIC_EMAILJS_NEW_PLAYER_SERVICE_ID',
   'VITE_EMAILJS_NEW_PLAYER_SERVICE_ID',
-);
+) || DEFAULT_EMAILJS_NEW_PLAYER_SERVICE_ID;
 const EMAILJS_NEW_PLAYER_TEMPLATE_ID = env(
   'EMAILJS_NEW_PLAYER_TEMPLATE_ID',
   'NEXT_PUBLIC_EMAILJS_NEW_PLAYER_TEMPLATE_ID',
   'VITE_EMAILJS_NEW_PLAYER_TEMPLATE_ID',
-);
+) || DEFAULT_EMAILJS_NEW_PLAYER_TEMPLATE_ID;
 
 function send(res, status, body) {
   res.status(status).json(body);
@@ -58,6 +64,33 @@ function requireEmailJsConfig(type) {
   if (!EMAILJS_FEEDBACK_SERVICE_ID) return 'missing EMAILJS_FEEDBACK_SERVICE_ID';
   if (!EMAILJS_FEEDBACK_TEMPLATE_ID) return 'missing EMAILJS_FEEDBACK_TEMPLATE_ID';
   return '';
+}
+
+function emailHealth() {
+  return {
+    ok: true,
+    feedback: {
+      configured: Boolean(
+        EMAILJS_FEEDBACK_PUBLIC_KEY
+        && EMAILJS_FEEDBACK_SERVICE_ID
+        && EMAILJS_FEEDBACK_TEMPLATE_ID
+      ),
+      serviceId: EMAILJS_FEEDBACK_SERVICE_ID,
+      templateId: EMAILJS_FEEDBACK_TEMPLATE_ID,
+      hasPublicKey: Boolean(EMAILJS_FEEDBACK_PUBLIC_KEY),
+    },
+    newPlayer: {
+      configured: Boolean(
+        EMAILJS_NEW_PLAYER_PUBLIC_KEY
+        && EMAILJS_NEW_PLAYER_SERVICE_ID
+        && EMAILJS_NEW_PLAYER_TEMPLATE_ID
+      ),
+      serviceId: EMAILJS_NEW_PLAYER_SERVICE_ID,
+      templateId: EMAILJS_NEW_PLAYER_TEMPLATE_ID,
+      hasPublicKey: Boolean(EMAILJS_NEW_PLAYER_PUBLIC_KEY),
+      recipientField: 'to_email',
+    },
+  };
 }
 
 function feedbackParams(body) {
@@ -145,6 +178,7 @@ async function sendEmailJs({ serviceId, templateId, publicKey, params }) {
 
 export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return send(res, 204, {});
+  if (req.method === 'GET') return send(res, 200, emailHealth());
   if (req.method !== 'POST') return send(res, 405, { error: 'method not allowed' });
 
   try {
