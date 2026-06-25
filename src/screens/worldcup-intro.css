@@ -68,12 +68,13 @@
 .wc-flag-corners {
   position: absolute;
   inset: 0;
-  z-index: 4;
+  z-index: 30;
+  isolation: isolate;
   pointer-events: none;
 }
 .wc-flag-card {
   position: absolute;
-  z-index: 1;
+  z-index: 31;
   width: clamp(170px, 28vw, 320px);
   aspect-ratio: 4 / 3;
   padding: 7px;
@@ -110,7 +111,7 @@
 .wc-ball-layer {
   position: absolute;
   inset: 0;
-  z-index: 1;
+  z-index: 29;
   pointer-events: none;
 }
 .wc-soccer-ball {
@@ -187,7 +188,7 @@
 }
 .wc-plane-wrap {
   position: absolute;
-  z-index: 2;
+  z-index: 3;
   isolation: isolate;
   left: 50%;
   top: 132%;
@@ -196,6 +197,7 @@
 .wc-plane-wrap::after {
   content: "";
   position: absolute;
+  z-index: 0;
   left: 50%;
   top: 86%;
   width: 28%;
@@ -231,7 +233,7 @@
 }
 .wc-engine-fire {
   position: absolute;
-  z-index: 1;
+  z-index: 0;
   top: 91%;
   width: 13%;
   height: 34%;
@@ -271,7 +273,7 @@
 }
 .wc-wing-glow {
   position: absolute;
-  z-index: 1;
+  z-index: 0;
   top: 45%;
   width: 50%;
   height: 18%;
@@ -293,7 +295,7 @@
 .wc-plane {
   display: block;
   position: relative;
-  z-index: 1;
+  z-index: 0;
   width: clamp(110px, 18vw, 230px);
   filter: drop-shadow(0 0 18px rgba(180,230,255,0.72));
 }
