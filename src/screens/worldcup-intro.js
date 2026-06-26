@@ -153,10 +153,16 @@ function _startRandomWind(root) {
   const spawn = () => {
     const line = document.createElement('span');
     const left = Math.random() * 100;
+    const top = -18 + Math.random() * 92;
     const height = 46 + Math.random() * 58;
-    const duration = 0.24 + Math.random() * 0.24;
+    const duration = 0.28 + Math.random() * 0.36;
     const width = Math.random() < 0.45 ? 6 : 3;
+    const drift = -34 + Math.random() * 68;
+    const tilt = -14 + Math.random() * 10;
     line.style.left = `${left}%`;
+    line.style.setProperty('--wc-wind-top', `${top}%`);
+    line.style.setProperty('--wc-wind-drift', `${drift}px`);
+    line.style.setProperty('--wc-wind-tilt', `${tilt}deg`);
     line.style.height = `${height}vh`;
     line.style.width = `${width}px`;
     line.style.animationDuration = `${duration}s`;

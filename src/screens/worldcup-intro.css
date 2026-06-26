@@ -54,7 +54,7 @@
 }
 .wc-wind-lines span {
   position: absolute;
-  top: -48%;
+  top: var(--wc-wind-top, -20%);
   width: 4px;
   height: 62vh;
   opacity: 0;
@@ -62,7 +62,7 @@
   border-radius: 999px;
   box-shadow: 0 0 16px rgba(180,240,255,0.95), 0 0 30px rgba(37,99,235,0.42);
   filter: blur(0.25px);
-  transform: translate3d(0, -52vh, 0) scaleY(0.7) skewX(-9deg);
+  transform: translate3d(var(--wc-wind-drift, 0px), -52vh, 0) scaleY(0.7) skewX(var(--wc-wind-tilt, -9deg));
   will-change: transform, opacity;
 }
 .wc-wind-lines span {
@@ -280,10 +280,10 @@
   100% { transform: translateY(0); border-radius: 0; }
 }
 @keyframes wc-wind-rush {
-  0% { opacity: 0; transform: translate3d(0, -52vh, 0) scaleY(0.55) skewX(-9deg); }
+  0% { opacity: 0; transform: translate3d(var(--wc-wind-drift, 0px), -52vh, 0) scaleY(0.55) skewX(var(--wc-wind-tilt, -9deg)); }
   8% { opacity: 1; }
   76% { opacity: 0.92; }
-  100% { opacity: 0; transform: translate3d(0, 188vh, 0) scaleY(1.75) skewX(-9deg); }
+  100% { opacity: 0; transform: translate3d(calc(var(--wc-wind-drift, 0px) * -1), 188vh, 0) scaleY(1.75) skewX(var(--wc-wind-tilt, -9deg)); }
 }
 @keyframes wc-confetti-fall {
   0% {
@@ -303,10 +303,10 @@
 }
 @keyframes wc-plane-translate {
   0% { transform: translate3d(-50%, calc(var(--wc-enter-y) - 50%), 0) scale(0.92); opacity: 0; }
-  7% { opacity: 1; }
-  34% { transform: translate3d(-50%, calc(18dvh - 50%), 0) scale(1.1); opacity: 1; }
-  46%, 61% { transform: translate3d(-50%, calc(var(--wc-center-y) - 50%), 0) scale(1.24); opacity: 1; }
-  77% { transform: translate3d(-50%, calc(-28dvh - 50%), 0) scale(1.08); opacity: 0.98; }
+  5% { opacity: 1; }
+  17% { transform: translate3d(-50%, calc(20dvh - 50%), 0) scale(1.08); opacity: 1; }
+  24%, 78% { transform: translate3d(-50%, calc(var(--wc-center-y) - 50%), 0) scale(1.24); opacity: 1; }
+  88% { transform: translate3d(-50%, calc(-28dvh - 50%), 0) scale(1.08); opacity: 0.98; }
   100% { transform: translate3d(-50%, calc(var(--wc-exit-y) - 50%), 0) scale(0.82); opacity: 0; }
 }
 @keyframes wc-plane-trail {
@@ -400,9 +400,9 @@ html.touch-mobile .world-cup-intro.wc-active .wc-plane-wrap {
 
 @keyframes wc-plane-translate-mobile {
   0% { transform: translate3d(-50%, calc(var(--wc-enter-y) - 50%), 0) scale(0.9); opacity: 0; }
-  7% { opacity: 0.98; }
-  34% { transform: translate3d(-50%, calc(18dvh - 50%), 0) scale(1.02); opacity: 0.98; }
-  48%, 63% { transform: translate3d(-50%, calc(var(--wc-center-y) - 50%), 0) scale(1.14); opacity: 0.98; }
-  80% { transform: translate3d(-50%, calc(-26dvh - 50%), 0) scale(1.02); opacity: 0.82; }
+  5% { opacity: 0.98; }
+  17% { transform: translate3d(-50%, calc(20dvh - 50%), 0) scale(1.02); opacity: 0.98; }
+  24%, 78% { transform: translate3d(-50%, calc(var(--wc-center-y) - 50%), 0) scale(1.14); opacity: 0.98; }
+  88% { transform: translate3d(-50%, calc(-26dvh - 50%), 0) scale(1.02); opacity: 0.82; }
   100% { transform: translate3d(-50%, calc(var(--wc-exit-y) - 50%), 0) scale(0.78); opacity: 0; }
 }
