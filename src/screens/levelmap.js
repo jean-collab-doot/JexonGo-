@@ -30,6 +30,10 @@ export function renderLevelMap() {
 
   nodes.forEach((node, idx) => {
     const biome = getLevel(node.num).biome;
+    const guestGamesPlayed = Number(load('guestGamesPlayed', 0)) || 0;
+    const guestCanPlayNode = !G.playerRegistered && node.num <= Math.min(GUEST_FREE_GAMES, guestGamesPlayed + 1);
+    const guestTrialUsed = !G.playerRegistered && guestGamesPlayed >= GUEST_FREE_GAMES;
+    const visualState = guestCanPlayNode && node.state === 'locked' ? 'available' : node.state;
 
     // Biome label when biome changes (going top→bottom = descending level numbers)
     if (biome !== lastBiome) {
@@ -50,7 +54,7 @@ export function renderLevelMap() {
 
     const isBoss = node.num % 10 === 0;
     const el = document.createElement('div');
-    el.className = `map-node ${node.state}` + (isBoss ? ' map-node-boss' : '');
+    el.className = `map-node ${visualState}` + (isBoss ? ' map-node-boss' : '');
     // Zig-zag: alternate left/right offset
     const side = node.num % 2 === 0 ? ZIG : -ZIG;
     el.style.marginLeft = side + 'px';
@@ -75,8 +79,6 @@ export function renderLevelMap() {
       el.appendChild(stars);
     }
 
-    const guestGamesPlayed = Number(load('guestGamesPlayed', 0)) || 0;
-    const guestTrialUsed = !G.playerRegistered && guestGamesPlayed >= GUEST_FREE_GAMES;
     const guestLocked = !G.playerRegistered && guestTrialUsed;
 
     if (guestLocked) {
@@ -87,7 +89,7 @@ export function renderLevelMap() {
         if (window._showToast) window._showToast(t('signInAlert'));
         else alert(t('signInAlert'));
       });
-    } else if (node.state !== 'locked') {
+    } else if (visualState !== 'locked') {
       el.style.borderColor = BIOME_META[biome].accent;
       if (node.state === 'available') el.style.boxShadow = `0 0 14px ${BIOME_META[biome].accent}66`;
       el.addEventListener('click', () => {
