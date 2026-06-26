@@ -115,8 +115,8 @@ const nav = {
       } else {
         showGameover();
         showScreen('s-gameover');
-        SFX.stopMusic();
         SFX.gameOver();
+        SFX.stopMusic();
       }
     });
   },

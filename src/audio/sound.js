@@ -334,11 +334,18 @@ export const SFX = {
   },
   gameOver() {
     if (_sfxVol === 0) return;
+    _resumeAll();
     const ctx = _ac();
     _tone(ctx, 360, 'sawtooth', 0.48, 0.5);
     _after(190, () => _tone(_ac(), 230, 'sawtooth', 0.5, 0.5));
     _after(420, () => _tone(_ac(), 95, 'square', 0.75, 0.48));
     _playMediaShot('/assets/music/gameover.mp3', 1.0);
+    if (_isMobileAudio) {
+      _after(140, () => {
+        _resumeAll();
+        _playMediaShot('/assets/music/gameover.mp3', 1.0);
+      });
+    }
     _playBuf('/assets/music/gameover.mp3', 1.0, ctx => {
       [400, 300, 200].forEach((f, i) =>
         _after(i * 190, () => _tone(_ac(), f, 'sawtooth', 0.45, 0.48)));
