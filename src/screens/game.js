@@ -30,13 +30,13 @@ function guestGamesPlayed() {
   return Number(load('guestGamesPlayed', 0)) || 0;
 }
 
-function hasGuestTrialLeft() {
-  return G.playerRegistered || guestGamesPlayed() < GUEST_FREE_GAMES;
+function hasGuestTrialLeft(levelNum = G.currentLevel || 1) {
+  return G.playerRegistered || G.practiceMode || isTutorialActive() || levelNum <= GUEST_FREE_GAMES;
 }
 
 function recordGuestGamePlayed() {
   if (G.playerRegistered || G.practiceMode || isTutorialActive()) return;
-  save('guestGamesPlayed', Math.min(GUEST_FREE_GAMES, guestGamesPlayed() + 1));
+  save('guestGamesPlayed', Math.min(GUEST_FREE_GAMES, Math.max(guestGamesPlayed(), G.currentLevel || 1)));
 }
 
 // ── GRADE-BASED MATH FILTER ───────────────────────────────────────────────────
@@ -2073,7 +2073,7 @@ function drawSpeedLines(ctx, cw, ch) {
 }
 
 export function initGame(levelNum, onComplete) {
-  if (!hasGuestTrialLeft()) {
+  if (!hasGuestTrialLeft(levelNum)) {
     if (window._showToast) window._showToast(t('signInAlert'));
     window._nav?.toMenu?.();
     return () => {};

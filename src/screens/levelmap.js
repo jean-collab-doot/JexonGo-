@@ -31,8 +31,7 @@ export function renderLevelMap() {
   nodes.forEach((node, idx) => {
     const biome = getLevel(node.num).biome;
     const guestGamesPlayed = Number(load('guestGamesPlayed', 0)) || 0;
-    const guestCanPlayNode = !G.playerRegistered && node.num <= Math.min(GUEST_FREE_GAMES, guestGamesPlayed + 1);
-    const guestTrialUsed = !G.playerRegistered && guestGamesPlayed >= GUEST_FREE_GAMES;
+    const guestCanPlayNode = !G.playerRegistered && node.num <= GUEST_FREE_GAMES;
     const visualState = guestCanPlayNode && node.state === 'locked' ? 'available' : node.state;
 
     // Biome label when biome changes (going top→bottom = descending level numbers)
@@ -79,7 +78,7 @@ export function renderLevelMap() {
       el.appendChild(stars);
     }
 
-    const guestLocked = !G.playerRegistered && guestTrialUsed;
+    const guestLocked = !G.playerRegistered && node.num > GUEST_FREE_GAMES;
 
     if (guestLocked) {
       el.classList.add('locked');
