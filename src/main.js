@@ -3,7 +3,7 @@ import { save, load } from './utils/storage.js';
 import { showScreen } from './utils/dom.js';
 import { SFX } from './audio/sound.js';
 import { initMenu, renderMenu } from './screens/menu.js';
-import { playWorldCupIntro, stopWorldCupIntro } from './screens/worldcup-intro.js';
+import { stopWorldCupIntro } from './screens/worldcup-intro.js';
 import { showOnboarding } from './screens/onboarding.js';
 import { initLevelMap, renderLevelMap } from './screens/levelmap.js';
 import { initHangar, renderHangar } from './screens/hangar.js';
@@ -201,12 +201,11 @@ function showNewPlayerIntroFlow(onDone = null) {
   renderMenu();
   showScreen('s-menu');
   SFX.playMusic('menu');
-  playWorldCupIntro(() => {
-    showOnboarding(() => {
-      save('hasSeenOnboarding', true);
-      if (onDone) onDone();
-      else nav.toGame(G.currentLevel || 1);
-    });
+  stopWorldCupIntro();
+  showOnboarding(() => {
+    save('hasSeenOnboarding', true);
+    if (onDone) onDone();
+    else nav.toGame(G.currentLevel || 1);
   });
 }
 
