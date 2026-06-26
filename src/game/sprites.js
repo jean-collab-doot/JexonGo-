@@ -2,7 +2,7 @@
 // Single source of truth for all pixel-art assets.
 // Every image is loaded once and cached; drawFrame() is the only draw primitive.
 
-import { isTouchMobile } from '../utils/device.js';
+import { isPhone, isTouchMobile } from '../utils/device.js';
 
 const _images = new Map(); // path → HTMLImageElement
 
@@ -16,27 +16,31 @@ function _load(path) {
   });
 }
 
+function _spritePath(def) {
+  return isPhone() && def.mobilePath ? def.mobilePath : def.path;
+}
+
 // ── SPRITE DEFINITIONS ───────────────────────────────────────────────────────
 export const SPRITE_DEFS = {
   // Player ships — new top-down artwork (single frame each)
-  'ship-t6':   { path: '/assets/ships/player/t6.png',   frames: 1 },
-  'ship-pc21': { path: '/assets/ships/player/pc21.png', frames: 1 },
-  'ship-c130': { path: '/assets/ships/player/c130.png', frames: 1 },
-  'ship-a10':  { path: '/assets/ships/player/a10.png',  frames: 1 },
-  'ship-f16':  { path: '/assets/ships/player/f16.png',  frames: 1 },
-  'ship-f18':  { path: '/assets/ships/player/f18.png',  frames: 1 },
-  'ship-f22':  { path: '/assets/ships/player/f22.png',  frames: 1 },
-  'ship-f35':  { path: '/assets/ships/player/f35.png',  frames: 1 },
-  'ship-b2':   { path: '/assets/ships/player/b2.png',   frames: 1 },
-  'ship-sr71': { path: '/assets/ships/player/sr71.png', frames: 1 },
+  'ship-t6':   { path: '/assets/ships/player/t6.png',   mobilePath: '/assets/mobile/ships/player/t6.png',   frames: 1 },
+  'ship-pc21': { path: '/assets/ships/player/pc21.png', mobilePath: '/assets/mobile/ships/player/pc21.png', frames: 1 },
+  'ship-c130': { path: '/assets/ships/player/c130.png', mobilePath: '/assets/mobile/ships/player/c130.png', frames: 1 },
+  'ship-a10':  { path: '/assets/ships/player/a10.png',  mobilePath: '/assets/mobile/ships/player/a10.png',  frames: 1 },
+  'ship-f16':  { path: '/assets/ships/player/f16.png',  mobilePath: '/assets/mobile/ships/player/f16.png',  frames: 1 },
+  'ship-f18':  { path: '/assets/ships/player/f18.png',  mobilePath: '/assets/mobile/ships/player/f18.png',  frames: 1 },
+  'ship-f22':  { path: '/assets/ships/player/f22.png',  mobilePath: '/assets/mobile/ships/player/f22.png',  frames: 1 },
+  'ship-f35':  { path: '/assets/ships/player/f35.png',  mobilePath: '/assets/mobile/ships/player/f35.png',  frames: 1 },
+  'ship-b2':   { path: '/assets/ships/player/b2.png',   mobilePath: '/assets/mobile/ships/player/b2.png',   frames: 1 },
+  'ship-sr71': { path: '/assets/ships/player/sr71.png', mobilePath: '/assets/mobile/ships/player/sr71.png', frames: 1 },
   // Enemies — plane artwork
-  'enemy-f15':   { path: '/assets/enemies/planes/f15.png',  frames: 1 },
-  'enemy-t38':   { path: '/assets/enemies/planes/t38.png',  frames: 1 },
-  'enemy-f117':  { path: '/assets/enemies/planes/f117.png', frames: 1 },
+  'enemy-f15':   { path: '/assets/enemies/planes/f15.png',  mobilePath: '/assets/mobile/enemies/planes/f15.png',  frames: 1 },
+  'enemy-t38':   { path: '/assets/enemies/planes/t38.png',  mobilePath: '/assets/mobile/enemies/planes/t38.png',  frames: 1 },
+  'enemy-f117':  { path: '/assets/enemies/planes/f117.png', mobilePath: '/assets/mobile/enemies/planes/f117.png', frames: 1 },
   // FX — death / hit
   'enemy-death': { path: '/assets/enemies/enemy-explosion.png', frames: 7 },
   // FX
-  'bolt':      { path: '/assets/fx/rocket.png',               frames: 1 },
+  'bolt':      { path: '/assets/fx/rocket.png', mobilePath: '/assets/mobile/fx/rocket.png', frames: 1 },
   'spark':     { path: '/assets/fx/explosion-a.png',         frames: 8 },
   'fire-ball': { path: '/assets/fx/fire-ball.png', frames: 3 },
   // Ocean backgrounds
@@ -44,11 +48,11 @@ export const SPRITE_DEFS = {
   'ocean-clouds': { path: '/assets/bg/ocean/clouds.png', frames: 1 },
   'ocean-middle': { path: '/assets/bg/ocean/middle.png', frames: 1 },
   // Pack biome — single top-down illustrations per biome
-  'ocean-bg':  { path: '/assets/bg/ocean/bg.png',  frames: 1 },
-  'desert-bg': { path: '/assets/bg/desert/bg.png', frames: 1 },
-  'city-bg':   { path: '/assets/bg/city/bg.png',   frames: 1 },
-  'arctic-bg': { path: '/assets/bg/arctic/bg.png', frames: 1 },
-  'space-bg':  { path: '/assets/bg/space/bg.png',  frames: 1 },
+  'ocean-bg':  { path: '/assets/bg/ocean/bg.png',  mobilePath: '/assets/mobile/bg/ocean/bg.png',  frames: 1 },
+  'desert-bg': { path: '/assets/bg/desert/bg.png', mobilePath: '/assets/mobile/bg/desert/bg.png', frames: 1 },
+  'city-bg':   { path: '/assets/bg/city/bg.png',   mobilePath: '/assets/mobile/bg/city/bg.png',   frames: 1 },
+  'arctic-bg': { path: '/assets/bg/arctic/bg.png', mobilePath: '/assets/mobile/bg/arctic/bg.png', frames: 1 },
+  'space-bg':  { path: '/assets/bg/space/bg.png',  mobilePath: '/assets/mobile/bg/space/bg.png',  frames: 1 },
 };
 
 // Aircraft ID → sprite key
@@ -96,7 +100,7 @@ export function preloadShips(activeAircraft = 't6') {
   keys
     .forEach(k => {
       const def = SPRITE_DEFS[k];
-      if (def) _load(def.path).catch(() => {});
+      if (def) _load(_spritePath(def)).catch(() => {});
     });
 }
 
@@ -111,7 +115,7 @@ export async function preloadBiome(biome, options = {}) {
   await Promise.all(
     keys.map(k => {
       const def = SPRITE_DEFS[k];
-      return def ? _load(def.path).catch(err => console.warn('[sprites]', err.message)) : Promise.resolve();
+      return def ? _load(_spritePath(def)).catch(err => console.warn('[sprites]', err.message)) : Promise.resolve();
     })
   );
 }
@@ -122,9 +126,10 @@ export async function preloadBiome(biome, options = {}) {
 export function getImage(key) {
   const def = SPRITE_DEFS[key];
   if (!def) return null;
-  const cached = _images.get(def.path);
+  const path = _spritePath(def);
+  const cached = _images.get(path);
   if (cached) return cached;
-  _load(def.path).catch(() => {});
+  _load(path).catch(() => {});
   return null;
 }
 
