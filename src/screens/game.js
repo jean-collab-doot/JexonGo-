@@ -24,7 +24,7 @@ import {
 } from '../utils/device.js';
 import { setSpriteCanvasWidth } from '../game/aircraft-draw.js';
 
-const GUEST_FREE_GAMES = 3;
+const GUEST_FREE_GAMES = 5;
 
 function guestGamesPlayed() {
   return Number(load('guestGamesPlayed', 0)) || 0;

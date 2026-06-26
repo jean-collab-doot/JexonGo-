@@ -2,7 +2,7 @@
 // Single source of truth for all pixel-art assets.
 // Every image is loaded once and cached; drawFrame() is the only draw primitive.
 
-import { isPhone, isTouchMobile } from '../utils/device.js';
+import { isTouchMobile } from '../utils/device.js';
 
 const _images = new Map(); // path → HTMLImageElement
 
@@ -17,7 +17,7 @@ function _load(path) {
 }
 
 function _spritePath(def) {
-  return isPhone() && def.mobilePath ? def.mobilePath : def.path;
+  return def.path;
 }
 
 // ── SPRITE DEFINITIONS ───────────────────────────────────────────────────────

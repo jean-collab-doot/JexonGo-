@@ -239,7 +239,10 @@ function loadAssets() {
     _activeVid = 'v1';
     _xfadeT    = -1;
   } else if (vid) {
-    vid.pause();
+    vid.style.opacity = '1';
+    vid.play().catch(() => {});
+    _activeVid = 'v1';
+    _xfadeT    = -1;
   }
 }
 
@@ -1021,8 +1024,7 @@ export function renderMenu() {
   if (vid)  {
     vid.style.opacity = '1';
     vid.currentTime = 0;
-    if (isPhone()) vid.pause();
-    else vid.play().catch(() => {});
+    vid.play().catch(() => {});
   }
   if (vid2) { vid2.style.opacity = '0'; vid2.currentTime = 0; vid2.pause(); }
 
@@ -1040,7 +1042,7 @@ export function renderMenu() {
   if (offlineBanner) {
     const needsTutorialConnect = !!G.postTutorialConnectPrompt && !G.playerRegistered;
     const guestGamesPlayed = Number(load('guestGamesPlayed', 0)) || 0;
-    const guestTrialUsed = !G.playerRegistered && guestGamesPlayed >= 3;
+    const guestTrialUsed = !G.playerRegistered && guestGamesPlayed >= 5;
     const isFr = getLang() === 'fr';
     const level = G.tutorialPlan?.startLevel || G.currentLevel || 1;
     offlineBanner.classList.toggle('hidden', !needsTutorialConnect && !guestTrialUsed);

@@ -194,7 +194,7 @@ function deviceIntroLang() {
 }
 
 function guestTrialUsed() {
-  return !G.playerRegistered && (Number(load('guestGamesPlayed', 0)) || 0) >= 3;
+  return !G.playerRegistered && (Number(load('guestGamesPlayed', 0)) || 0) >= 5;
 }
 
 function showNewPlayerIntroFlow(onDone = null) {

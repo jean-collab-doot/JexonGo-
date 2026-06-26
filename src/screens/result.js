@@ -36,7 +36,7 @@ export function showResult(won) {
   const isBoss    = G.currentLevel % 10 === 0;
   const isConnected = !!G.playerRegistered;
   const guestGamesPlayed = Number(load('guestGamesPlayed', 0)) || 0;
-  const shouldAskGuestConnect = !isConnected && !G.practiceMode && guestGamesPlayed >= 3;
+  const shouldAskGuestConnect = !isConnected && !G.practiceMode && guestGamesPlayed >= 5;
   const canEarnRewards = !G.practiceMode && isConnected;
 
   const xp    = G.sessionXP || 0;
@@ -108,7 +108,7 @@ export function showResult(won) {
   }
 
   const rewardLockLabel = getLang() === 'fr' ? 'CONNECTE-TOI POUR GAGNER' : 'SIGN IN TO EARN';
-  const guestTrialLabel = getLang() === 'fr' ? `ESSAI INVITE ${guestGamesPlayed}/3` : `GUEST TRIAL ${guestGamesPlayed}/3`;
+  const guestTrialLabel = getLang() === 'fr' ? `ESSAI INVITE ${Math.min(guestGamesPlayed, 5)}/5` : `GUEST TRIAL ${Math.min(guestGamesPlayed, 5)}/5`;
   $('result-xp').textContent = G.practiceMode
     ? t('noXpPractice')
     : canEarnRewards

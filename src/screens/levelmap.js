@@ -6,7 +6,7 @@ import { t } from '../i18n.js';
 import { SFX } from '../audio/sound.js';
 import { load } from '../utils/storage.js';
 
-const GUEST_FREE_GAMES = 3;
+const GUEST_FREE_GAMES = 5;
 
 const ZIG = 55;
 
