@@ -37,6 +37,16 @@ function supabaseHeaders(token, extra = {}) {
   };
 }
 
+function supabaseAdminHeaders(extra = {}) {
+  const key = SUPABASE_SERVICE_ROLE_KEY || SUPABASE_PUBLISHABLE_KEY;
+  return {
+    apikey: key,
+    Authorization: `Bearer ${key}`,
+    'Content-Type': 'application/json',
+    ...extra,
+  };
+}
+
 function isSupabaseConfigured() {
   return Boolean(SUPABASE_REST_URL && SUPABASE_PUBLISHABLE_KEY);
 }
@@ -86,11 +96,13 @@ async function updateSave(token, column, value, record) {
   });
 }
 
-async function deleteSave(token, column, value) {
+async function deleteSaveAsServer(token, column, value) {
   const url = supabaseUrl(`${SAVES_TABLE}?${column}=eq.${encodeURIComponent(value)}`);
   return requestJson(url, {
     method: 'DELETE',
-    headers: supabaseHeaders(token, { Prefer: 'return=representation' }),
+    headers: SUPABASE_SERVICE_ROLE_KEY
+      ? supabaseAdminHeaders({ Prefer: 'return=representation' })
+      : supabaseHeaders(token, { Prefer: 'return=representation' }),
   });
 }
 
@@ -127,6 +139,10 @@ export default async function handler(req, res) {
       message: isSupabaseConfigured()
         ? 'Supabase is configured. Authenticated saves require a logged-in user token.'
         : 'Supabase environment variables are missing.',
+      accountDeletion: {
+        saveDelete: SUPABASE_SERVICE_ROLE_KEY ? 'server' : 'rls',
+        authDeleteConfigured: Boolean(SUPABASE_SERVICE_ROLE_KEY),
+      },
     });
   }
 
@@ -174,13 +190,8 @@ export default async function handler(req, res) {
     }
 
     if (req.method === 'DELETE') {
-      const existing = await readSave(token, user.id, user.email);
-      if (existing) {
-        await deleteSave(token, existing.user_id ? 'user_id' : 'email', existing.user_id || existing.email);
-      }
-      else {
-        await deleteSave(token, 'email', String(user.email || '').toLowerCase());
-      }
+      await deleteSaveAsServer(token, 'user_id', user.id);
+      await deleteSaveAsServer(token, 'email', String(user.email || '').toLowerCase());
       console.log('[Save] account deletion requested', {
         deleted: true,
         reason: req.body?.deletionReason?.reason || null,
