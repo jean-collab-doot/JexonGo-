@@ -265,12 +265,14 @@ window._onGoogleCredential = async function(response) {
     const email   = (payload.email || '').toLowerCase();
     const photo   = payload.picture || '';
 
-    let supabaseGoogleReady = true;
     try {
       await signInWithGoogleIdToken(response.credential);
     } catch (err) {
       console.warn('[Supabase] Google auth failed:', err);
-      supabaseGoogleReady = false;
+      _showLoginToast(getLang() === 'fr'
+        ? 'Connexion Google Supabase non configuree. Utilisez un compte JexonGO.'
+        : 'Supabase Google login is not configured. Use a JexonGO account.', 4200);
+      return;
     }
 
     const wasRegistered = G.playerRegistered;
@@ -289,9 +291,7 @@ window._onGoogleCredential = async function(response) {
     save('playerRegistered', true);
 
     loadSave();
-    const sync = supabaseGoogleReady
-      ? await syncAccountFromCloud({ authType: 'google' })
-      : { offline: true };
+    const sync = await syncAccountFromCloud({ authType: 'google' });
     const shouldNotifyNewGooglePlayer = !sync?.merged && (!wasRegistered || previousEmail !== email);
     if (sync.offline) _showLoginToast(t('syncOffline') || 'Account connected - progress saves on this device.');
     else if (sync.merged) _showLoginToast(t('syncOk') || 'Progress synced from your account.');
