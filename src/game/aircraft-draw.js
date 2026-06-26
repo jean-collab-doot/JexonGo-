@@ -79,7 +79,7 @@ export function drawAircraftSprite(ctx, aircraftId, cx, cy, frame, alpha = 1, ba
   ctx.save();
   ctx.imageSmoothingEnabled = true;
   if (alpha !== 1)  ctx.globalAlpha = alpha;
-  if (skinFilter)   ctx.filter = skinFilter;
+  if (skinFilter && !isPhone()) ctx.filter = skinFilter;
   const sz = getPlayerSize();
   drawFrame(ctx, key, frame, cx, cy, sz, sz, { rotate: bankAngle });
   ctx.restore();
@@ -96,7 +96,7 @@ export function drawAircraftPreview(ctx, aircraftId, cx, cy, size) {
 
 export function drawEnemySprite(ctx, enemy, bankAngle = 0) {
   const size = isTouchMobile() ? getTouchEnemySize() : enemy.size * getEnemyScale();
-  if (enemy.spriteFilter) {
+  if (enemy.spriteFilter && !isPhone()) {
     ctx.save();
     ctx.filter = enemy.spriteFilter;
     drawFrame(ctx, enemy.spriteKey, enemy.animFrame, enemy.x, enemy.y, size, size,

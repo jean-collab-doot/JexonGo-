@@ -1145,7 +1145,7 @@ function frame(ts = 0) {
   if (G.activeLivery  !== _lastLiveryId)  { _cachedLiveryData = SKINS.find(s => s.id === G.activeLivery);  _lastLiveryId  = G.activeLivery; }
   const activeSkinData   = _cachedSkinData;
   const activeLiveryData = _cachedLiveryData;
-  const skinFilter    = activeLiveryData?.filter || '';
+  const skinFilter    = isTouchMobile() ? '' : (activeLiveryData?.filter || '');
   const skinAircraft  = (activeSkinData ?? activeLiveryData)?.aircraft ?? G.activeAircraft;
   const playerFloat = playerFloatOffset();
   const playerDrawX = G.player.x + playerFloat.x;
@@ -2301,7 +2301,7 @@ export function initGame(levelNum, onComplete) {
         ];
         const theme = BOSS_THEMES[milestone] ?? BOSS_THEMES[1];
         boss.color         = theme.color;
-        boss.spriteFilter  = theme.filter;
+        boss.spriteFilter  = isTouchMobile() ? '' : theme.filter;
         boss._pauseFrames  = theme.pauseF;
         boss._burstInterval = theme.burstI;
         boss._missileSpd   = theme.missileSpd;
