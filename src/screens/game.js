@@ -543,6 +543,8 @@ let _lastSkinId       = null;
 let _lastLiveryId     = null;
 let spawnRate   = 150;
 let maxEnemies  = 5;
+let baseSpawnRate = 150;
+let baseMaxEnemies = 5;
 let _sessionId    = 0;
 let _activeSessionId = 0;
 let _gamePausedFromQuit = false;
@@ -905,6 +907,7 @@ function frame(ts = 0) {
     return;
   }
   _lastFrameTs = ts;
+  tuneAdaptivePerformance(ts);
 
   tick++;
   _shipFrame = (_shipFrame + 0.08) % 5;
@@ -944,7 +947,7 @@ function frame(ts = 0) {
 
   // ── Enemy spawn ────────────────────────────────────────────────────────
   spawnTimer--;
-  if (spawnTimer <= 0 && activeRegularEnemyCount() < maxEnemies) {
+  if (spawnTimer <= 0 && activeRegularEnemyCount() < adaptiveMaxEnemies()) {
     const types = levelCfg.isBossLevel ? levelCfg.bossCompanionTypes : levelCfg.enemyTypes;
     const type  = types[Math.floor(Math.random() * types.length)];
     const e     = spawnEnemy(canvas.width, type);
@@ -952,7 +955,7 @@ function frame(ts = 0) {
     e.fireRate      = Math.max(isTouchMobile() ? 84 : 30, Math.floor(e.fireRate * levelCfg.enemyFireRateMult));
     e.fireCooldown  = (isTouchMobile() ? 96 : 45) + Math.floor(Math.random() * (isTouchMobile() ? 86 : 45));
     G.enemies.push(e);
-    spawnTimer = spawnRate;
+    spawnTimer = adaptiveSpawnRate();
   }
   pruneEnemies(canvas.height + 80);
 
@@ -2000,7 +2003,7 @@ function loseLife() {
     return;
   }
   _invincible = 120;
-  spawnTimer  = spawnRate;
+  spawnTimer  = adaptiveSpawnRate();
   setTimeout(() => {
     if (_sessionId !== sid) return;
     if (levelCfg.isBossLevel || G.questionsAnswered < levelCfg.questionCount) nextQuestion();
@@ -2042,6 +2045,63 @@ let _speedLines   = [];
 const _skinImgCache = {};
 let _lastFrameTs = 0;
 let   _qboxH         = 180;  // cached question-box height — updated in resize()
+let _perfTier = 2;
+let _perfAvgMs = 16.7;
+let _perfLastTs = 0;
+let _perfSamples = 0;
+
+function resetAdaptivePerformance() {
+  _perfTier = isTouchMobile() ? 1 : 2;
+  _perfAvgMs = 16.7;
+  _perfLastTs = 0;
+  _perfSamples = 0;
+}
+
+function adaptiveSpawnRate() {
+  if (!isTouchMobile()) return baseSpawnRate;
+  const mult = _perfTier === 0 ? 1.55 : _perfTier === 1 ? 1.20 : 1.0;
+  return Math.max(80, Math.round(baseSpawnRate * mult));
+}
+
+function adaptiveMaxEnemies() {
+  if (!isTouchMobile()) return baseMaxEnemies;
+  const cap = _perfTier === 0 ? 3 : _perfTier === 1 ? 4 : 5;
+  return Math.min(baseMaxEnemies, cap);
+}
+
+function trimForAdaptivePerformance() {
+  const keepEnemies = adaptiveMaxEnemies();
+  while (activeRegularEnemyCount() > keepEnemies) {
+    const idx = G.enemies.findIndex(e => e?.type !== 'boss');
+    if (idx < 0) break;
+    G.enemies.splice(idx, 1);
+  }
+  const maxMissiles = _perfTier === 0 ? 1 : MAX_ENEMY_MISSILES_TOUCH;
+  if (isTouchMobile() && G.enemyMissiles.length > maxMissiles) {
+    G.enemyMissiles.splice(0, G.enemyMissiles.length - maxMissiles);
+  }
+}
+
+function tuneAdaptivePerformance(ts = 0) {
+  if (!ts) return;
+  if (!_perfLastTs) {
+    _perfLastTs = ts;
+    return;
+  }
+  const dt = Math.min(80, Math.max(8, ts - _perfLastTs));
+  _perfLastTs = ts;
+  _perfAvgMs = (_perfAvgMs * 0.92) + (dt * 0.08);
+  if (++_perfSamples < 45) return;
+  _perfSamples = 0;
+
+  const lagMs = isTouchMobile() ? 25 : 31;
+  const smoothMs = isTouchMobile() ? 18 : 19;
+  const previous = _perfTier;
+  if (_perfAvgMs > lagMs && _perfTier > 0) _perfTier--;
+  else if (_perfAvgMs < smoothMs && _perfTier < 2) _perfTier++;
+  if (_perfTier < previous) trimForAdaptivePerformance();
+}
+
 function initSpeedLines(cw, ch) {
   const count = isTouchMobile() ? 0 : 28;
   _speedLines = Array.from({ length: count }, () => ({
@@ -2179,8 +2239,11 @@ export function initGame(levelNum, onComplete) {
   }
   updateStreakHUD();
 
-  spawnRate = isTutorialActive() ? 170 : isTouchMobile() ? Math.max(88, Math.round(levelCfg.spawnRate * 1.08)) : levelCfg.spawnRate;
-  maxEnemies = isTutorialActive() ? 2 : isTouchMobile() ? Math.min(levelCfg.maxEnemies, 5) : levelCfg.maxEnemies;
+  resetAdaptivePerformance();
+  baseSpawnRate = isTutorialActive() ? 170 : isTouchMobile() ? Math.max(88, Math.round(levelCfg.spawnRate * 1.08)) : levelCfg.spawnRate;
+  baseMaxEnemies = isTutorialActive() ? 2 : isTouchMobile() ? Math.min(levelCfg.maxEnemies, 5) : levelCfg.maxEnemies;
+  spawnRate = baseSpawnRate;
+  maxEnemies = baseMaxEnemies;
   spawnTimer = isTouchMobile() ? 22 : 60;
 
   attachInputListeners();
@@ -2337,7 +2400,8 @@ export function initGame(levelNum, onComplete) {
 
         G.enemies.push(boss);
         // Companions spawn via normal timer — set maxEnemies to companion count
-        maxEnemies = isTouchMobile() ? Math.min(levelCfg.bossCompanionMax, 3) : levelCfg.bossCompanionMax;
+        baseMaxEnemies = isTouchMobile() ? Math.min(levelCfg.bossCompanionMax, 3) : levelCfg.bossCompanionMax;
+        maxEnemies = baseMaxEnemies;
       }
 
       _startGameLoop(sid);
