@@ -45,13 +45,8 @@ function _handleLogin(provider) {
     _googleLoginPending = false;
     return;
   }
-
-  google.accounts.id.prompt(notification => {
-    _googleLoginPending = false;
-    if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-      _showGsiFallback();
-    }
-  });
+  _googleLoginPending = false;
+  _showGsiFallback();
 }
 
 function _showGsiFallback() {

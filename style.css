@@ -689,6 +689,7 @@ html.touch-mobile .menu-offline-banner {
   transition: transform 0.08s, box-shadow 0.1s;
   image-rendering: pixelated;
   overflow: hidden;
+  pointer-events: auto;
 }
 
 .login-auth-row {
@@ -704,6 +705,7 @@ html.touch-mobile .menu-offline-banner {
   background: rgba(255,255,255,0.06);
   opacity: 0;
   transition: opacity 0.1s;
+  pointer-events: none;
 }
 .login-btn:hover::after { opacity: 1; }
 
