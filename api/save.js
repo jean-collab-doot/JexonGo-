@@ -83,6 +83,14 @@ async function updateSave(token, column, value, record) {
   });
 }
 
+async function deleteSave(token, column, value) {
+  const url = supabaseUrl(`${SAVES_TABLE}?${column}=eq.${encodeURIComponent(value)}`);
+  return requestJson(url, {
+    method: 'DELETE',
+    headers: supabaseHeaders(token, { Prefer: 'return=representation' }),
+  });
+}
+
 export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return send(res, 204, {});
 
@@ -140,6 +148,18 @@ export default async function handler(req, res) {
       else await insertSave(token, record);
 
       return send(res, 200, { ok: true, updatedAt });
+    }
+
+    if (req.method === 'DELETE') {
+      const existing = await readSave(token, user.id, user.email);
+      if (existing) {
+        await deleteSave(token, existing.user_id ? 'user_id' : 'email', existing.user_id || existing.email);
+      }
+      console.log('[Save] account deletion requested', {
+        deleted: !!existing,
+        reason: req.body?.deletionReason?.reason || null,
+      });
+      return send(res, 200, { ok: true, deleted: !!existing });
     }
 
     return send(res, 405, { error: 'method not allowed' });

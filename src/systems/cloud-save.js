@@ -229,6 +229,35 @@ export async function pushCloudSave(opts = {}) {
   }
 }
 
+export async function deleteCloudSave(reasonPayload = {}) {
+  const email = (G.playerEmail || '').toLowerCase().trim();
+  if (!G.playerRegistered || !email) return { ok: false, reason: 'not-connected' };
+  if (!CLOUD_SAVE_AVAILABLE) return { ok: false, offline: true };
+
+  try {
+    const token = await getSupabaseAccessToken();
+    if (!token) return { ok: false, forbidden: true };
+    const res = await fetch(`${API_URL}/api/save`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({
+        ..._authBody({ authType: 'supabase' }),
+        deletionReason: reasonPayload,
+        updatedAt: Date.now(),
+      }),
+    });
+    const json = await res.clone().json().catch(() => ({}));
+    if (res.status === 503 || json?.offline) {
+      _cloudSaveOffline = true;
+      return { ok: false, offline: true };
+    }
+    if (res.status === 401 || res.status === 403) return { ok: false, forbidden: true };
+    return { ok: res.ok, ...json };
+  } catch (_) {
+    return { ok: false, offline: true };
+  }
+}
+
 export function scheduleCloudPush() {
   if (!G.playerRegistered || !G.playerEmail) return;
   clearTimeout(_pushTimer);

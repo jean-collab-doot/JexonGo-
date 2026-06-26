@@ -1,11 +1,12 @@
 import { $, showScreen } from '../utils/dom.js';
 import { G } from '../state.js';
-import { save } from '../utils/storage.js';
-import { flushCloudSave } from '../systems/cloud-save.js';
+import { clearAll, save } from '../utils/storage.js';
+import { deleteCloudSave, flushCloudSave } from '../systems/cloud-save.js';
 import { signOutSupabase } from '../systems/supabase-client.js';
 import { SFX } from '../audio/sound.js';
 import { getPilotGrade } from '../data/pilots.js';
 import { AIRCRAFT } from '../data/aircraft.js';
+import { t } from '../i18n.js';
 
 const GOOGLE_CLIENT_ID = '182729505930-rulb73m14t9qvfpjfbplknrcgn0fqvci.apps.googleusercontent.com';
 let _nav = null;
@@ -142,6 +143,74 @@ async function _signOut() {
   _nav.toMenu();
 }
 
+function _setDeleteError(message) {
+  const el = document.getElementById('delete-account-error');
+  if (el) el.textContent = message || '';
+}
+
+function _openDeleteAccountModal() {
+  if (!G.playerRegistered) return;
+  const modal = document.getElementById('delete-account-modal');
+  if (!modal) return;
+  const reason = document.getElementById('delete-account-reason');
+  const feedback = document.getElementById('delete-account-feedback');
+  const understand = document.getElementById('delete-account-understand');
+  const confirm = document.getElementById('delete-account-confirm-text');
+  if (reason) reason.value = '';
+  if (feedback) feedback.value = '';
+  if (understand) understand.checked = false;
+  if (confirm) confirm.value = '';
+  _setDeleteError('');
+  modal.classList.remove('hidden');
+}
+
+function _closeDeleteAccountModal() {
+  document.getElementById('delete-account-modal')?.classList.add('hidden');
+}
+
+async function _confirmDeleteAccount() {
+  const reason = document.getElementById('delete-account-reason')?.value || '';
+  const feedback = document.getElementById('delete-account-feedback')?.value.trim() || '';
+  const understand = !!document.getElementById('delete-account-understand')?.checked;
+  const confirmText = (document.getElementById('delete-account-confirm-text')?.value || '').trim().toUpperCase();
+  const btn = document.getElementById('btn-delete-account-confirm');
+
+  if (!reason) return _setDeleteError(t('deleteAccountMissingReason'));
+  if (!understand) return _setDeleteError(t('deleteAccountNeedConfirm'));
+  if (confirmText !== 'DELETE') return _setDeleteError(t('deleteAccountTypeError'));
+
+  _setDeleteError('');
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = t('deleteAccountDeleting');
+  }
+
+  const result = await deleteCloudSave({
+    reason,
+    feedback,
+    playerName: G.playerName || '',
+    playerEmail: G.playerEmail || '',
+    at: new Date().toISOString(),
+  });
+
+  if (!result?.ok) {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = t('deleteAccountConfirm');
+    }
+    return _setDeleteError(t('deleteAccountFailed'));
+  }
+
+  await signOutSupabase().catch(() => {});
+  if (typeof google !== 'undefined' && google?.accounts) {
+    google.accounts.id.disableAutoSelect();
+  }
+  const lang = localStorage.getItem('jexongo_lang');
+  clearAll();
+  if (lang) localStorage.setItem('jexongo_lang', lang);
+  location.reload();
+}
+
 function _triggerGoogleSignIn() {
   if (typeof google === 'undefined' || !google?.accounts?.id) return;
   google.accounts.id.initialize({
@@ -186,6 +255,12 @@ function _buildAccountSection() {
       <button id="btn-pce-signout" class="pce-signout-btn">✕ SIGN OUT</button>
     `;
     document.getElementById('btn-pce-signout')?.addEventListener('click', _signOut);
+    const deleteBtn = document.createElement('button');
+    deleteBtn.id = 'btn-pce-delete-account';
+    deleteBtn.className = 'pce-delete-btn';
+    deleteBtn.textContent = t('deleteAccount');
+    deleteBtn.addEventListener('click', _openDeleteAccountModal);
+    el.appendChild(deleteBtn);
   } else {
     el.innerHTML = `
       <div class="pce-acc-guest">
@@ -208,6 +283,11 @@ function _buildAccountSection() {
 export function initProfile(nav) {
   _nav = nav;
   $('btn-profile-back').onclick = () => nav.toMenu();
+  document.getElementById('btn-delete-account-cancel')?.addEventListener('click', _closeDeleteAccountModal);
+  document.getElementById('btn-delete-account-confirm')?.addEventListener('click', _confirmDeleteAccount);
+  document.getElementById('delete-account-modal')?.addEventListener('click', e => {
+    if (e.target === document.getElementById('delete-account-modal')) _closeDeleteAccountModal();
+  });
 
   $('prof-callsign').addEventListener('input', _refreshCard);
   $('prof-motto').addEventListener('input',    _refreshCard);

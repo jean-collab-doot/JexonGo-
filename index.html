@@ -767,6 +767,41 @@
     </div>
   </div>
 
+  <!-- DELETE ACCOUNT MODAL -->
+  <div id="delete-account-modal" class="sett-backdrop hidden">
+    <div class="delete-account-panel">
+      <div class="delete-account-title" data-i18n="deleteAccountTitle">DELETE ACCOUNT</div>
+      <div class="delete-account-copy" data-i18n="deleteAccountWarning">
+        This permanently deletes your JexonGO cloud save from this account.
+      </div>
+      <label class="delete-question">
+        <span data-i18n="deleteReasonLabel">WHY ARE YOU DELETING?</span>
+        <select id="delete-account-reason" class="reg-input">
+          <option value="" data-i18n="deleteReasonChoose">CHOOSE A REASON</option>
+          <option value="privacy" data-i18n="deleteReasonPrivacy">PRIVACY CONCERN</option>
+          <option value="bug" data-i18n="deleteReasonBug">BUG OR TECHNICAL PROBLEM</option>
+          <option value="too-hard" data-i18n="deleteReasonTooHard">GAME IS TOO HARD</option>
+          <option value="not-fun" data-i18n="deleteReasonNotFun">I DO NOT PLAY ANYMORE</option>
+          <option value="other" data-i18n="deleteReasonOther">OTHER</option>
+        </select>
+      </label>
+      <label class="delete-question">
+        <span data-i18n="deleteImproveLabel">WHAT COULD WE IMPROVE?</span>
+        <textarea id="delete-account-feedback" class="reg-input delete-account-textarea" maxlength="300" data-i18n-placeholder="deleteImprovePlaceholder" placeholder="OPTIONAL MESSAGE"></textarea>
+      </label>
+      <label class="delete-confirm-row">
+        <input id="delete-account-understand" type="checkbox">
+        <span data-i18n="deleteAccountUnderstand">I understand this cannot be undone.</span>
+      </label>
+      <input id="delete-account-confirm-text" class="reg-input" data-i18n-placeholder="deleteTypeDelete" placeholder="TYPE DELETE">
+      <div id="delete-account-error" class="login-modal-error"></div>
+      <div class="delete-account-actions">
+        <button id="btn-delete-account-cancel" class="btn btn-secondary" data-i18n="deleteAccountCancel">CANCEL</button>
+        <button id="btn-delete-account-confirm" class="btn btn-danger" data-i18n="deleteAccountConfirm">DELETE FOREVER</button>
+      </div>
+    </div>
+  </div>
+
   <!-- RESET CONFIRM MODAL -->
   <div id="reset-modal" class="sett-backdrop hidden">
     <div class="reset-modal-panel">

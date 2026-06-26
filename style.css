@@ -10318,3 +10318,106 @@ html.touch-phone #menu-canvas {
   background: transparent !important;
   pointer-events: none;
 }
+
+/* Account deletion */
+.pce-delete-btn {
+  width: 100%;
+  margin-top: 8px;
+  padding: 8px;
+  background: #24080d;
+  border: 2px solid #ef4444;
+  border-bottom-color: #7f1d1d;
+  border-right-color: #7f1d1d;
+  color: #fca5a5;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 7px;
+  cursor: pointer;
+  text-align: center;
+  transition: background 0.15s, box-shadow 0.15s, transform 0.08s;
+}
+.pce-delete-btn:hover {
+  background: #3b0b12;
+  box-shadow: 0 0 14px rgba(239,68,68,0.35);
+}
+.pce-delete-btn:active {
+  transform: translateY(1px);
+}
+.delete-account-panel {
+  width: min(92vw, 430px);
+  max-height: min(90vh, 620px);
+  overflow-y: auto;
+  background: linear-gradient(160deg, #120507 0%, #24080d 52%, #07111e 100%);
+  border: 2px solid #ef4444;
+  border-radius: 10px;
+  padding: 22px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-shadow: 0 0 44px rgba(239,68,68,0.34), 0 0 30px rgba(0,0,0,0.85);
+  font-family: 'Press Start 2P', monospace;
+}
+.delete-account-title {
+  color: #ff6b6b;
+  font-size: 13px;
+  letter-spacing: 2px;
+  text-align: center;
+  text-shadow: 0 0 18px rgba(239,68,68,0.75);
+}
+.delete-account-copy {
+  color: #f8b4b4;
+  font-size: 7px;
+  line-height: 1.9;
+  text-align: center;
+  letter-spacing: 1px;
+}
+.delete-question {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  color: #fbbf24;
+  font-size: 7px;
+  letter-spacing: 1px;
+  line-height: 1.5;
+}
+.delete-account-textarea {
+  min-height: 78px;
+  resize: vertical;
+  line-height: 1.8;
+}
+.delete-confirm-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  color: #e5e7eb;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 7px;
+  line-height: 1.7;
+}
+.delete-confirm-row input {
+  margin-top: 2px;
+  accent-color: #ef4444;
+  flex-shrink: 0;
+}
+.delete-account-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.delete-account-actions .btn {
+  min-width: 0;
+  width: 100%;
+  padding: 12px 8px;
+  font-size: 7px;
+  letter-spacing: 1px;
+}
+
+@media (max-width: 520px) {
+  .delete-account-panel {
+    width: 94vw;
+    padding: 18px 14px;
+    gap: 10px;
+  }
+  .delete-account-actions {
+    grid-template-columns: 1fr;
+  }
+}
