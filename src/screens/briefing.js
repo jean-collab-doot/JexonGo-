@@ -9,24 +9,37 @@ import { SFX } from '../audio/sound.js';
 let _nav = null;
 let _levelNum = 1;
 
+function localizedGradeName(grade) {
+  const keyByName = {
+    'AIR ACE': 'pilotAirAce',
+    GENERAL: 'pilotGeneral',
+    COLONEL: 'pilotColonel',
+    MAJOR: 'pilotMajor',
+    CAPTAIN: 'pilotCaptain',
+    LIEUTENANT: 'pilotLt',
+    '2ND LT': 'pilot2ndLt',
+    CADET: 'pilotCadet',
+  };
+  return t(keyByName[grade.name] || '') || grade.name;
+}
+
 export function initBriefing(nav) {
   _nav = nav;
   $('btn-briefing-back').onclick = () => _nav.toMap();
-  $('btn-briefing-fly').onclick  = () => { SFX.chooseLevel?.(); _nav.toGame(_levelNum); };
+  $('btn-briefing-fly').onclick = () => { SFX.chooseLevel?.(); _nav.toGame(_levelNum); };
 }
 
 export function showBriefing(levelNum) {
   _levelNum = levelNum;
 
-  const levelCfg  = getLevel(levelNum);
-  const story      = getStory(levelNum);
-  const pilotInfo  = getPilotInfo(G.totalXpEarned || G.xp || 0);
-  const grade      = getPilotGrade(G.highestLevel || 0);
-
+  const levelCfg = getLevel(levelNum);
+  const story = getStory(levelNum);
+  const pilotInfo = getPilotInfo(G.totalXpEarned || G.xp || 0);
+  const grade = getPilotGrade(G.highestLevel || 0);
   const isFr = getLang() === 'fr';
+
   $('briefing-mission-title').textContent = isFr ? (story.titleFr || story.title) : story.title;
   $('briefing-story').textContent = isFr ? (story.textFr || story.text) : story.text;
-
   $('briefing-time').textContent = `${levelCfg.timeLimit}${t('secPerQ')}`;
 
   const timeLabelEl = document.querySelector('.briefing-cond-label[data-key="timeLimit"]');
@@ -40,36 +53,35 @@ export function showBriefing(levelNum) {
     ? G.focusOperations
     : G.focusOperation ? [G.focusOperation] : [];
   const opsToShow = configuredOps.length ? configuredOps : levelCfg.ops;
-  const opSymbols = { '+': '+', '-': '−', '*': '×', '/': '÷' };
-  const opsLabel  = opsToShow.map(op => opSymbols[op] || op).join('  ');
+  const opSymbols = { '+': '+', '-': '-', '*': 'x', '/': '/' };
+  $('briefing-ops').textContent = opsToShow
+    .map(op => `${opSymbols[op] || op} ${tOp(op)}`)
+    .join('  ');
 
-  $('briefing-ops').textContent = opsLabel;
-
-  $('briefing-pilot-avatar').textContent  = grade.emoji;
-  $('briefing-pilot-avatar').style.color  = grade.color;
+  $('briefing-pilot-avatar').textContent = grade.emoji;
+  $('briefing-pilot-avatar').style.color = grade.color;
   $('briefing-pilot-avatar').style.textShadow = `0 0 18px ${grade.color}`;
-  $('briefing-pilot-name').textContent    = grade.name;
-  $('briefing-pilot-name').style.color    = grade.color;
+  $('briefing-pilot-name').textContent = localizedGradeName(grade);
+  $('briefing-pilot-name').style.color = grade.color;
 
   const descEl = $('briefing-pilot-desc');
-  if (descEl) descEl.textContent = pilotInfo.tier.desc;
+  if (descEl) descEl.textContent = t(`pilotTierDesc_${pilotInfo.tier.id}`) || pilotInfo.tier.desc;
 
-  // ── Star achievement criteria ─────────────────────────────────────────────
   const starCritEl = $('briefing-star-criteria');
   if (starCritEl) {
     const existing = G.levelStars[levelNum] || 0;
     starCritEl.innerHTML = `
       <div class="bsc-row">
-        <span class="bsc-star ${existing >= 1 ? 'bsc-earned' : ''}">★</span>
-        <span class="bsc-desc">Complete the level</span>
+        <span class="bsc-star ${existing >= 1 ? 'bsc-earned' : ''}">&#9733;</span>
+        <span class="bsc-desc">${t('briefingStarComplete')}</span>
       </div>
       <div class="bsc-row">
-        <span class="bsc-star ${existing >= 2 ? 'bsc-earned' : ''}">★</span>
-        <span class="bsc-desc">70%+ correct answers</span>
+        <span class="bsc-star ${existing >= 2 ? 'bsc-earned' : ''}">&#9733;</span>
+        <span class="bsc-desc">${t('briefingStarAccuracy')}</span>
       </div>
       <div class="bsc-row">
-        <span class="bsc-star ${existing >= 3 ? 'bsc-earned' : ''}">★</span>
-        <span class="bsc-desc">100% correct + never hit</span>
+        <span class="bsc-star ${existing >= 3 ? 'bsc-earned' : ''}">&#9733;</span>
+        <span class="bsc-desc">${t('briefingStarPerfect')}</span>
       </div>
     `;
   }
