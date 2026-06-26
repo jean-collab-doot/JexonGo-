@@ -723,9 +723,17 @@ html.touch-mobile .menu-offline-banner {
 .login-google:hover {
   box-shadow: 2px 2px 0 #1a3370, 0 0 18px rgba(66,133,244,0.55);
 }
+.menu-legal-links {
+  align-self: center;
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin-top: 0.45rem;
+}
+
 .menu-privacy-link {
   align-self: center;
-  margin-top: 0.45rem;
   padding: 0.55rem 0.9rem;
   border: 1px solid rgba(0,229,255,0.75);
   border-radius: 10px;

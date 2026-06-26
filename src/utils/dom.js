@@ -5,7 +5,7 @@ const SCREEN_IDS = [
   's-hangar', 's-result', 's-chest', 's-gameover', 's-shop',
   's-ranked', 's-ranked-find', 's-ranked-intro', 's-ranked-duel', 's-ranked-result',
   's-briefing', 's-classroom',
-  's-arena', 's-grade', 's-register', 's-profile', 's-privacy',
+  's-arena', 's-grade', 's-register', 's-profile', 's-privacy', 's-terms',
 ];
 
 export function showScreen(id) {
