@@ -93,11 +93,155 @@
 }
 .world-cup-intro.wc-lobby-reveal .wc-color-layers,
 .world-cup-intro.wc-lobby-reveal .wc-wind-lines,
+.world-cup-intro.wc-lobby-reveal .wc-air-panels,
+.world-cup-intro.wc-lobby-reveal .wc-energy-layer,
+.world-cup-intro.wc-lobby-reveal .wc-aero-emblem,
 .world-cup-intro.wc-lobby-reveal .wc-plane-wrap {
   display: none;
 }
 .world-cup-intro.wc-active {
   animation: wc-intro-fade 10s ease-in-out forwards;
+}
+.wc-air-panels {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+.wc-air-card {
+  position: absolute;
+  top: 50%;
+  width: clamp(170px, 28vw, 320px);
+  min-height: clamp(105px, 17vw, 190px);
+  padding: clamp(14px, 2vw, 24px);
+  opacity: 0;
+  color: #eaf8ff;
+  background:
+    linear-gradient(180deg, rgba(15,74,146,0.96), rgba(4,20,58,0.98)),
+    repeating-linear-gradient(0deg, rgba(255,255,255,0.12) 0 1px, transparent 1px 5px);
+  border: 4px solid #95e9ff;
+  box-shadow:
+    0 0 0 4px #03142f,
+    10px 10px 0 rgba(0,0,0,0.42),
+    0 0 28px rgba(56,199,255,0.38);
+  image-rendering: pixelated;
+  animation: wc-air-card-pop 3s steps(8, end) forwards;
+}
+.wc-air-card::before,
+.wc-air-card::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+}
+.wc-air-card::before {
+  inset: 10px;
+  border: 2px solid rgba(255,255,255,0.22);
+}
+.wc-air-card::after {
+  left: 16px;
+  right: 16px;
+  bottom: 18px;
+  height: 10px;
+  background: linear-gradient(90deg, #38c7ff 0 58%, rgba(255,255,255,0.2) 58% 100%);
+  box-shadow: 0 0 14px rgba(56,199,255,0.74);
+}
+.wc-air-card b,
+.wc-air-card i {
+  display: block;
+  font-style: normal;
+  line-height: 1;
+  text-shadow: 3px 3px 0 #03142f;
+}
+.wc-air-card b {
+  font-size: clamp(28px, 4.2vw, 54px);
+  color: #ffffff;
+}
+.wc-air-card i {
+  margin-top: 12px;
+  font-size: clamp(13px, 1.6vw, 20px);
+  color: #ffe27a;
+  letter-spacing: 2px;
+}
+.wc-air-left {
+  left: max(14px, 4vw);
+  transform-origin: left center;
+}
+.wc-air-right {
+  right: max(14px, 4vw);
+  transform-origin: right center;
+  animation-delay: 0.12s;
+}
+.wc-energy-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+.wc-energy-orb {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: clamp(130px, 18vw, 260px);
+  aspect-ratio: 1;
+  opacity: 0;
+  border: 7px solid rgba(223,247,255,0.95);
+  border-radius: 50%;
+  background:
+    radial-gradient(circle, rgba(255,255,255,0.98) 0 12%, rgba(80,220,255,0.55) 13% 28%, rgba(0,78,210,0.35) 42%, transparent 64%),
+    conic-gradient(from 0deg, transparent 0 12%, rgba(147,229,255,0.9) 12% 18%, transparent 18% 32%, rgba(56,199,255,0.78) 32% 38%, transparent 38% 100%);
+  box-shadow:
+    0 0 0 5px rgba(3,20,47,0.82),
+    0 0 34px rgba(56,199,255,0.72),
+    inset 0 0 26px rgba(255,255,255,0.42);
+  transform: translate(-50%, -50%) scale(0.8) rotate(0deg);
+  animation: wc-energy-roll 3s linear forwards;
+}
+.wc-aero-emblem {
+  position: absolute;
+  z-index: 1;
+  left: 50%;
+  top: 50%;
+  width: min(46vw, 390px);
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%) rotate(30deg) scale(0.92);
+  opacity: 0;
+  pointer-events: none;
+  filter: drop-shadow(0 0 28px rgba(56,199,255,0.6));
+}
+.wc-aero-emblem span,
+.wc-aero-emblem span::before,
+.wc-aero-emblem span::after {
+  position: absolute;
+  display: block;
+  content: "";
+  background: linear-gradient(180deg, rgba(255,255,255,0.92), rgba(80,220,255,0.62), rgba(0,78,210,0.18));
+  border: 3px solid rgba(223,247,255,0.86);
+  box-shadow: 0 0 16px rgba(56,199,255,0.62);
+}
+.wc-aero-emblem span {
+  left: 48%;
+  top: 10%;
+  width: 4%;
+  height: 80%;
+  border-radius: 999px;
+}
+.wc-aero-emblem span::before,
+.wc-aero-emblem span::after {
+  top: 42%;
+  width: 44%;
+  height: 10%;
+  border-radius: 999px 999px 8px 8px;
+}
+.wc-aero-emblem span::before {
+  right: 58%;
+  transform: rotate(-18deg);
+}
+.wc-aero-emblem span::after {
+  left: 58%;
+  transform: rotate(18deg);
+}
+.world-cup-intro.wc-active .wc-aero-emblem {
+  animation: wc-aero-emblem-glow 10s ease-in-out forwards;
 }
 .wc-plane-wrap {
   position: absolute;
@@ -285,6 +429,28 @@
   76% { opacity: 0.92; }
   100% { opacity: 0; transform: translate3d(calc(var(--wc-wind-drift, 0px) * -1), 188vh, 0) scaleY(1.75) skewX(var(--wc-wind-tilt, -9deg)); }
 }
+@keyframes wc-air-card-pop {
+  0% { opacity: 0; transform: translateY(calc(-50% + 14px)) scale(0.78) rotate(-3deg); }
+  12% { opacity: 1; transform: translateY(-50%) scale(1.05) rotate(2deg); }
+  22%, 78% { opacity: 1; transform: translateY(-50%) scale(1) rotate(0deg); }
+  88% { opacity: 1; transform: translateY(calc(-50% - 2px)) scale(1.04) rotate(-2deg); }
+  100% { opacity: 0; transform: translateY(calc(-50% - 14px)) scale(0.82) rotate(3deg); }
+}
+@keyframes wc-energy-roll {
+  0% { opacity: 0; transform: translate3d(-50vw, -50%, 0) rotate(-540deg) scale(0.9); }
+  10% { opacity: 1; transform: translate3d(-38vw, -50%, 0) rotate(-400deg) scale(1); }
+  50% { opacity: 0.98; transform: translate3d(-50%, -50%, 0) rotate(0deg) scale(1); }
+  90% { opacity: 0.98; transform: translate3d(38vw, -50%, 0) rotate(400deg) scale(1); }
+  100% { opacity: 0; transform: translate3d(50vw, -50%, 0) rotate(540deg) scale(0.9); }
+}
+@keyframes wc-aero-emblem-glow {
+  0%, 12% { opacity: 0; transform: translate(-50%, -50%) rotate(30deg) scale(0.82); }
+  26% { opacity: 0.72; transform: translate(-50%, -51.5%) rotate(30deg) scale(0.94); }
+  42% { opacity: 0.76; transform: translate(-50%, -48.5%) rotate(30deg) scale(0.955); }
+  58% { opacity: 0.74; transform: translate(-50%, -51.2%) rotate(30deg) scale(0.965); }
+  74% { opacity: 0.74; transform: translate(-50%, -49%) rotate(30deg) scale(0.98); }
+  100% { opacity: 0; transform: translate(-50%, -50%) rotate(30deg) scale(1.02); }
+}
 @keyframes wc-confetti-fall {
   0% {
     opacity: 0;
@@ -367,6 +533,31 @@ html.touch-mobile .world-cup-intro {
 }
 html.touch-mobile .wc-plane {
   width: clamp(205px, 58vw, 330px);
+}
+html.touch-mobile .wc-air-card {
+  top: 46%;
+  width: clamp(108px, 28vw, 170px);
+  min-height: clamp(74px, 18vw, 108px);
+  padding: 10px;
+  border-width: 3px;
+  box-shadow:
+    0 0 0 3px #03142f,
+    5px 5px 0 rgba(0,0,0,0.42),
+    0 0 18px rgba(56,199,255,0.36);
+}
+html.touch-mobile .wc-air-card b {
+  font-size: clamp(20px, 5.6vw, 30px);
+}
+html.touch-mobile .wc-air-card i {
+  margin-top: 8px;
+  font-size: clamp(9px, 2.7vw, 12px);
+  letter-spacing: 1px;
+}
+html.touch-mobile .wc-energy-orb {
+  width: clamp(92px, 24vw, 140px);
+}
+html.touch-mobile .wc-aero-emblem {
+  width: min(58vw, 260px);
 }
 html.touch-mobile .wc-plane-wrap {
   z-index: 2 !important;

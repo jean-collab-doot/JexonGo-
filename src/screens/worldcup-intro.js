@@ -25,6 +25,22 @@ export function playWorldCupIntro(onDone) {
         <span class="wc-layer wc-layer-red"></span>
       </div>
       <div class="wc-wind-lines" aria-hidden="true"></div>
+      <div class="wc-air-panels" aria-hidden="true">
+        <span class="wc-air-card wc-air-left">
+          <b>JET</b>
+          <i>TAKEOFF</i>
+        </span>
+        <span class="wc-air-card wc-air-right">
+          <b>V2</b>
+          <i>SPEED</i>
+        </span>
+      </div>
+      <div class="wc-energy-layer" aria-hidden="true">
+        <span class="wc-energy-orb"></span>
+      </div>
+      <div class="wc-aero-emblem" aria-hidden="true">
+        <span></span>
+      </div>
       <div class="wc-flash" aria-hidden="true"></div>
       <div class="wc-plane-wrap">
         <span class="wc-engine-smoke wc-engine-smoke-left"></span>
