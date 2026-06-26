@@ -156,6 +156,8 @@ const TUTORIAL_COPY = {
     round1Rules: 'Round 1 has no timer and no game over.',
     computer: 'COMPUTER',
     phone: 'PHONE',
+    hudLevel: 'TUTORIAL',
+    training: 'TRAINING',
     arrows: 'or arrow keys',
     phoneMove: 'move with the fighter',
     continue: 'CONTINUE',
@@ -183,6 +185,8 @@ const TUTORIAL_COPY = {
     round1Rules: 'Round 1 sans timer et sans game over.',
     computer: 'ORDINATEUR',
     phone: 'TELEPHONE',
+    hudLevel: 'TUTORIEL',
+    training: 'ENTRAINEMENT',
     arrows: 'ou les fleches',
     phoneMove: "bouge avec l'avion",
     continue: 'CONTINUER',
@@ -198,7 +202,7 @@ const TUTORIAL_COPY = {
 };
 
 function tutorialCopy() {
-  return TUTORIAL_COPY[introLang()];
+  return TUTORIAL_COPY[introLang()] || TUTORIAL_COPY.en;
 }
 
 function emptyTutorialStats() {
@@ -2251,7 +2255,8 @@ export function initGame(levelNum, onComplete) {
   });
   ro.observe(canvas);
 
-  $('hud-level').textContent = isTutorialActive() ? 'TUTORIAL'
+  const copy = tutorialCopy();
+  $('hud-level').textContent = isTutorialActive() ? copy.hudLevel
     : G.practiceMode ? t('practice_label')
     : levelCfg.isBossLevel ? `${t('bossLevel')}${levelNum}` : `${t('level')} ${levelNum}`;
   const _hudPrestige = document.getElementById('hud-prestige');
@@ -2260,7 +2265,7 @@ export function initGame(levelNum, onComplete) {
   if (isTutorialActive()) {
     G.lives = 99;
     _maxLives = 1;
-    $('hud-lives').innerHTML = '<span class="tutorial-safe-life">TRAINING</span>';
+    $('hud-lives').innerHTML = `<span class="tutorial-safe-life">${copy.training}</span>`;
   } else if (G.practiceMode && !G.practiceHearts) {
     $('hud-lives').innerHTML = '<span style="opacity:0.3">∞</span>';
   } else {

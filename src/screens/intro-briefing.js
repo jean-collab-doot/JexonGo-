@@ -1,51 +1,111 @@
 import { G } from '../state.js';
 import { save } from '../utils/storage.js';
+import { getLang } from '../i18n.js';
 
-const SECTIONS = [
-  {
-    title: 'YOUR MISSION',
-    lines: [
-      'Enemies are flying toward you.',
-      'Answer math questions correctly.',
-      'Each right answer fires a missile.',
-      'Destroy all enemies to win!',
+const BRIEFING_COPY = {
+  en: {
+    next: 'NEXT ->',
+    fly: 'FLY! >',
+    sections: [
+      {
+        title: 'YOUR MISSION',
+        lines: [
+          'Enemies are flying toward you.',
+          'Answer math questions correctly.',
+          'Each right answer fires a missile.',
+          'Destroy all enemies to win!',
+        ],
+        imageSlot: 'mission',
+      },
+      {
+        title: 'LIVES',
+        lines: [
+          'You start with 3 lives.',
+          'A wrong answer costs 1 life.',
+          'Lose all lives - mission failed.',
+          'First wrong answer is a warning!',
+        ],
+        imageSlot: 'lives',
+      },
+      {
+        title: 'CONTROLS',
+        lines: [
+          'Phone image: use your finger on the screen.',
+          'Touch a circle to move the fighter.',
+          'Tap the answer button to shoot.',
+          '',
+          'WASD image: control the plane on computer.',
+          'W forward, S backward.',
+          'A left, D right.',
+        ],
+        imageSlot: 'controls',
+      },
+      {
+        title: 'SCORE',
+        lines: [
+          'Answer all 10 questions to win.',
+          '10 correct answers = 3 stars.',
+          'Earn XP to unlock new aircraft.',
+          'Good luck, pilot!',
+        ],
+        imageSlot: 'score',
+      },
     ],
-    imageSlot: 'mission',
   },
-  {
-    title: 'LIVES',
-    lines: [
-      'You start with 3 lives.',
-      'A wrong answer costs 1 life.',
-      'Lose all lives - mission failed.',
-      'First wrong answer is a warning!',
+  fr: {
+    next: 'SUIVANT ->',
+    fly: 'DECOLLER! >',
+    sections: [
+      {
+        title: 'TA MISSION',
+        lines: [
+          'Des avions ennemis foncent vers toi.',
+          'Reponds correctement aux questions de math.',
+          'Chaque bonne reponse lance un missile.',
+          'Detruis tous les ennemis pour gagner!',
+        ],
+        imageSlot: 'mission',
+      },
+      {
+        title: 'VIES',
+        lines: [
+          'Tu commences avec 3 vies.',
+          'Une mauvaise reponse coute 1 vie.',
+          'Si tu perds toutes tes vies, la mission echoue.',
+          'La premiere mauvaise reponse est un avertissement!',
+        ],
+        imageSlot: 'lives',
+      },
+      {
+        title: 'CONTROLES',
+        lines: [
+          "Sur telephone: utilise ton doigt sur l'ecran.",
+          "Touche un cercle pour deplacer l'avion.",
+          'Appuie sur une reponse pour tirer.',
+          '',
+          'Sur ordinateur: utilise le panneau WASD.',
+          'W avance, S recule.',
+          'A tourne a gauche, D tourne a droite.',
+        ],
+        imageSlot: 'controls',
+      },
+      {
+        title: 'SCORE',
+        lines: [
+          'Reponds aux 10 questions pour gagner.',
+          '10 bonnes reponses = 3 etoiles.',
+          "Gagne de l'XP pour debloquer de nouveaux avions.",
+          'Bonne chance, pilote!',
+        ],
+        imageSlot: 'score',
+      },
     ],
-    imageSlot: 'lives',
   },
-  {
-    title: 'CONTROLS',
-    lines: [
-      'Phone image: use your finger on the screen.',
-      'Touch a circle to move the fighter.',
-      'Tap the answer button to shoot.',
-      '',
-      'WASD image: control the plane on computer.',
-      'W forward, S backward.',
-      'A left, D right.',
-    ],
-    imageSlot: 'controls',
-  },
-  {
-    title: 'SCORE',
-    lines: [
-      'Answer all 10 questions to win.',
-      '10 correct answers = 3 stars.',
-      'Earn XP to unlock new aircraft.',
-      'Good luck, pilot!',
-    ],
-    imageSlot: 'score',
-  },
-];
+};
+
+function currentBriefingCopy() {
+  return getLang() === 'fr' ? BRIEFING_COPY.fr : BRIEFING_COPY.en;
+}
 
 const INTRO_ASSETS = {
   mission: '/assets/Image intro/Screenshot 2026-06-21 102610.png',
@@ -82,7 +142,7 @@ export async function showIntroBriefing(onDone) {
       <div id="brief-lines"></div>
       <div id="brief-key-slot"></div>
     </div>
-    <button id="brief-next" class="brief-next-btn" type="button">NEXT -></button>
+    <button id="brief-next" class="brief-next-btn" type="button"></button>
   `;
   document.body.appendChild(overlay);
 
@@ -131,14 +191,15 @@ function animateJetIn(jet) {
 }
 
 async function runSections(overlay, nextBtn) {
-  for (let i = 0; i < SECTIONS.length; i++) {
-    const section = SECTIONS[i];
-    await renderSection(overlay, section, i === SECTIONS.length - 1);
-    await waitForNext(nextBtn, i === SECTIONS.length - 1);
+  const copy = currentBriefingCopy();
+  for (let i = 0; i < copy.sections.length; i++) {
+    const section = copy.sections[i];
+    await renderSection(overlay, section, i === copy.sections.length - 1, copy);
+    await waitForNext(nextBtn, i === copy.sections.length - 1);
   }
 }
 
-async function renderSection(overlay, section, isLast) {
+async function renderSection(overlay, section, isLast, copy) {
   const card = overlay.querySelector('#brief-card');
   const title = overlay.querySelector('#brief-title');
   const lines = overlay.querySelector('#brief-lines');
@@ -161,7 +222,7 @@ async function renderSection(overlay, section, isLast) {
   imageSlot.dataset.slot = section.imageSlot;
   imageSlot.innerHTML = '';
   imageSlot.appendChild(renderBriefingMedia(section.imageSlot));
-  next.textContent = isLast ? 'FLY! >' : 'NEXT ->';
+  next.textContent = isLast ? copy.fly : copy.next;
   next.style.opacity = '0.3';
   next.style.pointerEvents = 'none';
 
