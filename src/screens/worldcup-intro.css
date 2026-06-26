@@ -51,14 +51,14 @@
 }
 .wc-wind-lines span {
   position: absolute;
-  top: -32%;
-  width: 3px;
-  height: 34vh;
+  top: -42%;
+  width: 4px;
+  height: 46vh;
   opacity: 0;
-  background: linear-gradient(180deg, transparent 0%, rgba(255,255,255,0.94) 32%, rgba(115,225,255,0.72) 68%, transparent 100%);
+  background: linear-gradient(180deg, transparent 0%, rgba(255,255,255,0.98) 28%, rgba(125,230,255,0.9) 58%, rgba(30,144,255,0.42) 78%, transparent 100%);
   border-radius: 999px;
-  box-shadow: 0 0 12px rgba(180,240,255,0.9);
-  filter: blur(0.6px);
+  box-shadow: 0 0 16px rgba(180,240,255,0.95), 0 0 30px rgba(37,99,235,0.42);
+  filter: blur(0.4px);
 }
 .wc-wind-lines span {
   animation-name: wc-wind-rush;
@@ -99,7 +99,7 @@
   z-index: 3;
   isolation: isolate;
   left: 50%;
-  top: 132%;
+  top: 114%;
   transform: translate(-50%, -50%);
 }
 .wc-plane-wrap::after {
@@ -108,12 +108,12 @@
   z-index: 0;
   left: 50%;
   top: 86%;
-  width: 28%;
-  height: 115%;
+  width: 36%;
+  height: 148%;
   transform: translateX(-50%);
   opacity: 0;
-  background: linear-gradient(180deg, rgba(255,255,255,0.72), rgba(0,212,255,0.42), rgba(0,212,255,0));
-  filter: blur(11px);
+  background: linear-gradient(180deg, rgba(255,255,255,0.86), rgba(0,212,255,0.58), rgba(37,99,235,0.18), rgba(0,212,255,0));
+  filter: blur(13px);
 }
 .wc-engine-smoke {
   position: absolute;
@@ -204,25 +204,25 @@
   display: block;
   position: relative;
   z-index: 0;
-  width: clamp(150px, 23vw, 310px);
+  width: clamp(230px, 32vw, 440px);
   aspect-ratio: 2 / 3;
   object-fit: contain;
   filter: drop-shadow(0 0 18px rgba(180,230,255,0.72));
 }
 .world-cup-intro.wc-active .wc-plane-wrap {
-  animation: wc-plane-translate 10s ease-in-out forwards;
+  animation: wc-plane-translate 9.2s cubic-bezier(0.22, 0.88, 0.18, 1) forwards;
 }
 .world-cup-intro.wc-active .wc-plane-wrap::after {
-  animation: wc-plane-trail 10s ease-in-out forwards;
+  animation: wc-plane-trail 9.2s ease-in-out forwards;
 }
 .world-cup-intro.wc-active .wc-engine-smoke {
-  animation: wc-engine-smoke-drift 1.7s ease-in-out infinite, wc-engine-smoke-life 10s ease-in-out forwards;
+  animation: wc-engine-smoke-drift 1.35s ease-in-out infinite, wc-engine-smoke-life 9.2s ease-in-out forwards;
 }
 .world-cup-intro.wc-active .wc-engine-fire {
-  animation: wc-engine-fire-life 10s ease-in-out forwards;
+  animation: wc-engine-fire-life 9.2s ease-in-out forwards;
 }
 .world-cup-intro.wc-active .wc-wing-glow {
-  animation: wc-wing-pulse 10s ease-in-out forwards;
+  animation: wc-wing-pulse 9.2s ease-in-out forwards;
 }
 #s-menu.wc-intro-only .menu-top-left,
 #s-menu.wc-intro-only .settings-gear-btn,
@@ -273,10 +273,10 @@
   100% { transform: translateY(0); border-radius: 0; }
 }
 @keyframes wc-wind-rush {
-  0% { opacity: 0; transform: translateY(-35vh) scaleY(0.7); }
-  15% { opacity: 0.82; }
-  72% { opacity: 0.72; }
-  100% { opacity: 0; transform: translateY(150vh) scaleY(1.25); }
+  0% { opacity: 0; transform: translate3d(0, -44vh, 0) scaleY(0.62) skewX(-6deg); }
+  10% { opacity: 0.96; }
+  74% { opacity: 0.84; }
+  100% { opacity: 0; transform: translate3d(0, 170vh, 0) scaleY(1.55) skewX(-6deg); }
 }
 @keyframes wc-confetti-fall {
   0% {
@@ -295,14 +295,14 @@
   }
 }
 @keyframes wc-plane-translate {
-  0% { top: 132%; transform: translate(-50%, -50%) scale(0.78); }
-  50% { top: var(--wc-cup-mid); transform: translate(-50%, -50%) scale(1.06); }
-  58% { top: calc(var(--wc-cup-mid) - 2%); transform: translate(-50%, -50%) scale(1.075); }
-  66% { top: calc(var(--wc-cup-mid) + 1.5%); transform: translate(-50%, -50%) scale(1.06); }
-  74% { top: calc(var(--wc-cup-mid) - 1%); transform: translate(-50%, -50%) scale(1.07); }
-  80% { top: var(--wc-cup-mid); transform: translate(-50%, -50%) scale(1.08); }
-  88% { top: calc(var(--wc-cup-mid) + 6%); transform: translate(-50%, -50%) scale(1.12); }
-  100% { top: -30%; transform: translate(-50%, -50%) scale(0.72); }
+  0% { top: 114%; transform: translate(-50%, -50%) scale(0.88); opacity: 0; }
+  8% { opacity: 1; }
+  28% { top: 63%; transform: translate(-50%, -50%) scale(1.08); opacity: 1; }
+  48% { top: var(--wc-cup-mid); transform: translate(-50%, -50%) scale(1.2); }
+  62% { top: calc(var(--wc-cup-mid) - 2%); transform: translate(-50%, -50%) scale(1.23); }
+  76% { top: calc(var(--wc-cup-mid) + 1%); transform: translate(-50%, -50%) scale(1.2); }
+  88% { top: calc(var(--wc-cup-mid) - 5%); transform: translate(-50%, -50%) scale(1.16); opacity: 1; }
+  100% { top: -36%; transform: translate(-50%, -50%) scale(0.82); opacity: 0; }
 }
 @keyframes wc-plane-trail {
   0% { opacity: 0; transform: translateX(-50%) scaleY(0.25); }
@@ -360,7 +360,7 @@ html.touch-mobile .world-cup-intro {
   --wc-cup-mid: 45%;
 }
 html.touch-mobile .wc-plane {
-  width: clamp(120px, 34vw, 190px);
+  width: clamp(190px, 52vw, 300px);
 }
 html.touch-mobile .wc-plane-wrap {
   z-index: 2 !important;
@@ -389,9 +389,10 @@ html.touch-mobile .world-cup-intro.wc-active .wc-plane-wrap {
 }
 
 @keyframes wc-plane-translate-mobile {
-  0% { top: 132%; transform: translate(-50%, -50%) scale(0.82) rotate(0deg); opacity: 0; }
-  14% { opacity: 0.92; }
-  46% { top: 54%; transform: translate(-50%, -50%) scale(0.9) rotate(0deg); opacity: 0.9; }
-  72% { top: 38%; transform: translate(-50%, -50%) scale(0.86) rotate(0deg); opacity: 0.74; }
-  100% { top: -20%; transform: translate(-50%, -50%) scale(0.72) rotate(0deg); opacity: 0; }
+  0% { top: 112%; transform: translate(-50%, -50%) scale(0.9) rotate(0deg); opacity: 0; }
+  8% { opacity: 0.96; }
+  34% { top: 60%; transform: translate(-50%, -50%) scale(1.02) rotate(0deg); opacity: 0.96; }
+  62% { top: 44%; transform: translate(-50%, -50%) scale(1.08) rotate(0deg); opacity: 0.9; }
+  82% { top: 32%; transform: translate(-50%, -50%) scale(1.02) rotate(0deg); opacity: 0.78; }
+  100% { top: -24%; transform: translate(-50%, -50%) scale(0.78) rotate(0deg); opacity: 0; }
 }

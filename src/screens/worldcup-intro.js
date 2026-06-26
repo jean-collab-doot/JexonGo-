@@ -51,7 +51,7 @@ export function playWorldCupIntro(onDone) {
   clearTimeout(_flashTimer);
   _flashTimer = setTimeout(() => {
     intro.classList.add('wc-flash-active');
-  }, 9700);
+  }, 9000);
 
   clearTimeout(_worldCupIntroTimer);
   _worldCupIntroTimer = setTimeout(() => {
@@ -66,7 +66,7 @@ export function playWorldCupIntro(onDone) {
       intro.classList.add('hidden');
       intro.classList.remove('wc-lobby-reveal');
     }, 4000);
-  }, 10300);
+  }, 9600);
 }
 
 export function stopWorldCupIntro() {
@@ -153,9 +153,9 @@ function _startRandomWind(root) {
   const spawn = () => {
     const line = document.createElement('span');
     const left = Math.random() * 100;
-    const height = 22 + Math.random() * 34;
-    const duration = 0.55 + Math.random() * 0.7;
-    const width = Math.random() < 0.25 ? 4 : 2;
+    const height = 34 + Math.random() * 46;
+    const duration = 0.32 + Math.random() * 0.34;
+    const width = Math.random() < 0.35 ? 5 : 3;
     line.style.left = `${left}%`;
     line.style.height = `${height}vh`;
     line.style.width = `${width}px`;
@@ -164,11 +164,11 @@ function _startRandomWind(root) {
     setTimeout(() => line.remove(), duration * 1000 + 80);
   };
 
-  for (let i = 0; i < 12; i++) setTimeout(spawn, Math.random() * 450);
+  for (let i = 0; i < 26; i++) setTimeout(spawn, Math.random() * 360);
   _windTimer = setInterval(() => {
-    const count = 2 + Math.floor(Math.random() * 4);
-    for (let i = 0; i < count; i++) setTimeout(spawn, Math.random() * 180);
-  }, 260);
+    const count = 5 + Math.floor(Math.random() * 6);
+    for (let i = 0; i < count; i++) setTimeout(spawn, Math.random() * 90);
+  }, 120);
 }
 
 function _shakeScreen(target, durationMs, onDone) {
