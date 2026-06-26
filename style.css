@@ -10298,3 +10298,17 @@ html.touch-phone #timer-bar {
   transition: width 0.25s linear, background 0.25s !important;
   box-shadow: none !important;
 }
+
+html.touch-phone #s-menu {
+  background: #78c8f0 url('/assets/menu/lobby-bg.png') center center / cover no-repeat !important;
+}
+
+html.touch-phone #menu-bg-video,
+html.touch-phone #menu-bg-video2 {
+  display: none !important;
+}
+
+html.touch-phone #menu-canvas {
+  background: transparent !important;
+  pointer-events: none;
+}
