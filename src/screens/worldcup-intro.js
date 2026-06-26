@@ -2,41 +2,8 @@ let _worldCupIntroTimer = null;
 let _windTimer = null;
 let _flashTimer = null;
 let _shakeFrame = null;
-let _flagTimer = null;
 let _confettiTimer = null;
 let _confettiCleanupTimer = null;
-
-const WORLD_CUP_FLAGS = [
-  'Afrique du Sud.svg',
-  'Algeria.svg',
-  'Allemagne.svg',
-  'Angleterre.svg',
-  'Argentine.svg',
-  'Bélgique.svg',
-  'Brésil.svg',
-  'Cap Vert.svg',
-  'Colombie.svg',
-  'Corée du Sud.svg',
-  'Côte d,ivoire.svg',
-  'Curaçao.svg',
-  'Danemark.svg',
-  'Égypte.svg',
-  'Espagne.svg',
-  'France.svg',
-  'Ghana.svg',
-  'Haiti.svg',
-  'Japon.svg',
-  'Maroc.svg',
-  'Mexique.svg',
-  'Nouvelle-Écosse.svg',
-  'Pays-bas.svg',
-  'Portugal.svg',
-  'Rdc.svg',
-  'Sénégal.svg',
-  'USA.jpg'
-];
-
-const FLAG_SIDES = ['left', 'right'];
 
 export function playWorldCupIntro(onDone) {
   const menu = document.getElementById('s-menu');
@@ -57,12 +24,8 @@ export function playWorldCupIntro(onDone) {
         <span class="wc-layer wc-layer-green"></span>
         <span class="wc-layer wc-layer-red"></span>
       </div>
-      <div class="wc-wind-lines" aria-hidden="true">
-      </div>
-      <div class="wc-flag-corners" aria-hidden="true"></div>
+      <div class="wc-wind-lines" aria-hidden="true"></div>
       <div class="wc-flash" aria-hidden="true"></div>
-      <img class="wc-trophy" src="/assets/World%20COPE/ChatGPT%20Image%2012%20juin%202026,%2021_35_52.png" alt="">
-      <div class="wc-ball-layer" aria-hidden="true"></div>
       <div class="wc-plane-wrap">
         <span class="wc-engine-smoke wc-engine-smoke-left"></span>
         <span class="wc-engine-smoke wc-engine-smoke-right"></span>
@@ -70,7 +33,7 @@ export function playWorldCupIntro(onDone) {
         <span class="wc-engine-fire wc-engine-fire-right"></span>
         <span class="wc-wing-glow wc-wing-left"></span>
         <span class="wc-wing-glow wc-wing-right"></span>
-        <img class="wc-plane" src="/assets/World%20COPE/F-18%20WC.png" alt="">
+        <img class="wc-plane" src="/assets/planes/14.png" alt="">
       </div>
     `;
 
@@ -84,10 +47,6 @@ export function playWorldCupIntro(onDone) {
   void intro.offsetWidth;
   intro.classList.add('wc-active');
   _startRandomWind(intro.querySelector('.wc-wind-lines'));
-  _startRandomFlags(
-    intro.querySelector('.wc-flag-corners'),
-    intro.querySelector('.wc-ball-layer')
-  );
 
   clearTimeout(_flashTimer);
   _flashTimer = setTimeout(() => {
@@ -97,7 +56,6 @@ export function playWorldCupIntro(onDone) {
   clearTimeout(_worldCupIntroTimer);
   _worldCupIntroTimer = setTimeout(() => {
     clearInterval(_windTimer);
-    clearInterval(_flagTimer);
     intro.classList.remove('wc-active', 'wc-flash-active');
     intro.classList.add('wc-lobby-reveal');
     menu.classList.remove('wc-intro-only');
@@ -116,14 +74,12 @@ export function stopWorldCupIntro() {
   clearInterval(_windTimer);
   clearTimeout(_flashTimer);
   cancelAnimationFrame(_shakeFrame);
-  clearInterval(_flagTimer);
   clearTimeout(_confettiTimer);
   clearTimeout(_confettiCleanupTimer);
   _worldCupIntroTimer = null;
   _windTimer = null;
   _flashTimer = null;
   _shakeFrame = null;
-  _flagTimer = null;
   _confettiTimer = null;
   _confettiCleanupTimer = null;
 
@@ -151,7 +107,7 @@ function _startConfetti(root, durationMs) {
   }
   layer.innerHTML = '';
 
-  const colors = ['#ff2d55', '#00d4ff', '#ffe04b', '#37ff8b', '#ff8a00', '#a855f7', '#ffffff'];
+  const colors = ['#4fd8ff', '#0ea5e9', '#2563eb', '#93c5fd', '#dbeafe', '#ffffff'];
   const start = performance.now();
 
   const spawn = () => {
@@ -187,52 +143,6 @@ function _startConfetti(root, durationMs) {
   };
 
   spawn();
-}
-
-function _startRandomFlags(root, ballRoot) {
-  if (!root) return;
-  root.innerHTML = '';
-  if (ballRoot) ballRoot.innerHTML = '';
-  clearInterval(_flagTimer);
-
-  const showPair = () => {
-    const flags = _pickRandomItems(WORLD_CUP_FLAGS, 2);
-    const sides = _pickRandomItems(FLAG_SIDES, 2);
-    root.innerHTML = '';
-    if (ballRoot) ballRoot.innerHTML = '';
-
-    flags.forEach((flag, index) => {
-      const card = document.createElement('span');
-      card.className = `wc-flag-card wc-flag-${sides[index]}`;
-      card.style.animationDelay = `${index * 0.12}s`;
-
-      const image = document.createElement('img');
-      image.src = `/assets/Country%20Flag/${encodeURIComponent(flag)}`;
-      image.alt = '';
-
-      card.appendChild(image);
-      root.appendChild(card);
-    });
-
-    const ball = document.createElement('img');
-    ball.className = 'wc-soccer-ball wc-ball-roll';
-    ball.src = '/assets/Country%20Flag/Ballon%20de%20foot.png';
-    ball.alt = '';
-    (ballRoot || root).appendChild(ball);
-  };
-
-  showPair();
-  _flagTimer = setInterval(showPair, 3000);
-}
-
-function _pickRandomItems(items, count) {
-  const pool = [...items];
-  const picked = [];
-  while (picked.length < count && pool.length) {
-    const index = Math.floor(Math.random() * pool.length);
-    picked.push(pool.splice(index, 1)[0]);
-  }
-  return picked;
 }
 
 function _startRandomWind(root) {

@@ -24,15 +24,15 @@
 }
 .wc-layer-blue {
   left: 0;
-  background: #0052ff;
+  background: linear-gradient(180deg, #0f4fa8, #0b2f6f);
 }
 .wc-layer-green {
   left: 33.33%;
-  background: #00be5a;
+  background: linear-gradient(180deg, #38c7ff, #047cc3);
 }
 .wc-layer-red {
   left: 66.66%;
-  background: #e11030;
+  background: linear-gradient(180deg, #1d74d8, #123f91);
 }
 .world-cup-intro.wc-active .wc-layer-blue {
   animation: wc-layer-drop 1s ease-out forwards;
@@ -65,82 +65,6 @@
   animation-timing-function: cubic-bezier(0.18, 0.7, 0.12, 1);
   animation-fill-mode: forwards;
 }
-.wc-flag-corners {
-  position: absolute;
-  inset: 0;
-  z-index: 30;
-  isolation: isolate;
-  pointer-events: none;
-}
-.wc-flag-card {
-  position: absolute;
-  z-index: 31;
-  width: clamp(170px, 28vw, 320px);
-  aspect-ratio: 4 / 3;
-  padding: 7px;
-  opacity: 0;
-  background: #111827;
-  border: 4px solid #fff7c2;
-  box-shadow:
-    0 0 0 4px #050505,
-    10px 10px 0 rgba(0,0,0,0.48);
-  image-rendering: pixelated;
-  animation: wc-retro-flag 3s steps(8, end) forwards;
-}
-.wc-flag-card::after {
-  content: "";
-  position: absolute;
-  inset: 7px;
-  pointer-events: none;
-  background: repeating-linear-gradient(
-    0deg,
-    rgba(255,255,255,0.18) 0,
-    rgba(255,255,255,0.18) 1px,
-    transparent 1px,
-    transparent 4px
-  );
-  mix-blend-mode: screen;
-}
-.wc-flag-card img {
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  filter: saturate(1.25) contrast(1.12);
-}
-.wc-ball-layer {
-  position: absolute;
-  inset: 0;
-  z-index: 29;
-  pointer-events: none;
-}
-.wc-soccer-ball {
-  position: absolute;
-  z-index: 0;
-  top: 50%;
-  left: 50%;
-  width: clamp(96px, 16vw, 190px);
-  height: clamp(96px, 16vw, 190px);
-  object-fit: contain;
-  image-rendering: pixelated;
-  filter: drop-shadow(0 12px 0 rgba(0,0,0,0.28));
-  animation-duration: 3s;
-  animation-timing-function: linear;
-  animation-fill-mode: forwards;
-}
-.wc-ball-roll {
-  animation-name: wc-ball-roll-once;
-}
-.wc-flag-left {
-  left: max(16px, 4vw);
-  top: 50%;
-  transform-origin: left center;
-}
-.wc-flag-right {
-  right: max(16px, 4vw);
-  top: 50%;
-  transform-origin: right center;
-}
 .wc-flash {
   position: absolute;
   inset: 0;
@@ -164,27 +88,11 @@
 }
 .world-cup-intro.wc-lobby-reveal .wc-color-layers,
 .world-cup-intro.wc-lobby-reveal .wc-wind-lines,
-.world-cup-intro.wc-lobby-reveal .wc-flag-corners,
-.world-cup-intro.wc-lobby-reveal .wc-trophy,
-.world-cup-intro.wc-lobby-reveal .wc-ball-layer,
 .world-cup-intro.wc-lobby-reveal .wc-plane-wrap {
   display: none;
 }
 .world-cup-intro.wc-active {
   animation: wc-intro-fade 10s ease-in-out forwards;
-}
-.wc-trophy {
-  position: absolute;
-  z-index: 1;
-  left: 50%;
-  top: 48%;
-  width: min(46vw, 390px);
-  transform: translate(-50%, -50%) rotate(30deg) scale(0.92);
-  opacity: 0;
-  filter: drop-shadow(0 0 26px rgba(251,191,36,0.58));
-}
-.world-cup-intro.wc-active .wc-trophy {
-  animation: wc-trophy-glow 10s ease-in-out forwards;
 }
 .wc-plane-wrap {
   position: absolute;
@@ -296,7 +204,9 @@
   display: block;
   position: relative;
   z-index: 0;
-  width: clamp(110px, 18vw, 230px);
+  width: clamp(150px, 23vw, 310px);
+  aspect-ratio: 2 / 3;
+  object-fit: contain;
   filter: drop-shadow(0 0 18px rgba(180,230,255,0.72));
 }
 .world-cup-intro.wc-active .wc-plane-wrap {
@@ -367,20 +277,6 @@
   15% { opacity: 0.82; }
   72% { opacity: 0.72; }
   100% { opacity: 0; transform: translateY(150vh) scaleY(1.25); }
-}
-@keyframes wc-retro-flag {
-  0% { opacity: 0; transform: translateY(calc(-50% + 14px)) scale(0.78) rotate(-3deg); }
-  12% { opacity: 1; transform: translateY(-50%) scale(1.05) rotate(2deg); }
-  22%, 78% { opacity: 1; transform: translateY(-50%) scale(1) rotate(0deg); }
-  88% { opacity: 1; transform: translateY(calc(-50% - 2px)) scale(1.04) rotate(-2deg); }
-  100% { opacity: 0; transform: translateY(calc(-50% - 14px)) scale(0.82) rotate(3deg); }
-}
-@keyframes wc-ball-roll-once {
-  0% { opacity: 0; transform: translate3d(-50vw, -50%, 0) rotate(-540deg) scale(0.9); }
-  10% { opacity: 1; transform: translate3d(-38vw, -50%, 0) rotate(-400deg) scale(1); }
-  50% { opacity: 1; transform: translate3d(-50%, -50%, 0) rotate(0deg) scale(1); }
-  90% { opacity: 1; transform: translate3d(38vw, -50%, 0) rotate(400deg) scale(1); }
-  100% { opacity: 0; transform: translate3d(50vw, -50%, 0) rotate(540deg) scale(0.9); }
 }
 @keyframes wc-confetti-fall {
   0% {
@@ -460,34 +356,11 @@
   96% { opacity: 1; }
   100% { opacity: 0; }
 }
-@keyframes wc-trophy-glow {
-  0%, 12% { opacity: 0; transform: translate(-50%, -50%) rotate(30deg) scale(0.82); }
-  26% { opacity: 0.82; transform: translate(-50%, -51.5%) rotate(30deg) scale(0.94); }
-  42% { opacity: 0.85; transform: translate(-50%, -48.5%) rotate(30deg) scale(0.955); }
-  58% { opacity: 0.84; transform: translate(-50%, -51.2%) rotate(30deg) scale(0.965); }
-  74% { opacity: 0.84; transform: translate(-50%, -49%) rotate(30deg) scale(0.98); }
-  100% { opacity: 0; transform: translate(-50%, -50%) rotate(30deg) scale(1.02); }
-}
-
-html.touch-mobile .wc-trophy {
-  width: min(74vw, 290px);
-  top: 45%;
-}
 html.touch-mobile .world-cup-intro {
   --wc-cup-mid: 45%;
 }
 html.touch-mobile .wc-plane {
-  width: clamp(92px, 28vw, 140px);
-}
-html.touch-mobile .wc-flag-corners {
-  z-index: 130 !important;
-  isolation: isolate;
-}
-html.touch-mobile .wc-flag-card {
-  z-index: 132 !important;
-}
-html.touch-mobile .wc-ball-layer {
-  z-index: 120 !important;
+  width: clamp(120px, 34vw, 190px);
 }
 html.touch-mobile .wc-plane-wrap {
   z-index: 2 !important;
@@ -500,9 +373,7 @@ html.touch-phone .wc-wing-glow,
 html.touch-phone .wc-plane-wrap::after {
   display: none !important;
 }
-html.touch-phone .wc-plane,
-html.touch-phone .wc-trophy,
-html.touch-phone .wc-flag-card img {
+html.touch-phone .wc-plane {
   filter: none !important;
 }
 html.touch-mobile .wc-plane,
