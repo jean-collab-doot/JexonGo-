@@ -3117,6 +3117,28 @@ html.touch-mobile .menu-offline-banner {
 }
 .menu-profile-signout:hover  { background: rgba(255,68,102,0.12); border-color: #ff4466; }
 .menu-profile-signout:active { background: rgba(255,68,102,0.28); transform: scale(0.95); }
+.menu-profile-delete {
+  width: 100%;
+  margin-top: 7px;
+  padding: 8px 10px;
+  background: #22070b;
+  color: #fca5a5;
+  border: 1px solid #7f1d1d;
+  border-radius: 6px;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 6px;
+  line-height: 1.5;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: background .12s, border-color .12s, transform .08s;
+}
+.menu-profile-delete:hover {
+  background: rgba(239,68,68,0.16);
+  border-color: #ef4444;
+}
+.menu-profile-delete:active {
+  transform: scale(0.96);
+}
 
 /* ══════════════════════════════════════════════════════════
    ECONOMY: DAILY REWARD + MISSIONS + RANK

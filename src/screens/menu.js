@@ -4,14 +4,14 @@ import { LOGIN_REWARDS, claimDailyReward, getMissions, claimMission,
          hasPendingMissionClaim, getPlayerRank,
          getSr71MissionState, claimSr71Mission,
          getPlayMinuteStats, getMonthlyConfigChallenge } from '../systems/daily.js';
-import { save, load } from '../utils/storage.js';
+import { clearAll, save, load } from '../utils/storage.js';
 import { AIRCRAFT } from '../data/aircraft.js';
 import { SKINS } from '../data/skins.js';
 import { getPilotInfo } from '../data/pilots.js';
 import { getPrestigeTier, getPrestigeBadgeHTML } from '../data/prestige.js';
 import { t, getLang, setLang, applyI18n } from '../i18n.js';
 import { isPhone, isTouchMobile, touchMenuCanvasDpr } from '../utils/device.js';
-import { syncAccountFromCloud, flushCloudSave, fetchCloudSave,
+import { syncAccountFromCloud, deleteCloudSave, flushCloudSave, fetchCloudSave,
          mergeSaveSnapshots, exportSaveSnapshot, applySaveSnapshot } from '../systems/cloud-save.js';
 import { signInWithEmail, signOutSupabase } from '../systems/supabase-client.js';
 import { SFX } from '../audio/sound.js';
@@ -137,6 +137,75 @@ async function _handleSignOut() {
     google.accounts.id.disableAutoSelect();
   }
   renderMenu();
+}
+
+function _setDeleteAccountError(message) {
+  const el = document.getElementById('delete-account-error');
+  if (el) el.textContent = message || '';
+}
+
+function _openDeleteAccountModal() {
+  if (!G.playerRegistered) return;
+  const modal = document.getElementById('delete-account-modal');
+  if (!modal) return;
+  const reason = document.getElementById('delete-account-reason');
+  const feedback = document.getElementById('delete-account-feedback');
+  const understand = document.getElementById('delete-account-understand');
+  const confirm = document.getElementById('delete-account-confirm-text');
+  if (reason) reason.value = '';
+  if (feedback) feedback.value = '';
+  if (understand) understand.checked = false;
+  if (confirm) confirm.value = '';
+  _setDeleteAccountError('');
+  document.getElementById('menu-profile-dropdown')?.classList.add('hidden');
+  modal.classList.remove('hidden');
+}
+
+function _closeDeleteAccountModal() {
+  document.getElementById('delete-account-modal')?.classList.add('hidden');
+}
+
+async function _confirmDeleteAccount() {
+  const reason = document.getElementById('delete-account-reason')?.value || '';
+  const feedback = document.getElementById('delete-account-feedback')?.value.trim() || '';
+  const understand = !!document.getElementById('delete-account-understand')?.checked;
+  const confirmText = (document.getElementById('delete-account-confirm-text')?.value || '').trim().toUpperCase();
+  const btn = document.getElementById('btn-delete-account-confirm');
+
+  if (!reason) return _setDeleteAccountError(t('deleteAccountMissingReason'));
+  if (!understand) return _setDeleteAccountError(t('deleteAccountNeedConfirm'));
+  if (confirmText !== 'DELETE') return _setDeleteAccountError(t('deleteAccountTypeError'));
+
+  _setDeleteAccountError('');
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = t('deleteAccountDeleting');
+  }
+
+  const result = await deleteCloudSave({
+    reason,
+    feedback,
+    playerName: G.playerName || '',
+    playerEmail: G.playerEmail || '',
+    at: new Date().toISOString(),
+  });
+
+  if (!result?.ok) {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = t('deleteAccountConfirm');
+    }
+    return _setDeleteAccountError(t('deleteAccountFailed'));
+  }
+
+  await signOutSupabase().catch(() => {});
+  if (typeof google !== 'undefined' && google.accounts) {
+    google.accounts.id.disableAutoSelect();
+  }
+  const lang = localStorage.getItem('jexongo_lang');
+  clearAll();
+  if (lang) localStorage.setItem('jexongo_lang', lang);
+  location.reload();
 }
 
 function _openLoginOverlay() {
@@ -842,6 +911,19 @@ export function initMenu(nav) {
 
   const signoutBtn = $('btn-google-signout');
   if (signoutBtn) signoutBtn.onclick = _handleSignOut;
+
+  const deleteAccountBtn = $('btn-menu-delete-account');
+  if (deleteAccountBtn) {
+    deleteAccountBtn.onclick = e => {
+      e.stopPropagation();
+      _openDeleteAccountModal();
+    };
+  }
+  document.getElementById('btn-delete-account-cancel')?.addEventListener('click', _closeDeleteAccountModal);
+  document.getElementById('btn-delete-account-confirm')?.addEventListener('click', _confirmDeleteAccount);
+  document.getElementById('delete-account-modal')?.addEventListener('click', e => {
+    if (e.target === document.getElementById('delete-account-modal')) _closeDeleteAccountModal();
+  });
 
   const langBtn = $('btn-lang');
   if (langBtn) {
