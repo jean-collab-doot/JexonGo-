@@ -41,7 +41,7 @@ export function maxParticlesTouch() {
   return isPhone() ? 1 : 2;
 }
 
-export const MAX_ENEMY_MISSILES_TOUCH = 3;
+export const MAX_ENEMY_MISSILES_TOUCH = 2;
 
 /** Apply .touch-mobile / .touch-tablet on <html> for CSS. */
 export function applyDeviceClasses() {

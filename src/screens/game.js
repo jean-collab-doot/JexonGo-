@@ -946,8 +946,8 @@ function frame(ts = 0) {
     const type  = types[Math.floor(Math.random() * types.length)];
     const e     = spawnEnemy(canvas.width, type);
     e.speed        *= levelCfg.enemySpeedMult * (isTouchMobile() ? 0.95 : 1);
-    e.fireRate      = Math.max(isTouchMobile() ? 64 : 30, Math.floor(e.fireRate * levelCfg.enemyFireRateMult));
-    e.fireCooldown  = (isTouchMobile() ? 70 : 45) + Math.floor(Math.random() * (isTouchMobile() ? 70 : 45));
+    e.fireRate      = Math.max(isTouchMobile() ? 84 : 30, Math.floor(e.fireRate * levelCfg.enemyFireRateMult));
+    e.fireCooldown  = (isTouchMobile() ? 96 : 45) + Math.floor(Math.random() * (isTouchMobile() ? 86 : 45));
     G.enemies.push(e);
     spawnTimer = spawnRate;
   }
@@ -2174,8 +2174,8 @@ export function initGame(levelNum, onComplete) {
   }
   updateStreakHUD();
 
-  spawnRate = isTutorialActive() ? 170 : isTouchMobile() ? Math.max(90, Math.round(levelCfg.spawnRate * 1.15)) : levelCfg.spawnRate;
-  maxEnemies = isTutorialActive() ? 2 : levelCfg.maxEnemies;
+  spawnRate = isTutorialActive() ? 170 : isTouchMobile() ? Math.max(120, Math.round(levelCfg.spawnRate * 1.35)) : levelCfg.spawnRate;
+  maxEnemies = isTutorialActive() ? 2 : isTouchMobile() ? Math.min(levelCfg.maxEnemies, 3) : levelCfg.maxEnemies;
   spawnTimer = isTouchMobile() ? 35 : 60;
 
   attachInputListeners();
@@ -2332,7 +2332,7 @@ export function initGame(levelNum, onComplete) {
 
         G.enemies.push(boss);
         // Companions spawn via normal timer — set maxEnemies to companion count
-        maxEnemies = levelCfg.bossCompanionMax;
+        maxEnemies = isTouchMobile() ? Math.min(levelCfg.bossCompanionMax, 2) : levelCfg.bossCompanionMax;
       }
 
       _startGameLoop(sid);
