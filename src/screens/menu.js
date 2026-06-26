@@ -10,7 +10,7 @@ import { SKINS } from '../data/skins.js';
 import { getPilotInfo } from '../data/pilots.js';
 import { getPrestigeTier, getPrestigeBadgeHTML } from '../data/prestige.js';
 import { t, getLang, setLang, applyI18n } from '../i18n.js';
-import { isTouchMobile, touchMenuCanvasDpr } from '../utils/device.js';
+import { isPhone, isTouchMobile, touchMenuCanvasDpr } from '../utils/device.js';
 import { syncAccountFromCloud, flushCloudSave, fetchCloudSave,
          mergeSaveSnapshots, exportSaveSnapshot, applySaveSnapshot } from '../systems/cloud-save.js';
 import { signInWithEmail, signOutSupabase } from '../systems/supabase-client.js';
@@ -224,7 +224,7 @@ function loadAssets() {
   _fireImg = new Image(); _fireImg.src = FIRE_PATH;
 
   const vid = document.getElementById('menu-bg-video');
-  if (vid) {
+  if (vid && !isPhone()) {
     // Clone for crossfade — both loop independently
     const vid2 = vid.cloneNode(true);
     vid2.id = 'menu-bg-video2';
@@ -238,6 +238,8 @@ function loadAssets() {
     vid.play().catch(() => {});
     _activeVid = 'v1';
     _xfadeT    = -1;
+  } else if (vid) {
+    vid.pause();
   }
 }
 
@@ -379,7 +381,7 @@ function drawTick() {
   const FADE_DUR  = 1.5;
   const FADE_STEP = 1 / (FADE_DUR * 60);
 
-  if (vid && vid2) {
+  if (!isPhone() && vid && vid2) {
     const primary   = _activeVid === 'v1' ? vid  : vid2;
     const secondary = _activeVid === 'v1' ? vid2 : vid;
     if ((primary.paused || primary.ended) && document.visibilityState !== 'hidden') {
@@ -417,7 +419,7 @@ function drawTick() {
   }
 
   // 1. Drifting clouds (desktop only — costly on phone/tablet)
-  updateDrawClouds(ctx, cW, cH);
+  if (!isPhone()) updateDrawClouds(ctx, cW, cH);
 
   // 2. Planes + smoke + fire
   if (_planeImg && _planeImg.complete && _planeImg.naturalWidth) {
@@ -444,16 +446,16 @@ function drawTick() {
       const engineLX = bx + drawW * 0.47;
       const engineRX = bx + drawW * 0.53;
 
-      if (_tick % 3 === 0 && p.y < cH && p.y + drawH > 0) {
+      if (!isPhone() && _tick % 3 === 0 && p.y < cH && p.y + drawH > 0) {
         spawnSmoke(p, engineLX, engineY);
         spawnSmoke(p, engineLX, engineY);
         spawnSmoke(p, engineRX, engineY);
         spawnSmoke(p, engineRX, engineY);
       }
 
-      updateDrawSmoke(ctx, p);
+      if (!isPhone()) updateDrawSmoke(ctx, p);
 
-      if (p.y < cH && p.y + drawH > 0) {
+      if (!isPhone() && p.y < cH && p.y + drawH > 0) {
         drawEngineFire(ctx, engineLX, engineY, drawW * 0.06);
         drawEngineFire(ctx, engineRX, engineY, drawW * 0.06);
       }
@@ -1016,7 +1018,12 @@ export function renderMenu() {
 
   const vid  = document.getElementById('menu-bg-video');
   const vid2 = document.getElementById('menu-bg-video2');
-  if (vid)  { vid.style.opacity  = '1'; vid.currentTime  = 0; vid.play().catch(() => {}); }
+  if (vid)  {
+    vid.style.opacity = '1';
+    vid.currentTime = 0;
+    if (isPhone()) vid.pause();
+    else vid.play().catch(() => {});
+  }
   if (vid2) { vid2.style.opacity = '0'; vid2.currentTime = 0; vid2.pause(); }
 
   if (_raf) { cancelAnimationFrame(_raf); _raf = null; }
