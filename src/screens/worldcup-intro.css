@@ -493,6 +493,18 @@ html.touch-mobile .wc-plane-wrap {
   z-index: 2 !important;
   opacity: 0.92;
 }
+html.touch-phone .wc-wind-lines,
+html.touch-phone .wc-engine-smoke,
+html.touch-phone .wc-engine-fire,
+html.touch-phone .wc-wing-glow,
+html.touch-phone .wc-plane-wrap::after {
+  display: none !important;
+}
+html.touch-phone .wc-plane,
+html.touch-phone .wc-trophy,
+html.touch-phone .wc-flag-card img {
+  filter: none !important;
+}
 html.touch-mobile .wc-plane,
 html.touch-mobile .wc-plane-wrap::after,
 html.touch-mobile .wc-engine-smoke,

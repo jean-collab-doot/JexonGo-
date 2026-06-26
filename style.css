@@ -10241,3 +10241,49 @@ html.touch-tablet .menu-top-left {
     font-size: 8px;
   }
 }
+
+/* Phone performance: keep the retro style, but avoid costly paint effects on small devices. */
+html.touch-phone .btn,
+html.touch-phone .answer-btn,
+html.touch-phone .menu-section-tab,
+html.touch-phone .menu-section-panel,
+html.touch-phone .menu-player-card,
+html.touch-phone .menu-resource-chip,
+html.touch-phone .menu-widget,
+html.touch-phone #question-box,
+html.touch-phone .tutorial-hud,
+html.touch-phone .sett-panel,
+html.touch-phone .practice-panel,
+html.touch-phone .missions-inner,
+html.touch-phone .daily-panel,
+html.touch-phone .privacy-card,
+html.touch-phone .privacy-hero {
+  box-shadow: 2px 2px 0 rgba(0,0,0,0.55) !important;
+  text-shadow: none !important;
+}
+
+html.touch-phone .menu-selected-plane,
+html.touch-phone .brief-phone,
+html.touch-phone .brief-finger,
+html.touch-phone .privacy-plane {
+  filter: none !important;
+}
+
+html.touch-phone .menu-offline-banner,
+html.touch-phone .mc-splash,
+html.touch-phone .tutorial-phone-hand,
+html.touch-phone .menu-selected-plane {
+  animation: none !important;
+}
+
+html.touch-phone #question-box.appearing,
+html.touch-phone .tutorial-feedback-card,
+html.touch-phone .answer-btn,
+html.touch-phone .btn {
+  transition-duration: 0.08s !important;
+}
+
+html.touch-phone #game-pause-overlay,
+html.touch-phone .sett-backdrop {
+  backdrop-filter: none !important;
+}
