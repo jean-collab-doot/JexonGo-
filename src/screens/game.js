@@ -354,6 +354,7 @@ function showTutorialFeedback(correct, timedOut = false) {
 function showStartCountdown(done) {
   _cutsceneActive = true;
   _stopGameLoop();
+  stopCountdownDraw();
   G.enemyMissiles = [];
   const targetX = canvas.width / 2;
   const targetY = canvas.height * 0.5;
@@ -365,8 +366,7 @@ function showStartCountdown(done) {
     toX: targetX,
     toY: targetY,
   };
-  drawCountdownSafeFrame();
-  _startGameLoop(_sessionId);
+  startCountdownDraw(_sessionId);
   const el = $('tutorial-countdown');
   const copy = isTutorialActive()
     ? tutorialCopy()
@@ -391,6 +391,7 @@ function showStartCountdown(done) {
         }
         _countdownPlaneAnim = null;
         _cutsceneActive = false;
+        stopCountdownDraw();
         _lastFrameTs = 0;
         _startGameLoop(_sessionId);
         done();
@@ -531,6 +532,7 @@ let _onComplete = null;
 let spawnTimer  = 0;
 let _cutsceneActive = false;
 let _countdownPlaneAnim = null;
+let _countdownRaf = null;
 let _maxLives = 3;
 let _fireTick    = 0;
 let _bankTilt    = 0;   // current tilt in radians (smoothed)
@@ -797,6 +799,7 @@ function _cssToCanvas(cssX, cssY) {
 function _stopGameLoop() {
   cancelAnimationFrame(G.animFrame);
   G.animFrame = null;
+  stopCountdownDraw();
   if (G.mobileLoop) { clearInterval(G.mobileLoop); G.mobileLoop = null; }
 }
 
@@ -851,7 +854,11 @@ function placePlayer() {
 // ── LOADING SCREEN ──────────────────────────────────────────────────────────
 function drawLoadingScreen() {
   const cw = canvas.width, ch = canvas.height;
-  ctx.fillStyle = '#0a0e1a';
+  const sky = ctx.createLinearGradient(0, 0, 0, ch);
+  sky.addColorStop(0, '#60bdf8');
+  sky.addColorStop(0.55, '#1c8fea');
+  sky.addColorStop(1, '#0755a8');
+  ctx.fillStyle = sky;
   ctx.fillRect(0, 0, cw, ch);
   const pulse = 0.6 + 0.4 * Math.sin(Date.now() * 0.004);
   ctx.save();
@@ -874,6 +881,26 @@ function drawCountdownSafeFrame() {
   drawSpeedLines(ctx, canvas.width, canvas.height);
   const plane = countdownPlanePosition();
   drawAircraftSprite(ctx, G.activeAircraft, plane.x, plane.y, _shipFrame, 1, 0);
+}
+
+function stopCountdownDraw() {
+  if (_countdownRaf) cancelAnimationFrame(_countdownRaf);
+  _countdownRaf = null;
+}
+
+function startCountdownDraw(sid) {
+  stopCountdownDraw();
+  const step = () => {
+    if (!_isActiveSid(sid) || !_cutsceneActive) {
+      _countdownRaf = null;
+      return;
+    }
+    tick++;
+    _shipFrame = (_shipFrame + 0.08) % 5;
+    drawCountdownSafeFrame();
+    _countdownRaf = requestAnimationFrame(step);
+  };
+  step();
 }
 
 function playerFloatOffset() {
