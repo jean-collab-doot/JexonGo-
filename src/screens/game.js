@@ -2179,9 +2179,9 @@ export function initGame(levelNum, onComplete) {
   }
   updateStreakHUD();
 
-  spawnRate = isTutorialActive() ? 170 : isTouchMobile() ? Math.max(120, Math.round(levelCfg.spawnRate * 1.35)) : levelCfg.spawnRate;
-  maxEnemies = isTutorialActive() ? 2 : isTouchMobile() ? Math.min(levelCfg.maxEnemies, 3) : levelCfg.maxEnemies;
-  spawnTimer = isTouchMobile() ? 35 : 60;
+  spawnRate = isTutorialActive() ? 170 : isTouchMobile() ? Math.max(88, Math.round(levelCfg.spawnRate * 1.08)) : levelCfg.spawnRate;
+  maxEnemies = isTutorialActive() ? 2 : isTouchMobile() ? Math.min(levelCfg.maxEnemies, 5) : levelCfg.maxEnemies;
+  spawnTimer = isTouchMobile() ? 22 : 60;
 
   attachInputListeners();
 
@@ -2337,7 +2337,7 @@ export function initGame(levelNum, onComplete) {
 
         G.enemies.push(boss);
         // Companions spawn via normal timer — set maxEnemies to companion count
-        maxEnemies = isTouchMobile() ? Math.min(levelCfg.bossCompanionMax, 2) : levelCfg.bossCompanionMax;
+        maxEnemies = isTouchMobile() ? Math.min(levelCfg.bossCompanionMax, 3) : levelCfg.bossCompanionMax;
       }
 
       _startGameLoop(sid);
