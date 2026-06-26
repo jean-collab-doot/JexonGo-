@@ -284,6 +284,8 @@ const STRINGS = {
     deleteAccountNeedConfirm: 'CHECK THE CONFIRMATION BOX',
     deleteAccountTypeError: 'TYPE DELETE TO CONFIRM',
     deleteAccountFailed: 'DELETE FAILED - CHECK CONNECTION',
+    deleteAccountForbidden: 'SIGN IN AGAIN, THEN TRY DELETE',
+    deleteAccountDbPolicy: 'DATABASE DELETE POLICY MISSING',
 
     // Feedback
     feedbackTitle:     'HOW DO YOU LIKE JEXONGO ?',
@@ -583,6 +585,8 @@ const STRINGS = {
     deleteAccountNeedConfirm: 'COCHEZ LA CONFIRMATION',
     deleteAccountTypeError: 'ECRIVEZ DELETE POUR CONFIRMER',
     deleteAccountFailed: 'SUPPRESSION IMPOSSIBLE - VERIFIEZ LA CONNEXION',
+    deleteAccountForbidden: 'RECONNECTEZ-VOUS, PUIS REESSAYEZ',
+    deleteAccountDbPolicy: 'POLITIQUE DELETE MANQUANTE DANS LA BASE',
 
     // Feedback
     feedbackTitle:     'COMMENT TROUVEZ-VOUS JEXONGO ?',

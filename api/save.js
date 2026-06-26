@@ -155,11 +155,14 @@ export default async function handler(req, res) {
       if (existing) {
         await deleteSave(token, existing.user_id ? 'user_id' : 'email', existing.user_id || existing.email);
       }
+      else {
+        await deleteSave(token, 'email', String(user.email || '').toLowerCase());
+      }
       console.log('[Save] account deletion requested', {
-        deleted: !!existing,
+        deleted: true,
         reason: req.body?.deletionReason?.reason || null,
       });
-      return send(res, 200, { ok: true, deleted: !!existing });
+      return send(res, 200, { ok: true, deleted: true });
     }
 
     return send(res, 405, { error: 'method not allowed' });

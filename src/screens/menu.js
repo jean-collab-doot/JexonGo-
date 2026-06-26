@@ -195,6 +195,10 @@ async function _confirmDeleteAccount() {
       btn.disabled = false;
       btn.textContent = t('deleteAccountConfirm');
     }
+    if (result?.forbidden) return _setDeleteAccountError(t('deleteAccountForbidden'));
+    if (/row-level security|permission|policy|violates/i.test(result?.error || '')) {
+      return _setDeleteAccountError(t('deleteAccountDbPolicy'));
+    }
     return _setDeleteAccountError(t('deleteAccountFailed'));
   }
 

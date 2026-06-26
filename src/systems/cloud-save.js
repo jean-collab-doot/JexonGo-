@@ -251,8 +251,8 @@ export async function deleteCloudSave(reasonPayload = {}) {
       _cloudSaveOffline = true;
       return { ok: false, offline: true };
     }
-    if (res.status === 401 || res.status === 403) return { ok: false, forbidden: true };
-    return { ok: res.ok, ...json };
+    if (res.status === 401 || res.status === 403) return { ok: false, forbidden: true, error: json?.error || '' };
+    return { ok: res.ok, status: res.status, error: json?.error || '', ...json };
   } catch (_) {
     return { ok: false, offline: true };
   }
