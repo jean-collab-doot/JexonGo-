@@ -286,6 +286,7 @@ const STRINGS = {
     deleteAccountFailed: 'DELETE FAILED - CHECK CONNECTION',
     deleteAccountForbidden: 'SECURE SESSION MISSING - SIGN IN WITH JEXONGO',
     deleteAccountDbPolicy: 'DATABASE DELETE POLICY MISSING',
+    deleteAccountAuthSkipped: 'GAME DATA DELETED - AUTH DELETE KEY MISSING',
 
     // Feedback
     feedbackTitle:     'HOW DO YOU LIKE JEXONGO ?',
@@ -587,6 +588,7 @@ const STRINGS = {
     deleteAccountFailed: 'SUPPRESSION IMPOSSIBLE - VERIFIEZ LA CONNEXION',
     deleteAccountForbidden: 'SESSION SECURISEE MANQUANTE - CONNECTEZ-VOUS AVEC JEXONGO',
     deleteAccountDbPolicy: 'POLITIQUE DELETE MANQUANTE DANS LA BASE',
+    deleteAccountAuthSkipped: 'DONNEES SUPPRIMEES - CLE AUTH MANQUANTE',
 
     // Feedback
     feedbackTitle:     'COMMENT TROUVEZ-VOUS JEXONGO ?',

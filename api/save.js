@@ -10,6 +10,9 @@ const SUPABASE_PUBLISHABLE_KEY = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KE
   || process.env.VITE_SUPABASE_PUBLISHABLE_KEY
   || DEFAULT_SUPABASE_PUBLISHABLE_KEY
   || '';
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
+  || process.env.SUPABASE_SERVICE_KEY
+  || '';
 const SAVES_TABLE = process.env.SUPABASE_SAVES_TABLE || 'saves';
 
 function send(res, status, body) {
@@ -91,6 +94,26 @@ async function deleteSave(token, column, value) {
   });
 }
 
+async function deleteAuthUser(userId) {
+  if (!SUPABASE_SERVICE_ROLE_KEY || !userId) {
+    return { deleted: false, skipped: true };
+  }
+
+  const response = await fetch(`${SUPABASE_PROJECT_URL.replace(/\/$/, '')}/auth/v1/admin/users/${encodeURIComponent(userId)}`, {
+    method: 'DELETE',
+    headers: {
+      apikey: SUPABASE_SERVICE_ROLE_KEY,
+      Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+      'Content-Type': 'application/json',
+    },
+  });
+  const data = await response.json().catch(() => null);
+  if (!response.ok) {
+    throw new Error(data?.msg || data?.message || data?.error || `Supabase auth delete failed (${response.status})`);
+  }
+  return { deleted: true, skipped: false };
+}
+
 export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return send(res, 204, {});
 
@@ -162,7 +185,13 @@ export default async function handler(req, res) {
         deleted: true,
         reason: req.body?.deletionReason?.reason || null,
       });
-      return send(res, 200, { ok: true, deleted: true });
+      const authDelete = await deleteAuthUser(user.id);
+      return send(res, 200, {
+        ok: true,
+        deleted: true,
+        authDeleted: authDelete.deleted,
+        authDeleteSkipped: authDelete.skipped,
+      });
     }
 
     return send(res, 405, { error: 'method not allowed' });
