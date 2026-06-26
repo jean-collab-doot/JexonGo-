@@ -2407,14 +2407,15 @@ export function initGame(levelNum, onComplete) {
       _startGameLoop(sid);
       updateTutorialHUD();
       const startLevelFlow = () => {
-        _cutsceneActive = false;
+        _cutsceneActive = true;
+        drawCountdownSafeFrame();
         _lastFrameTs = 0;
-        if (_isActiveSid(sid)) _startGameLoop(sid);
         showStartCountdown(nextQuestion);
       };
       if (shouldForceIntroBriefingBeforeFirstRound() || shouldShowIntroBriefing(levelNum)) {
         _cutsceneActive = true;
         _stopGameLoop();
+        drawCountdownSafeFrame();
         showIntroBriefing(startLevelFlow);
       } else startLevelFlow();
     });
