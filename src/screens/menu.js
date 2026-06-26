@@ -948,7 +948,8 @@ export function initMenu(nav) {
   function _clearKeys(...keys) { keys.forEach(k => _ct.delete(k)); }
 
   document.addEventListener('keydown', e => {
-    const k = e.key.toLowerCase();
+    const k = String(e.key || '').toLowerCase();
+    if (!k) return;
     _ct.set(k, Date.now());
 
     // 1 + 8 + M → prestige up

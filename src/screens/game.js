@@ -618,7 +618,10 @@ function _enemyMissileBurstCount() {
   return 1;
 }
 
-function normaliseKey(k) { return k.length === 1 ? k.toLowerCase() : k; }
+function normaliseKey(k) {
+  const key = String(k || '');
+  return key.length === 1 ? key.toLowerCase() : key;
+}
 
 function _gameCheatHeld(keys) {
   const now = Date.now();
@@ -626,6 +629,7 @@ function _gameCheatHeld(keys) {
 }
 function onKeyDown(e) {
   const k = normaliseKey(e.key);
+  if (!k) return;
   if (k in keys) { keys[k] = true; pointerTarget = null; e.preventDefault(); }
   _gameCT.set(k, Date.now());
   if (_gameCheatHeld(['y', 'u']))             _toggleGodMode();
@@ -634,6 +638,7 @@ function onKeyDown(e) {
 }
 function onKeyUp(e) {
   const k = normaliseKey(e.key);
+  if (!k) return;
   if (k in keys) keys[k] = false;
 }
 function _toggleGodMode() {
