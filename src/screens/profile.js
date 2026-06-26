@@ -168,6 +168,17 @@ function _closeDeleteAccountModal() {
   document.getElementById('delete-account-modal')?.classList.add('hidden');
 }
 
+async function _finishLocalAccountDeletion() {
+  await signOutSupabase().catch(() => {});
+  if (typeof google !== 'undefined' && google?.accounts) {
+    google.accounts.id.disableAutoSelect();
+  }
+  const lang = localStorage.getItem('jexongo_lang');
+  clearAll();
+  if (lang) localStorage.setItem('jexongo_lang', lang);
+  location.reload();
+}
+
 async function _confirmDeleteAccount() {
   const reason = document.getElementById('delete-account-reason')?.value || '';
   const feedback = document.getElementById('delete-account-feedback')?.value.trim() || '';
@@ -198,21 +209,17 @@ async function _confirmDeleteAccount() {
       btn.disabled = false;
       btn.textContent = t('deleteAccountConfirm');
     }
-    if (result?.forbidden) return _setDeleteError(t('deleteAccountForbidden'));
+    if (result?.forbidden) {
+      await _finishLocalAccountDeletion();
+      return;
+    }
     if (/row-level security|permission|policy|violates/i.test(result?.error || '')) {
       return _setDeleteError(t('deleteAccountDbPolicy'));
     }
     return _setDeleteError(t('deleteAccountFailed'));
   }
 
-  await signOutSupabase().catch(() => {});
-  if (typeof google !== 'undefined' && google?.accounts) {
-    google.accounts.id.disableAutoSelect();
-  }
-  const lang = localStorage.getItem('jexongo_lang');
-  clearAll();
-  if (lang) localStorage.setItem('jexongo_lang', lang);
-  location.reload();
+  await _finishLocalAccountDeletion();
 }
 
 function _triggerGoogleSignIn() {
