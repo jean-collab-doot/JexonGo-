@@ -2,6 +2,8 @@
 // Single source of truth for all pixel-art assets.
 // Every image is loaded once and cached; drawFrame() is the only draw primitive.
 
+import { isTouchMobile } from '../utils/device.js';
+
 const _images = new Map(); // path → HTMLImageElement
 
 function _load(path) {
@@ -75,6 +77,7 @@ export const ENEMY_SPRITE = {
 const SHIP_KEYS   = ['ship-t6','ship-pc21','ship-c130','ship-a10','ship-f16','ship-f18','ship-f22','ship-f35','ship-b2','ship-sr71'];
 const ENEMY_KEYS  = ['enemy-f15','enemy-t38','enemy-f117','enemy-death'];
 const FX_KEYS     = ['bolt','spark','fire-ball'];
+const MOBILE_FX_KEYS = ['bolt','enemy-death'];
 
 export const BIOME_SPRITES = {
   ocean:  [...SHIP_KEYS, ...ENEMY_KEYS, ...FX_KEYS, 'ocean-bg'],
@@ -87,9 +90,10 @@ export const BIOME_SPRITES = {
 // ── LOADING ──────────────────────────────────────────────────────────────────
 
 /** Preload all ship sprites at app startup so the hangar renders immediately. */
-export function preloadShips() {
-  ['ship-t6','ship-pc21','ship-c130','ship-a10',
-   'ship-f16','ship-f18','ship-f22','ship-f35','ship-b2','ship-sr71']
+export function preloadShips(activeAircraft = 't6') {
+  const activeShip = AIRCRAFT_SPRITE[activeAircraft] ?? 'ship-t6';
+  const keys = isTouchMobile() ? [activeShip] : SHIP_KEYS;
+  keys
     .forEach(k => {
       const def = SPRITE_DEFS[k];
       if (def) _load(def.path).catch(() => {});
@@ -97,8 +101,13 @@ export function preloadShips() {
 }
 
 /** Preload every sprite required for a biome. Missing files are warned, never thrown. */
-export async function preloadBiome(biome) {
-  const keys = BIOME_SPRITES[biome] ?? Object.keys(SPRITE_DEFS);
+export async function preloadBiome(biome, options = {}) {
+  const activeShip = AIRCRAFT_SPRITE[options.aircraftId] ?? 'ship-t6';
+  const enemyTypes = options.enemyTypes?.length ? options.enemyTypes : ['basic', 'fast', 'tank'];
+  const mobileEnemyKeys = [...new Set(enemyTypes.map(type => ENEMY_SPRITE[type] ?? 'enemy-f15'))];
+  const keys = isTouchMobile()
+    ? [...new Set([activeShip, ...mobileEnemyKeys, ...MOBILE_FX_KEYS, `${biome || 'ocean'}-bg`])]
+    : (BIOME_SPRITES[biome] ?? Object.keys(SPRITE_DEFS));
   await Promise.all(
     keys.map(k => {
       const def = SPRITE_DEFS[k];
@@ -112,7 +121,11 @@ export async function preloadBiome(biome) {
 /** Get the loaded Image for a key, or null. */
 export function getImage(key) {
   const def = SPRITE_DEFS[key];
-  return def ? (_images.get(def.path) ?? null) : null;
+  if (!def) return null;
+  const cached = _images.get(def.path);
+  if (cached) return cached;
+  _load(def.path).catch(() => {});
+  return null;
 }
 
 /**

@@ -536,7 +536,7 @@ window.visualViewport?.addEventListener('scroll', applyDeviceClasses);
 injectVercelInsights();
 loadSave();
 loadSettings();
-preloadShips();
+preloadShips(G.activeAircraft);
 
 if (G.playerRegistered && G.playerEmail) {
   syncAccountFromCloud().then(sync => {

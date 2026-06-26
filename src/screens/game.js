@@ -2249,7 +2249,14 @@ export function initGame(levelNum, onComplete) {
       _loadRaf = requestAnimationFrame(loadTick);
     });
 
-    preloadBiome(levelCfg.biome).then(() => {
+    preloadBiome(levelCfg.biome, {
+      aircraftId: G.activeAircraft,
+      enemyTypes: [
+        ...(levelCfg.enemyTypes || []),
+        ...(levelCfg.bossCompanionTypes || []),
+        ...(levelCfg.isBossLevel ? ['boss'] : []),
+      ],
+    }).then(() => {
       cancelAnimationFrame(_loadRaf);
       if (!_isActiveSid(sid)) return;
       initBackground(levelCfg.biome);
