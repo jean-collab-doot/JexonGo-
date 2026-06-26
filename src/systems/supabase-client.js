@@ -8,6 +8,11 @@ const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY
   || import.meta.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
   || 'sb_publishable_ibmq3oSAhc_xGYYXXH9qsw_GSPjth8K';
 
+const SUPABASE_REF = (() => {
+  try { return new URL(SUPABASE_URL).hostname.split('.')[0]; }
+  catch (_) { return ''; }
+})();
+
 export const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: {
     persistSession: true,
@@ -56,6 +61,23 @@ export async function signInWithGoogleIdToken(idToken) {
   return data;
 }
 
+export function clearSupabaseBrowserSession() {
+  const authKeys = new Set([
+    SUPABASE_REF ? `sb-${SUPABASE_REF}-auth-token` : '',
+  ]);
+  for (const store of [localStorage, sessionStorage]) {
+    try {
+      Object.keys(store)
+        .filter(key => authKeys.has(key) || (key.startsWith('sb-') && key.endsWith('-auth-token')))
+        .forEach(key => store.removeItem(key));
+    } catch (_) {}
+  }
+}
+
 export async function signOutSupabase() {
-  await supabase.auth.signOut();
+  try {
+    await supabase.auth.signOut();
+  } finally {
+    clearSupabaseBrowserSession();
+  }
 }

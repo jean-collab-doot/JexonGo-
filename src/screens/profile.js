@@ -173,6 +173,14 @@ async function _finishLocalAccountDeletion() {
   if (typeof google !== 'undefined' && google?.accounts) {
     google.accounts.id.disableAutoSelect();
   }
+  G.playerRegistered = false;
+  G.playerEmail = '';
+  G.playerPhoto = '';
+  G.playerName = 'PILOT';
+  G.xp = 0;
+  G.coins = 0;
+  G.highestLevel = 0;
+  G.levelStars = {};
   const lang = localStorage.getItem('jexongo_lang');
   clearAll();
   if (lang) localStorage.setItem('jexongo_lang', lang);
