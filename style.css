@@ -10287,3 +10287,14 @@ html.touch-phone #game-pause-overlay,
 html.touch-phone .sett-backdrop {
   backdrop-filter: none !important;
 }
+
+html.touch-mobile #game-canvas,
+html.touch-mobile #game-canvas-wrap {
+  touch-action: none;
+  overscroll-behavior: contain;
+}
+
+html.touch-phone #timer-bar {
+  transition: width 0.25s linear, background 0.25s !important;
+  box-shadow: none !important;
+}

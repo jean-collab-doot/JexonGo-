@@ -594,6 +594,7 @@ let _jsCurrent     = null;   // virtual joystick: current touch position
 let _jsVelX        = 0;
 let _jsVelY        = 0;
 let _touchId       = null;
+let _canvasRect    = null;
 let velX = 0, velY = 0;
 const MOVE_SPEED   = 3.5;
 const ACCEL        = 0.4;
@@ -654,7 +655,7 @@ function _killBoss() {
 }
 
 function canvasPointer(e) {
-  const r = canvas.getBoundingClientRect();
+  const r = _canvasRect || (_canvasRect = canvas.getBoundingClientRect());
   let src = e;
   if (e.touches?.length) {
     if (e.type === 'touchstart') _touchId = e.touches[0].identifier;
@@ -760,6 +761,7 @@ function detachInputListeners() {
 
 // ── MOBILE GAME LOOP (phone + tablet only) ────────────────────────────────────
 function _setCanvasSize(w, h) {
+  _canvasRect = null;
   const dpr = gameCanvasDpr();
   canvas.width  = Math.round(w * dpr);
   canvas.height = Math.round(h * dpr);
@@ -782,7 +784,7 @@ function _canvasQboxH() {
 
 /** Map pointer/touch CSS coords → internal canvas coords. */
 function _cssToCanvas(cssX, cssY) {
-  const r = canvas.getBoundingClientRect();
+  const r = _canvasRect || (_canvasRect = canvas.getBoundingClientRect());
   if (!r.width || !r.height) return { x: cssX, y: cssY };
   return {
     x: cssX * (canvas.width / r.width),
@@ -825,6 +827,7 @@ function _startGameLoop(sid) {
 function resize() {
   const w = canvas.clientWidth, h = canvas.clientHeight;
   if (!w || !h) return;
+  _canvasRect = null;
   if (G.animFrame) { cancelAnimationFrame(G.animFrame); G.animFrame = null; }
   _setCanvasSize(w, h);
   setSpriteCanvasWidth(canvas.width);
@@ -1485,6 +1488,8 @@ function _runTimer() {
   if (G.timerInterval) clearInterval(G.timerInterval);
   const bar      = $('timer-bar');
   const timerSid = _sessionId;
+  const timerStep  = isTouchMobile() ? 0.25 : 0.1;
+  const timerDelay = isTouchMobile() ? 250 : 100;
   G.timerInterval = setInterval(() => {
     if (!_isActiveSid(timerSid) || _gamePausedFromQuit) {
       clearInterval(G.timerInterval);
@@ -1492,14 +1497,14 @@ function _runTimer() {
       return;
     }
     if (G.answerLocked) return;
-    G.timeLeft -= 0.1;
+    G.timeLeft -= timerStep;
     const pct = Math.max(0, G.timeLeft / _timerTotal) * 100;
     bar.style.width = pct + '%';
     if (pct < 25)      bar.style.background = 'var(--red)';
     else if (pct < 55) bar.style.background = 'var(--yellow)';
     if (pct < 25 && Math.floor(G.timeLeft * 10) % 5 === 0) SFX.timerWarn();
     if (G.timeLeft <= 0) { clearInterval(G.timerInterval); handleTimeout(); }
-  }, 100);
+  }, timerDelay);
 }
 
 // ── ANSWER HANDLING ──────────────────────────────────────────────────────────
