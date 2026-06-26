@@ -6,7 +6,7 @@
   overflow: hidden;
   opacity: 0;
   background: #000;
-  --wc-cup-mid: 48%;
+  --wc-cup-mid: 50%;
 }
 .wc-color-layers {
   position: absolute;
@@ -210,7 +210,7 @@
   filter: drop-shadow(0 0 18px rgba(180,230,255,0.72));
 }
 .world-cup-intro.wc-active .wc-plane-wrap {
-  animation: wc-plane-translate 9.2s cubic-bezier(0.22, 0.88, 0.18, 1) forwards;
+  animation: wc-plane-translate 9.2s ease-in-out forwards;
 }
 .world-cup-intro.wc-active .wc-plane-wrap::after {
   animation: wc-plane-trail 9.2s ease-in-out forwards;
@@ -297,11 +297,9 @@
 @keyframes wc-plane-translate {
   0% { top: 114%; transform: translate(-50%, -50%) scale(0.88); opacity: 0; }
   8% { opacity: 1; }
-  28% { top: 63%; transform: translate(-50%, -50%) scale(1.08); opacity: 1; }
-  48% { top: var(--wc-cup-mid); transform: translate(-50%, -50%) scale(1.2); }
-  62% { top: calc(var(--wc-cup-mid) - 2%); transform: translate(-50%, -50%) scale(1.23); }
-  76% { top: calc(var(--wc-cup-mid) + 1%); transform: translate(-50%, -50%) scale(1.2); }
-  88% { top: calc(var(--wc-cup-mid) - 5%); transform: translate(-50%, -50%) scale(1.16); opacity: 1; }
+  30% { top: 62%; transform: translate(-50%, -50%) scale(1.08); opacity: 1; }
+  48%, 62% { top: var(--wc-cup-mid); transform: translate(-50%, -50%) scale(1.24); opacity: 1; }
+  78% { top: 30%; transform: translate(-50%, -50%) scale(1.1); opacity: 0.95; }
   100% { top: -36%; transform: translate(-50%, -50%) scale(0.82); opacity: 0; }
 }
 @keyframes wc-plane-trail {
@@ -357,7 +355,7 @@
   100% { opacity: 0; }
 }
 html.touch-mobile .world-cup-intro {
-  --wc-cup-mid: 45%;
+  --wc-cup-mid: 50%;
 }
 html.touch-mobile .wc-plane {
   width: clamp(190px, 52vw, 300px);
@@ -391,8 +389,8 @@ html.touch-mobile .world-cup-intro.wc-active .wc-plane-wrap {
 @keyframes wc-plane-translate-mobile {
   0% { top: 112%; transform: translate(-50%, -50%) scale(0.9) rotate(0deg); opacity: 0; }
   8% { opacity: 0.96; }
-  34% { top: 60%; transform: translate(-50%, -50%) scale(1.02) rotate(0deg); opacity: 0.96; }
-  62% { top: 44%; transform: translate(-50%, -50%) scale(1.08) rotate(0deg); opacity: 0.9; }
+  34% { top: 62%; transform: translate(-50%, -50%) scale(1.02) rotate(0deg); opacity: 0.96; }
+  50%, 64% { top: var(--wc-cup-mid); transform: translate(-50%, -50%) scale(1.12) rotate(0deg); opacity: 0.96; }
   82% { top: 32%; transform: translate(-50%, -50%) scale(1.02) rotate(0deg); opacity: 0.78; }
   100% { top: -24%; transform: translate(-50%, -50%) scale(0.78) rotate(0deg); opacity: 0; }
 }
