@@ -153,9 +153,9 @@ function _startRandomWind(root) {
   const spawn = () => {
     const line = document.createElement('span');
     const left = Math.random() * 100;
-    const height = 34 + Math.random() * 46;
-    const duration = 0.32 + Math.random() * 0.34;
-    const width = Math.random() < 0.35 ? 5 : 3;
+    const height = 46 + Math.random() * 58;
+    const duration = 0.24 + Math.random() * 0.24;
+    const width = Math.random() < 0.45 ? 6 : 3;
     line.style.left = `${left}%`;
     line.style.height = `${height}vh`;
     line.style.width = `${width}px`;
@@ -164,11 +164,11 @@ function _startRandomWind(root) {
     setTimeout(() => line.remove(), duration * 1000 + 80);
   };
 
-  for (let i = 0; i < 26; i++) setTimeout(spawn, Math.random() * 360);
+  for (let i = 0; i < 42; i++) setTimeout(spawn, Math.random() * 320);
   _windTimer = setInterval(() => {
-    const count = 5 + Math.floor(Math.random() * 6);
-    for (let i = 0; i < count; i++) setTimeout(spawn, Math.random() * 90);
-  }, 120);
+    const count = 8 + Math.floor(Math.random() * 8);
+    for (let i = 0; i < count; i++) setTimeout(spawn, Math.random() * 70);
+  }, 90);
 }
 
 function _shakeScreen(target, durationMs, onDone) {

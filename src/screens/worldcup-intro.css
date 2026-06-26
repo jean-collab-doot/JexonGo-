@@ -6,7 +6,9 @@
   overflow: hidden;
   opacity: 0;
   background: #000;
-  --wc-cup-mid: 50%;
+  --wc-enter-y: 86dvh;
+  --wc-exit-y: -92dvh;
+  --wc-center-y: 0px;
 }
 .wc-color-layers {
   position: absolute;
@@ -46,19 +48,22 @@
 .wc-wind-lines {
   position: absolute;
   inset: 0;
-  z-index: 1;
+  z-index: 4;
   overflow: hidden;
+  pointer-events: none;
 }
 .wc-wind-lines span {
   position: absolute;
-  top: -42%;
+  top: -48%;
   width: 4px;
-  height: 46vh;
+  height: 62vh;
   opacity: 0;
-  background: linear-gradient(180deg, transparent 0%, rgba(255,255,255,0.98) 28%, rgba(125,230,255,0.9) 58%, rgba(30,144,255,0.42) 78%, transparent 100%);
+  background: linear-gradient(180deg, transparent 0%, rgba(255,255,255,1) 24%, rgba(153,236,255,0.95) 54%, rgba(30,144,255,0.58) 78%, transparent 100%);
   border-radius: 999px;
   box-shadow: 0 0 16px rgba(180,240,255,0.95), 0 0 30px rgba(37,99,235,0.42);
-  filter: blur(0.4px);
+  filter: blur(0.25px);
+  transform: translate3d(0, -52vh, 0) scaleY(0.7) skewX(-9deg);
+  will-change: transform, opacity;
 }
 .wc-wind-lines span {
   animation-name: wc-wind-rush;
@@ -99,8 +104,10 @@
   z-index: 3;
   isolation: isolate;
   left: 50%;
-  top: 114%;
-  transform: translate(-50%, -50%);
+  top: 50%;
+  transform: translate3d(-50%, calc(var(--wc-enter-y) - 50%), 0) scale(0.92);
+  will-change: transform, opacity;
+  backface-visibility: hidden;
 }
 .wc-plane-wrap::after {
   content: "";
@@ -204,7 +211,7 @@
   display: block;
   position: relative;
   z-index: 0;
-  width: clamp(230px, 32vw, 440px);
+  width: clamp(245px, 34vw, 465px);
   aspect-ratio: 2 / 3;
   object-fit: contain;
   filter: drop-shadow(0 0 18px rgba(180,230,255,0.72));
@@ -273,10 +280,10 @@
   100% { transform: translateY(0); border-radius: 0; }
 }
 @keyframes wc-wind-rush {
-  0% { opacity: 0; transform: translate3d(0, -44vh, 0) scaleY(0.62) skewX(-6deg); }
-  10% { opacity: 0.96; }
-  74% { opacity: 0.84; }
-  100% { opacity: 0; transform: translate3d(0, 170vh, 0) scaleY(1.55) skewX(-6deg); }
+  0% { opacity: 0; transform: translate3d(0, -52vh, 0) scaleY(0.55) skewX(-9deg); }
+  8% { opacity: 1; }
+  76% { opacity: 0.92; }
+  100% { opacity: 0; transform: translate3d(0, 188vh, 0) scaleY(1.75) skewX(-9deg); }
 }
 @keyframes wc-confetti-fall {
   0% {
@@ -295,12 +302,12 @@
   }
 }
 @keyframes wc-plane-translate {
-  0% { top: 114%; transform: translate(-50%, -50%) scale(0.88); opacity: 0; }
-  8% { opacity: 1; }
-  30% { top: 62%; transform: translate(-50%, -50%) scale(1.08); opacity: 1; }
-  48%, 62% { top: var(--wc-cup-mid); transform: translate(-50%, -50%) scale(1.24); opacity: 1; }
-  78% { top: 30%; transform: translate(-50%, -50%) scale(1.1); opacity: 0.95; }
-  100% { top: -36%; transform: translate(-50%, -50%) scale(0.82); opacity: 0; }
+  0% { transform: translate3d(-50%, calc(var(--wc-enter-y) - 50%), 0) scale(0.92); opacity: 0; }
+  7% { opacity: 1; }
+  34% { transform: translate3d(-50%, calc(18dvh - 50%), 0) scale(1.1); opacity: 1; }
+  46%, 61% { transform: translate3d(-50%, calc(var(--wc-center-y) - 50%), 0) scale(1.24); opacity: 1; }
+  77% { transform: translate3d(-50%, calc(-28dvh - 50%), 0) scale(1.08); opacity: 0.98; }
+  100% { transform: translate3d(-50%, calc(var(--wc-exit-y) - 50%), 0) scale(0.82); opacity: 0; }
 }
 @keyframes wc-plane-trail {
   0% { opacity: 0; transform: translateX(-50%) scaleY(0.25); }
@@ -355,21 +362,26 @@
   100% { opacity: 0; }
 }
 html.touch-mobile .world-cup-intro {
-  --wc-cup-mid: 50%;
+  --wc-enter-y: 82dvh;
+  --wc-exit-y: -86dvh;
 }
 html.touch-mobile .wc-plane {
-  width: clamp(190px, 52vw, 300px);
+  width: clamp(205px, 58vw, 330px);
 }
 html.touch-mobile .wc-plane-wrap {
   z-index: 2 !important;
   opacity: 0.92;
 }
-html.touch-phone .wc-wind-lines,
 html.touch-phone .wc-engine-smoke,
 html.touch-phone .wc-engine-fire,
 html.touch-phone .wc-wing-glow,
 html.touch-phone .wc-plane-wrap::after {
   display: none !important;
+}
+html.touch-phone .wc-wind-lines span {
+  width: 3px;
+  height: 54vh;
+  filter: none;
 }
 html.touch-phone .wc-plane {
   filter: none !important;
@@ -387,10 +399,10 @@ html.touch-mobile .world-cup-intro.wc-active .wc-plane-wrap {
 }
 
 @keyframes wc-plane-translate-mobile {
-  0% { top: 112%; transform: translate(-50%, -50%) scale(0.9) rotate(0deg); opacity: 0; }
-  8% { opacity: 0.96; }
-  34% { top: 62%; transform: translate(-50%, -50%) scale(1.02) rotate(0deg); opacity: 0.96; }
-  50%, 64% { top: var(--wc-cup-mid); transform: translate(-50%, -50%) scale(1.12) rotate(0deg); opacity: 0.96; }
-  82% { top: 32%; transform: translate(-50%, -50%) scale(1.02) rotate(0deg); opacity: 0.78; }
-  100% { top: -24%; transform: translate(-50%, -50%) scale(0.78) rotate(0deg); opacity: 0; }
+  0% { transform: translate3d(-50%, calc(var(--wc-enter-y) - 50%), 0) scale(0.9); opacity: 0; }
+  7% { opacity: 0.98; }
+  34% { transform: translate3d(-50%, calc(18dvh - 50%), 0) scale(1.02); opacity: 0.98; }
+  48%, 63% { transform: translate3d(-50%, calc(var(--wc-center-y) - 50%), 0) scale(1.14); opacity: 0.98; }
+  80% { transform: translate3d(-50%, calc(-26dvh - 50%), 0) scale(1.02); opacity: 0.82; }
+  100% { transform: translate3d(-50%, calc(var(--wc-exit-y) - 50%), 0) scale(0.78); opacity: 0; }
 }
