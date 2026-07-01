@@ -28,7 +28,12 @@ import { applyDeviceClasses } from './utils/device.js';
 
 async function injectVercelInsights() {
   // Keep VS Code / Live Server launches working; Vercel analytics is optional.
-  if (!/\.vercel\.app$/i.test(location.hostname)) return;
+  const host = location.hostname.toLowerCase();
+  const isVercelHosted =
+    host === 'jexongo.app' ||
+    host === 'www.jexongo.app' ||
+    host.endsWith('.vercel.app');
+  if (!isVercelHosted) return;
   try {
     const [{ inject }, { injectSpeedInsights }] = await Promise.all([
       import('@vercel/analytics'),
