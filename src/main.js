@@ -26,6 +26,8 @@ import { syncAccountFromCloud, flushCloudSave, pushCloudSave } from './systems/c
 import { signInWithGoogleIdToken, signUpWithEmail } from './systems/supabase-client.js';
 import { applyDeviceClasses } from './utils/device.js';
 
+const ANALYTICS_OPT_OUT_KEY = 'jexongoAnalyticsOptOut';
+
 async function injectVercelInsights() {
   // Keep VS Code / Live Server launches working; Vercel analytics is optional.
   const host = location.hostname.toLowerCase();
@@ -34,6 +36,19 @@ async function injectVercelInsights() {
     host === 'www.jexongo.app' ||
     host.endsWith('.vercel.app');
   if (!isVercelHosted) return;
+
+  const analyticsParam = new URLSearchParams(location.search).get('analytics');
+  if (analyticsParam === 'off') {
+    localStorage.setItem(ANALYTICS_OPT_OUT_KEY, '1');
+    console.info('[Vercel] Analytics disabled on this browser.');
+    return;
+  }
+  if (analyticsParam === 'on') {
+    localStorage.removeItem(ANALYTICS_OPT_OUT_KEY);
+    console.info('[Vercel] Analytics enabled on this browser.');
+  }
+  if (localStorage.getItem(ANALYTICS_OPT_OUT_KEY) === '1') return;
+
   try {
     const [{ inject }, { injectSpeedInsights }] = await Promise.all([
       import('@vercel/analytics'),
