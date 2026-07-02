@@ -27,6 +27,37 @@ import { signInWithGoogleIdToken, signUpWithEmail } from './systems/supabase-cli
 import { applyDeviceClasses } from './utils/device.js';
 
 const ANALYTICS_OPT_OUT_KEY = 'jexongoAnalyticsOptOut';
+let _analyticsTrack = null;
+let _analyticsPageview = null;
+const _analyticsQueue = [];
+let _trackedFirstInteraction = false;
+
+function analyticsOptedOut() {
+  try {
+    return localStorage.getItem(ANALYTICS_OPT_OUT_KEY) === '1';
+  } catch {
+    return true;
+  }
+}
+
+function trackAnalytics(name, properties = {}) {
+  if (analyticsOptedOut()) return;
+  const payload = { name, properties };
+  if (_analyticsTrack) {
+    _analyticsTrack(name, properties);
+    return;
+  }
+  if (_analyticsQueue.length < 24) _analyticsQueue.push(payload);
+}
+
+function trackVirtualPage(route, properties = {}) {
+  if (analyticsOptedOut()) return;
+  const normalizedRoute = route.startsWith('/') ? route : `/${route}`;
+  if (_analyticsPageview) {
+    _analyticsPageview({ route: normalizedRoute, path: normalizedRoute });
+  }
+  trackAnalytics('Game Screen View', { screen: normalizedRoute, ...properties });
+}
 
 async function injectVercelInsights() {
   // Keep VS Code / Live Server launches working; Vercel analytics is optional.
@@ -47,15 +78,22 @@ async function injectVercelInsights() {
     localStorage.removeItem(ANALYTICS_OPT_OUT_KEY);
     console.info('[Vercel] Analytics enabled on this browser.');
   }
-  if (localStorage.getItem(ANALYTICS_OPT_OUT_KEY) === '1') return;
+  if (analyticsOptedOut()) return;
 
   try {
-    const [{ inject }, { injectSpeedInsights }] = await Promise.all([
+    const [{ inject, track, pageview }, { injectSpeedInsights }] = await Promise.all([
       import('@vercel/analytics'),
       import('@vercel/speed-insights'),
     ]);
     inject({ framework: 'vite' });
     injectSpeedInsights({ framework: 'vite' });
+    _analyticsTrack = track;
+    _analyticsPageview = pageview;
+    trackVirtualPage('/lobby');
+    while (_analyticsQueue.length) {
+      const event = _analyticsQueue.shift();
+      _analyticsTrack(event.name, event.properties);
+    }
   } catch (err) {
     console.warn('[Vercel] Insights unavailable:', err);
   }
@@ -98,6 +136,7 @@ const nav = {
     cleanup();
     renderMenu();
     showScreen('s-menu');
+    trackVirtualPage('/lobby');
     SFX.playMusic('menu');
     _videoResume();
   },
@@ -105,12 +144,21 @@ const nav = {
     cleanup();
     renderLevelMap();
     showScreen('s-levelmap');
+    trackVirtualPage('/levels');
     SFX.playMusic('menu');
   },
   toGame(levelNum, practiceMode = false) {
     cleanup();
     G.practiceMode = practiceMode;
     showScreen('s-game');
+    trackVirtualPage(practiceMode ? '/practice/game' : `/level/${levelNum}`, {
+      level: levelNum,
+      mode: practiceMode ? 'practice' : 'level',
+    });
+    trackAnalytics('Game Started', {
+      level: levelNum,
+      mode: practiceMode ? 'practice' : 'level',
+    });
     SFX.playMusic('game');
     _cleanup = initGame(levelNum, (won) => {
       cleanup();
@@ -118,6 +166,7 @@ const nav = {
         showMissionCompleteTransition(() => {
           renderMenu();
           showScreen('s-menu');
+          trackVirtualPage('/lobby', { source: 'guest-limit' });
           SFX.playMusic('menu');
           const level = G.tutorialPlan?.startLevel || G.currentLevel || 1;
           _showLoginToast(deviceIntroLang() === 'fr'
@@ -130,11 +179,23 @@ const nav = {
         showMissionCompleteTransition(() => {
           showResult(true);
           showScreen('s-result');
+          trackVirtualPage('/result', { level: G.currentLevel || levelNum, won: true });
+          trackAnalytics('Game Finished', {
+            level: G.currentLevel || levelNum,
+            won: true,
+            mode: G.practiceMode ? 'practice' : 'level',
+          });
           SFX.stopMusic();
         });
       } else {
         showGameover();
         showScreen('s-gameover');
+        trackVirtualPage('/gameover', { level: G.currentLevel || levelNum, won: false });
+        trackAnalytics('Game Finished', {
+          level: G.currentLevel || levelNum,
+          won: false,
+          mode: G.practiceMode ? 'practice' : 'level',
+        });
         SFX.gameOver();
         SFX.stopMusic();
       }
@@ -144,6 +205,7 @@ const nav = {
     cleanup();
     renderHangar();
     showScreen('s-hangar');
+    trackVirtualPage('/hangar');
     SFX.playMusic('menu');
   },
   toChest(reward, returnTo = 'map') {
@@ -151,34 +213,40 @@ const nav = {
     setChestReturn(returnTo);
     showChest(reward);
     showScreen('s-chest');
+    trackVirtualPage('/chest', { returnTo });
     SFX.playMusic('menu');
   },
   toShop() {
     cleanup();
     renderShop();
     showScreen('s-shop');
+    trackVirtualPage('/shop');
     SFX.playMusic('menu');
   },
   toRanked() {
     cleanup();
     renderRankedLobby();
     showScreen('s-ranked');
+    trackVirtualPage('/ranked');
     SFX.playMusic('menu');
   },
   toBriefing(levelNum) {
     cleanup();
     showBriefing(levelNum);
     showScreen('s-briefing');
+    trackVirtualPage('/briefing', { level: levelNum });
     SFX.playMusic('menu');
   },
   toArena() {
     cleanup();
     showScreen('s-arena');
+    trackVirtualPage('/arena');
     enterArena();
   },
   toGradeSelect() {
     cleanup();
     showScreen('s-grade');
+    trackVirtualPage('/pilot-setup');
   },
 };
 
@@ -382,7 +450,12 @@ initFeedback();
 // ── GLOBAL BUTTON CLICK SOUND ─────────────────────────────────────────────────
 document.addEventListener('click', e => {
   const btn = e.target.closest('button');
-  if (btn && btn.id !== 'btn-audio-start') SFX.click();
+  if (!btn) return;
+  if (btn.id !== 'btn-audio-start') SFX.click();
+  if (!_trackedFirstInteraction) {
+    _trackedFirstInteraction = true;
+    trackAnalytics('Game Interaction', { action: 'first_button_click', button: btn.id || 'button' });
+  }
 }, true);
 
 // ── REGISTRATION SCREEN ───────────────────────────────────────────────────────
