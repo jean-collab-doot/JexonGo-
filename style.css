@@ -10462,16 +10462,20 @@ html.touch-tablet .menu-top-left {
     text-align: center;
   }
   .privacy-hero h1 {
-    margin: 9px 0 5px;
-    font-size: clamp(15px, 6.5vw, 21px);
-    line-height: 1.15;
+    margin: 8px 0 5px;
+    max-width: 100%;
+    font-size: clamp(12px, 4.8vw, 16px);
+    line-height: 1.2;
     text-align: center;
+    overflow-wrap: anywhere;
+    word-break: normal;
+    hyphens: auto;
   }
   .privacy-hero p,
   .privacy-card p,
   .privacy-card li {
-    font-size: clamp(9px, 2.75vw, 10.5px);
-    line-height: 1.42;
+    font-size: clamp(8px, 2.45vw, 9.5px);
+    line-height: 1.35;
   }
   .privacy-language-grid {
     gap: 8px;
@@ -10509,6 +10513,35 @@ html.touch-tablet .menu-top-left {
     padding: 9px;
     font-size: 6px;
     line-height: 1.45;
+  }
+}
+
+@media (max-width: 360px) {
+  .privacy-shell {
+    width: calc(100% - 8px);
+  }
+  .privacy-hero {
+    padding: 8px;
+  }
+  .privacy-logo {
+    font-size: clamp(14px, 6.2vw, 21px);
+  }
+  .privacy-kicker {
+    font-size: 5px;
+  }
+  .privacy-hero h1 {
+    font-size: clamp(11px, 4.1vw, 14px);
+  }
+  .privacy-card {
+    padding: 8px;
+  }
+  .privacy-card h3 {
+    font-size: 10px;
+  }
+  .privacy-card p,
+  .privacy-card li {
+    font-size: 8px;
+    line-height: 1.32;
   }
 }
 

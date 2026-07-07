@@ -130,8 +130,40 @@ _bgEl.loop = true;
 let _bgCurrent = '';
 const _positions = {};
 let _fadeInterval = null;
+let _bgSource = null;
+let _bgGain = null;
+let _bgOutputVol = _musicVol;
 
 const GAME_PLAYBACK_RATE = 0.72;  // ~30% slower for gameplay music
+
+function _ensureBgRoute() {
+  try {
+    const ctx = _ac();
+    if (!_bgGain) {
+      _bgGain = ctx.createGain();
+      _bgGain.gain.value = _bgOutputVol;
+      _bgGain.connect(ctx.destination);
+    }
+    if (!_bgSource) {
+      _bgSource = ctx.createMediaElementSource(_bgEl);
+      _bgSource.connect(_bgGain);
+    }
+    return true;
+  } catch (_) {
+    return false;
+  }
+}
+
+function _setBgOutputVolume(vol) {
+  _bgOutputVol = _clamp01(vol);
+  if (_ensureBgRoute() && _bgGain) {
+    _bgEl.volume = 1;
+    _bgGain.gain.setTargetAtTime(_bgOutputVol, _ac().currentTime, 0.015);
+  } else {
+    _bgEl.volume = _bgOutputVol;
+  }
+  _bgEl.muted = _bgOutputVol === 0;
+}
 
 function _clearFade() {
   if (_fadeInterval) { clearInterval(_fadeInterval); _fadeInterval = null; }
@@ -139,16 +171,16 @@ function _clearFade() {
 
 function _fadeTo(targetVol, durationMs, onDone) {
   _clearFade();
-  const startVol = _bgEl.volume;
+  const startVol = _bgOutputVol;
   const steps    = 20;
   const stepMs   = durationMs / steps;
   const stepAmt  = (targetVol - startVol) / steps;
   let count = 0;
   _fadeInterval = setInterval(() => {
     count++;
-    _bgEl.volume = Math.max(0, Math.min(1, startVol + stepAmt * count));
+    _setBgOutputVolume(startVol + stepAmt * count);
     if (count >= steps) {
-      _bgEl.volume = targetVol;
+      _setBgOutputVolume(targetVol);
       _clearFade();
       if (onDone) onDone();
     }
@@ -159,8 +191,7 @@ function _startTrack(src) {
   const isGame = src.includes('music-play1');
   _bgCurrent    = src;
   _bgEl.src     = src;
-  _bgEl.volume  = 0;
-  _bgEl.muted   = _musicVol === 0;
+  _setBgOutputVolume(0);
   _bgEl.loop    = true;
   _bgEl.playbackRate = isGame ? GAME_PLAYBACK_RATE : 1.0;
   _bgEl.load();
@@ -199,6 +230,7 @@ function _stopMusic() {
 const _isMobileAudio = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
 function _resumeAll() {
+  _ensureBgRoute();
   if (_bgEl.src && _bgEl.paused && !_bgEl.ended) _bgEl.play().catch(() => {});
   if (_actx && _actx.state === 'suspended') _actx.resume();
 }
@@ -228,8 +260,7 @@ export const SFX = {
   setMusicVolume(v) {
     _musicVol = _clamp01(v);
     _clearFade();
-    _bgEl.muted = _musicVol === 0;
-    _bgEl.volume = _musicVol;
+    _setBgOutputVolume(_musicVol);
     if (_musicVol > 0 && _bgEl.src && _bgEl.paused) _bgEl.play().catch(() => {});
   },
   getMusicVolume()  { return _musicVol; },
@@ -358,7 +389,7 @@ export const SFX = {
     _bgEl.pause();
     _bgCurrent        = '/assets/music/gameover2.mp3';
     _bgEl.src         = '/assets/music/gameover2.mp3';
-    _bgEl.volume      = _musicVol;
+    _setBgOutputVolume(_musicVol);
     _bgEl.loop        = false;
     _bgEl.playbackRate = 1.0;
     _bgEl.load();
