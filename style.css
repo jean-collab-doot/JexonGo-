@@ -11192,3 +11192,8 @@ button,
     animation: none;
   }
 }
+
+#s-menu .menu-offline-banner,
+html.touch-phone #s-menu .menu-offline-banner {
+  display: none !important;
+}

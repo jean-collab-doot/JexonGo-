@@ -209,7 +209,7 @@
 
 @media (max-width: 768px) {
   .world-cup-intro {
-    animation-duration: 1.55s;
+    animation-duration: 1.35s;
     background: #05345e;
   }
 
@@ -218,8 +218,8 @@
   }
 
   .wc-layer {
-    height: 190dvh;
-    transform: translate3d(0, 102dvh, 0);
+    height: 210dvh;
+    transform: translate3d(0, 104dvh, 0);
     border-radius: 28px;
     box-shadow: none;
     will-change: transform;
@@ -242,43 +242,46 @@
 
   .world-cup-intro.wc-active .wc-layer-blue,
   .world-cup-intro.wc-active .wc-plane-wrap {
-    animation-duration: 1.55s;
+    animation-duration: 1.35s;
+    animation-timing-function: linear;
   }
 
   .world-cup-intro.wc-active .wc-layer-green {
-    animation-duration: 1.5s;
-    animation-delay: 0.02s;
+    animation-duration: 1.35s;
+    animation-delay: 0s;
+    animation-timing-function: linear;
   }
 
   .world-cup-intro.wc-active .wc-layer-red {
-    animation-duration: 1.45s;
-    animation-delay: 0.04s;
+    animation-duration: 1.35s;
+    animation-delay: 0s;
+    animation-timing-function: linear;
   }
 
   @keyframes wc-blue-layer-flight {
     0% {
-      transform: translate3d(0, 102dvh, 0);
+      transform: translate3d(0, 104dvh, 0);
       border-radius: 28px;
     }
     100% {
-      transform: translate3d(0, -210dvh, 0);
+      transform: translate3d(0, -226dvh, 0);
       border-radius: 18px 18px 28px 28px;
     }
   }
 
   @keyframes wc-plane-layer-flight {
     0% {
-      transform: translate3d(-50%, calc(88dvh - 50%), 0) scale(0.86);
+      transform: translate3d(-50%, calc(96dvh - 50%), 0) scale(0.9);
       opacity: 0;
     }
-    8% {
+    5% {
       opacity: 1;
     }
-    88% {
+    92% {
       opacity: 1;
     }
     100% {
-      transform: translate3d(-50%, calc(-210dvh - 50%), 0) scale(0.9);
+      transform: translate3d(-50%, calc(-226dvh - 50%), 0) scale(0.92);
       opacity: 0;
     }
   }
