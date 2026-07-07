@@ -3,7 +3,7 @@ import { save, load } from './utils/storage.js';
 import { showScreen } from './utils/dom.js';
 import { SFX } from './audio/sound.js';
 import { initMenu, renderMenu } from './screens/menu.js';
-import { stopWorldCupIntro } from './screens/worldcup-intro.js';
+import { playWorldCupIntro, stopWorldCupIntro } from './screens/worldcup-intro.js';
 import { showOnboarding } from './screens/onboarding.js';
 import { initLevelMap, renderLevelMap } from './screens/levelmap.js';
 import { initHangar, renderHangar } from './screens/hangar.js';
@@ -671,10 +671,24 @@ document.getElementById('btn-audio-start').addEventListener('click', async () =>
   SFX.unlock();
   SFX.playMusic('menu');
   document.getElementById('audio-splash').classList.add('hidden');
+  renderMenu();
+  showScreen('s-menu');
 
   const tutorialProgress = load('tutorialProgress', null);
   const tutorialCompleted = !!load('tutorialCompleted', false);
   const tutorialMode = !!load('tutorialMode', false);
+
+  const continueAfterOpeningAnimation = () => {
+    if (G.hasSeenOnboarding || load('hasSeenOnboarding', false)) {
+      nav.toMenu();
+      return;
+    }
+
+    showNewPlayerIntroFlow(() => {
+      nav.toGame(G.currentLevel || 1);
+    });
+  };
+
   if (tutorialCompleted && tutorialProgress?.active) {
     G.tutorialMode = false;
     G.tutorialProgress = null;
@@ -684,18 +698,11 @@ document.getElementById('btn-audio-start').addEventListener('click', async () =>
     G.tutorialMode = true;
     G.tutorialProgress = tutorialProgress;
     G.currentLevel = tutorialProgress.currentLevel || G.currentLevel || 1;
-    nav.toGame(G.currentLevel || 1);
+    playWorldCupIntro(() => nav.toGame(G.currentLevel || 1));
     return;
   }
 
-  if (G.hasSeenOnboarding || load('hasSeenOnboarding', false)) {
-    nav.toMenu();
-    return;
-  }
-
-  showNewPlayerIntroFlow(() => {
-    nav.toGame(G.currentLevel || 1);
-  });
+  playWorldCupIntro(continueAfterOpeningAnimation);
 });
 
 // Patch shop's chest button to return to shop

@@ -569,6 +569,7 @@ let _nukeAnim       = 0;   // counts down from 90 while nuke animation plays
 let _nukeApplied    = false;
 let _nukeAnswers    = 0;
 let _revealTimer  = null;
+let _answerCelebrationTimer = null;
 let _skipHandler  = null;
 let _correctionWaiting = false;
 let _transitioning = false;
@@ -589,6 +590,57 @@ function pruneEnemies(limitY = Infinity) {
     const e = G.enemies[i];
     if (!e.active || (e.type !== 'boss' && e.y >= limitY)) G.enemies.splice(i, 1);
   }
+}
+
+function clearAnswerCelebration() {
+  clearTimeout(_answerCelebrationTimer);
+  _answerCelebrationTimer = null;
+  document.querySelectorAll('.answer-celebration').forEach(el => el.remove());
+}
+
+function getAnswerCelebrationPlane() {
+  const activeSkinData = SKINS.find(s => s.id === G.activeSkin);
+  const activeLiveryData = SKINS.find(s => s.id === G.activeLivery);
+  const imageSrc = activeSkinData?.skinImg || activeSkinData?.offerImg;
+  if (imageSrc) return { src: imageSrc, filter: '' };
+
+  const liveryAircraft = activeLiveryData?.aircraft ?? G.activeAircraft;
+  const aircraftId = AIRCRAFT[liveryAircraft] ? liveryAircraft : (AIRCRAFT[G.activeAircraft] ? G.activeAircraft : 't6');
+  return {
+    src: `/assets/ships/player/${aircraftId}.png`,
+    filter: activeLiveryData?.filter || '',
+  };
+}
+
+function showAnswerCelebration() {
+  clearAnswerCelebration();
+  const lang = getLang();
+  const messages = lang === 'fr'
+    ? ['EXCELLENT PILOTE!', 'SUPER TIR!', 'MISSION PARFAITE!', 'TU DOMINES LE CIEL!']
+    : ['EXCELLENT PILOT!', 'GREAT SHOT!', 'PERFECT MISSION!', 'YOU OWN THE SKY!'];
+  const plane = getAnswerCelebrationPlane();
+  const overlay = document.createElement('div');
+  overlay.className = 'answer-celebration';
+  overlay.setAttribute('aria-hidden', 'true');
+  overlay.innerHTML = `
+    <div class="answer-celebration-burst">
+      ${Array.from({ length: 18 }, (_, i) => `<span class="answer-celebration-star" style="--i:${i}"></span>`).join('')}
+    </div>
+    <div class="answer-celebration-plane-wrap">
+      <img class="answer-celebration-plane" src="${plane.src}" alt="" decoding="async">
+    </div>
+    <div class="answer-celebration-message">${messages[(G.correctAnswers / 5) % messages.length | 0]}</div>
+    <div class="answer-celebration-sub">${lang === 'fr' ? '5 BONNES REPONSES!' : '5 GOOD ANSWERS!'}</div>
+  `;
+  document.body.appendChild(overlay);
+  const planeImg = overlay.querySelector('.answer-celebration-plane');
+  if (planeImg && plane.filter) planeImg.style.filter = plane.filter;
+  SFX.streak?.();
+  _answerCelebrationTimer = setTimeout(() => {
+    overlay.classList.add('answer-celebration-out');
+    setTimeout(() => overlay.remove(), 280);
+    _answerCelebrationTimer = null;
+  }, 1450);
 }
 
 // ── INPUT ───────────────────────────────────────────────────────────────────
@@ -1562,6 +1614,7 @@ function handleAnswer(choice, btn) {
   if (correct) {
     SFX.correct();
     G.correctAnswers++;
+    if (G.correctAnswers > 0 && G.correctAnswers % 5 === 0) showAnswerCelebration();
     G.questionsAnswered++;
     recordTutorialAnswer(G.question.op, true);
     showTutorialFeedback(true);
@@ -2194,6 +2247,7 @@ export function initGame(levelNum, onComplete) {
   _nukeAnim    = 0;
   _nukeApplied = false;
   _nukeAnswers = 0;
+  clearAnswerCelebration();
   _godMode     = false;
   _tutorialActive = !!G.tutorialMode;
   const savedTutorial = _tutorialActive ? getStoredTutorialProgress() : null;

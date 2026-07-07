@@ -19,9 +19,41 @@ import { SFX } from '../audio/sound.js';
 // ── GOOGLE SIGN-IN ───────────────────────────────────────────────────────────
 const GOOGLE_CLIENT_ID = '182729505930-rulb73m14t9qvfpjfbplknrcgn0fqvci.apps.googleusercontent.com';
 let _gsiReady = false;
+let _gsiLoadPromise = null;
 
-function _ensureGSI() {
+function _loadGsiScript() {
+  if (typeof google !== 'undefined' && google.accounts) return Promise.resolve(true);
+  if (_gsiLoadPromise) return _gsiLoadPromise;
+
+  _gsiLoadPromise = new Promise(resolve => {
+    const existing = document.querySelector('script[data-jexongo-gsi="1"]');
+    if (existing) {
+      existing.addEventListener('load', () => resolve(true), { once: true });
+      existing.addEventListener('error', () => resolve(false), { once: true });
+      return;
+    }
+
+    const script = document.createElement('script');
+    script.src = 'https://accounts.google.com/gsi/client';
+    script.async = true;
+    script.defer = true;
+    script.dataset.jexongoGsi = '1';
+    script.onload = () => resolve(true);
+    script.onerror = () => {
+      _gsiLoadPromise = null;
+      script.remove();
+      resolve(false);
+    };
+    document.head.appendChild(script);
+  });
+
+  return _gsiLoadPromise;
+}
+
+async function _ensureGSI() {
   if (_gsiReady) return true;
+  const loaded = await _loadGsiScript();
+  if (!loaded) return false;
   if (typeof google === 'undefined' || !google.accounts) return false;
   google.accounts.id.initialize({
     client_id:             GOOGLE_CLIENT_ID,
@@ -35,12 +67,12 @@ function _ensureGSI() {
 
 let _googleLoginPending = false;
 
-function _handleLogin(provider) {
+async function _handleLogin(provider) {
   if (provider !== 'google') return;
   if (_googleLoginPending) return;
   _googleLoginPending = true;
 
-  if (!_ensureGSI()) {
+  if (!(await _ensureGSI())) {
     _showToast(t('googleNotAvail'));
     _googleLoginPending = false;
     return;
@@ -1135,11 +1167,11 @@ export function renderMenu() {
   _updateProfile();
   _applyLang();
 
+  const guestGamesPlayed = Number(load('guestGamesPlayed', 0)) || 0;
+  const guestTrialUsed = !G.playerRegistered && guestGamesPlayed >= 5;
   const offlineBanner = document.getElementById('menu-offline-banner');
   if (offlineBanner) {
     const needsTutorialConnect = !!G.postTutorialConnectPrompt && !G.playerRegistered;
-    const guestGamesPlayed = Number(load('guestGamesPlayed', 0)) || 0;
-    const guestTrialUsed = !G.playerRegistered && guestGamesPlayed >= 5;
     const isFr = getLang() === 'fr';
     const level = G.tutorialPlan?.startLevel || G.currentLevel || 1;
     offlineBanner.classList.toggle('hidden', !needsTutorialConnect && !guestTrialUsed);
