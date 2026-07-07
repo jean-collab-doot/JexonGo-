@@ -653,15 +653,27 @@ function _initMenuSections() {
 }
 
 // ── PRESTIGE ─────────────────────────────────────────────────────────────────
+function _canPrestige() {
+  return !!G.playerRegistered
+    && !!G.playerEmail
+    && (G.highestLevel || 0) >= 50
+    && (G.prestige || 0) < 5;
+}
+
 function _updatePrestigeBadge() {
   const badgeEl = document.getElementById('menu-prestige-badge');
   if (badgeEl) badgeEl.innerHTML = getPrestigeBadgeHTML(G.prestige);
 
   const btn = document.getElementById('btn-prestige');
-  if (btn) btn.classList.toggle('hidden', !(G.highestLevel >= 50 && G.prestige < 5));
+  if (btn) btn.classList.toggle('hidden', !_canPrestige());
 }
 
 function _openPrestigeConfirm() {
+  if (!_canPrestige()) {
+    _showToast(t('loginRequired') || 'Connecte-toi pour utiliser Prestige.');
+    _updatePrestigeBadge();
+    return;
+  }
   const nextP  = G.prestige + 1;
   const tier   = getPrestigeTier(nextP);
   const tierEl = document.getElementById('prestige-modal-tier');
@@ -709,6 +721,12 @@ function _doReset() {
 }
 
 function _doPrestige() {
+  if (!_canPrestige()) {
+    _closePrestigeModal();
+    _showToast(t('loginRequired') || 'Connecte-toi pour utiliser Prestige.');
+    _updatePrestigeBadge();
+    return;
+  }
   _closePrestigeModal();
   G.prestige++;
   const tier = getPrestigeTier(G.prestige);

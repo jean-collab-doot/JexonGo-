@@ -208,12 +208,42 @@
 }
 
 @media (max-width: 768px) {
+  .world-cup-intro {
+    animation-duration: 2.25s;
+  }
+
   .wc-layer {
     border-radius: 38px;
+    box-shadow: none;
+    will-change: transform;
+  }
+
+  .wc-layer::before,
+  .wc-wind-lines {
+    display: none;
   }
 
   .wc-plane-wrap {
     width: clamp(250px, 64vw, 430px);
+    filter: none;
+    will-change: transform, opacity;
+  }
+
+  .wc-plane-wrap::after {
+    display: none;
+  }
+
+  .world-cup-intro.wc-active .wc-layer-blue,
+  .world-cup-intro.wc-active .wc-plane-wrap {
+    animation-duration: 2.25s;
+  }
+
+  .world-cup-intro.wc-active .wc-layer-green {
+    animation-duration: 2.18s;
+  }
+
+  .world-cup-intro.wc-active .wc-layer-red {
+    animation-duration: 2.1s;
   }
 
   @keyframes wc-blue-layer-flight {
