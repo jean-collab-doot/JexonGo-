@@ -31,11 +31,11 @@ export function createMissile(x, y, tx, ty, speed, enemyId, color = '#00d4ff', d
 
 // ── UPDATE ────────────────────────────────────────────────────────────────────
 
-export function updateMissiles(missiles, onHit) {
+export function updateMissiles(missiles, onHit, step = 1) {
   for (let i = missiles.length - 1; i >= 0; i--) {
     const m = missiles[i];
-    m.x += m.vx;
-    m.y += m.vy;
+    m.x += m.vx * step;
+    m.y += m.vy * step;
     m.boltFrame = (m.boltFrame + BOLT_FRAME_RATE) % 4;
     const dx = m.x - m.tx, dy = m.y - m.ty;
     if (dx * dx + dy * dy < 18 * 18) { onHit(m); missiles.splice(i, 1); continue; }

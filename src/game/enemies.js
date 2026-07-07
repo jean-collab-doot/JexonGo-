@@ -47,27 +47,27 @@ export function spawnEnemy(canvasW, type) {
   };
 }
 
-export function updateEnemies(enemies, canvasW = 400) {
+export function updateEnemies(enemies, canvasW = 400, step = 1) {
   for (const e of enemies) {
     if (!e.active) continue;
 
     // Boss is fully static — no movement
     if (e.type === 'boss') {
-      if (e.shakeTick > 0) e.shakeTick--;
-      e.animFrame = (e.animFrame + e.animRate) % 4;
+      if (e.shakeTick > 0) e.shakeTick -= step;
+      e.animFrame = (e.animFrame + e.animRate * step) % 4;
       continue;
     }
 
-    e.sinPhase += e.sinFreq;
+    e.sinPhase += e.sinFreq * step;
     e.vx = Math.sin(e.sinPhase) * e.sinAmp;
 
-    e.x += e.vx;
+    e.x += e.vx * step;
     const edge = e.size * 1.5;
     e.x = Math.max(edge, Math.min(canvasW - edge, e.x));
 
-    e.y += e.speed;
-    if (e.shakeTick > 0) e.shakeTick--;
-    e.animFrame = (e.animFrame + e.animRate) % 4;
+    e.y += e.speed * step;
+    if (e.shakeTick > 0) e.shakeTick -= step;
+    e.animFrame = (e.animFrame + e.animRate * step) % 4;
   }
 }
 

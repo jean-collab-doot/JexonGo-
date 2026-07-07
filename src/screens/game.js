@@ -774,33 +774,34 @@ function clearPointer(e) {
 }
 
 function updatePlayerMovement() {
+  const step = _frameStep || 1;
   const margin  = 16;
   const minY    = canvas.height * 0.08;
   const maxY    = canvas.height - _canvasQboxH() - 80;
 
   if (_jsOrigin) {
     // Joystick touch: apply velocity directly, no lerp lag
-    G.player.x += _jsVelX;
-    G.player.y += _jsVelY;
+    G.player.x += _jsVelX * step;
+    G.player.y += _jsVelY * step;
     velX = velY = 0;
   } else if (pointerTarget) {
     velX = 0; velY = 0;
-    G.player.x += (pointerTarget.x - G.player.x) * LERP;
-    G.player.y += (pointerTarget.y - G.player.y) * LERP;
+    G.player.x += (pointerTarget.x - G.player.x) * Math.min(1, LERP * step);
+    G.player.y += (pointerTarget.y - G.player.y) * Math.min(1, LERP * step);
   } else {
     const spd = _moveSpeed();
-    if (keys.ArrowLeft  || keys.a) velX = Math.max(velX - ACCEL, -spd);
-    else if (velX < 0)             velX *= FRICTION;
-    if (keys.ArrowRight || keys.d) velX = Math.min(velX + ACCEL,  spd);
-    else if (velX > 0)             velX *= FRICTION;
-    if (keys.ArrowUp    || keys.w) velY = Math.max(velY - ACCEL, -spd);
-    else if (velY < 0)             velY *= FRICTION;
-    if (keys.ArrowDown  || keys.s) velY = Math.min(velY + ACCEL,  spd);
-    else if (velY > 0)             velY *= FRICTION;
+    if (keys.ArrowLeft  || keys.a) velX = Math.max(velX - ACCEL * step, -spd);
+    else if (velX < 0)             velX *= Math.pow(FRICTION, step);
+    if (keys.ArrowRight || keys.d) velX = Math.min(velX + ACCEL * step,  spd);
+    else if (velX > 0)             velX *= Math.pow(FRICTION, step);
+    if (keys.ArrowUp    || keys.w) velY = Math.max(velY - ACCEL * step, -spd);
+    else if (velY < 0)             velY *= Math.pow(FRICTION, step);
+    if (keys.ArrowDown  || keys.s) velY = Math.min(velY + ACCEL * step,  spd);
+    else if (velY > 0)             velY *= Math.pow(FRICTION, step);
     if (Math.abs(velX) < 0.05) velX = 0;
     if (Math.abs(velY) < 0.05) velY = 0;
-    G.player.x += velX;
-    G.player.y += velY;
+    G.player.x += velX * step;
+    G.player.y += velY * step;
   }
   G.player.x = Math.max(margin, Math.min(canvas.width  - margin, G.player.x));
   G.player.y = Math.max(minY,   Math.min(maxY,                   G.player.y));
@@ -994,11 +995,16 @@ function frame(ts = 0) {
     G.animFrame = null;
     return;
   }
+  const prevFrameTs = _lastFrameTs || ts;
+  const frameMs = prevFrameTs ? Math.max(8, Math.min(50, ts - prevFrameTs)) : 16.7;
+  _frameStep = isTouchMobile()
+    ? Math.max(1, Math.min(1.65, frameMs / 16.7))
+    : Math.max(0.85, Math.min(1.25, frameMs / 16.7));
   _lastFrameTs = ts;
   tuneAdaptivePerformance(ts);
 
-  tick++;
-  _shipFrame = (_shipFrame + 0.08) % 5;
+  tick += _frameStep;
+  _shipFrame = (_shipFrame + 0.08 * _frameStep) % 5;
 
   ctx.globalAlpha = 1;
   ctx.imageSmoothingEnabled = false;
@@ -1034,12 +1040,12 @@ function frame(ts = 0) {
   }
 
   // ── Enemy spawn ────────────────────────────────────────────────────────
-  spawnTimer--;
+  spawnTimer -= _frameStep;
   if (spawnTimer <= 0 && activeRegularEnemyCount() < adaptiveMaxEnemies()) {
     const types = levelCfg.isBossLevel ? levelCfg.bossCompanionTypes : levelCfg.enemyTypes;
     const type  = types[Math.floor(Math.random() * types.length)];
     const e     = spawnEnemy(canvas.width, type);
-    e.speed        *= levelCfg.enemySpeedMult * (isTouchMobile() ? 0.95 : 1);
+    e.speed        *= levelCfg.enemySpeedMult * (isTouchMobile() ? 1.08 : 1);
     e.fireRate      = Math.max(isTouchMobile() ? 84 : 30, Math.floor(e.fireRate * levelCfg.enemyFireRateMult));
     e.fireCooldown  = (isTouchMobile() ? 96 : 45) + Math.floor(Math.random() * (isTouchMobile() ? 86 : 45));
     G.enemies.push(e);
@@ -1058,21 +1064,21 @@ function frame(ts = 0) {
                       : 0.20;
 
   // ── Enemies ────────────────────────────────────────────────────────────
-  updateEnemies(G.enemies, canvas.width);
+  updateEnemies(G.enemies, canvas.width, _frameStep);
   for (const e of G.enemies) {
     if (!e.active) continue;
 
     if (e.type === 'boss') {
       // Boss fires in bursts then pauses; timing/speed/color vary by milestone
       if (e.bossPhase === 'pause') {
-        e.bossPauseTimer--;
+        e.bossPauseTimer -= _frameStep;
         if (e.bossPauseTimer <= 0) {
           e.bossPhase    = 'burst';
           e.bossBurstFired = 0;
           e.bossBurstTimer = 0;
         }
       } else {
-        e.bossBurstTimer--;
+        e.bossBurstTimer -= _frameStep;
         if (e.bossBurstTimer <= 0 && e.bossBurstFired < e.bossBurstMax) {
           const ms = (e._missileSpd ?? 2.5) * (isTouchMobile() ? 1.45 : 1);
           const mc = e._missileColor ?? '#ef4444';
@@ -1092,7 +1098,7 @@ function frame(ts = 0) {
       }
 
       // ── Boss movement ──────────────────────────────────────────────────
-      e._moveTimer--;
+      e._moveTimer -= _frameStep;
       if (e._moveTimer <= 0) {
         const m     = canvas.width * (1 - e._xRange) / 2;
         const randX = m + Math.random() * (canvas.width - m * 2);
@@ -1107,8 +1113,8 @@ function frame(ts = 0) {
       const spd = e._moveSpeed ?? 0.010;
       e._vx = (e._vx ?? 0) * 0.90 + (e._targetX - e.x) * spd;
       e._vy = (e._vy ?? 0) * 0.90 + (e._targetY - e.y) * spd;
-      e.x += e._vx;
-      e.y += e._vy;
+      e.x += e._vx * _frameStep;
+      e.y += e._vy * _frameStep;
       // Hard constraint: boss always stays in front of (above) the player
       const frontY = G.player.y - 110;
       if (e.y > frontY) {
@@ -1118,7 +1124,7 @@ function frame(ts = 0) {
       e.x = Math.max(44, Math.min(canvas.width - 44, e.x));
 
     } else {
-      e.fireCooldown--;
+      e.fireCooldown -= _frameStep;
       const fireTop = canvas.height * 0.08;
       const fireBot = Math.min(canvas.height * 0.78, G.player.y - 80);
       const inFireZone = e.y > fireTop && e.y < fireBot;
@@ -1171,7 +1177,7 @@ function frame(ts = 0) {
   updateMissiles(G.missiles, m => {
     const e = G.enemies.find(en => en.id === m.enemyId);
     if (e && e.active) onMissileHit(e, m);
-  });
+  }, _frameStep);
   drawMissiles(ctx, G.missiles, false);
 
   // ── Enemy missiles (with level-based guidance) ─────────────────────────
@@ -1188,15 +1194,15 @@ function frame(ts = 0) {
     }
     // Guidance: steer toward player for up to 5 s (300 frames)
     if (_guideF > 0 && m.guideTick > 0) {
-      m.guideTick--;
+      m.guideTick -= _frameStep;
       const tdx = G.player.x - m.x, tdy = G.player.y - m.y;
       const td  = Math.sqrt(tdx * tdx + tdy * tdy) || 1;
       if (!m._spd) m._spd = Math.sqrt(m.vx * m.vx + m.vy * m.vy);
       m.vx = m.vx * (1 - _guideF) + (tdx / td) * m._spd * _guideF;
       m.vy = m.vy * (1 - _guideF) + (tdy / td) * m._spd * _guideF;
     }
-    m.x += m.vx;
-    m.y += m.vy;
+    m.x += m.vx * _frameStep;
+    m.y += m.vy * _frameStep;
     m.boltFrame = 0;
 
   }
@@ -2138,23 +2144,25 @@ let _perfTier = 2;
 let _perfAvgMs = 16.7;
 let _perfLastTs = 0;
 let _perfSamples = 0;
+let _frameStep = 1;
 
 function resetAdaptivePerformance() {
   _perfTier = isTouchMobile() ? 1 : 2;
   _perfAvgMs = 16.7;
   _perfLastTs = 0;
   _perfSamples = 0;
+  _frameStep = 1;
 }
 
 function adaptiveSpawnRate() {
   if (!isTouchMobile()) return baseSpawnRate;
-  const mult = _perfTier === 0 ? 1.55 : _perfTier === 1 ? 1.20 : 1.0;
-  return Math.max(80, Math.round(baseSpawnRate * mult));
+  const mult = _perfTier === 0 ? 1.25 : _perfTier === 1 ? 1.08 : 0.95;
+  return Math.max(68, Math.round(baseSpawnRate * mult));
 }
 
 function adaptiveMaxEnemies() {
   if (!isTouchMobile()) return baseMaxEnemies;
-  const cap = _perfTier === 0 ? 3 : _perfTier === 1 ? 4 : 5;
+  const cap = _perfTier === 0 ? 4 : _perfTier === 1 ? 5 : 6;
   return Math.min(baseMaxEnemies, cap);
 }
 
@@ -2331,8 +2339,8 @@ export function initGame(levelNum, onComplete) {
   updateStreakHUD();
 
   resetAdaptivePerformance();
-  baseSpawnRate = isTutorialActive() ? 170 : isTouchMobile() ? Math.max(88, Math.round(levelCfg.spawnRate * 1.08)) : levelCfg.spawnRate;
-  baseMaxEnemies = isTutorialActive() ? 2 : isTouchMobile() ? Math.min(levelCfg.maxEnemies, 5) : levelCfg.maxEnemies;
+  baseSpawnRate = isTutorialActive() ? 170 : isTouchMobile() ? Math.max(72, Math.round(levelCfg.spawnRate * 0.95)) : levelCfg.spawnRate;
+  baseMaxEnemies = isTutorialActive() ? 2 : isTouchMobile() ? Math.min(levelCfg.maxEnemies, 6) : levelCfg.maxEnemies;
   spawnRate = baseSpawnRate;
   maxEnemies = baseMaxEnemies;
   spawnTimer = isTouchMobile() ? 22 : 60;
