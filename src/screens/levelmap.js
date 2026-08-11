@@ -65,7 +65,11 @@ export function renderLevelMap() {
 
   const nodes = [];
   for (let n = 1; n <= TOTAL_LEVELS; n++) {
-    nodes.push({ num: n, state: levelState(n, G.levelStars), stars: G.levelStars[n] || 0 });
+    nodes.push({
+      num: n,
+      state: levelState(n, G.levelStars, G.highestLevel, G.tutorialPlan?.startLevel || 1),
+      stars: G.levelStars[n] || 0,
+    });
   }
   nodes.reverse();
   const playerLevel = nodes.find(node => node.state === 'available')?.num

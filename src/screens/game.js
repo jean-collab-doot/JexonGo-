@@ -3676,7 +3676,7 @@ function adaptiveSpawnRate() {
 
 function adaptiveMaxEnemies() {
   if (!isTouchMobile()) return baseMaxEnemies;
-  const cap = _perfTier === 0 ? 4 : _perfTier === 1 ? 7 : 10;
+  const cap = _perfTier === 0 ? 3 : _perfTier === 1 ? 4 : 5;
   return Math.min(baseMaxEnemies, cap);
 }
 
@@ -3687,7 +3687,7 @@ function trimForAdaptivePerformance() {
     if (idx < 0) break;
     G.enemies.splice(idx, 1);
   }
-  const maxMissiles = _perfTier === 0 ? 1 : _perfTier === 1 ? 2 : MAX_ENEMY_MISSILES_TOUCH;
+  const maxMissiles = _perfTier === 0 ? 1 : Math.min(2, MAX_ENEMY_MISSILES_TOUCH);
   if (isTouchMobile() && G.enemyMissiles.length > maxMissiles) {
     G.enemyMissiles.splice(0, G.enemyMissiles.length - maxMissiles);
   }
@@ -3705,8 +3705,8 @@ function tuneAdaptivePerformance(ts = 0) {
   if (++_perfSamples < 45) return;
   _perfSamples = 0;
 
-  const lagMs = isTouchMobile() ? 23 : 31;
-  const smoothMs = isTouchMobile() ? 18 : 19;
+  const lagMs = isTouchMobile() ? 19.5 : 31;
+  const smoothMs = isTouchMobile() ? 16.9 : 19;
   const previous = _perfTier;
   if (_perfAvgMs > lagMs && _perfTier > 0) _perfTier--;
   else if (_perfAvgMs < smoothMs && _perfTier < 2) _perfTier++;

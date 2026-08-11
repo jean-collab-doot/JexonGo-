@@ -30,7 +30,9 @@ function makeCloud(cw, ch, initial = false) {
 
 export function initClouds(biome, cw, ch) {
   clouds.length = 0;
-  enabled = biome !== 'space';
+  // Large transparent cloud sprites are expensive on mobile GPUs. The map
+  // already contains cloud detail, so reserve this extra layer for desktop.
+  enabled = biome !== 'space' && !isTouchMobile();
   if (!enabled || !cw || !ch) return;
 
   const count = isTouchMobile() ? 3 : 16;

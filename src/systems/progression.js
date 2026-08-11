@@ -9,8 +9,20 @@ export function saveProgress(levelNum, stars, xp) {
   save('xp', xp);
 }
 
+export function highestUnlockedLevel(levelStars = {}, highestLevel = 0, recommendedLevel = 1) {
+  const completed = Object.keys(levelStars)
+    .map(Number)
+    .filter(Number.isFinite)
+    .reduce((max, level) => Math.max(max, level), 0);
+  return Math.max(1, completed + 1, Number(highestLevel || 0) + 1, Number(recommendedLevel || 1));
+}
+
+export function isLevelUnlocked(levelNum, levelStars = {}, highestLevel = 0, recommendedLevel = 1) {
+  return levelNum <= highestUnlockedLevel(levelStars, highestLevel, recommendedLevel);
+}
+
 // 'locked' | 'available' | 'completed'
-export function levelState(levelNum, levelStars) {
+export function levelState(levelNum, levelStars, highestLevel = 0, recommendedLevel = 1) {
   if (levelStars[levelNum] !== undefined) return 'completed';
-  return 'available';
+  return isLevelUnlocked(levelNum, levelStars, highestLevel, recommendedLevel) ? 'available' : 'locked';
 }

@@ -25,6 +25,7 @@ import { t, getLang, applyI18n } from './i18n.js';
 import { syncAccountFromCloud, flushCloudSave, pushCloudSave } from './systems/cloud-save.js';
 import { signInWithGoogleIdToken, signUpWithEmail } from './systems/supabase-client.js';
 import { applyDeviceClasses } from './utils/device.js';
+import { isLevelUnlocked } from './systems/progression.js';
 
 const ANALYTICS_OPT_OUT_KEY = 'jexongoAnalyticsOptOut';
 let _analyticsTrack = null;
@@ -149,6 +150,10 @@ const nav = {
     SFX.playMusic('menu');
   },
   toGame(levelNum, practiceMode = false) {
+    if (!practiceMode && !G.tutorialMode && !isLevelUnlocked(levelNum, G.levelStars, G.highestLevel, G.tutorialPlan?.startLevel || 1)) {
+      nav.toMap();
+      return;
+    }
     cleanup();
     G.practiceMode = practiceMode;
     showScreen('s-game');
@@ -203,8 +208,8 @@ const nav = {
           won: false,
           mode: G.practiceMode ? 'practice' : 'level',
         });
-        SFX.gameOver();
         SFX.stopMusic();
+        SFX.gameOver();
       }
     });
   },
@@ -238,6 +243,10 @@ const nav = {
     SFX.playMusic('menu');
   },
   toBriefing(levelNum) {
+    if (!G.tutorialMode && !isLevelUnlocked(levelNum, G.levelStars, G.highestLevel, G.tutorialPlan?.startLevel || 1)) {
+      nav.toMap();
+      return;
+    }
     cleanup();
     showBriefing(levelNum);
     showScreen('s-briefing');

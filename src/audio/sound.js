@@ -383,7 +383,10 @@ export const SFX = {
   gameOver() {
     if (_sfxVol === 0) return;
     _resumeAll();
-    _playMediaShot('/assets/music/gameover2.mp3', 1.0);
+    _playBuf('/assets/music/gameover2.mp3', 1.0, ctx => {
+      _tone(ctx, 180, 'sawtooth', 0.55, 0.45);
+      _after(260, () => _tone(_ac(), 92, 'square', 0.8, 0.38));
+    });
   },
   quitGame() {
     _clearFade();
