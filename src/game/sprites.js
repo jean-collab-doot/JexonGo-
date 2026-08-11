@@ -70,7 +70,7 @@ export const SPRITE_DEFS = {
   'explosion-nuke': { path: '/assets/fx/JexonGo_FX_Explosions/nuke_missile_explosion/nuke_explosion_spritesheet_12_frames.png', frames: 12, frameCols: 4, frameRows: 3 },
   'explosion-ray':  { path: '/assets/fx/JexonGo_FX_Explosions/laser_missile_explosion/laser_expansion_spritesheet_12_frames.png', frames: 12, frameCols: 4, frameRows: 3 },
   'spark':     { path: '/assets/fx/explosion-a.png',         frames: 8 },
-  'fire-ball': { path: '/assets/fx/fire-ball.png', frames: 3 },
+  'fire-ball': { path: '/assets/fx/Missile/explosion-fire-missile.png', frames: 12, frameCols: 4, frameRows: 3 },
   'cloud-1':  { path: '/assets/fx/individual_clouds_256x256/cloud_01.png', frames: 1 },
   'cloud-2':  { path: '/assets/fx/individual_clouds_256x256/cloud_02.png', frames: 1 },
   'cloud-3':  { path: '/assets/fx/individual_clouds_256x256/cloud_03.png', frames: 1 },

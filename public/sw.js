@@ -39,7 +39,6 @@ const PRECACHE = [
   // FX
   '/assets/fx/rocket.png',
   '/assets/fx/explosion-a.png',
-  '/assets/fx/fire-ball.png',
   '/assets/fx/heart-full.png',
   // Music
   '/assets/music/music-menu.mp3',

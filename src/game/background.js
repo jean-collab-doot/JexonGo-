@@ -20,6 +20,24 @@ let _lastCanvasW = 0;
 let _lastCanvasH = 0;
 let _activeBiome   = 'ocean';
 
+function buildScaledLayer(layer, img, width) {
+  const height = Math.max(1, Math.ceil(img.naturalHeight * (width / img.naturalWidth)));
+  const chunkHeight = 1536;
+  const sourceScale = img.naturalHeight / height;
+  layer.surface = [];
+  for (let y = 0; y < height; y += chunkHeight) {
+    const h = Math.min(chunkHeight, height - y);
+    const surface = document.createElement('canvas');
+    surface.width = width;
+    surface.height = h;
+    const surfaceCtx = surface.getContext('2d', { alpha: false });
+    surfaceCtx.imageSmoothingEnabled = false;
+    surfaceCtx.drawImage(img, 0, y * sourceScale, img.naturalWidth, h * sourceScale, 0, 0, width, h);
+    layer.surface.push({ canvas: surface, y });
+  }
+  layer.dh = height;
+}
+
 export function initBackground(biome) {
   _activeBiome = biome || 'ocean';
   const defs = LAYER_DEFS[_activeBiome] ?? LAYER_DEFS.ocean;
@@ -29,6 +47,7 @@ export function initBackground(biome) {
     y: 0,
     positioned: false,
     dh: 0,
+    surface: null,
   }));
   _lastCanvasW = 0;
   _lastCanvasH = 0;
@@ -47,6 +66,7 @@ export function drawBackground(ctx, canvas) {
   if (_lastCanvasW !== cw || _lastCanvasH !== ch) {
     for (const l of _layers) {
       l.dh = 0;
+      l.surface = null;
       l.positioned = false;
     }
     _lastCanvasW = cw;
@@ -57,9 +77,10 @@ export function drawBackground(ctx, canvas) {
     const img = getImage(l.key);
     if (!img) continue;
 
-    if (!l.dh) {
+    if (!l.dh || !l.surface) {
       if (img.naturalWidth <= 0 || img.naturalHeight <= 0) continue;
-      l.dh = Math.ceil(img.naturalHeight * (cw / img.naturalWidth));
+      // Scale the 8192px map once instead of resizing it every frame.
+      buildScaledLayer(l, img, cw);
     }
 
     const { dh } = l;
@@ -71,7 +92,10 @@ export function drawBackground(ctx, canvas) {
     const offset = l.y % dh;
     let startY   = offset - dh;
     while (startY < ch) {
-      ctx.drawImage(img, 0, startY, cw, dh);
+      for (const chunk of l.surface) {
+        const y = startY + chunk.y;
+        if (y < ch && y + chunk.canvas.height > 0) ctx.drawImage(chunk.canvas, 0, y);
+      }
       startY += dh;
     }
   }

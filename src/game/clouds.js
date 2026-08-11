@@ -33,7 +33,7 @@ export function initClouds(biome, cw, ch) {
   enabled = biome !== 'space';
   if (!enabled || !cw || !ch) return;
 
-  const count = isTouchMobile() ? 9 : 16;
+  const count = isTouchMobile() ? 3 : 16;
   for (let i = 0; i < count; i++) makeCloud(cw, ch, true);
   spawnDelay = random(55, 120);
 }
@@ -52,7 +52,7 @@ export function updateClouds(step, cw, ch) {
   }
 
   spawnDelay -= step;
-  const maxClouds = isTouchMobile() ? 11 : 19;
+  const maxClouds = isTouchMobile() ? 4 : 19;
   if (spawnDelay <= 0 && clouds.length < maxClouds) {
     makeCloud(cw, ch);
     spawnDelay = random(65, 145);

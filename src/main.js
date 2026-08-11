@@ -187,6 +187,12 @@ const nav = {
             mode: G.practiceMode ? 'practice' : 'level',
           });
           SFX.stopMusic();
+          // The first daily gift appears only after the complete tutorial has
+          // ended. checkDailyLogin also enforces registration and one claim/day.
+          const daily = checkDailyLogin();
+          if (daily.isNewDay) {
+            setTimeout(() => showDailyReward(daily.reward, daily.streak), 700);
+          }
         });
       } else {
         showGameover();

@@ -136,8 +136,8 @@ function seededPick(dateStr) {
 
 export function checkDailyLogin() {
   if (!G.playerRegistered) return { isNewDay: false };
-  // New pilots receive day 1 only after completing the game introduction.
-  if (!G.hasSeenBriefing) return { isNewDay: false, waitingForIntro: true };
+  // New pilots must finish the complete playable tutorial before rewards begin.
+  if (!G.tutorialCompleted) return { isNewDay: false, waitingForTutorial: true };
   if (G.dailyStarterPlanComplete) return { isNewDay: false, completed: true };
   const today     = todayStr();
   const lastLogin = G.dailyLastLogin;
@@ -168,7 +168,7 @@ export function checkDailyLogin() {
 }
 
 export function claimDailyReward(reward) {
-  if (!G.playerRegistered || G.dailyLastLogin === todayStr() || G.dailyStarterPlanComplete) {
+  if (!G.playerRegistered || !G.tutorialCompleted || G.dailyLastLogin === todayStr() || G.dailyStarterPlanComplete) {
     return { claimed: false, badges: [] };
   }
   G.coins           = clampCoins((G.coins || 0) + (reward.coins || 0));

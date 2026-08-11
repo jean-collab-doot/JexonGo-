@@ -1444,9 +1444,9 @@ function easeInOutCubic(t) {
 function startSmoothGameResume() {
   const now = performance.now();
   _resumeSlowStart = now;
-  _resumeSlowDuration = isTouchMobile() ? 2200 : 1800;
+  _resumeSlowDuration = isTouchMobile() ? 520 : 1800;
   _resumePlaneStart = now;
-  _resumePlaneDuration = isTouchMobile() ? 1050 : 850;
+  _resumePlaneDuration = isTouchMobile() ? 460 : 850;
   _frameStep = Math.min(_frameStep || 1, 0.35);
 }
 
@@ -1541,8 +1541,9 @@ function frame(ts = 0) {
   if (Math.abs(_questionFocusBlend - questionFocusTarget) < 0.001) {
     _questionFocusBlend = questionFocusTarget;
   }
-  // At full focus the world runs at 8% speed. The timer remains real-time.
-  const questionSpeedScale = 1 - _questionFocusBlend * 0.92;
+  // Mobile and tablet gameplay stays fast while the question is displayed.
+  const focusSlowdown = isTouchMobile() ? 0.42 : 0.92;
+  const questionSpeedScale = 1 - _questionFocusBlend * focusSlowdown;
   const resumeScale = resumeSpeedScale(ts || performance.now());
   _frameStep = (_frameStep * 0.65 + targetStep * 0.35) * resumeScale * questionSpeedScale;
   _lastFrameTs = ts;
