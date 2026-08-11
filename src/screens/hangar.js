@@ -194,8 +194,12 @@ function renderHangarBadges() {
   const owned=new Set(G.unlockedBadges||[]);
   root.innerHTML=`<div class="hangar-badges-head"><h2>BADGES</h2><span>${owned.size}/${BADGES.length}</span></div><p class="hangar-badge-preview-hint">Équipe un seul badge à la fois. Clique sur son image pour voir l'animation.</p><div class="hangar-badge-grid">${BADGES.map(b=>{const unlocked=owned.has(b.id);const active=G.activeBadge===b.id;const [value,max]=b.progress?.({})||[0,1];return `<article data-preview-badge="${b.id}" class="hangar-badge-card ${unlocked?'unlocked':'locked'} ${active?'active':''}"><img src="${b.image}" alt="${b.name}"><div><em>${b.rarity}</em><h3>${b.name}</h3><p>${b.goal}</p><strong>${b.reward}</strong><small>${active?'ÉQUIPÉ':unlocked?'DÉBLOQUÉ':`${value.toLocaleString()} / ${max.toLocaleString()}`}</small>${unlocked?`<button type="button" class="hangar-equip-badge" data-equip-badge="${b.id}" ${active?'disabled':''}>${active?'ÉQUIPÉ':'ÉQUIPER'}</button>`:''}</div></article>`}).join('')}</div>`;
   root.querySelectorAll('[data-preview-badge]').forEach(button => button.addEventListener('click', () => {
-    const badge = BADGES.find(item => item.id === button.dataset.previewBadge);
-    window._previewBadgeUnlock?.(badge);
+    const badgeId = button.dataset.previewBadge;
+    // Locked cards only display progress. The unlock animation is reserved
+    // for badges the player has actually earned.
+    if (!owned.has(badgeId)) return;
+    const badge = BADGES.find(item => item.id === badgeId);
+    if (badge) window._previewBadgeUnlock?.(badge);
   }));
   root.querySelectorAll('[data-equip-badge]').forEach(button => button.addEventListener('click', event => {
     event.stopPropagation();

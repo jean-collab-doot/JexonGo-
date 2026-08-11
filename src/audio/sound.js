@@ -135,7 +135,7 @@ let _bgSource = null;
 let _bgGain = null;
 let _bgOutputVol = _musicVol;
 
-const GAME_PLAYBACK_RATE = 0.72;  // ~30% slower for gameplay music
+const GAME_PLAYBACK_RATE = 1.0;
 
 function _ensureBgRoute() {
   try {
@@ -212,10 +212,8 @@ function _playMusic(src) {
   // Resume the existing media element at its exact position if a browser or
   // screen transition temporarily paused it.
   if (_bgCurrent === src) {
-    _clearFade();
     _bgEl.playbackRate = src.includes('music-play1') ? GAME_PLAYBACK_RATE : 1;
     if (_bgEl.paused) _bgEl.play().catch(() => {});
-    _fadeTo(_musicVol, 220);
     return;
   }
   if (_bgCurrent) _positions[_bgCurrent] = _bgEl.currentTime;
@@ -243,8 +241,10 @@ function _stopMusic() {
 const _isMobileAudio = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
 function _resumeAll() {
-  _ensureBgRoute();
-  _setBgOutputVolume(_musicVol);
+  if (!_bgGain || !_bgSource) {
+    _ensureBgRoute();
+    _setBgOutputVolume(_musicVol);
+  }
   if (_bgEl.src && _bgEl.paused && !_bgEl.ended) _bgEl.play().catch(() => {});
   if (_actx && _actx.state === 'suspended') _actx.resume();
 }
@@ -263,7 +263,11 @@ document.addEventListener('visibilitychange', () => {
 
 // On mobile: poll every 4 s while visible to catch silent audio drops
 if (_isMobileAudio) {
-  setInterval(() => { if (!document.hidden) _resumeAll(); }, 4000);
+  setInterval(() => {
+    if (!document.hidden && ((_actx && _actx.state === 'suspended') || (_bgEl.src && _bgEl.paused))) {
+      _resumeAll();
+    }
+  }, 4000);
 }
 
 // ── PUBLIC API ────────────────────────────────────────────────────────────────

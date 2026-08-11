@@ -14075,3 +14075,7 @@ html[data-device-size="phone-small"] #s-menu .menu-selected-plane { width:min(92
 html.touch-mobile.viewport-landscape.compact-height #game-hud { min-height:40px; padding-block:3px; }
 html.touch-mobile.viewport-landscape.compact-height #question-box { max-height:52dvh; }
 html.touch-mobile.viewport-landscape.compact-height .answer-btn { min-height:40px; padding-block:7px; }
+
+/* Locked badges show progress only; they are not interactive previews. */
+.hangar-badge-card.locked { cursor:default; }
+.hangar-badge-card.locked:active { transform:none; }
