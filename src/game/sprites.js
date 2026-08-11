@@ -33,7 +33,7 @@ export const SPRITE_DEFS = {
   'ship-f35':  { path: '/assets/ships/player/f35-animation.png',  mobilePath: '/assets/ships/player/f35-animation.png',  frames: 12, frameCols: 12, frameRows: 1 },
   'ship-b2':   { path: '/assets/ships/player/b2-animation.png', mobilePath: '/assets/ships/player/b2-animation.png', frames: 12, frameCols: 12, frameRows: 1 },
   'ship-sr71': { path: '/assets/ships/player/sr71-animation.png', mobilePath: '/assets/ships/player/sr71-animation.png', frames: 12, frameCols: 12, frameRows: 1 },
-  'ship-f117': { path: '/assets/ships/player/f117-animation.png', mobilePath: '/assets/ships/player/f117-animation.png', frames: 12, frameCols: 4, frameRows: 3 },
+  'ship-f117': { path: '/assets/ships/player/f117-animation.png', mobilePath: '/assets/ships/player/f117-animation.png', frames: 12, frameCols: 12, frameRows: 1 },
   // Enemies — plane artwork
   // v2 forces browsers to discard the older cached F-15 sheet. Its aircraft
   // body is pixel-identical in every frame; only the exhaust is animated.
