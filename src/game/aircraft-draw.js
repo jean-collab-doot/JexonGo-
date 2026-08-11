@@ -9,7 +9,7 @@ const ENGINE_OFFSETS = {
   f22:  [{ x: -0.13,  y:  0.35 }, { x:  0.13,  y:  0.35 }],
   sr71: [{ x: -0.18,  y:  0.28 }, { x:  0.18,  y:  0.28 }],
   a10:  [{ x: -0.08,  y:  0.22 }, { x:  0.08,  y:  0.22 }],
-  b2:   [{ x: -0.22,  y:  0.1  }, { x: -0.07,  y:  0.1  }, { x:  0.07, y: 0.1 }, { x:  0.22, y: 0.1 }],
+  b2:   [{ x: -0.08,  y:  0.36 }, { x:  0.08,  y:  0.36 }],
 };
 
 let _spriteCanvasW = 0;
@@ -72,6 +72,17 @@ function getTouchEnemySize() {
   }
   return _cachedEnemySize;
 }
+
+export function getEnemyDrawSize(enemy) {
+  if (enemy?.a330Boss || enemy?.b52Boss || enemy?.kawasakiBoss || enemy?.c5Boss || enemy?.spaceShuttleBoss) {
+    const w = _layoutWidth();
+    return Math.round(isTouchMobile()
+      ? _clamp(w * 0.56, 160, 235)
+      : _clamp(w * 0.48, 250, 430));
+  }
+  return isTouchMobile() ? getTouchEnemySize() : enemy.size * getEnemyScale();
+}
+
 export { getPlayerSize };
 
 export function drawAircraftSprite(ctx, aircraftId, cx, cy, frame, alpha = 1, bankAngle = 0, skinFilter = '') {
@@ -85,6 +96,16 @@ export function drawAircraftSprite(ctx, aircraftId, cx, cy, frame, alpha = 1, ba
   ctx.restore();
 }
 
+export function drawAircraftSpriteSized(ctx, aircraftId, cx, cy, size, frame, alpha = 1, bankAngle = 0, skinFilter = '') {
+  const key = AIRCRAFT_SPRITE[aircraftId] ?? 'ship-t6';
+  ctx.save();
+  ctx.imageSmoothingEnabled = true;
+  if (alpha !== 1) ctx.globalAlpha = alpha;
+  if (skinFilter && !isPhone()) ctx.filter = skinFilter;
+  drawFrame(ctx, key, frame, cx, cy, size, size, { rotate: bankAngle });
+  ctx.restore();
+}
+
 export function drawAircraftPreview(ctx, aircraftId, cx, cy, size) {
   const key = AIRCRAFT_SPRITE[aircraftId] ?? 'ship-t6';
   ctx.save();
@@ -95,36 +116,80 @@ export function drawAircraftPreview(ctx, aircraftId, cx, cy, size) {
 }
 
 export function drawEnemySprite(ctx, enemy, bankAngle = 0) {
-  const size = isTouchMobile() ? getTouchEnemySize() : enemy.size * getEnemyScale();
+  const size = getEnemyDrawSize(enemy);
+  const rotation = Number.isFinite(enemy.headingAngle) ? enemy.headingAngle : bankAngle;
+  const spawnAlpha = Math.max(0, Math.min(1, enemy.spawnAlpha ?? 1));
+  if (spawnAlpha < 1) {
+    ctx.save();
+    ctx.globalAlpha *= spawnAlpha;
+  }
+  const drawEnemyFrame = () => {
+    if (enemy.interpolateFrames) {
+      const current = Math.floor(enemy.animFrame || 0);
+      const next = Math.min(11, current + 1);
+      const blend = Math.max(0, Math.min(1, (enemy.animFrame || 0) - current));
+      const drawWidth = enemy.spaceShuttleBoss ? size * (1254 / 1500) : size;
+      drawFrame(ctx, enemy.spriteKey, current, enemy.x, enemy.y, drawWidth, size,
+        { rotate: Math.PI + rotation, alpha: 1 - blend });
+      if (blend > 0.001 && next !== current) {
+        drawFrame(ctx, enemy.spriteKey, next, enemy.x, enemy.y, drawWidth, size,
+          { rotate: Math.PI + rotation, alpha: blend });
+      }
+    } else {
+      const drawWidth = enemy.spaceShuttleBoss ? size * (1254 / 1500) : size;
+      drawFrame(ctx, enemy.spriteKey, enemy.animFrame, enemy.x, enemy.y, drawWidth, size,
+        { rotate: Math.PI + rotation });
+    }
+  };
   if (enemy.spriteFilter && !isPhone()) {
     ctx.save();
     ctx.filter = enemy.spriteFilter;
-    drawFrame(ctx, enemy.spriteKey, enemy.animFrame, enemy.x, enemy.y, size, size,
-      { rotate: Math.PI + bankAngle });
+    drawEnemyFrame();
     ctx.restore();
   } else {
-    drawFrame(ctx, enemy.spriteKey, enemy.animFrame, enemy.x, enemy.y, size, size,
-      { rotate: Math.PI + bankAngle });
+    drawEnemyFrame();
   }
 
-  if (!isTouchMobile() && enemy.maxHp > 1) {
-    const bw = enemy.size * 1.6;
-    const bh = 4;
-    const bx = enemy.x - bw / 2;
-    const by = enemy.y + enemy.size + 2;
-    ctx.fillStyle = '#1e293b'; ctx.fillRect(bx, by, bw, bh);
-    ctx.fillStyle = enemy.color;
-    ctx.fillRect(bx, by, bw * (enemy.currentHp / enemy.maxHp), bh);
+  // The C-5 source is a single pristine aircraft render. Its rear gun is
+  // animated separately so the body never shifts or changes between frames.
+  if (enemy.c5Boss) {
+    const turretX = enemy.x;
+    const turretY = enemy.y - size * 0.165;
+    const aim = (enemy.b52TurretAim || 0) / 23;
+    const angle = aim * 0.82;
+    const barrelLength = size * 0.042;
+    const barrelGap = size * 0.009;
+    ctx.save();
+    ctx.translate(turretX, turretY);
+    ctx.rotate(-angle);
+    ctx.fillStyle = '#17283a';
+    ctx.beginPath();
+    ctx.arc(0, 0, size * 0.026, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#d7e8f3';
+    ctx.lineWidth = Math.max(1.5, size * 0.006);
+    ctx.lineCap = 'round';
+    for (const offset of [-barrelGap, barrelGap]) {
+      ctx.beginPath();
+      ctx.moveTo(offset, size * 0.004);
+      ctx.lineTo(offset, barrelLength);
+      ctx.stroke();
+    }
+    ctx.restore();
   }
+
+  if (spawnAlpha < 1) ctx.restore();
+
 }
 
 export function drawEngineFire(ctx, aircraftId, cx, cy, tick, bankAngle = 0) {
   const offsets = ENGINE_OFFSETS[aircraftId];
   if (!offsets) return;
   const sz    = getPlayerSize();
-  const fw    = sz * 0.28;
-  const fh    = sz * 0.16;
-  const frame = Math.floor(tick / 3) % 3;
+  const fw    = aircraftId === 'b2' ? sz * 0.2 : sz * 0.28;
+  const fh    = aircraftId === 'b2' ? sz * 0.22 : sz * 0.16;
+  const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
+  const frame = Math.floor((now / 1000) * 30) % 3;
 
   ctx.save();
   ctx.translate(cx, cy);

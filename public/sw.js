@@ -4,7 +4,7 @@
 //   FETCH    — cache-first for all assets; network-first for HTML/JS
 //   ACTIVATE — delete old caches so stale files never linger
 
-const CACHE_VERSION = 'jexongo-v18';
+const CACHE_VERSION = 'jexongo-v37';
 
 // Critical assets cached immediately on first visit
 const PRECACHE = [
@@ -15,11 +15,11 @@ const PRECACHE = [
   '/assets/planes/14-intro-cutout.png',
   '/retropix.otf',
   // Backgrounds
-  '/assets/bg/ocean/bg.png',
-  '/assets/bg/desert/bg.png',
-  '/assets/bg/city/bg.png',
-  '/assets/bg/arctic/bg.png',
-  '/assets/bg/space/bg.png',
+  '/assets/Maps/JexonGo_Map_Ocean/JexonGo_ocean_High_Altitude_1024x8192_seamless.webp',
+  '/assets/Maps/JexonGo_Map_Desert/JexonGo_desert_High_Altitude_1024x8192.webp',
+  '/assets/Maps/JexonGo_Map_Ville/JexonGo_city_High_Altitude_1024x8192.webp',
+  '/assets/Maps/JexonGo_Map_Arctique/JexonGo_arctic_High_Altitude_1024x8192.webp',
+  '/assets/Maps/JexonGo_Map_Espace/JexonGo_space_High_Altitude_1024x8192.webp',
   // Player ships
   '/assets/ships/player/t6.png',
   '/assets/ships/player/pc21.png',
@@ -44,9 +44,9 @@ const PRECACHE = [
   // Music
   '/assets/music/music-menu.mp3',
   '/assets/music/music-game.mp3',
-  '/assets/music/music-shop.mp3',
   '/assets/music/music-arena.mp3',
   '/assets/music/music-ranked.mp3',
+  '/assets/music/boss.mp3',
   // SFX
   '/assets/music/click.mp3',
   '/assets/music/correct.mp3',
@@ -54,7 +54,7 @@ const PRECACHE = [
   '/assets/music/explosion.mp3',
   '/assets/music/shot.mp3',
   '/assets/music/win.mp3',
-  '/assets/music/gameover.mp3',
+  '/assets/music/gameover2.mp3',
   // Menu
   '/assets/menu/lobby-bg.png',
 ];

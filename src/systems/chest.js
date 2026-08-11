@@ -1,4 +1,4 @@
-import { G } from '../state.js';
+import { G, clampCoins } from '../state.js';
 import { AIRCRAFT } from '../data/aircraft.js';
 
 // ── CHEST TIERS (one per 10-level milestone) ──────────────────────────────────
@@ -24,8 +24,8 @@ export const ROULETTE_SLOTS = [
   { id: 'rare',       label: 'RARE PART',      icon: '◈', color: '#60a5fa', rewardType: 'blueprint', rarityIdx: 1 },
   { id: 'epic',       label: 'EPIC PART',      icon: '✦', color: '#a855f7', rewardType: 'blueprint', rarityIdx: 2 },
   { id: 'legendary',  label: 'LEGENDARY PART', icon: '◆', color: '#fbbf24', rewardType: 'blueprint', rarityIdx: 3 },
-  { id: 'xp200',      label: 'BONUS XP',       icon: '⚡', color: '#00e84b', rewardType: 'xp',        xpAmount: 200 },
-  { id: 'xp500',      label: 'MEGA XP',        icon: '★', color: '#fff700', rewardType: 'xp',        xpAmount: 500 },
+  { id: 'xp200',      label: 'BONUS XP',       icon: '<img class="jg-exp-icon" src="/assets/fx/Caisse/JexonGo_EXP_frame_01.png" alt="EXP">', color: '#00e84b', rewardType: 'xp', xpAmount: 200 },
+  { id: 'xp500',      label: 'MEGA XP',        icon: '<img class="jg-exp-icon" src="/assets/fx/Caisse/JexonGo_EXP_frame_01.png" alt="EXP">', color: '#fff700', rewardType: 'xp', xpAmount: 500 },
 ];
 
 // Weights per tier — index matches ROULETTE_SLOTS order above
@@ -82,7 +82,7 @@ function buildRewardFromSlot(slot, tierIdx) {
       type:   'coins',
       rarity: slot.big ? 2 : 1,
       amount,
-      icon:   '◎',
+      icon:   'coin',
       label:  slot.label,
       slotId: slot.id,
     };
@@ -114,7 +114,7 @@ function buildRewardFromSlot(slot, tierIdx) {
       type: 'xp',
       rarity: slot.rarityIdx,
       amount: xpAmounts[slot.rarityIdx] ?? 100,
-      icon: '⚡',
+      icon: '<img class="jg-exp-icon" src="/assets/fx/Caisse/JexonGo_EXP_frame_01.png" alt="EXP">',
       label: 'BONUS XP',
       slotId: slot.id,
     };
@@ -157,7 +157,7 @@ export function applyReward(reward) {
   }
 
   if (reward.type === 'coins') {
-    G.coins = (G.coins || 0) + reward.amount;
+    G.coins = clampCoins((G.coins || 0) + reward.amount);
 
   } else if (reward.type === 'xp') {
     G.xp            = (G.xp            || 0) + reward.amount;
@@ -185,7 +185,7 @@ export function applyReward(reward) {
   return newlyUnlocked;
 }
 
-// Legacy alias so old callers (shop.js) don't break
+// Legacy alias for older chest reward callers.
 export function applyRewards(rewards) {
   let all = [];
   const arr = Array.isArray(rewards) ? rewards : [rewards];

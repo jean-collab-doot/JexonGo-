@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" role="img" aria-label="Gold fighter plane">
+  <rect width="96" height="96" fill="none"/>
+  <g transform="translate(48 50)">
+    <path fill="#120b00" d="M-7-42h14l7 29 10 4v13l34 13v13L17 21l-6 13 12 15v11L5 50H-5l-18 10V49l12-15-6-13-41 9V17L-24 4V-9l10-4z"/>
+    <path fill="#ffd83d" d="M-5-39h10l6 27 8 3V4l31 12v7L14 16 8 31l10 14v5L4 43H-4l-14 7v-5L-8 31l-6-15-36 7v-7L-19 4V-9l8-3z"/>
+    <path fill="#ffae16" d="M-4-32h8l5 23 6 3V3l22 9-25-1-5 14 8 11-12-6H-3l-12 6 8-11-5-14-25 1 22-9v-9l6-3z"/>
+    <path fill="#fff1a8" d="M-2-31h4l4 22 4 2v8L2 0v25h-4V0l-8 1v-8l4-2z"/>
+    <path fill="#6a3e00" d="M-5-39h10l2 8H-7zm-4 59h18L5 34H-5z"/>
+    <path fill="#ffe680" d="M-49 18h9v5h-9zm38 22h5v5h-5zm12 0h5v5H1zm39-22h9v5h-9z"/>
+    <path fill="#fff8cc" d="M-2-28h4l2 11H-4z" opacity=".9"/>
+  </g>
+</svg>

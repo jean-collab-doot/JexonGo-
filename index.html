@@ -54,7 +54,7 @@
 </head>
 <body>
   <!-- AUDIO SPLASH (tap-to-start, guarantees audio unlock) -->
-  <div id="audio-splash" class="audio-splash">
+  <div id="audio-splash" class="audio-splash hidden">
     <div class="audio-splash-inner">
       <div class="audio-splash-logo-wrap">
         <div class="audio-splash-logo">JEXON<span>GO</span></div>
@@ -188,32 +188,17 @@
 
       <div class="sett-divider"></div>
 
-      <div class="sett-controls-title" data-i18n="controls">🕹 CONTROLS</div>
-      <div class="sett-controls-grid">
-        <div class="sett-key-row"><span class="sett-key">← →</span><span class="sett-key-desc" data-i18n="move">MOVE</span></div>
-        <div class="sett-key-row"><span class="sett-key">↑ ↓</span><span class="sett-key-desc" data-i18n="move">MOVE</span></div>
-        <div class="sett-key-row"><span class="sett-key">WASD</span><span class="sett-key-desc" data-i18n="move">MOVE</span></div>
-        <div class="sett-key-row"><span class="sett-key">TAP</span><span class="sett-key-desc" data-i18n="move">MOVE</span></div>
-      </div>
       <button id="btn-change-equations" class="sett-action-btn" type="button">CHANGER LES EQUATIONS</button>
       <button id="btn-replay-briefing" class="sett-action-btn" type="button">REPLAY BRIEFING</button>
+      <div class="settings-legal-links">
+        <button id="btn-menu-privacy" class="menu-privacy-link" type="button" data-i18n="privacyPolicyLink">PRIVACY POLICY</button>
+        <button id="btn-menu-terms" class="menu-privacy-link" type="button" data-i18n="termsPolicyLink">TERMS OF USE</button>
+      </div>
     </div>
   </div>
 
   <!-- MENU SCREEN -->
   <div id="s-menu" class="screen">
-    <video id="menu-bg-video" autoplay loop muted playsinline poster="/assets/menu/lobby-bg.png">
-      <source data-src="/assets/menu/bg-motion-2.mp4" type="video/mp4">
-      <source data-src="/assets/menu/bg-motion-1.mp4" type="video/mp4">
-    </video>
-    <script>
-      (function() {
-        var v = document.getElementById('menu-bg-video');
-        v.querySelectorAll('source[data-src]').forEach(function(s) { s.src = s.dataset.src; });
-        v.load();
-      })();
-    </script>
-    <canvas id="menu-canvas"></canvas>
     <div class="menu-top-left">
       <button id="btn-lang" class="lang-toggle-btn" aria-label="Toggle language">FR</button>
       <button id="btn-feedback-menu" class="feedback-menu-btn" aria-label="Feedback" data-i18n="feedbackBtn">★ FEEDBACK</button>
@@ -238,21 +223,48 @@
       </svg>
     </button>
     <div class="menu-content">
-      <div class="menu-logo-wrap">
-        <div class="menu-logo">JEXON<span class="logo-go">GO</span></div>
-        <div class="mc-splash">V2!</div>
-      </div>
-      <div class="menu-subtitle" data-i18n="subtitle">AERIAL MATH COMBAT</div>
+      <header class="jg-lobby-status">
+        <div class="menu-player-card">
+          <button id="menu-hud-avatar" class="menu-hud-avatar" type="button" aria-label="Connect with Google">G</button>
+          <div class="menu-player-meta">
+            <strong id="menu-hud-name" class="menu-hud-name">PILOT</strong>
+            <div class="menu-xp-track"><span id="menu-hud-xp-fill"></span></div>
+          </div>
+        </div>
+        <div class="menu-resource-row">
+          <div class="menu-resource-chip"><img class="jg-coin-icon" src="/assets/fx/Caisse/JexonGo_Coin_frame_01.png" alt=""><b id="menu-hud-coins">0</b></div>
+          <div class="menu-resource-chip"><img class="jg-exp-icon" src="/assets/fx/Caisse/JexonGo_EXP_frame_01.png" alt="EXP"><b id="menu-hud-xp">0</b></div>
+          <div class="menu-resource-chip menu-level-chip">
+            <span>LV</span><b id="menu-hud-level">1/50</b>
+            <div class="menu-level-progress" aria-hidden="true"><i id="menu-level-progress-fill"></i></div>
+          </div>
+        </div>
+      </header>
+      <main class="jg-lobby-deck">
+        <section class="menu-plane-showcase">
+          <div class="jg-hangar-frame"><i></i><i></i><i></i><i></i></div>
+          <div class="menu-plane-ring"></div>
+          <img id="menu-selected-plane" class="menu-selected-plane" src="/assets/hangar/t6.png" alt="Selected aircraft">
+        </section>
+        <div class="menu-widget menu-season-card">
+          <span class="menu-widget-title">LEVEL</span>
+          <div class="menu-season-medal">✦</div>
+          <div class="menu-season-bar"><span id="menu-season-fill"></span></div>
+          <small id="menu-season-text" class="menu-widget-small">1 / 50</small>
+        </div>
+      </main>
       <div id="menu-rank-badge" class="menu-rank-badge"></div>
       <div id="menu-playtime-dashboard" class="menu-playtime-dashboard"></div>
 
       <button id="btn-play" class="btn btn-primary" data-i18n="play">PLAY</button>
-      <button id="btn-hangar" class="btn btn-secondary" data-i18n="hangar">HANGAR</button>
-      <button id="btn-shop" class="btn btn-secondary" data-i18n="shop">SHOP</button>
-      <button id="btn-practice" class="btn btn-secondary" data-i18n="practice">PRACTICE</button>
-      <button id="btn-missions" class="btn btn-secondary btn-missions-menu">MISSIONS</button>
-      <button id="btn-prestige" class="btn btn-prestige hidden">PRESTIGE</button>
-      <div id="menu-prestige-badge" class="menu-prestige-badge"></div>
+      <div class="jg-lobby-nav-controls">
+        <div class="jg-lobby-nav-art" aria-hidden="true"></div>
+        <button id="btn-missions" class="btn btn-secondary btn-missions-menu" data-i18n="missions">MISSIONS</button>
+        <button id="btn-hangar" class="btn btn-secondary" data-i18n="hangar">HANGAR</button>
+        <div class="jg-lobby-nav-home" role="button" tabindex="0" aria-label="Lobby"></div>
+        <button id="btn-shop" class="btn btn-secondary" data-i18n="shop">SHOP</button>
+        <button id="btn-practice" class="btn btn-secondary" data-i18n="practice">PRACTICE</button>
+      </div>
 
       <div class="login-divider"><span>— SIGN IN —</span></div>
 
@@ -260,11 +272,6 @@
         <span class="login-icon login-game-icon">G</span>
         <span class="login-btn-text" data-i18n="signInGoogle">SIGN IN WITH GOOGLE</span>
       </button>
-      <div class="menu-legal-links">
-        <button id="btn-menu-privacy" class="menu-privacy-link" type="button" data-i18n="privacyPolicyLink">PRIVACY POLICY</button>
-        <button id="btn-menu-terms" class="menu-privacy-link" type="button" data-i18n="termsPolicyLink">TERMS OF USE</button>
-      </div>
-
     </div>
   </div>
 
@@ -272,8 +279,7 @@
   <div id="s-levelmap" class="screen hidden">
     <div class="top-bar">
       <button id="btn-map-back" class="btn-icon">&#8592;</button>
-      <span class="top-bar-title" data-i18n="selectMission">SELECT MISSION</span>
-      <span id="map-xp-display" class="xp-badge">0 XP</span>
+        <span id="map-xp-display" class="xp-badge"><img class="jg-coin-icon" src="/assets/fx/Caisse/JexonGo_Coin_frame_01.png" alt=""> 0 &nbsp; <img class="jg-exp-icon" src="/assets/fx/Caisse/JexonGo_EXP_frame_01.png" alt="EXP"> 0</span>
     </div>
     <div id="levelmap-scroll">
       <div id="levelmap-nodes"></div>
@@ -283,16 +289,35 @@
   <!-- GAME SCREEN -->
   <div id="s-game" class="screen hidden">
     <div id="game-hud">
-      <div id="hud-lives"></div>
+      <div id="hud-left-cluster">
+        <div id="hud-lives"></div>
+        <div id="hud-currency">
+          <span class="hud-currency-item"><img src="/assets/fx/Caisse/JexonGo_Coin_frame_01.png" alt="Coins"><b id="hud-coins-count">0</b></span>
+          <span class="hud-currency-item"><img src="/assets/fx/Caisse/JexonGo_EXP_frame_01.png" alt="EXP"><b id="hud-xp-count">0</b></span>
+        </div>
+      </div>
       <div id="hud-level">Level 1</div>
-      <div id="hud-prestige" class="hud-prestige-slot"></div>
       <div id="hud-streak"></div>
       <div id="hud-godmode" class="hud-godmode hidden">∞ INFINITE LIVES</div>
       <button id="btn-quit-game" class="btn-quit-game" data-i18n="quit">&#x2715; QUIT</button>
     </div>
     <div id="timer-bar-wrap"><div id="timer-bar"></div></div>
+    <div id="boss-health-wrap" class="hidden" aria-label="Boss health">
+      <span id="boss-health-name">A330 MRTT</span>
+      <div id="boss-health-track"><div id="boss-health-fill"></div></div>
+      <span id="boss-health-value">0 / 0</span>
+    </div>
     <div id="game-canvas-wrap">
       <canvas id="game-canvas"></canvas>
+      <button id="btn-player-shield" class="player-shield-button hidden" type="button" aria-label="Activate shield">
+        <span class="player-shield-icon">&#x1F6E1;</span>
+        <span id="player-shield-status">SHIELD</span>
+      </button>
+      <div id="boss-dialogue" class="boss-dialogue hidden" role="status" aria-live="polite">
+        <span id="boss-dialogue-speaker" class="boss-dialogue-speaker"></span>
+        <span id="boss-dialogue-text" class="boss-dialogue-text"></span>
+        <button id="boss-dialogue-continue" class="boss-dialogue-continue" type="button">CONTINUE</button>
+      </div>
       <div id="tutorial-hud" class="tutorial-hud hidden">
         <div class="tutorial-hud-top">
           <span id="tutorial-round-label">TUTORIAL</span>
@@ -314,6 +339,8 @@
           <div class="car-step" id="car-step1"></div>
           <div class="car-step" id="car-step2"></div>
           <div class="car-step" id="car-step3"></div>
+          <div class="car-step" id="car-step4"></div>
+          <div class="car-step" id="car-step5"></div>
           <button id="btn-correction-continue" class="correction-continue-btn" type="button">CONTINUE</button>
         </div>
       </div>
@@ -325,10 +352,9 @@
     <div class="top-bar">
       <button id="btn-hangar-back" class="btn-icon">&#8592;</button>
       <span class="top-bar-title" data-i18n="hangarTitle">HANGAR</span>
-      <span id="hangar-xp" class="xp-badge">0 XP</span>
+      <span id="hangar-xp" class="xp-badge"><img class="jg-exp-icon" src="/assets/fx/Caisse/JexonGo_EXP_frame_01.png" alt="EXP"> 0</span>
     </div>
     <div id="hangar-grid"></div>
-    <div id="hangar-livery-panel" class="hangar-livery-panel hidden"></div>
   </div>
 
   <!-- RESULT SCREEN -->
@@ -359,32 +385,40 @@
     <button id="btn-chest-continue" class="btn btn-secondary hidden" data-i18n="continueBtn">CONTINUE</button>
   </div>
 
-  <!-- SHOP SCREEN -->
+  <!-- STORE SCREEN -->
   <div id="s-shop" class="screen hidden">
-
-    <!-- Top bar -->
-    <div class="shop-topbar">
-      <button id="btn-shop-back" class="shop-back-btn">&#8592;</button>
-      <span class="shop-topbar-title" data-i18n="shop_title">SHOP</span>
-      <div class="shop-currencies">
-        <span id="shop-coins" class="shop-currency-badge shop-currency-coins">◎ <span id="shop-coins-val">0</span></span>
+    <div class="shop-app-shell">
+      <div class="shop-status-row">
+        <button id="btn-shop-back" class="shop-round-btn" aria-label="Back">←</button>
       </div>
+
+      <div class="shop-hero">
+        <div>
+          <p class="shop-eyebrow">JEXONGO</p>
+          <h1 class="shop-title" data-i18n="shopTitle">STORE</h1>
+        </div>
+        <div class="shop-wallet-card">
+          <span><img class="jg-coin-icon" src="/assets/fx/Caisse/JexonGo_Coin_frame_01.png" alt="" aria-hidden="true"> <b id="shop-coins-val">0</b></span>
+          <span><img class="jg-exp-icon" src="/assets/fx/Caisse/JexonGo_EXP_frame_01.png" alt="EXP"> <b id="shop-xp-val">0</b></span>
+        </div>
+      </div>
+
+      <div class="shop-search-row">
+        <label class="shop-search-box">
+          <span>⌕</span>
+          <input id="shop-search" type="search" autocomplete="off" data-i18n-placeholder="shopSearch" placeholder="Search store...">
+        </label>
+      </div>
+
+      <div id="shop-content" class="shop-content"></div>
     </div>
 
-    <!-- Scrollable content -->
-    <div id="shop-content" class="shop-content"></div>
-    <div id="shop-error" class="shop-error-bar"></div>
-
-    <!-- Bottom tab bar -->
     <div class="shop-tabbar">
-      <button class="shop-tab shop-tab-active" data-tab="offers">
-        <span class="shop-tab-icon">✦</span><span class="shop-tab-label" data-i18n="offers">OFFERS</span>
+      <button class="shop-tab shop-tab-active" data-tab="featured" type="button">
+        <span class="shop-tab-icon"><img src="/assets/fx/Missile/jexongo-shop-icon-missile.png" alt="" aria-hidden="true"></span><span class="shop-tab-label" data-i18n="shopTabFeatured">FEATURED</span>
       </button>
-      <button class="shop-tab" data-tab="skins">
-        <span class="shop-tab-icon">✈</span><span class="shop-tab-label" data-i18n="skins">SKINS</span>
-      </button>
-      <button class="shop-tab" data-tab="more">
-        <span class="shop-tab-icon">⋯</span><span class="shop-tab-label" data-i18n="more">MORE</span>
+      <button class="shop-tab" data-tab="rewards" type="button">
+        <span class="shop-tab-icon"><img src="/assets/fx/jexongo-shop-icon-tir.png" alt="" aria-hidden="true"></span><span class="shop-tab-label" data-i18n="shopTabRewards">MISSILES</span>
       </button>
     </div>
   </div>
@@ -422,13 +456,13 @@
   <div id="s-ranked-intro" class="screen hidden">
     <div class="intro-vs-wrap">
       <div class="intro-side intro-side-left">
-        <div class="intro-avatar intro-avatar-player">✈</div>
+        <div class="intro-avatar intro-avatar-player"><img class="jg-plane-icon jg-plane-icon-large" src="/assets/planes/14.png" alt=""></div>
         <div id="intro-player-name" class="intro-name">YOU</div>
         <div id="intro-player-rank" class="intro-rank"></div>
       </div>
       <div class="intro-vs-badge">VS</div>
       <div class="intro-side intro-side-right">
-        <div class="intro-avatar intro-avatar-opp">✈</div>
+        <div class="intro-avatar intro-avatar-opp"><img class="jg-plane-icon jg-plane-icon-large" src="/assets/planes/14.png" alt=""></div>
         <div id="intro-opp-name" class="intro-name"></div>
         <div id="intro-opp-rank" class="intro-rank"></div>
       </div>
@@ -567,7 +601,7 @@
       </div>
     </div>
     <div id="briefing-star-criteria" class="briefing-star-criteria"></div>
-    <button id="btn-briefing-fly" class="briefing-fly-btn" data-i18n="fly">✈ FLY!</button>
+    <button id="btn-briefing-fly" class="briefing-fly-btn" data-i18n="fly">FLY!</button>
   </div>
 
   <!-- GAME OVER SCREEN -->
@@ -970,37 +1004,6 @@
     </div>
   </div>
 
-  <!-- PRESTIGE CONFIRM MODAL -->
-  <div id="prestige-modal" class="sett-backdrop hidden">
-    <div class="prestige-modal-panel">
-      <div class="prestige-modal-title">⚡ PRESTIGE</div>
-      <img id="prestige-modal-img" class="prestige-modal-img hidden" src="" alt="">
-      <div id="prestige-modal-tier" class="prestige-modal-tier"></div>
-      <div id="prestige-modal-reward" class="prestige-modal-reward"></div>
-      <div class="prestige-modal-list">
-        <div class="prestige-modal-keep">✓ Aircraft · Skins · Prestige Rewards</div>
-        <div class="prestige-modal-reset">✗ Level · XP · Coins</div>
-      </div>
-      <div class="prestige-modal-actions">
-        <button id="btn-prestige-confirm" class="btn btn-primary">⚡ PRESTIGE NOW</button>
-        <button id="btn-prestige-cancel" class="btn btn-secondary">CANCEL</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- PRESTIGE CELEBRATION -->
-  <div id="prestige-celebration" class="prestige-celebration hidden">
-    <canvas id="prestige-canvas" class="prestige-canvas"></canvas>
-    <div id="prestige-cel-number" class="prestige-cel-number"></div>
-    <div class="prestige-cel-content">
-      <div class="prestige-cel-flash">⚡ PRESTIGE!</div>
-      <img id="prestige-cel-img" class="prestige-cel-img hidden" src="" alt="">
-      <div id="prestige-cel-tier" class="prestige-cel-tier"></div>
-      <div id="prestige-cel-reward" class="prestige-cel-reward"></div>
-      <div class="prestige-cel-hint">TAP TO CONTINUE</div>
-    </div>
-  </div>
-
   <!-- PILOT PROFILE SCREEN -->
   <div id="s-profile" class="screen hidden">
     <div class="top-bar">
@@ -1023,7 +1026,7 @@
           <div class="pc-info">
             <div id="pc-name"    class="pc-name">PILOT</div>
             <div id="pc-grade"   class="pc-grade">▷  CADET</div>
-            <div id="pc-rank"    class="pc-rank">◎ 0 XP</div>
+            <div id="pc-rank"    class="pc-rank"><img class="jg-exp-icon" src="/assets/fx/Caisse/JexonGo_EXP_frame_01.png" alt="EXP"> 0</div>
           </div>
         </div>
         <div id="pc-motto" class="pc-motto"></div>

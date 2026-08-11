@@ -1,20 +1,19 @@
 import { $, showScreen } from '../utils/dom.js';
-import { G, loadSave, saveAll } from '../state.js';
+import { G, loadSave, saveAll, clampCoins, MAX_COINS } from '../state.js';
 import { LOGIN_REWARDS, claimDailyReward, getMissions, claimMission,
          hasPendingMissionClaim, getPlayerRank,
          getSr71MissionState, claimSr71Mission,
          getPlayMinuteStats, getMonthlyConfigChallenge } from '../systems/daily.js';
 import { clearAll, save, load } from '../utils/storage.js';
 import { AIRCRAFT } from '../data/aircraft.js';
-import { SKINS } from '../data/skins.js';
 import { getPilotInfo } from '../data/pilots.js';
-import { getPrestigeTier, getPrestigeBadgeHTML } from '../data/prestige.js';
 import { t, getLang, setLang, applyI18n } from '../i18n.js';
 import { isPhone, isTouchMobile, touchMenuCanvasDpr } from '../utils/device.js';
 import { syncAccountFromCloud, deleteCloudSave, flushCloudSave, fetchCloudSave,
          mergeSaveSnapshots, exportSaveSnapshot, applySaveSnapshot } from '../systems/cloud-save.js';
 import { signInWithEmail, signOutSupabase } from '../systems/supabase-client.js';
 import { SFX } from '../audio/sound.js';
+import { coinIcon, expIcon } from '../utils/icons.js';
 
 // ── GOOGLE SIGN-IN ───────────────────────────────────────────────────────────
 const GOOGLE_CLIENT_ID = '182729505930-rulb73m14t9qvfpjfbplknrcgn0fqvci.apps.googleusercontent.com';
@@ -148,10 +147,6 @@ function _updateProfile() {
   if (loginDiv) loginDiv.style.display = isLoggedIn ? 'none' : '';
   if (gBtn)     { gBtn.style.display   = isLoggedIn ? 'none' : ''; gBtn.classList.toggle('hidden', isLoggedIn); }
   if (authRow)  authRow.style.display  = isLoggedIn ? 'none' : '';
-
-  // P2 blue profile border
-  const avatarBtn = document.getElementById('btn-menu-profile-avatar');
-  if (avatarBtn) avatarBtn.classList.toggle('prestige-border-p2', G.prestige >= 2);
 
   document.getElementById('menu-profile-dropdown')?.classList.add('hidden');
 }
@@ -331,6 +326,7 @@ let _raf         = null;
 let _tick        = 0;
 let _activeVid   = 'v1'; // which video is currently primary
 let _xfadeT      = -1;   // -1 = idle, 0..1 = crossfade progress
+let _lastMenuRender = 0;
 
 function loadAssets() {
   if (_planeImg) return;
@@ -560,24 +556,6 @@ function drawTick() {
         for (const s of p.smoke) s.alpha -= 0.04 * (1 - fadeRatio);
       }
 
-      const engineY  = p.y + drawH * 0.79;
-      const engineLX = bx + drawW * 0.47;
-      const engineRX = bx + drawW * 0.53;
-
-      if (!isPhone() && _tick % 3 === 0 && p.y < cH && p.y + drawH > 0) {
-        spawnSmoke(p, engineLX, engineY);
-        spawnSmoke(p, engineLX, engineY);
-        spawnSmoke(p, engineRX, engineY);
-        spawnSmoke(p, engineRX, engineY);
-      }
-
-      if (!isPhone()) updateDrawSmoke(ctx, p);
-
-      if (!isPhone() && p.y < cH && p.y + drawH > 0) {
-        drawEngineFire(ctx, engineLX, engineY, drawW * 0.06);
-        drawEngineFire(ctx, engineRX, engineY, drawW * 0.06);
-      }
-
       ctx.save();
       ctx.imageSmoothingEnabled = true;
       ctx.globalCompositeOperation = 'multiply';
@@ -587,6 +565,22 @@ function drawTick() {
   }
 
   _raf = requestAnimationFrame(drawTick);
+}
+
+function _ensureMenuAnimation() {
+  const menu = document.getElementById('s-menu');
+  if (!menu || menu.classList.contains('hidden')) return;
+
+  const vid = document.getElementById('menu-bg-video');
+  if (vid) {
+    vid.style.opacity = vid.style.opacity || '1';
+    if ((vid.paused || vid.ended) && document.visibilityState !== 'hidden') {
+      if (vid.ended) vid.currentTime = 0;
+      vid.play().catch(() => {});
+    }
+  }
+
+  if (!_raf) _raf = requestAnimationFrame(drawTick);
 }
 
 // ── LANGUAGE ─────────────────────────────────────────────────────────────────
@@ -653,51 +647,6 @@ function _initMenuSections() {
 }
 
 // ── PRESTIGE ─────────────────────────────────────────────────────────────────
-function _canPrestige() {
-  return !!G.playerRegistered
-    && !!G.playerEmail
-    && (G.highestLevel || 0) >= 50
-    && (G.prestige || 0) < 5;
-}
-
-function _updatePrestigeBadge() {
-  const badgeEl = document.getElementById('menu-prestige-badge');
-  if (badgeEl) badgeEl.innerHTML = getPrestigeBadgeHTML(G.prestige);
-
-  const btn = document.getElementById('btn-prestige');
-  if (btn) btn.classList.toggle('hidden', !_canPrestige());
-}
-
-function _openPrestigeConfirm() {
-  if (!_canPrestige()) {
-    _showToast(t('loginRequired') || 'Connecte-toi pour utiliser Prestige.');
-    _updatePrestigeBadge();
-    return;
-  }
-  const nextP  = G.prestige + 1;
-  const tier   = getPrestigeTier(nextP);
-  const tierEl = document.getElementById('prestige-modal-tier');
-  const rewEl  = document.getElementById('prestige-modal-reward');
-  const imgEl  = document.getElementById('prestige-modal-img');
-  if (tierEl) { tierEl.textContent = tier.name; tierEl.style.color = tier.color || '#ffffff'; }
-  if (rewEl)  rewEl.textContent = `✦ REWARD: ${tier.rewardDesc}`;
-  if (imgEl) {
-    if (tier.img) {
-      imgEl.src = tier.img;
-      imgEl.style.borderColor = tier.color || '#fff';
-      imgEl.style.boxShadow   = `0 0 30px ${tier.color || '#fff'}88`;
-      imgEl.classList.remove('hidden');
-    } else {
-      imgEl.classList.add('hidden');
-    }
-  }
-  document.getElementById('prestige-modal')?.classList.remove('hidden');
-}
-
-function _closePrestigeModal() {
-  document.getElementById('prestige-modal')?.classList.add('hidden');
-}
-
 function _openResetConfirm() {
   document.getElementById('reset-modal')?.classList.remove('hidden');
 }
@@ -720,183 +669,6 @@ function _doReset() {
   renderMenu();
 }
 
-function _doPrestige() {
-  if (!_canPrestige()) {
-    _closePrestigeModal();
-    _showToast(t('loginRequired') || 'Connecte-toi pour utiliser Prestige.');
-    _updatePrestigeBadge();
-    return;
-  }
-  _closePrestigeModal();
-  G.prestige++;
-  const tier = getPrestigeTier(G.prestige);
-  if (tier.skinReward && !G.ownedSkins.includes(tier.skinReward)) {
-    G.ownedSkins.push(tier.skinReward);
-    save('ownedSkins', G.ownedSkins);
-  }
-  G.xp           = 0;
-  G.coins        = 0;
-  G.highestLevel = 0;
-  save('prestige',      G.prestige);
-  save('xp',            0);
-  save('coins',         0);
-  save('highestLevel',  0);
-  _showPrestigeCelebration(tier);
-}
-
-function _showPrestigeCelebration(tier) {
-  const overlay = document.getElementById('prestige-celebration');
-  if (!overlay) { renderMenu(); return; }
-
-  // Big background rank number
-  const numEl = document.getElementById('prestige-cel-number');
-  if (numEl) {
-    numEl.textContent = `P${G.prestige}`;
-    numEl.style.color = tier.color || '#fff';
-  }
-
-  // Tier image
-  const celImgEl = document.getElementById('prestige-cel-img');
-  if (celImgEl) {
-    if (tier.img) {
-      celImgEl.src = tier.img;
-      celImgEl.style.borderColor = tier.color || '#fff';
-      celImgEl.style.boxShadow   = `0 0 40px ${tier.color || '#fff'}aa, 0 0 80px ${tier.color || '#fff'}44`;
-      celImgEl.classList.remove('hidden');
-    } else {
-      celImgEl.classList.add('hidden');
-    }
-  }
-
-  const titleEl = document.getElementById('prestige-cel-tier');
-  const rewEl   = document.getElementById('prestige-cel-reward');
-  if (titleEl) {
-    titleEl.textContent = `✦ ${tier.name}`;
-    if (tier.color) {
-      titleEl.style.color      = tier.color;
-      titleEl.style.textShadow = `0 0 40px ${tier.color}, 0 0 90px ${tier.color}88`;
-      titleEl.classList.remove('prestige-badge-rainbow');
-    } else {
-      titleEl.style.color = '';
-      titleEl.classList.add('prestige-badge-rainbow');
-    }
-  }
-  if (rewEl) rewEl.textContent = tier.rewardDesc || '';
-  overlay.classList.remove('hidden');
-
-  // White flash on entry
-  overlay.style.background = 'rgba(255,255,255,0.95)';
-  setTimeout(() => { overlay.style.background = ''; }, 150);
-
-  const canvas = document.getElementById('prestige-canvas');
-  let raf;
-  if (canvas) {
-    canvas.width  = window.innerWidth;
-    canvas.height = window.innerHeight;
-    const ctx = canvas.getContext('2d');
-    const COLORS = tier.color
-      ? [tier.color, '#fff', '#fbbf24', '#fff', tier.color, '#e2e8f0']
-      : ['#ff2277', '#ff8c00', '#ffe600', '#00e84b', '#00e8ff', '#a855f7'];
-
-    // 250 confetti pieces — 3 shapes
-    const pieces = Array.from({ length: 250 }, () => ({
-      x:     Math.random() * canvas.width,
-      y:     Math.random() * canvas.height - canvas.height * 1.5,
-      vx:    (Math.random() - 0.5) * 5,
-      vy:    3 + Math.random() * 8,
-      size:  5 + Math.random() * 14,
-      color: COLORS[Math.floor(Math.random() * COLORS.length)],
-      rot:   Math.random() * Math.PI * 2,
-      rotV:  (Math.random() - 0.5) * 0.25,
-      shape: Math.floor(Math.random() * 3), // 0=rect 1=diamond 2=star
-      alpha: 0.75 + Math.random() * 0.25,
-    }));
-
-    // Expanding shockwave rings from center
-    const cx = canvas.width / 2, cy = canvas.height / 2;
-    const maxR = Math.sqrt(cx * cx + cy * cy) * 1.25;
-    const rings = [
-      { r: 0, speed: 14, w: 7, alpha: 0.9, color: tier.color || '#fff',    delay: 0  },
-      { r: 0, speed: 9,  w: 5, alpha: 0.7, color: tier.color || '#a855f7', delay: 10 },
-      { r: 0, speed: 6,  w: 3, alpha: 0.5, color: '#fbbf24',               delay: 22 },
-    ];
-
-    function drawStar(x, y, r) {
-      ctx.beginPath();
-      for (let i = 0; i < 5; i++) {
-        const a  = (i * 4 * Math.PI) / 5 - Math.PI / 2;
-        const ai = a + Math.PI / 5;
-        if (i === 0) ctx.moveTo(x + r * Math.cos(a), y + r * Math.sin(a));
-        else         ctx.lineTo(x + r * Math.cos(a), y + r * Math.sin(a));
-        ctx.lineTo(x + r * 0.42 * Math.cos(ai), y + r * 0.42 * Math.sin(ai));
-      }
-      ctx.closePath();
-    }
-
-    let frame = 0;
-    const start = Date.now();
-    function tick() {
-      frame++;
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      // Rings
-      for (const ring of rings) {
-        if (frame < ring.delay) continue;
-        ring.r += ring.speed;
-        if (ring.r < maxR) {
-          const a = ring.alpha * (1 - ring.r / maxR);
-          ctx.save();
-          ctx.globalAlpha = a;
-          ctx.strokeStyle = ring.color;
-          ctx.lineWidth   = ring.w;
-          ctx.beginPath();
-          ctx.arc(cx, cy, ring.r, 0, Math.PI * 2);
-          ctx.stroke();
-          ctx.restore();
-        }
-      }
-
-      // Confetti
-      for (const p of pieces) {
-        p.x += p.vx; p.y += p.vy; p.rot += p.rotV;
-        if (p.y > canvas.height + 20) { p.y = -20; p.x = Math.random() * canvas.width; }
-        ctx.save();
-        ctx.translate(p.x, p.y);
-        ctx.rotate(p.rot);
-        ctx.fillStyle  = p.color;
-        ctx.globalAlpha = p.alpha;
-        if (p.shape === 0) {
-          ctx.fillRect(-p.size / 2, -p.size / 4, p.size, p.size / 2);
-        } else if (p.shape === 1) {
-          ctx.beginPath();
-          ctx.moveTo(0, -p.size / 2);
-          ctx.lineTo(p.size / 2, 0);
-          ctx.lineTo(0,  p.size / 2);
-          ctx.lineTo(-p.size / 2, 0);
-          ctx.closePath();
-          ctx.fill();
-        } else {
-          drawStar(0, 0, p.size / 2);
-          ctx.fill();
-        }
-        ctx.restore();
-      }
-
-      if (Date.now() - start < 7000) raf = requestAnimationFrame(tick);
-      else dismiss();
-    }
-    raf = requestAnimationFrame(tick);
-  }
-
-  function dismiss() {
-    cancelAnimationFrame(raf);
-    overlay.classList.add('hidden');
-    overlay.style.background = '';
-    renderMenu();
-  }
-  overlay.onclick = dismiss;
-  setTimeout(dismiss, 7000);
-}
 
 // ── PUBLIC API ────────────────────────────────────────────────────────────────
 export function initMenu(nav) {
@@ -906,6 +678,26 @@ export function initMenu(nav) {
   $('btn-hangar').onclick  = () => nav.toHangar();
   $('btn-shop').onclick    = () => nav.toShop();
   $('btn-practice').onclick = () => openPracticeSelect(nav);
+  const navArt = document.querySelector('.jg-lobby-nav-art');
+  const navStates = {
+    'btn-missions': '/assets/hangar/JexonGo_Navigation_Buttons/JexonGo_Navigation_Buttons/JexonGo_Nav_Mission_Active.png',
+    'btn-hangar': '/assets/hangar/JexonGo_Navigation_Buttons/JexonGo_Navigation_Buttons/JexonGo_Nav_Hangar_Active.png',
+    'btn-shop': '/assets/hangar/JexonGo_Navigation_Buttons/JexonGo_Navigation_Buttons/JexonGo_Nav_Shop_Active.png',
+    'btn-practice': '/assets/hangar/JexonGo_Navigation_Buttons/JexonGo_Navigation_Buttons/JexonGo_Nav_Practice_Active.png',
+  };
+  const lobbyNavImage = '/assets/hangar/JexonGo_Navigation_Buttons/JexonGo_Navigation_Buttons/JexonGo_Nav_Lobby_Active.png';
+  Object.entries(navStates).forEach(([id, image]) => {
+    const button = document.getElementById(id);
+    if (!button || !navArt) return;
+    button.addEventListener('pointerdown', () => { navArt.style.backgroundImage = `url('${image}')`; });
+  });
+  document.querySelector('.jg-lobby-nav-home')?.addEventListener('pointerdown', () => {
+    if (navArt) navArt.style.backgroundImage = `url('${lobbyNavImage}')`;
+  });
+  const hudAvatar = document.getElementById('menu-hud-avatar');
+  if (hudAvatar) hudAvatar.onclick = () => {
+    if (!G.playerRegistered) _handleLogin('google');
+  };
   const googleBtn = document.getElementById('btn-login-google');
   if (googleBtn) googleBtn.onclick = () => _handleLogin('google');
 
@@ -942,14 +734,6 @@ export function initMenu(nav) {
   _makePwToggle('btn-login-pw-toggle', 'login-modal-password');
   _makePwToggle('btn-reg-pw-toggle',   'reg-password');
   _makePwToggle('btn-reg-confirm-pw-toggle', 'reg-password-confirm');
-
-  const prestigeBtn = document.getElementById('btn-prestige');
-  if (prestigeBtn) prestigeBtn.onclick = _openPrestigeConfirm;
-  document.getElementById('btn-prestige-confirm')?.addEventListener('click', _doPrestige);
-  document.getElementById('btn-prestige-cancel')?.addEventListener('click', _closePrestigeModal);
-  document.getElementById('prestige-modal')?.addEventListener('click', e => {
-    if (e.target === document.getElementById('prestige-modal')) _closePrestigeModal();
-  });
 
   document.getElementById('btn-reset-confirm')?.addEventListener('click', _doReset);
   document.getElementById('btn-reset-cancel')?.addEventListener('click', _closeResetModal);
@@ -1017,21 +801,6 @@ export function initMenu(nav) {
     if (!k) return;
     _ct.set(k, Date.now());
 
-    // 1 + 8 + M → prestige up
-    if (_held('1','8','m')) {
-      _clearKeys('1','8','m');
-      if (G.prestige < 5) _doPrestige();
-    }
-    // 1 + 9 + L → prestige down
-    if (_held('1','9','l')) {
-      _clearKeys('1','9','l');
-      if (G.prestige > 0) {
-        G.prestige--;
-        save('prestige', G.prestige);
-        _showToast('Prestige → P' + G.prestige);
-        renderMenu();
-      }
-    }
     // P + 0 + L → reset everything (with confirmation)
     if (_held('p','0','l')) {
       _clearKeys('p','0','l');
@@ -1053,19 +822,20 @@ export function initMenu(nav) {
       _showToast('All 50 levels unlocked');
       renderMenu();
     }
-    // B + H + Q + A → +5000 coins
+    // B + H + Q + A -> fill coins to the maximum.
     if (_held('b','h','q','a')) {
       _clearKeys('b','h','q','a');
-      if (!G.playerRegistered) {
-        _showToast(getLang() === 'fr' ? 'Connexion requise' : 'Sign in required');
-        return;
-      }
-      G.coins = (G.coins || 0) + 5000;
-      save('coins', G.coins);
-      _showToast('◎ +5000 coins');
-      renderMenu();
+      _grantDevCoins();
     }
   });
+}
+
+function _grantDevCoins(amount = MAX_COINS) {
+  G.coins = clampCoins((G.coins || 0) + amount);
+  save('coins', G.coins);
+  saveAll();
+  _showToast(`+${amount.toLocaleString()} coins`);
+  renderMenu();
 }
 
 let _toastTimer = null;
@@ -1160,20 +930,25 @@ function openPracticeSelect(nav) {
 }
 
 export function renderMenu() {
+  const now = Date.now();
+  const softRefresh = now - _lastMenuRender < 1200;
+  _lastMenuRender = now;
   for (const p of PLANES) { p.y = null; p.smoke = []; }
   _cloudXs   = null;
-  _tick      = 0;
-  _activeVid = 'v1';
-  _xfadeT    = -1;
+  if (!softRefresh) {
+    _tick      = 0;
+    _activeVid = 'v1';
+    _xfadeT    = -1;
+  }
 
   const vid  = document.getElementById('menu-bg-video');
   const vid2 = document.getElementById('menu-bg-video2');
   if (vid)  {
     vid.style.opacity = '1';
-    vid.currentTime = 0;
+    if (!softRefresh) vid.currentTime = 0;
     vid.play().catch(() => {});
   }
-  if (vid2) { vid2.style.opacity = '0'; vid2.currentTime = 0; vid2.pause(); }
+  if (vid2 && !softRefresh) { vid2.style.opacity = '0'; vid2.currentTime = 0; vid2.pause(); }
 
   if (_raf) { cancelAnimationFrame(_raf); _raf = null; }
   _raf = requestAnimationFrame(drawTick);
@@ -1181,7 +956,6 @@ export function renderMenu() {
   _updateRankBadge();
   _updateLobbyDashboard();
   _updateMissionsBadge();
-  _updatePrestigeBadge();
   _updateProfile();
   _applyLang();
 
@@ -1207,7 +981,11 @@ export function renderMenu() {
   }
   const googleBtn = document.getElementById('btn-login-google');
   if (googleBtn) googleBtn.classList.toggle('login-important', !!G.postTutorialConnectPrompt && !G.playerRegistered && guestTrialUsed);
+  _ensureMenuAnimation();
 }
+
+document.addEventListener('visibilitychange', _ensureMenuAnimation);
+window.addEventListener('focus', _ensureMenuAnimation);
 
 function _updateRankBadge() {
   const el = document.getElementById('menu-rank-badge');
@@ -1218,7 +996,7 @@ function _updateRankBadge() {
     <span class="mrb-avatar" style="color:${tier.color};text-shadow:0 0 10px ${tier.color}">${tier.avatar}</span>
     <span style="color:${tier.color}">${tier.name}</span>
     <div class="mrb-xp-bar-wrap"><div class="mrb-xp-bar" style="width:${pct}%;background:${tier.color}"></div></div>
-    <span class="mrb-rank">${(G.xp || 0).toLocaleString()} XP</span>
+    <span class="mrb-rank">${expIcon()} ${(G.xp || 0).toLocaleString()}</span>
   `;
 }
 
@@ -1231,6 +1009,7 @@ function _updateLobbyDashboard() {
   const coinsEl = document.getElementById('menu-hud-coins');
   const xpEl = document.getElementById('menu-hud-xp');
   const levelEl = document.getElementById('menu-hud-level');
+  const levelProgressFill = document.getElementById('menu-level-progress-fill');
   const seasonFill = document.getElementById('menu-season-fill');
   const seasonText = document.getElementById('menu-season-text');
   const dailyPreview = document.getElementById('menu-daily-preview');
@@ -1240,16 +1019,23 @@ function _updateLobbyDashboard() {
   if (widgetTitles[0]) widgetTitles[0].textContent = getLang() === 'fr' ? 'NIVEAU' : 'LEVEL';
   if (widgetTitles[1]) widgetTitles[1].textContent = getLang() === 'fr' ? 'DEFIS QUOTIDIENS' : 'DAILY MISSIONS';
 
-  if (nameEl) nameEl.textContent = (G.playerName && G.playerName !== 'PILOT') ? G.playerName : tier.name;
+  if (nameEl) nameEl.textContent = !G.playerRegistered
+    ? (getLang() === 'fr' ? 'CONNEXION' : 'CONNECT')
+    : ((G.playerName && G.playerName !== 'PILOT') ? G.playerName : tier.name);
   if (avatarEl) {
-    avatarEl.textContent = (G.playerName || tier.name || 'P')[0].toUpperCase();
-    avatarEl.style.color = tier.color || '#06101f';
+    const guest = !G.playerRegistered;
+    avatarEl.textContent = guest ? 'G' : (G.playerName || tier.name || 'P')[0].toUpperCase();
+    avatarEl.classList.toggle('menu-hud-avatar-connect', guest);
+    avatarEl.setAttribute('aria-label', guest ? 'Connect with Google' : 'Player profile');
+    avatarEl.title = guest ? 'Connect with Google' : (G.playerName || tier.name || 'Player');
+    avatarEl.style.color = guest ? '' : (tier.color || '#06101f');
   }
   if (xpFill) xpFill.style.width = `${Math.max(4, Math.min(100, pct || 0))}%`;
   if (coinsEl) coinsEl.textContent = (G.coins || 0).toLocaleString();
   if (xpEl) xpEl.textContent = (G.xp || 0).toLocaleString();
   const level = Math.max(1, Math.min(50, G.currentLevel || G.highestLevel || 1));
   if (levelEl) levelEl.textContent = `${level}/50`;
+  if (levelProgressFill) levelProgressFill.style.width = `${Math.round((level / 50) * 100)}%`;
   if (seasonFill) seasonFill.style.width = `${Math.round((level / 50) * 100)}%`;
   if (seasonText) seasonText.textContent = `${level} / 50`;
   _updateSelectedPlaneShowcase(planeImg, planeName);
@@ -1265,7 +1051,7 @@ function _updateLobbyDashboard() {
             <div>${label}</div>
             <div class="menu-daily-bar"><span style="width:${pctDone}%"></span></div>
           </div>
-          <div class="menu-daily-reward">◎ ${m.coins}</div>
+          <div class="menu-daily-reward">${coinIcon('jg-coin-icon-small')} ${m.coins}</div>
         </div>
       `;
     }).join('');
@@ -1304,18 +1090,13 @@ function _updatePlaytimeDashboard() {
 function _updateSelectedPlaneShowcase(imgEl, nameEl) {
   const aircraftId = G.activeAircraft || 't6';
   const aircraft = AIRCRAFT[aircraftId] || AIRCRAFT.t6;
-  const skin = SKINS.find(s => s.id === G.activeLivery || s.id === G.activeSkin);
-  const customImg = skin?.skinImg || skin?.offerImg;
 
   if (imgEl) {
-    imgEl.src = customImg || `/assets/hangar/${aircraftId}.png`;
-    imgEl.style.filter = (!customImg && skin?.filter)
-      ? `${skin.filter} drop-shadow(0 16px 0 rgba(0,0,0,0.23)) drop-shadow(0 0 18px rgba(125,211,252,0.28))`
-      : '';
+    imgEl.src = `/assets/hangar/${aircraftId}.png`;
+    imgEl.style.filter = '';
   }
   if (nameEl) {
-    const label = skin?.name ? `${aircraft.name} / ${skin.name}` : aircraft.name;
-    nameEl.textContent = label.toUpperCase();
+    nameEl.textContent = aircraft.name.toUpperCase();
   }
 }
 
@@ -1333,10 +1114,20 @@ function _updateMissionsBadge() {
 }
 
 // ── DAILY REWARD POPUP ────────────────────────────────────────────────────────
-export function showDailyReward(reward, streak) {
+export function showDailyReward(reward, streak, onClaim = null) {
   const overlay  = $('daily-reward-overlay');
   const daysRow  = $('daily-days-row');
   const showcase = $('daily-reward-showcase');
+
+  if (!G.playerRegistered) {
+    overlay?.classList.add('hidden');
+    _showToast(getLang() === 'fr'
+      ? 'CONNECTE-TOI AVEC GOOGLE POUR RECEVOIR LES RECOMPENSES QUOTIDIENNES'
+      : 'CONNECT WITH GOOGLE TO RECEIVE DAILY REWARDS');
+    _handleLogin('google');
+    onClaim?.({ claimed: false, requiresConnection: true, badges: [] });
+    return;
+  }
 
   $('daily-streak-label').textContent = getLang() === 'fr' ? `JOUR ${streak}` : `DAY ${streak}`;
 
@@ -1352,7 +1143,7 @@ export function showDailyReward(reward, streak) {
 
     card.innerHTML = `
       <span class="ddc-num">D${day}</span>
-      <span class="ddc-icon">${r.icon}</span>
+      <span class="ddc-icon">${r.badgeId ? r.icon : (r.coins ? coinIcon('jg-coin-icon-small') : r.icon)}</span>
       ${day < streak ? '<span class="ddc-check">✓</span>' : ''}
     `;
     daysRow.appendChild(card);
@@ -1361,7 +1152,7 @@ export function showDailyReward(reward, streak) {
   // Showcase today's reward
   showcase.innerHTML = `
     <span class="drs-label">${t('todayReward')}</span>
-    <span class="drs-icon">${reward.icon}</span>
+    <span class="drs-icon">${reward.badgeId ? reward.icon : (reward.coins ? coinIcon('jg-coin-icon-large') : reward.icon)}</span>
     <span class="drs-value">${reward.desc}</span>
   `;
 
@@ -1369,13 +1160,18 @@ export function showDailyReward(reward, streak) {
 
   $('btn-daily-claim').textContent = t('claimReward');
   $('btn-daily-claim').onclick = () => {
-    claimDailyReward(reward);
+    const result = claimDailyReward(reward);
+    if (!result.claimed) return;
     SFX.bonusHeart?.();
     overlay.classList.add('hidden');
     _updateRankBadge();
+    if (result.badges?.length) {
+      setTimeout(() => window._previewBadgeUnlock?.(result.badges), 250);
+    }
+    onClaim?.(result);
   };
   overlay.addEventListener('click', e => {
-    if (e.target === overlay) overlay.classList.add('hidden');
+    if (e.target === overlay && !onClaim) overlay.classList.add('hidden');
   }, { once: true });
 }
 
@@ -1439,7 +1235,7 @@ function _renderMissions() {
         <span class="mission-count">${m.progress}/${m.target}</span>
       </div>
       <div class="mission-reward-row">
-        <span class="mission-reward-text">◎ ${m.coins}  ⚡ ${m.xp} XP</span>
+        <span class="mission-reward-text">${coinIcon('jg-coin-icon-small')} ${m.coins}  ${expIcon('jg-coin-icon-small')} ${m.xp}</span>
         <button class="mission-claim-btn ${m.claimed ? 'mcb-claimed' : (done && isConnected) ? 'mcb-ready' : 'mcb-locked'}"
                 data-id="${m.id}" ${!done || m.claimed || !isConnected ? 'disabled' : ''}>
           ${claimBtnText}
@@ -1468,7 +1264,7 @@ function _renderMissions() {
     <div class="sr71-cubes">${cubesHTML}</div>
     <div class="sr71-cube-count">${sr71.cleanLevels.length} / 30 levels</div>
     <div class="mission-reward-row">
-      <span class="mission-reward-text">◎ ${sr71.coins}  ⚡ ${sr71.xp} XP</span>
+      <span class="mission-reward-text">${coinIcon('jg-coin-icon-small')} ${sr71.coins}  ${expIcon('jg-coin-icon-small')} ${sr71.xp}</span>
       <button class="mission-claim-btn ${sr71.claimed ? 'mcb-claimed' : (sr71Done && isConnected) ? 'mcb-ready' : 'mcb-locked'}"
               data-id="sr71_challenge" ${!sr71Done || sr71.claimed || !isConnected ? 'disabled' : ''}>
         ${sr71BtnText}

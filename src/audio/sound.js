@@ -127,6 +127,7 @@ function _noise(ctx, dur, vol = 0.35) {
 // ── BACKGROUND MUSIC ─────────────────────────────────────────────────────────
 const _bgEl = new Audio();
 _bgEl.loop = true;
+_bgEl.preload = 'auto';
 let _bgCurrent = '';
 const _positions = {};
 let _fadeInterval = null;
@@ -199,12 +200,24 @@ function _startTrack(src) {
   if (resume > 0) {
     _bgEl.addEventListener('canplay', () => { _bgEl.currentTime = resume; }, { once: true });
   }
-  _bgEl.play().catch(e => console.warn('Music blocked:', e.message));
+  _bgEl.play().catch(e => {
+    console.warn('Music blocked:', e.message);
+    setTimeout(_resumeAll, 120);
+  });
   _fadeTo(_musicVol, 1500);
 }
 
 function _playMusic(src) {
-  if (_bgEl.src.endsWith(src) && !_bgEl.paused) return;
+  // Navigating between lobby sections must never reload the current track.
+  // Resume the existing media element at its exact position if a browser or
+  // screen transition temporarily paused it.
+  if (_bgCurrent === src) {
+    _clearFade();
+    _bgEl.playbackRate = src.includes('music-play1') ? GAME_PLAYBACK_RATE : 1;
+    if (_bgEl.paused) _bgEl.play().catch(() => {});
+    _fadeTo(_musicVol, 220);
+    return;
+  }
   if (_bgCurrent) _positions[_bgCurrent] = _bgEl.currentTime;
 
   if (!_bgEl.paused && _bgEl.src) {
@@ -231,13 +244,16 @@ const _isMobileAudio = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
 function _resumeAll() {
   _ensureBgRoute();
+  _setBgOutputVolume(_musicVol);
   if (_bgEl.src && _bgEl.paused && !_bgEl.ended) _bgEl.play().catch(() => {});
   if (_actx && _actx.state === 'suspended') _actx.resume();
 }
 
 // Resume on every tap/click (not { once } — AudioContext can suspend repeatedly)
 document.addEventListener('touchstart', _resumeAll, { passive: true });
+document.addEventListener('pointerdown', _resumeAll, { passive: true });
 document.addEventListener('click',      _resumeAll);
+document.addEventListener('keydown',    _resumeAll);
 
 // Resume when tab comes back to foreground
 window.addEventListener('focus', _resumeAll);
@@ -280,11 +296,11 @@ export const SFX = {
       '/assets/music/shot.mp3',
       '/assets/music/explosion.mp3',
       '/assets/music/purchase.mp3',
-      '/assets/music/gameover.mp3',
       '/assets/music/gameover2.mp3',
       '/assets/music/Buy.mp3',
       '/assets/music/Choose a level.mp3',
     ].forEach(_loadBuf);
+    _resumeAll();
   },
 
   playMusic(key) {
@@ -293,6 +309,7 @@ export const SFX = {
       ranked: '/assets/music/music-ranked.mp3',
       shop:   '/assets/music/music-shop.mp3',
       game:   '/assets/music/music-play1.mp3',
+      boss:   '/assets/music/boss.mp3',
       arena:  '/assets/music/music-arena.mp3',
     };
     if (MAP[key]) _playMusic(MAP[key]);
@@ -366,22 +383,7 @@ export const SFX = {
   gameOver() {
     if (_sfxVol === 0) return;
     _resumeAll();
-    const ctx = _ac();
-    _tone(ctx, 360, 'sawtooth', 0.48, 0.5);
-    _after(190, () => _tone(_ac(), 230, 'sawtooth', 0.5, 0.5));
-    _after(420, () => _tone(_ac(), 95, 'square', 0.75, 0.48));
-    _playMediaShot('/assets/music/gameover.mp3', 1.0);
-    if (_isMobileAudio) {
-      _after(140, () => {
-        _resumeAll();
-        _playMediaShot('/assets/music/gameover.mp3', 1.0);
-      });
-    }
-    _playBuf('/assets/music/gameover.mp3', 1.0, ctx => {
-      [400, 300, 200].forEach((f, i) =>
-        _after(i * 190, () => _tone(_ac(), f, 'sawtooth', 0.45, 0.48)));
-      _after(620, () => _tone(_ac(), 95, 'square', 0.65, 0.42));
-    }, 2.2);
+    _playMediaShot('/assets/music/gameover2.mp3', 1.0);
   },
   quitGame() {
     _clearFade();

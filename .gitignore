@@ -6,3 +6,6 @@ data/saves/
 .codex/
 .codex_video_tools/
 .pnpm-store/
+
+.vercel
+.env*

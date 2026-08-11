@@ -49,9 +49,11 @@ function enemyTypesForLevel(n) {
   if (n <= 10)       return ['basic', 'basic', 'fast'];
   if (n <= 15)       return ['basic', 'fast', 'fast'];
   if (n <= 20)       return ['basic', 'fast', 'tank'];
-  if (n <= 30)       return ['fast',  'tank', 'basic'];
-  if (n <= 40)       return ['tank',  'fast', 'fast'];
-  return                    ['tank',  'fast', 'basic'];
+  if (n <= 25)       return ['fast', 'tank', 'turner'];
+  if (n <= 30)       return ['turner', 'fast', 'tank', 'basic'];
+  if (n <= 35)       return ['turner', 'interceptor', 'fast', 'tank'];
+  if (n <= 40)       return ['interceptor', 'turner', 'tank', 'fast'];
+  return                    ['interceptor', 'turner', 'tank', 'fast', 'basic'];
 }
 
 // Regular companion enemies that appear alongside the boss
@@ -59,9 +61,9 @@ function bossCompanionTypesForLevel(n) {
   const m = n / 10;
   if (m === 1) return ['basic'];
   if (m === 2) return ['basic', 'fast'];
-  if (m === 3) return ['fast',  'tank'];
-  if (m === 4) return ['fast',  'tank'];
-  return               ['tank',  'fast'];
+  if (m === 3) return ['fast', 'tank', 'turner'];
+  if (m === 4) return ['interceptor', 'turner', 'tank'];
+  return               ['interceptor', 'turner', 'tank', 'fast'];
 }
 
 // How many companion enemies can be on screen at once (not counting the boss)
@@ -76,23 +78,14 @@ function maxEnemiesForLevel(n) {
     const milestone = n / 10;
     return milestone <= 2 ? 1 : milestone <= 4 ? 2 : 3;
   }
-  if (n <= 10) return 2;
-  if (n <= 20) return 3;
-  if (n <= 30) return 4;
-  if (n <= 40) return 5;
-  return 6;
+  return Math.min(12, 2 + Math.floor((n - 1) / 4));
 }
 
 // Frames between enemy spawns — slower pacing for kids
 function spawnRateForLevel(n) {
-  if (n <= 5)  return 300;
-  if (n <= 10) return 260;
-  if (n <= 15) return 220;
-  if (n <= 20) return 190;
-  if (n <= 25) return 160;
-  if (n <= 30) return 130;
-  if (n <= 40) return 110;
-  return 90;
+  // Every new level shortens the interval, producing a smooth increase in
+  // enemy density instead of large jumps only at biome boundaries.
+  return Math.max(82, Math.round(300 - (n - 1) * 4.45));
 }
 
 // Enemy movement speed — slower start, gentler ramp
@@ -109,6 +102,14 @@ function enemyFireRateMultForLevel(n) {
     return Math.min(base + bonus, 1.4);
   }
   return base;
+}
+
+// Collectible coins placed through each level. The count grows gently with
+// each new biome without filling the screen with pickups. Boss levels receive
+// two extra coins because they are longer and more demanding.
+function mapCoinCountForLevel(n) {
+  const biomeCoins = 20 + Math.floor((n - 1) / 10) * 2; // 20, 22, 24, 26, 28
+  return biomeCoins + (n % 10 === 0 ? 4 : 0);
 }
 
 export function getLevel(n) {
@@ -128,6 +129,7 @@ export function getLevel(n) {
     spawnRate:         spawnRateForLevel(n),
     enemySpeedMult:    enemySpeedMultForLevel(n),
     enemyFireRateMult: enemyFireRateMultForLevel(n),
+    mapCoinCount:      mapCoinCountForLevel(n),
     isBossLevel:       n % 10 === 0,
     isChestLevel:      n % 10 === 0,
     bossCompanionTypes: n % 10 === 0 ? bossCompanionTypesForLevel(n) : [],

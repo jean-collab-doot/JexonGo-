@@ -6,6 +6,7 @@ import { RARITIES, BLUEPRINT_COST, ROULETTE_SLOTS, SLOT_WEIGHTS_BY_TIER, applyRe
 import { trackMission } from '../systems/daily.js';
 import { AIRCRAFT } from '../data/aircraft.js';
 import { t } from '../i18n.js';
+import { coinIcon, expIcon } from '../utils/icons.js';
 
 // ── ROULETTE CONFIGURATION ────────────────────────────────────────────────────
 const TILE_W    = 110;   // px width of each tile
@@ -121,10 +122,11 @@ function buildResultCard(reward) {
   if (reward.type === 'coins') {
     title = `+${reward.amount}`;
     sub   = reward.label || 'COINS';
-    icon  = '◎';
+    icon  = coinIcon('jg-coin-icon-large');
   } else if (reward.type === 'xp') {
     title = `+${reward.amount} XP`;
     sub   = reward.label || 'BONUS XP';
+    icon  = expIcon('jg-coin-icon-large');
   } else if (reward.type === 'blueprint') {
     const ac     = AIRCRAFT[reward.aircraft];
     const needed = BLUEPRINT_COST[reward.aircraft] || 99;
@@ -192,7 +194,7 @@ export function showChest(chestData) {
     if (_chestBusy) return;
     const dest = _returnTo;
     const nav  = _chestNav;
-    if (dest === 'shop') nav.toShop();
+    if (dest === 'menu') nav.toMenu();
     else nav.toMap();
   };
 

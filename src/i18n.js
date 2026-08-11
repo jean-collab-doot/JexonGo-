@@ -5,6 +5,15 @@ const STRINGS = {
     play:            '▶ PLAY',
     hangar:          '✈ HANGAR',
     shop:            '◆ SHOP',
+    shopTitle:       'STORE',
+    shopSearch:      'Search store...',
+    shopFilter:      'FILTER',
+    shopTabFeatured: 'SHOTS',
+    shopTabPlanes:   'PLANES',
+    shopTabRewards:  'MISSILES',
+    shopEmptyTitle:  'STORE READY',
+    shopEmptyText:   'Items will be added in the next step.',
+    shopComingSoon:  'SHOP COMING SOON',
     practice:        '⚡ PRACTICE',
     missions:        '≡ MISSIONS',
     ranked:          '⚔ RANKED',
@@ -24,7 +33,7 @@ const STRINGS = {
 
     // Briefing
     briefingTitle:   'MISSION BRIEFING',
-    fly:             '✈ FLY!',
+    fly:             'FLY!',
     timeLimit:       'TIME LIMIT',
     mathType:        'MATH TYPE',
     secPerQ:         's per question',
@@ -89,32 +98,8 @@ const STRINGS = {
     starter:         'STARTER',
     active:          'ACTIVE',
     unlock:          'UNLOCK',
-    liveries:        'LIVERIES',
 
-    // Shop
-    shop_title:      'SHOP',
-    offers:          'OFFERS',
-    skins:           'SKINS',
-    more:            'MORE',
-    buy:             'BUY',
-    owned:           'OWNED',
-    equipped:        '✓ EQUIPPED',
-    equip:           'EQUIP ▶',
-    specialOffer:    'SPECIAL OFFER',
-    bestValue:       'BEST VALUE!',
-    buyChests:       '◈ BUY CHESTS',
-    needMoreCoins:   '✗ NEED',
-    moreCoins:       'MORE COINS',
-
-    // Rarity labels
-    rarityCommon:    'COMMON',
-    rarityRare:      'RARE',
-    rarityEpic:      'EPIC',
-    rarityLegendary: 'LEGENDARY',
-    rarityExclusive: 'EXCLUSIVE',
-    skinLabel:       'SKIN',
-
-    // Chest shop
+    // Chest rewards
     chestBronze:     'BRONZE',
     chestSilver:     'SILVER',
     chestGold:       'GOLD',
@@ -308,6 +293,15 @@ const STRINGS = {
     play:            '▶ JOUER',
     hangar:          '✈ HANGAR',
     shop:            '◆ BOUTIQUE',
+    shopTitle:       'BOUTIQUE',
+    shopSearch:      'Rechercher...',
+    shopFilter:      'FILTRE',
+    shopTabFeatured: 'TIRS',
+    shopTabPlanes:   'AVIONS',
+    shopTabRewards:  'MISSILES',
+    shopEmptyTitle:  'BOUTIQUE PRETE',
+    shopEmptyText:   'Les items seront ajoutes a la prochaine etape.',
+    shopComingSoon:  'BOUTIQUE BIENTÔT DISPONIBLE',
     practice:        '⚡ ENTRAÎNEMENT',
     missions:        '≡ MISSIONS',
     ranked:          '⚔ CLASSÉ',
@@ -327,7 +321,7 @@ const STRINGS = {
 
     // Briefing
     briefingTitle:   'BRIEFING DE MISSION',
-    fly:             '✈ DÉCOLLER !',
+    fly:             'DÉCOLLER !',
     timeLimit:       'LIMITE DE TEMPS',
     mathType:        'TYPE DE CALCUL',
     secPerQ:         's par question',
@@ -392,32 +386,8 @@ const STRINGS = {
     starter:         'DÉBUTANT',
     active:          'ACTIF',
     unlock:          'DÉBLOQUER',
-    liveries:        'LIVRÉES',
 
-    // Shop
-    shop_title:      'BOUTIQUE',
-    offers:          'OFFRES',
-    skins:           'SKINS',
-    more:            'PLUS',
-    buy:             'ACHETER',
-    owned:           'POSSÉDÉ',
-    equipped:        '✓ ÉQUIPÉ',
-    equip:           'ÉQUIPER ▶',
-    specialOffer:    'OFFRE SPÉCIALE',
-    bestValue:       'MEILLEUR PRIX !',
-    buyChests:       '◈ ACHETER DES COFFRES',
-    needMoreCoins:   '✗ BESOIN DE',
-    moreCoins:       'PIÈCES DE PLUS',
-
-    // Rarity labels
-    rarityCommon:    'COMMUN',
-    rarityRare:      'RARE',
-    rarityEpic:      'ÉPIQUE',
-    rarityLegendary: 'LÉGENDAIRE',
-    rarityExclusive: 'EXCLUSIF',
-    skinLabel:       'SKIN',
-
-    // Chest shop
+    // Chest rewards
     chestBronze:     'BRONZE',
     chestSilver:     'ARGENT',
     chestGold:       'OR',

@@ -1,4 +1,5 @@
 import { load, save } from './utils/storage.js';
+import { AIRCRAFT } from './data/aircraft.js';
 
 // Tournament event window - edit these two dates to reactivate for future events.
 export const AIR_CUP_START = new Date('2026-06-11T00:00:00Z').getTime();
@@ -7,22 +8,45 @@ export const AIR_CUP_END   = new Date('2026-07-15T23:59:59Z').getTime();
 export const IS_AIR_CUP_ACTIVE =
   Date.now() >= AIR_CUP_START && Date.now() <= AIR_CUP_END;
 
+const DEFAULT_UNLOCKED_AIRCRAFT = [
+  't6',
+];
+
+function withDefaultUnlockedAircraft(list) {
+  const unlocked = Array.isArray(list) ? [...list] : [];
+  for (const id of DEFAULT_UNLOCKED_AIRCRAFT) {
+    if (!unlocked.includes(id)) unlocked.push(id);
+  }
+  return unlocked;
+}
+
+export const MAX_COINS = 99999;
+const STARTING_COINS = 0;
+
+export function clampCoins(value) {
+  const n = Number(value) || 0;
+  return Math.max(0, Math.min(MAX_COINS, Math.floor(n)));
+}
+
 export const G = {
   // --- Persisted ---
   xp: 0,
   totalXpEarned: 0, // cumulative XP earned (never decremented — used for pilot grade)
-  coins: 0,
+  coins: STARTING_COINS,
   blueprints: {},
   chestsWithoutEpic: 0,
   levelStars: {},
-  unlockedAircraft: ['t6'],
+  unlockedAircraft: [...DEFAULT_UNLOCKED_AIRCRAFT],
+  acquiredAircraft: [],
   activeAircraft: 't6',
-  ownedSkins: [],
-  activeSkin: null,    // shop image skin (FURTIF, SPACE, etc.)
-  activeLivery: null,  // hangar filter livery (independent)
+  unlockedBadges: [], activeBadge: null, totalCorrectAnswers: 0, bestAnswerStreak: 0,
+  comboAcePermanent: false, secretAircraftUnlocked: false,
+  ownedShootingPlans: ['default'],
+  activeShootingPlan: 'default',
+  ownedMissileTypes: [],
+  activeMissileType: 'default',
   playerGrade: 0,       // 0 = not selected, 1-6 = school grade
   highestLevel: 0,      // highest level beaten (drives pilot grade)
-  prestige: 0,          // 0–5 prestige level
   sr71Earned: false,         // true once all 30 levels completed with zero wrong answers
   sr71MissionClaimed: false, // true once the SR-71 challenge mission reward is claimed
   sr71WrongAnswers: 0,       // cumulative wrong answers during a level-1→30 run
@@ -32,6 +56,7 @@ export const G = {
   // --- Daily economy ---
   dailyLastLogin:   null,
   dailyStreak:      0,
+  dailyStarterPlanComplete: false,
   dailyMissions:    null,
   dailyMissionDate: null,
   playMinutesByDay: {},
@@ -136,14 +161,16 @@ export function loadSave() {
 
   if (!G.playerRegistered) {
     // Guest — reset all progression to zero, never load saved progress
-    G.xp = 0; G.totalXpEarned = 0; G.coins = 0;
+    G.xp = 0; G.totalXpEarned = 0; G.coins = STARTING_COINS;
     G.blueprints = {}; G.chestsWithoutEpic = 0; G.levelStars = {};
-    G.unlockedAircraft = ['t6']; G.activeAircraft = 't6';
-    G.ownedSkins = []; G.activeSkin = null; G.activeLivery = null;
-    G.prestige = 0; G.highestLevel = 0;
+    G.unlockedAircraft = withDefaultUnlockedAircraft(['t6']); G.activeAircraft = 't6';
+    G.acquiredAircraft = [];
+    G.unlockedBadges = []; G.activeBadge = null;
+    G.ownedShootingPlans = ['default']; G.activeShootingPlan = 'default'; G.ownedMissileTypes = []; G.activeMissileType = 'default';
+    G.highestLevel = 0;
     G.sr71Earned = false; G.sr71MissionClaimed = false;
     G.sr71WrongAnswers = 0; G.sr71MissileHits = 0; G.sr71CleanLevels = [];
-    G.dailyLastLogin = null; G.dailyStreak = 0;
+    G.dailyLastLogin = null; G.dailyStreak = 0; G.dailyStarterPlanComplete = false;
     G.dailyMissions = null; G.dailyMissionDate = null; G.claimedRanks = [];
     G.rankedLP = 0; G.rankedWins = 0; G.rankedLosses = 0;
     G.rankedWinStreak = 0; G.rankedGamesPlayed = 0;
@@ -153,16 +180,51 @@ export function loadSave() {
 
   G.xp                = load('xp', 0);
   G.totalXpEarned     = load('totalXpEarned', G.xp);
-  G.coins             = load('coins', 0);
+  G.coins             = clampCoins(Math.max(load('coins', STARTING_COINS), STARTING_COINS));
   G.blueprints        = load('blueprints', {});
   G.chestsWithoutEpic = load('chestsWithoutEpic', 0);
   G.levelStars        = load('levelStars', {});
-  G.unlockedAircraft  = load('unlockedAircraft', ['t6']);
+  G.unlockedAircraft  = withDefaultUnlockedAircraft(load('unlockedAircraft', DEFAULT_UNLOCKED_AIRCRAFT));
+  G.acquiredAircraft = load('acquiredAircraft', []);
+  if (!Array.isArray(G.acquiredAircraft)) G.acquiredAircraft = [];
   G.activeAircraft    = load('activeAircraft', 't6');
-  G.ownedSkins        = load('ownedSkins', []);
-  G.activeSkin        = load('activeSkin', null);
-  G.activeLivery      = load('activeLivery', null);
-  G.prestige          = load('prestige', 0);
+  G.unlockedBadges = load('unlockedBadges', []);
+  if (load('aircraftProgressionVersion', 1) < 2) {
+    const migratedAircraft = [...DEFAULT_UNLOCKED_AIRCRAFT];
+    if (load('sr71Earned', false)) migratedAircraft.push('sr71');
+    if (G.unlockedBadges.includes('boss_hunter')) migratedAircraft.push('f117');
+    G.unlockedAircraft = withDefaultUnlockedAircraft(migratedAircraft);
+    G.acquiredAircraft = migratedAircraft.filter(id => !DEFAULT_UNLOCKED_AIRCRAFT.includes(id));
+    if (!G.unlockedAircraft.includes(G.activeAircraft)) G.activeAircraft = 't6';
+    save('unlockedAircraft', G.unlockedAircraft);
+    save('acquiredAircraft', G.acquiredAircraft);
+    save('activeAircraft', G.activeAircraft);
+    save('aircraftProgressionVersion', 2);
+  }
+  if (G.unlockedBadges.includes('boss_hunter') && !G.unlockedAircraft.includes('f117')) {
+    G.unlockedAircraft.push('f117');
+    save('unlockedAircraft', G.unlockedAircraft);
+  }
+  G.activeBadge = load('activeBadge', null);
+  if (!G.unlockedBadges.includes(G.activeBadge)) G.activeBadge = null;
+  G.totalCorrectAnswers = load('totalCorrectAnswers', 0);
+  G.bestAnswerStreak = load('bestAnswerStreak', 0);
+  G.comboAcePermanent = load('comboAcePermanent', false);
+  G.secretAircraftUnlocked = load('secretAircraftUnlocked', false);
+  G.ownedShootingPlans = load('ownedShootingPlans', ['default']);
+  if (!Array.isArray(G.ownedShootingPlans) || !G.ownedShootingPlans.length) G.ownedShootingPlans = ['default'];
+  if (!G.ownedShootingPlans.includes('default')) G.ownedShootingPlans.unshift('default');
+  G.activeShootingPlan = load('activeShootingPlan', 'default');
+  if (!G.ownedShootingPlans.includes(G.activeShootingPlan)) G.activeShootingPlan = 'default';
+  const missileStoreVersion = load('missileStoreVersion', 1);
+  G.ownedMissileTypes = load('ownedMissileTypes', []);
+  if (!Array.isArray(G.ownedMissileTypes)) G.ownedMissileTypes = [];
+  if (missileStoreVersion < 2) {
+    G.ownedMissileTypes = G.ownedMissileTypes.filter(id => id !== 'fire');
+    save('missileStoreVersion', 2);
+  }
+  G.activeMissileType = load('activeMissileType', 'default');
+  if (G.activeMissileType !== 'default' && !G.ownedMissileTypes.includes(G.activeMissileType)) G.activeMissileType = 'default';
   G.sr71Earned           = load('sr71Earned', false);
   G.sr71MissionClaimed   = load('sr71MissionClaimed', false);
   G.sr71WrongAnswers     = load('sr71WrongAnswers', 0);
@@ -171,6 +233,7 @@ export function loadSave() {
   G.highestLevel         = load('highestLevel', 0);
   G.dailyLastLogin    = load('dailyLastLogin', null);
   G.dailyStreak       = load('dailyStreak', 0);
+  G.dailyStarterPlanComplete = load('dailyStarterPlanComplete', G.dailyStreak >= 7);
   G.dailyMissions     = load('dailyMissions', null);
   G.dailyMissionDate  = load('dailyMissionDate', null);
   G.playMinutesByDay  = load('playMinutesByDay', {});
@@ -186,6 +249,7 @@ export function loadSave() {
 }
 
 export function saveAll() {
+  G.coins = clampCoins(G.coins);
   save('xp',                G.xp);
   save('totalXpEarned',     G.totalXpEarned);
   save('coins',             G.coins);
@@ -193,11 +257,13 @@ export function saveAll() {
   save('chestsWithoutEpic', G.chestsWithoutEpic);
   save('levelStars',        G.levelStars);
   save('unlockedAircraft',  G.unlockedAircraft);
+  save('acquiredAircraft',  G.acquiredAircraft);
   save('activeAircraft',    G.activeAircraft);
-  save('ownedSkins',        G.ownedSkins);
-  save('activeSkin',        G.activeSkin);
-  save('activeLivery',      G.activeLivery);
-  save('prestige',          G.prestige);
+  ['unlockedBadges','activeBadge','totalCorrectAnswers','bestAnswerStreak','comboAcePermanent','secretAircraftUnlocked'].forEach(k=>save(k,G[k]));
+  save('ownedShootingPlans', G.ownedShootingPlans);
+  save('activeShootingPlan', G.activeShootingPlan);
+  save('ownedMissileTypes', G.ownedMissileTypes);
+  save('activeMissileType', G.activeMissileType);
   save('sr71Earned',        G.sr71Earned);
   save('playerName',        G.playerName);
   save('playerEmail',       G.playerEmail);
@@ -228,6 +294,7 @@ export function saveAll() {
   save('practiceTimeLimit', G.practiceTimeLimit);
   save('dailyLastLogin',    G.dailyLastLogin);
   save('dailyStreak',       G.dailyStreak);
+  save('dailyStarterPlanComplete', G.dailyStarterPlanComplete);
   save('dailyMissions',     G.dailyMissions);
   save('dailyMissionDate',  G.dailyMissionDate);
   save('playMinutesByDay',  G.playMinutesByDay);
@@ -249,6 +316,7 @@ export function saveAll() {
 
 export function autoSave() {
   if (!G.playerRegistered) return; // guests: no progress saved
+  G.coins = clampCoins(G.coins);
   save('xp',              G.xp);
   save('totalXpEarned',   G.totalXpEarned);
   save('coins',           G.coins);
@@ -256,10 +324,12 @@ export function autoSave() {
   save('highestLevel',    G.highestLevel);
   save('activeAircraft',  G.activeAircraft);
   save('unlockedAircraft',G.unlockedAircraft);
+  save('acquiredAircraft',G.acquiredAircraft);
+  save('ownedShootingPlans', G.ownedShootingPlans);
+  save('activeShootingPlan', G.activeShootingPlan);
+  save('ownedMissileTypes', G.ownedMissileTypes);
+  save('activeMissileType', G.activeMissileType);
   save('blueprints',      G.blueprints);
-  save('ownedSkins',      G.ownedSkins);
-  save('activeSkin',      G.activeSkin);
-  save('activeLivery',    G.activeLivery);
   save('hasSeenOnboarding', G.hasSeenOnboarding);
   save('hasSeenBriefing', G.hasSeenBriefing);
   save('likesMath',       G.likesMath);
@@ -279,13 +349,16 @@ export function autoSave() {
 }
 
 export function resetLevel() {
-  G.lives              = 3;
+  G.lives              = 3 + (G.activeBadge === 'steady_recruit' ? 1 : 0) + (AIRCRAFT[G.activeAircraft]?.ability?.extraLives || 0);
   G.questionsAnswered  = 0;
   G.correctAnswers     = 0;
   G.sessionXP          = 0;
+  G.sessionResponseTimeTotal = 0;
+  G.sessionResponseCount = 0;
   G.streak             = 0;
   G.timeLeft           = 10;
   G.answerLocked       = false;
+  G.question           = null;
   G.missileHitsReceived = 0;
   G.enemies            = [];
   G.missiles           = [];

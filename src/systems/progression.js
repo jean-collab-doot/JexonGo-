@@ -12,7 +12,5 @@ export function saveProgress(levelNum, stars, xp) {
 // 'locked' | 'available' | 'completed'
 export function levelState(levelNum, levelStars) {
   if (levelStars[levelNum] !== undefined) return 'completed';
-  if (levelNum === 1)                     return 'available';
-  if (levelStars[levelNum - 1] !== undefined) return 'available';
-  return 'locked';
+  return 'available';
 }

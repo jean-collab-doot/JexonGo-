@@ -1,18 +1,28 @@
-import { G, resetLevel } from '../state.js';
+import { G, resetLevel, clampCoins } from '../state.js';
 import { $, showScreen } from '../utils/dom.js';
 import { newQuestion } from '../game/math-engine.js';
 import { spawnEnemy, updateEnemies, hitEnemy } from '../game/enemies.js';
 import { createMissile, updateMissiles, drawMissiles } from '../game/missiles.js';
-import { spawnExplosion, spawnHitSpark, updateParticles, drawParticles } from '../game/particles.js';
-import { drawAircraftSprite, drawEnemySprite, drawEngineFire, getPlayerSize } from '../game/aircraft-draw.js';
+import { spawnExplosion, spawnHitSpark, spawnMissileExplosion, updateParticles, drawParticles } from '../game/particles.js';
+import {
+  drawAircraftSprite,
+  drawAircraftSpriteSized,
+  drawEnemySprite,
+  getEnemyDrawSize,
+  getPlayerSize,
+} from '../game/aircraft-draw.js';
 import { AIRCRAFT } from '../data/aircraft.js';
-import { SKINS } from '../data/skins.js';
-import { getPrestigeBadgeHTML } from '../data/prestige.js';
 import { getLevel } from '../data/levels.js';
 import { SFX } from '../audio/sound.js';
-import { preloadBiome } from '../game/sprites.js';
+import { preloadBiome, drawFrame } from '../game/sprites.js';
 import { shouldShowIntroBriefing, showIntroBriefing } from './intro-briefing.js';
+import { SHOOTING_PLANS } from './shop.js';
 import { initBackground, updateBackground, drawBackground } from '../game/background.js';
+import { initClouds, updateClouds, drawClouds } from '../game/clouds.js';
+import {
+  initAirdrop, updateAirdrop, drawAirdrop, handleAirdropPointer,
+  rollAirdropForLevel, hitAirdrop,
+} from '../game/airdrop.js';
 import { trackMission } from '../systems/daily.js';
 import { getPilotGrade } from '../data/pilots.js';
 import { applyAgeModifiers } from '../systems/age-modifiers.js';
@@ -24,19 +34,59 @@ import {
 } from '../utils/device.js';
 import { setSpriteCanvasWidth } from '../game/aircraft-draw.js';
 
-const GUEST_FREE_GAMES = 5;
+const ENEMY_MOVEMENT_SPEED_SCALE = 0.82;
+const ENEMY_SPAWN_INTERVAL_SCALE = 1.15;
+const MISSILE_SPEED_SCALE = 0.8;
+const PLAYER_SHIELD_DURATION_MS = 10000;
+const PLAYER_SHIELD_COOLDOWN_MS = 30000;
+let _playerShieldUntil = 0;
+let _playerShieldReadyAt = 0;
+let _playerShieldButtonHandler = null;
+let _lastShieldHudSecond = -1;
 
-function guestGamesPlayed() {
-  return Number(load('guestGamesPlayed', 0)) || 0;
+function playerShieldActive(now = performance.now()) {
+  return G.activeBadge === 'good_student' && now < _playerShieldUntil;
 }
 
+function updatePlayerShieldButton(now = performance.now(), force = false) {
+  const button = document.getElementById('btn-player-shield');
+  const label = document.getElementById('player-shield-status');
+  if (!button || !label) return;
+  const available = G.activeBadge === 'good_student' && !isTutorialActive();
+  button.classList.toggle('hidden', !available);
+  if (!available) return;
+  const activeMs = Math.max(0, _playerShieldUntil - now);
+  const cooldownMs = Math.max(0, _playerShieldReadyAt - now);
+  const displaySecond = Math.ceil((activeMs || cooldownMs) / 1000);
+  if (!force && displaySecond === _lastShieldHudSecond) return;
+  _lastShieldHudSecond = displaySecond;
+  button.classList.toggle('active', activeMs > 0);
+  button.classList.toggle('cooldown', activeMs <= 0 && cooldownMs > 0);
+  button.disabled = cooldownMs > 0;
+  label.textContent = activeMs > 0 ? `${Math.ceil(activeMs / 1000)}s` : cooldownMs > 0 ? `${Math.ceil(cooldownMs / 1000)}s` : 'SHIELD';
+}
+
+function activatePlayerShield() {
+  const now = performance.now();
+  if (G.activeBadge !== 'good_student' || now < _playerShieldReadyAt) return;
+  _playerShieldUntil = now + PLAYER_SHIELD_DURATION_MS;
+  // The 30-second recharge begins after the 10-second shield effect ends.
+  // Previously both timers started together, so the HUD showed only 20 seconds.
+  _playerShieldReadyAt = _playerShieldUntil + PLAYER_SHIELD_COOLDOWN_MS;
+  _lastShieldHudSecond = -1;
+  updatePlayerShieldButton(now, true);
+}
+// Every regular aircraft has the same chance to be selected on every level.
+// Its own movement behavior still controls whether it spawns alone or as a
+// complete pair/formation.
+const RANDOM_ENEMY_TYPES = ['basic', 'fast', 'tank', 'turner', 'interceptor'];
+
 function hasGuestTrialLeft(levelNum = G.currentLevel || 1) {
-  return G.playerRegistered || G.practiceMode || isTutorialActive() || levelNum <= GUEST_FREE_GAMES;
+  return true;
 }
 
 function recordGuestGamePlayed() {
   if (G.playerRegistered || G.practiceMode || isTutorialActive()) return;
-  save('guestGamesPlayed', Math.min(GUEST_FREE_GAMES, Math.max(guestGamesPlayed(), G.currentLevel || 1)));
 }
 
 // ── GRADE-BASED MATH FILTER ───────────────────────────────────────────────────
@@ -360,8 +410,12 @@ function showStartCountdown(done) {
   _stopGameLoop();
   stopCountdownDraw();
   G.enemyMissiles = [];
-  const targetX = canvas.width / 2;
-  const targetY = canvas.height * 0.5;
+  // `placePlayer()` has already calculated the normal gameplay spawn point.
+  // End the entrance there instead of replacing it with the middle of the
+  // canvas, otherwise the aircraft stays at the countdown position when play
+  // begins.
+  const targetX = G.player.x;
+  const targetY = G.player.y;
   _countdownPlaneAnim = {
     start: performance.now(),
     duration: 2600,
@@ -410,6 +464,154 @@ function showStartCountdown(done) {
     setTimeout(tickDown, 760);
   };
   setTimeout(tickDown, 760);
+}
+
+function startA330BossIntro(done) {
+  const panel = document.getElementById('boss-dialogue');
+  const speaker = document.getElementById('boss-dialogue-speaker');
+  const text = document.getElementById('boss-dialogue-text');
+  const continueButton = document.getElementById('boss-dialogue-continue');
+  const boss = G.enemies.find(enemy => enemy.active && (enemy.a330Boss || enemy.b52Boss || enemy.kawasakiBoss || enemy.c5Boss || enemy.spaceShuttleBoss));
+  if (!panel || !speaker || !text || !continueButton || !boss) {
+    if (boss) {
+      boss.combatActive = true;
+      boss.firstShotAt = performance.now() + BOSS_FIRST_SHOT_DELAY_MS;
+    }
+    SFX.playMusic('game');
+    done();
+    return;
+  }
+
+  const fr = getLang() === 'fr';
+  const lines = boss.spaceShuttleBoss
+    ? (fr ? [
+        ['NAVETTE STS', 'Dans l espace, ma tourelle ne te perdra pas de vue !', false],
+        ['PILOTE', 'Je surveillerai son mouvement avant chaque tir !', true],
+        ['NAVETTE STS', 'Alors essaie d echapper a mon verrouillage final.', false],
+      ] : [
+        ['SPACE SHUTTLE STS', 'In space, my turret will never lose sight of you!', false],
+        ['PILOT', 'I will watch its movement before every shot!', true],
+        ['SPACE SHUTTLE STS', 'Then try to escape my final targeting lock.', false],
+      ])
+    : boss.c5Boss
+    ? (fr ? [
+        ['C-5 GALAXY', 'Ma tourelle arriere te suivra jusque dans le blizzard !', false],
+        ['PILOTE', 'Je vais changer de cap avant chacun de tes tirs !', true],
+        ['C-5 GALAXY', 'Alors montre-moi si tu peux briser mon verrouillage.', false],
+      ] : [
+        ['C-5 GALAXY', 'My rear turret will track you through the blizzard!', false],
+        ['PILOT', 'I will change course before every shot!', true],
+        ['C-5 GALAXY', 'Then show me if you can break my targeting lock.', false],
+      ])
+    : boss.kawasakiBoss
+    ? (fr ? [
+        ['C-2', 'Mes tourelles jumelles suivront chacun de tes mouvements !', false],
+        ['PILOTE', 'Alors je vais rester mobile et garder mon cap !', true],
+        ['C-2', 'Voyons si tu peux echapper a mon verrouillage.', false],
+      ] : [
+        ['C-2', 'My twin turrets will track your every movement!', false],
+        ['PILOT', 'Then I will keep moving and hold my course!', true],
+        ['C-2', 'Let us see if you can escape my targeting lock.', false],
+      ])
+    : boss.b52Boss
+    ? (fr ? [
+        ['B-52', 'Bienvenue dans le d\u00e9sert, pilote ! Mes lasers vont tester tes r\u00e9flexes.', false],
+        ['PILOTE', 'Je resterai calme et j\u2019utiliserai mes maths pour passer !', true],
+        ['B-52', 'Bonne chance ! Observe bien mes pauses et reste prudent.', false],
+      ] : [
+        ['B-52', 'Welcome to the desert, pilot! My lasers will test your reflexes.', false],
+        ['PILOT', 'I will stay calm and use my math skills to get through!', true],
+        ['B-52', 'Good luck! Watch for my pauses and fly carefully.', false],
+      ])
+    : (fr ? [
+        ['A330', 'Salut, petit pilote ! Je suis le rival farceur du ciel. Je vais essayer d\u2019arr\u00eater ta mission !', false],
+        ['PILOTE', 'Je vais te d\u00e9passer avec mon courage et mes maths !', true],
+        ['A330', 'Alors, montre-moi ce que tu sais faire. Pr\u00eat ?', false],
+      ] : [
+        ['A330', 'Hello, little pilot! I am the tricky sky rival. I will try to stop your mission!', false],
+        ['PILOT', 'I will get past you with courage and math!', true],
+        ['A330', 'Then show me what you can do. Ready?', false],
+      ]);
+  const sid = _sessionId;
+  boss.combatActive = false;
+  // Capture the exact position where the boss animation begins. Every
+  // cutscene frame and the return to gameplay reuse this same anchor.
+  _bossPlayerAnchor = { x: G.player.x, y: G.player.y };
+  _bossDialogueActive = true;
+  _cutsceneActive = true;
+  _bossDialogueEntrance = {
+    start: performance.now(),
+    duration: 1650,
+  };
+  panel.classList.add('hidden');
+  continueButton.textContent = fr ? 'CONTINUER' : 'CONTINUE';
+  let index = 0;
+  const showLine = () => {
+    if (!_isActiveSid(sid)) return;
+    if (!_bossDialogueSpeechStartedAt) _bossDialogueSpeechStartedAt = performance.now();
+    const [name, message, playerSpeaking] = lines[index];
+    _bossDialogueSpeakerIsPlayer = playerSpeaking;
+    speaker.textContent = name;
+    text.textContent = message;
+    panel.classList.toggle('player-speaking', playerSpeaking);
+    panel.classList.remove('hidden');
+  };
+  continueButton.onclick = () => {
+    if (!_isActiveSid(sid)) return;
+    index++;
+    if (index < lines.length) {
+      showLine();
+      return;
+    }
+    panel.classList.add('hidden');
+    panel.classList.remove('player-speaking');
+    continueButton.onclick = null;
+    _bossDialogueExit = { start: performance.now(), duration: 850 };
+    // Fade the boss theme out while the dialogue panel exits, then fade the
+    // regular gameplay music in as combat begins.
+    SFX.playMusic('game');
+    setTimeout(() => {
+      if (!_isActiveSid(sid)) return;
+      _bossDialogueActive = false;
+      _bossDialogueEntrance = null;
+      _bossDialogueExit = null;
+      _bossDialogueSpeakerIsPlayer = false;
+      _bossDialogueSpeechStartedAt = 0;
+      if (_bossPlayerAnchor) {
+        G.player.x = _bossPlayerAnchor.x;
+        G.player.y = _bossPlayerAnchor.y;
+      }
+      _cutsceneActive = false;
+      _lastFrameTs = 0;
+      boss.entryActive = false;
+      boss.entryProgress = 1;
+      boss.spawnAlpha = 1;
+      boss.x = canvas.width / 2;
+      boss.y = boss.entryTargetY || canvas.height * 0.19;
+      boss._targetX = boss.x;
+      boss._targetY = boss.y;
+      boss.combatActive = true;
+      // Give the player a real five-second grace period after the boss
+      // animation finishes, independent of frame rate or question slow-motion.
+      boss.firstShotAt = performance.now() + BOSS_FIRST_SHOT_DELAY_MS;
+      if (boss.a330Boss) {
+        boss.antiMissileCycle = 0;
+        boss.antiMissileActive = true;
+        boss.a330SalvoCooldown = 300;
+      } else {
+        boss.antiMissileActive = false;
+        boss.b52LaserCycle = 0;
+        boss.b52LaserCooldown = 18;
+        boss.b52TurretAim = 0;
+      }
+      done();
+    }, 880);
+  };
+  setTimeout(() => {
+    if (!_isActiveSid(sid)) return;
+    _bossDialogueEntrance = null;
+    showLine();
+  }, 1700);
 }
 
 const showTutorialCountdown = showStartCountdown;
@@ -535,18 +737,24 @@ let shakeFrames = 0;
 let _onComplete = null;
 let spawnTimer  = 0;
 let _cutsceneActive = false;
+let _bossDialogueActive = false;
+let _bossDialogueEntrance = null;
+let _bossDialogueSpeakerIsPlayer = false;
+let _bossDialogueDim = 0;
+let _bossDialogueSpeechStartedAt = 0;
+let _bossDialogueExit = null;
+let _bossPlayerAnchor = null;
 let _countdownPlaneAnim = null;
+let _finishPlaneAnim = null;
+let _levelEnding = false;
 let _countdownRaf = null;
 let _maxLives = 3;
+let _lastHudLives = null;
 let _fireTick    = 0;
 let _bankTilt    = 0;   // current tilt in radians (smoothed)
 let _resizeTimer = null;
 let _topGrad     = null;
 let _topGradH    = 0;
-let _cachedSkinData   = null;
-let _cachedLiveryData = null;
-let _lastSkinId       = null;
-let _lastLiveryId     = null;
 let spawnRate   = 150;
 let maxEnemies  = 5;
 let baseSpawnRate = 150;
@@ -561,19 +769,103 @@ let _invincible   = 0;
 let _stealthActive  = false;
 let _stealthTicks   = 0;   // 60 ticks = 1 second
 let _stealthAnswers = 0;   // correct-answer counter for stealth trigger
-let _mgActive       = false;
-let _mgTicks        = 0;
-let _mgAnswers      = 0;
-let _mgFireTimer    = 0;   // frames until next machine-gun shot
-let _nukeAnim       = 0;   // counts down from 90 while nuke animation plays
+let _nukeAnim       = 0;
 let _nukeApplied    = false;
-let _nukeAnswers    = 0;
+let _nukeSweepUntil = 0;
+let _nukeReadyAt    = 0;
+let _nukedBosses    = new Set();
+let _nextPlayerShotAt = 0;
+let _shootingWindowUntil = 0;
+let _timedXpElapsedMs = 0;
+let _mapCoins = [];
+let _mapCoinsReleased = 0;
+
+function awardGameplayCoins(amount) {
+  const reward = Math.max(1, Math.floor(amount || 1));
+  G.airdropSessionCoins = (G.airdropSessionCoins || 0) + reward;
+}
+
+function resetMapCoins() {
+  _mapCoins = [];
+  _mapCoinsReleased = 0;
+}
+
+function releaseCorrectAnswerCoins() {
+  const total = Math.max(0, Math.floor(levelCfg?.mapCoinCount || 0));
+  const remaining = total - _mapCoinsReleased;
+  if (remaining <= 0) return;
+  const rewardCount = Math.min(remaining, levelCfg?.isBossLevel ? 3 : 2);
+  const laneCount = 5;
+  const laneWidth = canvas.width / (laneCount + 1);
+  for (let i = 0; i < rewardCount; i++) {
+    const coinIndex = _mapCoinsReleased + i;
+    const lane = (coinIndex * 2 + Math.floor(coinIndex / laneCount)) % laneCount;
+    const x = laneWidth * (lane + 1);
+    // Separate coins from the same answer so each one is clearly collectible.
+    spawnMapCoin(canvas.width, -45 - i * 72, x, 1);
+  }
+  _mapCoinsReleased += rewardCount;
+}
+
+function spawnMapCoin(cw, y = -35, x = null, value = null) {
+  const margin = Math.min(70, cw * 0.14);
+  _mapCoins.push({
+    x: x == null
+      ? margin + Math.random() * Math.max(1, cw - margin * 2)
+      : Math.max(margin, Math.min(cw - margin, x)),
+    y,
+    phase: Math.random() * Math.PI * 2,
+    value: Math.max(1, Math.floor(value || 1)),
+  });
+}
+
+function updateAndDrawMapCoins(ctx, cw, ch, step) {
+  const playerRadius = Math.max(24, getPlayerSize() * 0.38);
+  for (let i = _mapCoins.length - 1; i >= 0; i--) {
+    const coin = _mapCoins[i];
+    coin.phase += 0.035 * step;
+    coin.y += 1.05 * step;
+    const drawX = coin.x + Math.sin(coin.phase) * 6;
+    const size = 46 + Math.sin(coin.phase * 1.6) * 2;
+    // Keep the clear coin face and animate it continuously. Cycling through
+    // the uneven source frames made the pickup appear to jump and glitch.
+    const turnScale = 0.78 + Math.abs(Math.cos(coin.phase * 0.8)) * 0.22;
+    drawFrame(ctx, 'airdrop-coin', 0, drawX, coin.y, size * turnScale, size, {
+      rotate: Math.sin(coin.phase * 0.65) * 0.06,
+    });
+
+    const dx = drawX - G.player.x;
+    const dy = coin.y - G.player.y;
+    if (dx * dx + dy * dy <= (playerRadius + size * 0.34) ** 2) {
+      awardGameplayCoins(coin.value);
+      _mapCoins.splice(i, 1);
+    } else if (coin.y > ch + size) {
+      _mapCoins.splice(i, 1);
+    }
+  }
+}
 let _revealTimer  = null;
 let _answerCelebrationTimer = null;
 let _skipHandler  = null;
 let _correctionWaiting = false;
+let _smoothResumeAfterCorrection = false;
+let _resumeSlowStart = 0;
+let _resumeSlowDuration = 0;
+let _resumePlaneStart = 0;
+let _resumePlaneDuration = 0;
+let _questionReturnAnim = null;
 let _transitioning = false;
-let _shipFrame  = 0;   // player ship animation (0–4, cycled every tick)
+let _playerDestroyed = false;
+const SHIP_ANIM_FRAMES = 12;
+const SHIP_ANIM_FPS = 12;
+const BOSS_FIRST_SHOT_DELAY_MS = 5000;
+const NUKE_COOLDOWN_MS = 60_000;
+const NUKE_SWEEP_MS = 10_000;
+const GOOD_ANSWER_SHOOTING_WINDOW_MS = 10_000;
+const CORRECT_ANSWER_SAFETY_RADIUS = 110;
+const CORRECT_ANSWER_INVINCIBLE_FRAMES = 75;
+let _shipFrame  = 0;   // player ship animation frame, cycled every tick
+let _shipAnimLastTs = 0;
 let _godMode    = false;
 const _gameCT   = new Map(); // cheat key timestamps
 
@@ -592,23 +884,92 @@ function pruneEnemies(limitY = Infinity) {
   }
 }
 
+function updateBossHealthBar(boss = G.enemies.find(e => e.type === 'boss' && e.active)) {
+  const wrap = document.getElementById('boss-health-wrap');
+  if (!wrap) return;
+  const show = !!boss && [10, 20, 30, 40, 50].includes(G.currentLevel);
+  wrap.classList.toggle('hidden', !show);
+  if (!show) return;
+  const hp = Math.max(0, boss.currentHp || 0);
+  const maxHp = Math.max(1, boss.maxHp || 1);
+  const fill = document.getElementById('boss-health-fill');
+  const value = document.getElementById('boss-health-value');
+  const name = document.getElementById('boss-health-name');
+  if (name) name.textContent = boss.spaceShuttleBoss ? 'SPACE SHUTTLE STS' : boss.c5Boss ? 'C-5 GALAXY' : boss.kawasakiBoss ? 'KAWASAKI C-2' : boss.b52Boss ? 'B-52' : 'A330 MRTT';
+  if (fill) fill.style.width = `${Math.max(0, Math.min(100, hp / maxHp * 100))}%`;
+  if (value) value.textContent = `${hp} / ${maxHp}`;
+}
+
 function clearAnswerCelebration() {
   clearTimeout(_answerCelebrationTimer);
   _answerCelebrationTimer = null;
   document.querySelectorAll('.answer-celebration').forEach(el => el.remove());
 }
 
-function getAnswerCelebrationPlane() {
-  const activeSkinData = SKINS.find(s => s.id === G.activeSkin);
-  const activeLiveryData = SKINS.find(s => s.id === G.activeLivery);
-  const imageSrc = activeSkinData?.skinImg || activeSkinData?.offerImg;
-  if (imageSrc) return { src: imageSrc, filter: '' };
+function clearQuestionUI() {
+  const qText = document.getElementById('question-text');
+  const btns = document.getElementById('answer-buttons');
+  const reveal = document.getElementById('correct-answer-reveal');
+  const qbox = document.getElementById('question-box');
+  const timerBar = document.getElementById('timer-bar');
+  if (qText) qText.textContent = '';
+  if (btns) btns.innerHTML = '';
+  if (reveal) {
+    reveal.classList.add('hidden');
+    reveal.classList.remove('hiding');
+    reveal.style.display = '';
+    reveal.style.visibility = '';
+    reveal.style.opacity = '';
+    reveal.querySelectorAll('.car-step').forEach(step => {
+      step.textContent = '';
+      step.classList.remove('visible');
+    });
+    const continueBtn = reveal.querySelector('#btn-correction-continue');
+    if (continueBtn) {
+      continueBtn.disabled = false;
+      continueBtn.onclick = null;
+      continueBtn.style.display = '';
+    }
+  }
+  if (qbox) {
+    qbox.classList.remove('fading', 'appearing', 'resume-appearing', 'shooting-hidden', 'correction-active');
+    qbox.classList.add('question-inactive');
+    qbox.style.visibility = 'hidden';
+  }
+  if (timerBar) {
+    timerBar.style.width = '100%';
+    timerBar.style.background = 'var(--accent)';
+  }
+  document.getElementById('game-pause-overlay')?.classList.remove('dimmed', 'correction-dimmed');
+}
 
-  const liveryAircraft = activeLiveryData?.aircraft ?? G.activeAircraft;
-  const aircraftId = AIRCRAFT[liveryAircraft] ? liveryAircraft : (AIRCRAFT[G.activeAircraft] ? G.activeAircraft : 't6');
+function clearSmoothResumeState() {
+  _smoothResumeAfterCorrection = false;
+  _resumeSlowStart = 0;
+  _resumeSlowDuration = 0;
+  _resumePlaneStart = 0;
+  _resumePlaneDuration = 0;
+  _questionReturnAnim = null;
+}
+
+function stopShootingWindow() {
+  _nextPlayerShotAt = 0;
+  _shootingWindowUntil = 0;
+}
+
+function advanceAfterCorrectAnswer(sid) {
+  if (_sessionId !== sid) return;
+  stopShootingWindow();
+  if (isTutorialActive()) nextQuestion();
+  else if (levelCfg.isBossLevel || G.questionsAnswered < levelCfg.questionCount) nextQuestion();
+  else endLevel(true);
+}
+
+function getAnswerCelebrationPlane() {
+  const aircraftId = AIRCRAFT[G.activeAircraft] ? G.activeAircraft : 't6';
   return {
     src: `/assets/ships/player/${aircraftId}.png`,
-    filter: activeLiveryData?.filter || '',
+    filter: '',
   };
 }
 
@@ -663,7 +1024,8 @@ const LERP         = 0.12;
 const JS_RADIUS    = 72;     // max joystick drag radius (px on screen)
 
 function _moveSpeed() {
-  return isTouchMobile() ? 4.4 : MOVE_SPEED;
+  const badgeSpeed = G.activeBadge === 'first_takeoff' ? 1.05 : 1;
+  return (isTouchMobile() ? 4.4 : MOVE_SPEED) * (AIRCRAFT[G.activeAircraft]?.ability?.moveSpeed || 1) * badgeSpeed;
 }
 
 function _enemyMissileBurstCount() {
@@ -736,6 +1098,12 @@ function canvasPointer(e) {
   let y = src.clientY - r.top;
   if (isTouchMobile()) ({ x, y } = _cssToCanvas(x, y));
 
+  if ((e.type === 'touchstart' || !e.touches) && handleAirdropPointer(x, y)) {
+    pointerTarget = null;
+    _jsVelX = _jsVelY = 0;
+    return;
+  }
+
   if (e.touches) {
     if (e.type === 'touchstart') {
       _jsOrigin  = { x, y };
@@ -777,7 +1145,7 @@ function updatePlayerMovement() {
   const step = _frameStep || 1;
   const margin  = 16;
   const minY    = canvas.height * 0.08;
-  const maxY    = canvas.height - _canvasQboxH() - 80;
+  const maxY    = _playerLowerLimitY();
 
   if (_jsOrigin) {
     // Joystick touch: apply velocity directly, no lerp lag
@@ -804,7 +1172,27 @@ function updatePlayerMovement() {
     G.player.y += velY * step;
   }
   G.player.x = Math.max(margin, Math.min(canvas.width  - margin, G.player.x));
-  G.player.y = Math.max(minY,   Math.min(maxY,                   G.player.y));
+  if (_questionReturnAnim) {
+    const elapsed = performance.now() - _questionReturnAnim.start;
+    const progress = Math.min(1, Math.max(0, elapsed / _questionReturnAnim.duration));
+    const eased = easeOutCubic(progress);
+    G.player.y = _questionReturnAnim.fromY
+      + (_questionReturnAnim.toY - _questionReturnAnim.fromY) * eased;
+    if (progress >= 1) _questionReturnAnim = null;
+  } else {
+    G.player.y = Math.max(minY, Math.min(maxY, G.player.y));
+  }
+}
+
+function canvasAirdropClick(e) {
+  const r = _canvasRect || (_canvasRect = canvas.getBoundingClientRect());
+  let x = e.clientX - r.left;
+  let y = e.clientY - r.top;
+  ({ x, y } = _cssToCanvas(x, y));
+  if (handleAirdropPointer(x, y)) {
+    pointerTarget = null;
+    _jsVelX = _jsVelY = 0;
+  }
 }
 
 function attachInputListeners() {
@@ -814,6 +1202,7 @@ function attachInputListeners() {
   canvas.addEventListener('touchmove',   canvasPointer, { passive: true });
   canvas.addEventListener('touchend',    clearPointer,  { passive: true });
   canvas.addEventListener('touchcancel', clearPointer,  { passive: true });
+  canvas.addEventListener('click', canvasAirdropClick);
 }
 
 function detachInputListeners() {
@@ -823,6 +1212,7 @@ function detachInputListeners() {
   canvas.removeEventListener('touchmove',  canvasPointer);
   canvas.removeEventListener('touchend',    clearPointer);
   canvas.removeEventListener('touchcancel', clearPointer);
+  canvas.removeEventListener('click', canvasAirdropClick);
 }
 
 // ── MOBILE GAME LOOP (phone + tablet only) ────────────────────────────────────
@@ -842,6 +1232,11 @@ function _setCanvasSize(w, h) {
 
 /** Question-box height in canvas pixel space (matches reduced internal resolution). */
 function _canvasQboxH() {
+  const qbox = document.getElementById('question-box');
+  if (!qbox
+    || qbox.classList.contains('question-inactive')
+    || qbox.classList.contains('shooting-hidden')
+    || qbox.style.visibility === 'hidden') return 0;
   const cssH = canvas?.clientHeight || 640;
   const bh   = canvas?.height || cssH;
   if (!isTouchMobile() || cssH <= 0) return _qboxH || 180;
@@ -863,6 +1258,57 @@ function _stopGameLoop() {
   G.animFrame = null;
   stopCountdownDraw();
   if (G.mobileLoop) { clearInterval(G.mobileLoop); G.mobileLoop = null; }
+}
+
+/** Lowest allowed aircraft centre. The aircraft's bottom edge stops at the
+ * actual top edge of the visible equation panel. */
+function _playerLowerLimitY() {
+  const qbox = document.getElementById('question-box');
+  const panelVisible = qbox
+    && !qbox.classList.contains('question-inactive')
+    && !qbox.classList.contains('shooting-hidden')
+    && qbox.style.visibility !== 'hidden';
+  if (!panelVisible) return canvas.height - Math.max(44, getPlayerSize() * 0.5);
+
+  const canvasRect = canvas.getBoundingClientRect();
+  const qboxRect = qbox.getBoundingClientRect();
+  if (!canvasRect.height) return canvas.height - _canvasQboxH() - getPlayerSize() * 0.52;
+  const panelTop = (qboxRect.top - canvasRect.top) * (canvas.height / canvasRect.height);
+  return Math.max(canvas.height * 0.08, panelTop - getPlayerSize() * 0.52);
+}
+
+function returnPlayerAboveQuestionBox() {
+  const qbox = document.getElementById('question-box');
+  if (!qbox) return 0;
+  // Temporarily measure the panel in its final visible position while keeping
+  // it transparent, then use that exact top edge as the flight boundary.
+  qbox.classList.remove(
+    'question-inactive',
+    'shooting-hidden',
+    'fading',
+    'appearing',
+    'resume-appearing',
+  );
+  qbox.style.visibility = 'hidden';
+  const canvasRect = canvas.getBoundingClientRect();
+  const qboxRect = qbox.getBoundingClientRect();
+  const panelTop = canvasRect.height
+    ? (qboxRect.top - canvasRect.top) * (canvas.height / canvasRect.height)
+    : canvas.height - _qboxH;
+  const safeY = panelTop - getPlayerSize() * 0.52;
+  if (G.player.y <= safeY) return 0;
+  const centerY = canvas.height * 0.5;
+
+  pointerTarget = null;
+  _jsVelY = 0;
+  velY = 0;
+  _questionReturnAnim = {
+    start: performance.now(),
+    duration: 720,
+    fromY: G.player.y,
+    toY: Math.min(safeY, centerY),
+  };
+  return _questionReturnAnim.duration;
 }
 
 function _isActiveSid(sid = _activeSessionId) {
@@ -902,9 +1348,9 @@ function resize() {
   _qboxH = $('question-box').offsetHeight || 180;
   const bw = canvas.width;
   const bh = canvas.height;
-  const qbox = _canvasQboxH();
   G.player.x = Math.max(16, Math.min(bw - 16,  G.player.x || bw / 2));
-  G.player.y = Math.max(bh * 0.08, Math.min(bh - qbox - 80, G.player.y || bh - qbox - 60));
+  const lowerLimit = _playerLowerLimitY();
+  G.player.y = Math.max(bh * 0.08, Math.min(lowerLimit, G.player.y || lowerLimit));
   if (!_cutsceneActive) _queueFrame();
 }
 
@@ -939,6 +1385,8 @@ function drawCountdownSafeFrame() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   updateBackground();
   drawBackground(ctx, canvas);
+  updateClouds(1, canvas.width, canvas.height);
+  drawClouds(ctx);
   if (_speedLines.length === 0) initSpeedLines(canvas.width, canvas.height);
   drawSpeedLines(ctx, canvas.width, canvas.height);
   const plane = countdownPlanePosition();
@@ -950,19 +1398,30 @@ function stopCountdownDraw() {
   _countdownRaf = null;
 }
 
+function advanceShipAnimation(ts = performance.now()) {
+  if (!_shipAnimLastTs) {
+    _shipAnimLastTs = ts;
+    return;
+  }
+  const deltaMs = Math.max(0, Math.min(80, ts - _shipAnimLastTs));
+  _shipAnimLastTs = ts;
+  _shipFrame = (_shipFrame + (deltaMs / 1000) * SHIP_ANIM_FPS) % SHIP_ANIM_FRAMES;
+}
+
 function startCountdownDraw(sid) {
   stopCountdownDraw();
-  const step = () => {
+  _shipAnimLastTs = 0;
+  const step = (ts) => {
     if (!_isActiveSid(sid) || !_cutsceneActive) {
       _countdownRaf = null;
       return;
     }
     tick++;
-    _shipFrame = (_shipFrame + 0.08) % 5;
+    advanceShipAnimation(ts);
     drawCountdownSafeFrame();
     _countdownRaf = requestAnimationFrame(step);
   };
-  step();
+  _countdownRaf = requestAnimationFrame(step);
 }
 
 function playerFloatOffset() {
@@ -976,8 +1435,83 @@ function easeOutCubic(t) {
   return 1 - Math.pow(1 - t, 3);
 }
 
+function easeInOutCubic(t) {
+  return t < 0.5
+    ? 4 * t * t * t
+    : 1 - Math.pow(-2 * t + 2, 3) / 2;
+}
+
+function startSmoothGameResume() {
+  const now = performance.now();
+  _resumeSlowStart = now;
+  _resumeSlowDuration = isTouchMobile() ? 2200 : 1800;
+  _resumePlaneStart = now;
+  _resumePlaneDuration = isTouchMobile() ? 1050 : 850;
+  _frameStep = Math.min(_frameStep || 1, 0.35);
+}
+
+function resumeSpeedScale(now = performance.now()) {
+  if (!_resumeSlowStart || !_resumeSlowDuration) return 1;
+  const t = Math.min(1, Math.max(0, (now - _resumeSlowStart) / _resumeSlowDuration));
+  if (t >= 1) {
+    _resumeSlowStart = 0;
+    _resumeSlowDuration = 0;
+    return 1;
+  }
+  return 0.28 + 0.72 * easeInOutCubic(t);
+}
+
+function resumePlaneOffset(now = performance.now()) {
+  if (!_resumePlaneStart || !_resumePlaneDuration) return { x: 0, y: 0 };
+  const t = Math.min(1, Math.max(0, (now - _resumePlaneStart) / _resumePlaneDuration));
+  if (t >= 1) {
+    _resumePlaneStart = 0;
+    _resumePlaneDuration = 0;
+    return { x: 0, y: 0 };
+  }
+  const eased = easeOutCubic(t);
+  return {
+    x: Math.sin(t * Math.PI) * (isTouchMobile() ? 3 : 5),
+    y: (1 - eased) * (isTouchMobile() ? 34 : 44),
+  };
+}
+
+function isQuestionAwaitingAnswer() {
+  const qbox = document.getElementById('question-box');
+  return Boolean(
+    G.question
+    && !G.answerLocked
+    && qbox
+    && !qbox.classList.contains('question-inactive')
+    && !qbox.classList.contains('shooting-hidden')
+    && qbox.style.visibility !== 'hidden'
+  );
+}
+
 function countdownPlanePosition(now = performance.now()) {
   const float = playerFloatOffset();
+  if (_finishPlaneAnim) {
+    const elapsed = Math.max(0, now - _finishPlaneAnim.start);
+    if (elapsed < _finishPlaneAnim.retreatDuration) {
+      const t = elapsed / _finishPlaneAnim.retreatDuration;
+      return {
+        x: _finishPlaneAnim.fromX + float.x,
+        y: _finishPlaneAnim.fromY
+          + (_finishPlaneAnim.retreatY - _finishPlaneAnim.fromY) * easeInOutCubic(t)
+          + float.y,
+      };
+    }
+
+    const boostElapsed = elapsed - _finishPlaneAnim.retreatDuration;
+    const t = Math.min(1, boostElapsed / _finishPlaneAnim.boostDuration);
+    const boost = t * t * t;
+    return {
+      x: _finishPlaneAnim.fromX + float.x,
+      y: _finishPlaneAnim.retreatY
+        + (_finishPlaneAnim.exitY - _finishPlaneAnim.retreatY) * boost
+        + float.y,
+    };
+  }
   if (!_countdownPlaneAnim) {
     return { x: G.player.x + float.x, y: G.player.y + float.y };
   }
@@ -996,15 +1530,30 @@ function frame(ts = 0) {
     return;
   }
   const prevFrameTs = _lastFrameTs || ts;
-  const frameMs = prevFrameTs ? Math.max(8, Math.min(50, ts - prevFrameTs)) : 16.7;
-  _frameStep = isTouchMobile()
-    ? Math.max(1, Math.min(1.65, frameMs / 16.7))
-    : Math.max(0.85, Math.min(1.25, frameMs / 16.7));
+  const frameMs = prevFrameTs ? Math.max(8, Math.min(42, ts - prevFrameTs)) : 16.7;
+  const targetStep = isTouchMobile()
+    ? Math.max(0.95, Math.min(1.32, frameMs / 16.7))
+    : Math.max(0.85, Math.min(1.2, frameMs / 16.7));
+  const questionFocusTarget = isQuestionAwaitingAnswer() ? 1 : 0;
+  const focusEaseMs = questionFocusTarget ? 420 : 520;
+  const focusEase = 1 - Math.exp(-frameMs / focusEaseMs);
+  _questionFocusBlend += (questionFocusTarget - _questionFocusBlend) * focusEase;
+  if (Math.abs(_questionFocusBlend - questionFocusTarget) < 0.001) {
+    _questionFocusBlend = questionFocusTarget;
+  }
+  // At full focus the world runs at 8% speed. The timer remains real-time.
+  const questionSpeedScale = 1 - _questionFocusBlend * 0.92;
+  const resumeScale = resumeSpeedScale(ts || performance.now());
+  _frameStep = (_frameStep * 0.65 + targetStep * 0.35) * resumeScale * questionSpeedScale;
   _lastFrameTs = ts;
   tuneAdaptivePerformance(ts);
 
+  if (!_cutsceneActive && !_levelEnding && !_tutorialActive) {
+    updateTimedPlayXp(frameMs);
+  }
+
   tick += _frameStep;
-  _shipFrame = (_shipFrame + 0.08 * _frameStep) % 5;
+  advanceShipAnimation(ts || performance.now());
 
   ctx.globalAlpha = 1;
   ctx.imageSmoothingEnabled = false;
@@ -1018,7 +1567,7 @@ function frame(ts = 0) {
   }
 
   // ── Background ─────────────────────────────────────────────────────────
-  updateBackground();
+  updateBackground(_frameStep);
   drawBackground(ctx, canvas);
 
   // ── Weather overlay ────────────────────────────────────────────────────
@@ -1027,50 +1576,242 @@ function frame(ts = 0) {
     ctx.fillRect(0, 0, canvas.width, canvas.height);
   }
 
+  // The world gently dims only after the first dialogue line appears. The
+  // pre-conversation aircraft entrance stays bright and fully visible.
+  const dialogueDimTarget = _bossDialogueActive && !_bossDialogueEntrance && !_bossDialogueExit ? 1 : 0;
+  const dialogueDimEase = 1 - Math.exp(-frameMs / 260);
+  _bossDialogueDim += (dialogueDimTarget - _bossDialogueDim) * dialogueDimEase;
+  if (_bossDialogueDim > 0.002) {
+    ctx.fillStyle = `rgba(0,0,0,${(_bossDialogueDim * 0.58).toFixed(3)})`;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  }
+
+  // Smoothly darken only the world background while a question is waiting.
+  // Aircraft and projectiles are drawn afterward and remain easy to see.
+  if (_questionFocusBlend > 0.001) {
+    ctx.fillStyle = `rgba(0,0,0,${(_questionFocusBlend * 0.30).toFixed(3)})`;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  }
+
   // ── Speed lines ────────────────────────────────────────────────────────
   if (_speedLines.length === 0) initSpeedLines(canvas.width, canvas.height);
   drawSpeedLines(ctx, canvas.width, canvas.height);
 
+  // Keep the cloud layer alive during cutscenes as well as active gameplay.
+  // Boss entrance/dialogue frames return early below, so drawing clouds only
+  // in the gameplay branch made them disappear for the whole boss animation.
+  updateClouds(_frameStep, canvas.width, canvas.height);
+  drawClouds(ctx);
+
   if (_cutsceneActive) {
-    const plane = countdownPlanePosition(ts || performance.now());
-    drawAircraftSprite(ctx, G.activeAircraft, plane.x, plane.y, _shipFrame, 1, 0);
+    if (_bossDialogueActive) {
+      const dialogueBoss = G.enemies.find(enemy => enemy.active && (enemy.a330Boss || enemy.b52Boss || enemy.kawasakiBoss || enemy.c5Boss || enemy.spaceShuttleBoss));
+      const entranceT = _bossDialogueEntrance
+        ? Math.max(0, Math.min(1, ((ts || performance.now()) - _bossDialogueEntrance.start) / _bossDialogueEntrance.duration))
+        : 1;
+      const entranceEase = 1 - Math.pow(1 - entranceT, 3);
+      if (dialogueBoss) {
+        const savedX = dialogueBoss.x;
+        const savedY = dialogueBoss.y;
+        const savedAlpha = dialogueBoss.spawnAlpha;
+        dialogueBoss.x = canvas.width / 2;
+        const bossTargetY = dialogueBoss.entryTargetY || canvas.height * 0.19;
+        dialogueBoss.y = -getEnemyDrawSize(dialogueBoss) * 0.56
+          + (bossTargetY + getEnemyDrawSize(dialogueBoss) * 0.56) * entranceEase;
+        dialogueBoss.spawnAlpha = Math.min(1, entranceT * 1.8);
+        drawEnemySprite(ctx, dialogueBoss, 0);
+        dialogueBoss.x = savedX;
+        dialogueBoss.y = savedY;
+        dialogueBoss.spawnAlpha = savedAlpha;
+      }
+      drawAircraftSprite(
+        ctx,
+        G.activeAircraft,
+        _bossPlayerAnchor?.x ?? G.player.x,
+        _bossPlayerAnchor?.y ?? G.player.y,
+        _shipFrame,
+        1,
+        0,
+      );
+    } else {
+      const plane = countdownPlanePosition(ts || performance.now());
+      drawAircraftSprite(ctx, G.activeAircraft, plane.x, plane.y, _shipFrame, 1, 0);
+    }
     if (shaking) ctx.restore();
     _queueFrame();
     return;
   }
 
+  // Clouds were drawn above so they remain below every aircraft and
+  // projectile, including during boss cutscenes.
+  updateAndDrawMapCoins(ctx, canvas.width, canvas.height, _frameStep);
+
   // ── Enemy spawn ────────────────────────────────────────────────────────
-  spawnTimer -= _frameStep;
-  if (spawnTimer <= 0 && activeRegularEnemyCount() < adaptiveMaxEnemies()) {
-    const types = levelCfg.isBossLevel ? levelCfg.bossCompanionTypes : levelCfg.enemyTypes;
+  const bossFirstShotGraceActive = G.enemies.some(enemy =>
+    enemy.active
+    && enemy.type === 'boss'
+    && enemy.firstShotAt
+    && performance.now() < enemy.firstShotAt
+  );
+  if (!bossFirstShotGraceActive) spawnTimer -= _frameStep;
+  if (!bossFirstShotGraceActive && spawnTimer <= 0) {
+    const types = RANDOM_ENEMY_TYPES;
     const type  = types[Math.floor(Math.random() * types.length)];
-    const e     = spawnEnemy(canvas.width, type);
-    e.speed        *= levelCfg.enemySpeedMult * (isTouchMobile() ? 1.08 : 1);
-    e.fireRate      = Math.max(isTouchMobile() ? 84 : 30, Math.floor(e.fireRate * levelCfg.enemyFireRateMult));
-    e.fireCooldown  = (isTouchMobile() ? 96 : 45) + Math.floor(Math.random() * (isTouchMobile() ? 86 : 45));
-    G.enemies.push(e);
-    spawnTimer = adaptiveSpawnRate();
+    const activeCount = activeRegularEnemyCount();
+    const normalCap = adaptiveMaxEnemies();
+    const spawned = [];
+
+    if (type === 'tank') {
+      // Apaches now make individual, brief machine-gun ambushes.
+      if (activeCount < normalCap) spawned.push(spawnEnemy(canvas.width, 'tank'));
+    } else if (type === 'fast') {
+      // F-5 crossing waves grow with the level: one pair, then two, then
+      // three. Pairs always remain complete so their paths draw an X.
+      const desiredPairs = Math.min(3, 1 + Math.floor(Math.max(0, G.currentLevel - 1) / 15));
+      const availablePairs = Math.floor(Math.max(0, normalCap - activeCount) / 2);
+      const pairCount = Math.min(desiredPairs, availablePairs);
+      for (let lane = 0; lane < pairCount; lane++) {
+        spawned.push(spawnEnemy(canvas.width, 'fast', { crossSide: -1, crossLane: lane }));
+        spawned.push(spawnEnemy(canvas.width, 'fast', { crossSide: 1, crossLane: lane }));
+      }
+    } else if (activeCount < normalCap) {
+      // Independent enemies: F-15 straight runs, randomly turning Mirages,
+      // and very fast F-14 interceptor runs.
+      spawned.push(spawnEnemy(canvas.width, type));
+    }
+
+    for (const e of spawned) {
+      e.speed       *= levelCfg.enemySpeedMult * ENEMY_MOVEMENT_SPEED_SCALE;
+      e.fireRate     = Math.max(isTouchMobile() ? 84 : 30, Math.floor(e.fireRate * levelCfg.enemyFireRateMult));
+      e.fireCooldown = (isTouchMobile() ? 96 : 45) + Math.floor(Math.random() * (isTouchMobile() ? 86 : 45));
+      G.enemies.push(e);
+    }
+    // Retry sooner when a complete formation could not fit yet.
+    spawnTimer = spawned.length ? adaptiveSpawnRate() : 45;
   }
   pruneEnemies(canvas.height + 80);
 
   // Level-based missile guidance strength and homing probability
-  const _guideF = G.currentLevel >= 50 ? 0.10
-                : G.currentLevel >= 26 ? 0.06
-                : G.currentLevel >= 11 ? 0.03
-                : 0.015;
-  const _homingChance = G.currentLevel >= 50 ? 0.70
-                      : G.currentLevel >= 26 ? 0.55
-                      : G.currentLevel >= 11 ? 0.35
-                      : 0.20;
-
   // ── Enemies ────────────────────────────────────────────────────────────
-  updateEnemies(G.enemies, canvas.width, _frameStep);
-  for (const e of G.enemies) {
+  updateEnemies(G.enemies, canvas.width, canvas.height, _frameStep);
+  // Draw regular enemies first and bosses last. Keep G.enemies untouched so
+  // collision, targeting, and spawn logic retain their original data order.
+  const layeredEnemies = [
+    ...G.enemies.filter(enemy => enemy.type !== 'boss'),
+    ...G.enemies.filter(enemy => enemy.type === 'boss'),
+  ];
+  for (const e of layeredEnemies) {
     if (!e.active) continue;
 
     if (e.type === 'boss') {
-      // Boss fires in bursts then pauses; timing/speed/color vary by milestone
-      if (e.bossPhase === 'pause') {
+      if (e.a330Boss || e.b52Boss || e.kawasakiBoss || e.c5Boss || e.spaceShuttleBoss) {
+        if (e.entryActive) {
+          e.entryProgress = Math.min(1, e.entryProgress + _frameStep / 150);
+          const p = e.entryProgress;
+          const eased = p * p * (3 - 2 * p);
+          e.spawnAlpha = Math.min(1, p * 2.2);
+          e.x = canvas.width / 2;
+          e.y = e.entryStartY + (e.entryTargetY - e.entryStartY) * eased;
+          if (p >= 1) {
+            e.entryActive = false;
+            e.spawnAlpha = 1;
+            e.y = e.entryTargetY;
+            e._targetY = e.y;
+          }
+        }
+        if (e.entryActive || !e.combatActive) {
+          drawEnemySprite(ctx, e, 0);
+          continue;
+        }
+        if (e.a330Boss) {
+          // Ten-second A330 cycle: five seconds protected, five exposed.
+          const wasDefenseActive = e.antiMissileActive;
+          e.antiMissileCycle = (e.antiMissileCycle + _frameStep) % 600;
+          e.antiMissileActive = e.antiMissileCycle < 300;
+          if (wasDefenseActive && !e.antiMissileActive) e.a330SalvoCooldown = 0;
+
+          if (!e.antiMissileActive) {
+            e.a330SalvoCooldown -= _frameStep;
+            if (e.a330SalvoCooldown <= 0 && performance.now() >= (e.firstShotAt || 0)) {
+              const missileSpeed = (isTouchMobile() ? 3.8 : 2.8) * MISSILE_SPEED_SCALE;
+              for (const spread of [-52, 0, 52]) {
+                if (isTouchMobile() && G.enemyMissiles.length >= MAX_ENEMY_MISSILES_TOUCH) break;
+                const launchX = e.x + spread * 0.65;
+                const targetX = G.player.x + spread;
+                const missile = createMissile(launchX, e.y + 22, targetX, G.player.y, missileSpeed, e.id, '#ef4444');
+                G.enemyMissiles.push(missile);
+              }
+              SFX.missile();
+              e.a330SalvoCooldown = 300;
+            }
+          }
+        } else {
+          // Gunship cycle: ten seconds firing, then ten seconds resting.
+          e.b52LaserCycle = (e.b52LaserCycle + _frameStep) % 1200;
+          const firing = e.b52LaserCycle < 600;
+          const previousAim = e.b52TurretAim || 0;
+          const aimSpeed = (23 / 90) * _frameStep;
+          if (firing) {
+            // Track the player's horizontal position. Values from -23 to +23
+            // map directly onto the supplied center-to-left/right frames.
+            const trackingRange = Math.max(1, canvas.width * 0.34);
+            const rawTargetAim = ((G.player.x - e.x) / trackingRange) * 23;
+            const targetAim = Math.max(-23, Math.min(23, rawTargetAim));
+            const delta = targetAim - previousAim;
+            e.b52TurretAim = previousAim + Math.sign(delta) * Math.min(Math.abs(delta), aimSpeed);
+            const spriteBase = e.spaceShuttleBoss ? 'boss-space-shuttle' : e.kawasakiBoss ? 'boss-kawasaki-c2' : e.c5Boss ? 'boss-c5-galaxy' : 'boss-b52';
+            const returningFromLeft = previousAim < 0 && e.b52TurretAim > previousAim;
+            const returningFromRight = previousAim > 0 && e.b52TurretAim < previousAim;
+            if (e.spaceShuttleBoss) {
+              e.spriteKey = e.b52TurretAim < 0 ? 'boss-space-shuttle-left' : spriteBase;
+              e.animFrame = Math.round(Math.abs(e.b52TurretAim));
+            } else if (e.c5Boss) {
+              e.spriteKey = spriteBase;
+              e.animFrame = 0;
+            } else if (returningFromLeft) {
+              e.spriteKey = `${spriteBase}-left-return`;
+              e.animFrame = Math.round(23 - Math.abs(e.b52TurretAim));
+            } else if (returningFromRight) {
+              e.spriteKey = `${spriteBase}-right-return`;
+              e.animFrame = Math.round(23 - Math.abs(e.b52TurretAim));
+            } else {
+              e.spriteKey = e.b52TurretAim < 0 ? `${spriteBase}-left` : spriteBase;
+              e.animFrame = Math.round(Math.abs(e.b52TurretAim));
+            }
+            e.b52LaserCooldown -= _frameStep;
+            if (e.b52LaserCooldown <= 0 && performance.now() >= (e.firstShotAt || 0)) {
+              const gunOffsets = e.kawasakiBoss ? [-34, 34] : e.spaceShuttleBoss ? [-7, 7] : [0];
+              for (const gunOffset of gunOffsets) {
+                if (isTouchMobile() && G.enemyMissiles.length >= MAX_ENEMY_MISSILES_TOUCH) break;
+                const laser = createMissile(e.x + gunOffset, e.y + 22, G.player.x, G.player.y, 7.6 * MISSILE_SPEED_SCALE, e.id, '#ff2020');
+                laser.type = 'enemy-laser';
+                G.enemyMissiles.push(laser);
+              }
+              SFX.missile();
+              e.b52LaserCooldown = 18;
+            }
+          } else {
+            // Smoothly bring the gun back to the middle while the B-52 rests.
+            e.b52TurretAim = previousAim - Math.sign(previousAim)
+              * Math.min(Math.abs(previousAim), aimSpeed);
+            if (e.spaceShuttleBoss) {
+              e.spriteKey = e.b52TurretAim < 0 ? 'boss-space-shuttle-left' : 'boss-space-shuttle';
+              e.animFrame = Math.round(Math.abs(e.b52TurretAim));
+            } else if (e.c5Boss) {
+              e.spriteKey = 'boss-c5-galaxy';
+              e.animFrame = 0;
+            } else if (previousAim < 0) {
+              e.spriteKey = e.kawasakiBoss ? 'boss-kawasaki-c2-left-return' : 'boss-b52-left-return';
+              e.animFrame = Math.round(23 - Math.abs(e.b52TurretAim));
+            } else {
+              e.spriteKey = e.kawasakiBoss ? 'boss-kawasaki-c2-right-return' : 'boss-b52-right-return';
+              e.animFrame = Math.round(23 - Math.abs(e.b52TurretAim));
+            }
+            e.b52LaserCooldown = Math.min(e.b52LaserCooldown, 18);
+          }
+        }
+      // Other milestone bosses retain their existing burst pattern.
+      } else if (e.bossPhase === 'pause') {
         e.bossPauseTimer -= _frameStep;
         if (e.bossPauseTimer <= 0) {
           e.bossPhase    = 'burst';
@@ -1079,12 +1820,14 @@ function frame(ts = 0) {
         }
       } else {
         e.bossBurstTimer -= _frameStep;
-        if (e.bossBurstTimer <= 0 && e.bossBurstFired < e.bossBurstMax) {
-          const ms = (e._missileSpd ?? 2.5) * (isTouchMobile() ? 1.45 : 1);
+        if (e.bossBurstTimer <= 0
+          && e.bossBurstFired < e.bossBurstMax
+          && performance.now() >= (e.firstShotAt || 0)) {
+          const ms = (e._missileSpd ?? 2.5) * (isTouchMobile() ? 1.45 : 1) * MISSILE_SPEED_SCALE;
           const mc = e._missileColor ?? '#ef4444';
           if (!isTouchMobile() || G.enemyMissiles.length < MAX_ENEMY_MISSILES_TOUCH) {
-            const em = createMissile(e.x, e.y, G.player.x, G.player.y, ms, null, mc);
-            em.guideTick = 180;
+            const muzzleY = e.y + getEnemyDrawSize(e) * 0.30;
+            const em = createMissile(e.x, muzzleY, G.player.x, G.player.y, ms, e.id, mc);
             G.enemyMissiles.push(em);
             SFX.missile();
           }
@@ -1124,25 +1867,60 @@ function frame(ts = 0) {
       e.x = Math.max(44, Math.min(canvas.width - 44, e.x));
 
     } else {
-      e.fireCooldown -= _frameStep;
       const fireTop = canvas.height * 0.08;
       const fireBot = Math.min(canvas.height * 0.78, G.player.y - 80);
       const inFireZone = e.y > fireTop && e.y < fireBot;
+      if (e.type === 'interceptor') {
+        // F-14 exclusive weapon: one straight red laser every 0.2 seconds
+        // (12 simulation frames). Question slow motion also slows this cadence.
+        e.laserCooldown -= _frameStep;
+        if (e.laserCooldown <= 0 && inFireZone && !_stealthActive) {
+          const laserSpeed = (isTouchMobile() ? 8.8 : 7.4) * MISSILE_SPEED_SCALE;
+          const laser = createMissile(e.x, e.y + getEnemyDrawSize(e) * 0.28, e.x, canvas.height + 100, laserSpeed, e.id, '#ff2020');
+          laser.type = 'enemy-laser';
+          G.enemyMissiles.push(laser);
+          e.laserCooldown += 12;
+          SFX.missile();
+        } else if (e.laserCooldown <= 0) {
+          e.laserCooldown = 1;
+        }
+      } else if (e.pathType === 'apache-ambush') {
+        // Rapid short machine-gun bursts while the Apache is hovering.
+        if (e.apachePhase === 'hover' && !_stealthActive) {
+          e.apacheGunCooldown -= _frameStep;
+          if (e.apacheGunCooldown <= 0) {
+            if (e.apacheBurstRemaining <= 0) e.apacheBurstRemaining = 7;
+            if (!isTouchMobile() || G.enemyMissiles.length < MAX_ENEMY_MISSILES_TOUCH) {
+              const muzzleX = e.x + (Math.random() - 0.5) * 10;
+              const targetX = G.player.x + (Math.random() - 0.5) * 26;
+              const bullet = createMissile(muzzleX, e.y + getEnemyDrawSize(e) * 0.24, targetX, G.player.y, 8.5 * MISSILE_SPEED_SCALE, e.id, '#ffd34d');
+              bullet.type = 'enemy-machine-gun';
+              G.enemyMissiles.push(bullet);
+              SFX.missile();
+            }
+            e.apacheBurstRemaining--;
+            e.apacheGunCooldown = e.apacheBurstRemaining > 0 ? 5 : 72;
+          }
+        }
+      } else {
+        e.fireCooldown -= _frameStep;
       if (e.fireCooldown <= 0 && inFireZone && !_stealthActive) {
         e.fireCooldown = e.fireRate;
         const burstCount = _enemyMissileBurstCount();
-        const enemyMissileSpeed = isTouchMobile() ? 3.8 : 2.5;
+        const enemyMissileSpeed = (isTouchMobile() ? 3.8 : 2.5) * MISSILE_SPEED_SCALE;
+        const muzzleY = e.y + getEnemyDrawSize(e) * 0.30;
         for (let i = 0; i < burstCount; i++) {
           if (isTouchMobile() && G.enemyMissiles.length >= MAX_ENEMY_MISSILES_TOUCH) break;
-          const _homing = Math.random() < _homingChance;
           const spread = (i - (burstCount - 1) / 2) * 28;
-          const em = createMissile(e.x, e.y, G.player.x + spread, G.player.y, enemyMissileSpeed, null, _homing ? '#f97316' : '#ef4444');
-          if (_homing) em.guideTick = 180;
+          const launchX = e.x + spread * 0.22;
+          const targetX = G.player.x + spread;
+          const em = createMissile(launchX, muzzleY, targetX, G.player.y, enemyMissileSpeed, e.id, '#ef4444');
           G.enemyMissiles.push(em);
         }
         SFX.missile();
       } else if (e.fireCooldown <= 0) {
         e.fireCooldown = 18;
+      }
       }
     }
 
@@ -1151,7 +1929,39 @@ function frame(ts = 0) {
     e.x += ox;
     const bankAngle = (e.vx || 0) * 0.13;
     drawEnemySprite(ctx, e, bankAngle);
+    if (e.a330Boss && e.antiMissileActive) {
+      const radius = e.antiMissileRadius || getEnemyDrawSize(e) * 0.78;
+      const pulse = 0.5 + 0.5 * Math.sin((e.antiMissileCycle || 0) * 0.13);
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.strokeStyle = `rgba(56,189,248,${0.48 + pulse * 0.34})`;
+      ctx.lineWidth = 3;
+      ctx.shadowColor = '#38bdf8';
+      ctx.shadowBlur = 14;
+      ctx.beginPath();
+      ctx.arc(e.x, e.y, radius * (0.94 + pulse * 0.06), 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.globalAlpha = 0.22;
+      ctx.fillStyle = '#38bdf8';
+      ctx.fill();
+      ctx.restore();
+    }
     e.x = origX;
+
+    // Physical aircraft collision. Use an ellipse that follows the visible
+    // sprite sizes, rather than the much smaller logical enemy size.
+    if (_invincible <= 0 && !_stealthActive && e.active) {
+      const enemyDrawSize = getEnemyDrawSize(e);
+      const playerDrawSize = getPlayerSize();
+      const dx = e.x - G.player.x;
+      const dy = e.y - G.player.y;
+      const hitWidth = enemyDrawSize * 0.34 + playerDrawSize * 0.30;
+      const hitHeight = enemyDrawSize * 0.38 + playerDrawSize * 0.34;
+      const aircraftTouching =
+        (dx * dx) / (hitWidth * hitWidth) +
+        (dy * dy) / (hitHeight * hitHeight) <= 1;
+      if (aircraftTouching) onEnemyAircraftCollision(e);
+    }
 
     if (!isTouchMobile() && e.label) {
       ctx.fillStyle    = 'rgba(255,255,255,0.8)';
@@ -1162,28 +1972,70 @@ function frame(ts = 0) {
     }
   }
 
-  // ── Player missiles — re-aim at enemy's current position each frame ────────
-  for (const m of G.missiles) {
-    const enemy = G.enemies.find(e => e.id === m.enemyId && e.active);
-    if (enemy) {
-      const dx  = enemy.x - m.x, dy = enemy.y - m.y;
-      const d   = Math.sqrt(dx * dx + dy * dy) || 1;
-      const spd = Math.sqrt(m.vx * m.vx + m.vy * m.vy);
-      m.tx = enemy.x; m.ty = enemy.y;
-      m.vx = (dx / d) * spd;
-      m.vy = (dy / d) * spd;
+  // ── Player missiles — fixed path after launch ─────────────────────────────
+  // ── Enemy missiles (with level-based guidance) ─────────────────────────
+  updateAirdropXrayQuestionPause(ts || performance.now());
+  updatePlayerAutoFire(ts || performance.now());
+  updateMissiles(G.missiles, missile => {
+    for (const enemy of G.enemies) {
+      if (!enemy.active) continue;
+      const enemyDrawSize = getEnemyDrawSize(enemy);
+      if (enemy.a330Boss && enemy.antiMissileActive) {
+        const shieldRadius = enemy.antiMissileRadius || enemyDrawSize * 0.78;
+        const shieldDx = missile.x - enemy.x;
+        const shieldDy = missile.y - enemy.y;
+        if ((missile.shieldBounceUntil || 0) <= tick &&
+            shieldDx * shieldDx + shieldDy * shieldDy <= shieldRadius * shieldRadius) {
+          const distance = Math.hypot(shieldDx, shieldDy) || 1;
+          const normalX = shieldDx / distance;
+          const normalY = shieldDy / distance;
+          const velocityAlongNormal = missile.vx * normalX + missile.vy * normalY;
+          missile.vx = (missile.vx - 2 * velocityAlongNormal * normalX) * 1.06;
+          missile.vy = (missile.vy - 2 * velocityAlongNormal * normalY) * 1.06;
+          // Place it just outside the energy field so it cannot become stuck
+          // bouncing repeatedly on the same shield edge.
+          missile.x = enemy.x + normalX * (shieldRadius + 5);
+          missile.y = enemy.y + normalY * (shieldRadius + 5);
+          missile.shieldBounceUntil = tick + 10;
+          spawnHitSpark(G.particles, missile.x, missile.y);
+          return false;
+        }
+      }
+      const hitHalfWidth = Math.max(28, enemyDrawSize * 0.48);
+      const hitHalfHeight = Math.max(25, enemyDrawSize * 0.44);
+      const dx = missile.x - enemy.x;
+      const dy = missile.y - enemy.y;
+      const insideAircraft =
+        (dx * dx) / (hitHalfWidth * hitHalfWidth) +
+        (dy * dy) / (hitHalfHeight * hitHalfHeight) <= 1;
+      if (insideAircraft) {
+        onMissileHit(enemy, missile);
+        return true;
+      }
     }
-  }
-  updateMissiles(G.missiles, m => {
-    const e = G.enemies.find(en => en.id === m.enemyId);
-    if (e && e.active) onMissileHit(e, m);
+    return hitAirdrop(missile);
   }, _frameStep);
   drawMissiles(ctx, G.missiles, false);
 
-  // ── Enemy missiles (with level-based guidance) ─────────────────────────
   for (let i = G.enemyMissiles.length - 1; i >= 0; i--) {
     const m  = G.enemyMissiles[i];
     const dx = m.x - G.player.x, dy = m.y - G.player.y;
+    if (playerShieldActive(ts || performance.now())) {
+      const shieldRadius = getPlayerSize() * 0.62;
+      if ((m.playerShieldBounceUntil || 0) <= tick && dx * dx + dy * dy <= shieldRadius * shieldRadius) {
+        const distance = Math.hypot(dx, dy) || 1;
+        const normalX = dx / distance;
+        const normalY = dy / distance;
+        const velocityAlongNormal = m.vx * normalX + m.vy * normalY;
+        m.vx = (m.vx - 2 * velocityAlongNormal * normalX) * 1.06;
+        m.vy = (m.vy - 2 * velocityAlongNormal * normalY) * 1.06;
+        m.x = G.player.x + normalX * (shieldRadius + 5);
+        m.y = G.player.y + normalY * (shieldRadius + 5);
+        m.playerShieldBounceUntil = tick + 10;
+        spawnHitSpark(G.particles, m.x, m.y);
+        continue;
+      }
+    }
     if (!_stealthActive && dx * dx + dy * dy < 22 * 22) {
       G.enemyMissiles.splice(i, 1);
       onEnemyMissileHit();
@@ -1191,15 +2043,6 @@ function frame(ts = 0) {
     }
     if (m.y > canvas.height + 40 || m.x < -60 || m.x > canvas.width + 60) {
       G.enemyMissiles.splice(i, 1); continue;
-    }
-    // Guidance: steer toward player for up to 5 s (300 frames)
-    if (_guideF > 0 && m.guideTick > 0) {
-      m.guideTick -= _frameStep;
-      const tdx = G.player.x - m.x, tdy = G.player.y - m.y;
-      const td  = Math.sqrt(tdx * tdx + tdy * tdy) || 1;
-      if (!m._spd) m._spd = Math.sqrt(m.vx * m.vx + m.vy * m.vy);
-      m.vx = m.vx * (1 - _guideF) + (tdx / td) * m._spd * _guideF;
-      m.vy = m.vy * (1 - _guideF) + (tdy / td) * m._spd * _guideF;
     }
     m.x += m.vx * _frameStep;
     m.y += m.vy * _frameStep;
@@ -1209,21 +2052,13 @@ function frame(ts = 0) {
   drawMissiles(ctx, G.enemyMissiles, true);
 
   // ── Machine gun (F/A-18) ───────────────────────────────────────────────
-  if (_mgActive) {
-    if (--_mgTicks <= 0) _mgActive = false;
-    if (--_mgFireTimer <= 0) {
-      const t = nearestEnemy();
-      if (t) {
-        G.missiles.push(createMissile(G.player.x, G.player.y, t.x, t.y, 16, t.id, '#f97316'));
-        SFX.missile();
-      }
-      _mgFireTimer = isTouchMobile() ? 4 : 8;
-    }
-  }
-
   // ── Particles ──────────────────────────────────────────────────────────
   updateParticles(G.particles);
   drawParticles(ctx, G.particles);
+
+  const nowForNuke = ts || performance.now();
+  if (_nukeSweepUntil > nowForNuke) applyNuke();
+  updateNukeButton(nowForNuke);
 
   // ── Player ─────────────────────────────────────────────────────────────
   if (_invincible > 0) _invincible--;
@@ -1241,38 +2076,54 @@ function frame(ts = 0) {
       ? 0.28 + 0.12 * Math.sin(tick * 0.18)  // slow ghost pulse
       : 1.0;
 
-  if (G.activeSkin    !== _lastSkinId)    { _cachedSkinData   = SKINS.find(s => s.id === G.activeSkin);    _lastSkinId    = G.activeSkin; }
-  if (G.activeLivery  !== _lastLiveryId)  { _cachedLiveryData = SKINS.find(s => s.id === G.activeLivery);  _lastLiveryId  = G.activeLivery; }
-  const activeSkinData   = _cachedSkinData;
-  const activeLiveryData = _cachedLiveryData;
-  const skinFilter    = isTouchMobile() ? '' : (activeLiveryData?.filter || '');
-  const skinAircraft  = (activeSkinData ?? activeLiveryData)?.aircraft ?? G.activeAircraft;
   const playerFloat = playerFloatOffset();
-  const playerDrawX = G.player.x + playerFloat.x;
-  const playerDrawY = G.player.y + playerFloat.y;
+  const resumeOffset = resumePlaneOffset(ts || performance.now());
+  const playerDrawX = G.player.x + playerFloat.x + resumeOffset.x;
+  const playerDrawY = G.player.y + playerFloat.y + resumeOffset.y;
+  updatePlayerShieldButton(ts || performance.now());
+  const shootingPlan = activeShootingPlan();
 
-  if (!isTouchMobile()) {
-    _fireTick++;
-    drawEngineFire(ctx, G.activeAircraft, playerDrawX, playerDrawY, _fireTick, bankAngle);
+  // Render the carrier, parachute crate, and its destruction effect behind
+  // the player's aircraft.
+  updateAirdrop(_frameStep, canvas.width, canvas.height);
+  updateGameCurrencyHUD();
+  if (G.lives > _maxLives) {
+    _maxLives = G.lives;
+  }
+  if (_lastHudLives !== G.lives) {
+    _lastHudLives = G.lives;
+    updateLivesHUD();
+  }
+  drawAirdrop(ctx, canvas.width, canvas.height);
+
+  if (!_playerDestroyed && shootingPlan?.wingmen) {
+    const wingSize = Math.max(46, Math.round(getPlayerSize() * (isTouchMobile() ? 0.78 : 0.68)));
+    const wingOffset = wingmanSideOffset();
+    const sideAlpha = flashAlpha * 0.94;
+    const sideTilt = bankAngle * 0.45;
+    drawAircraftSpriteSized(ctx, G.activeAircraft, playerDrawX - wingOffset, wingmanY(playerDrawY), wingSize, _shipFrame, sideAlpha, sideTilt);
+    drawAircraftSpriteSized(ctx, G.activeAircraft, playerDrawX + wingOffset, wingmanY(playerDrawY), wingSize, _shipFrame, sideAlpha, sideTilt);
   }
 
-  const _inGameImg = activeSkinData?.skinImg || activeSkinData?.offerImg;
-  if (_inGameImg) {
-    // Draw the skin artwork image directly as the player plane
-    const cached = _skinImgCache[_inGameImg];
-    if (cached?.complete) {
-      const sz = getPlayerSize();
+  if (!_playerDestroyed) {
+    drawAircraftSprite(ctx, G.activeAircraft, playerDrawX, playerDrawY, _shipFrame, flashAlpha, bankAngle);
+    if (playerShieldActive(ts || performance.now())) {
+      const radius = getPlayerSize() * 0.62;
+      const pulse = 0.5 + 0.5 * Math.sin(tick * 0.13);
       ctx.save();
-      if (flashAlpha !== 1) ctx.globalAlpha = flashAlpha;
-      ctx.translate(playerDrawX, playerDrawY);
-      if (bankAngle) ctx.rotate(bankAngle);
-      ctx.drawImage(cached, -sz / 2, -sz / 2, sz, sz);
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.strokeStyle = `rgba(56,189,248,${0.55 + pulse * 0.35})`;
+      ctx.lineWidth = 3;
+      ctx.shadowColor = '#38bdf8';
+      ctx.shadowBlur = 16;
+      ctx.beginPath();
+      ctx.arc(playerDrawX, playerDrawY, radius * (0.95 + pulse * 0.05), 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.globalAlpha = 0.2;
+      ctx.fillStyle = '#38bdf8';
+      ctx.fill();
       ctx.restore();
-    } else {
-      drawAircraftSprite(ctx, skinAircraft, playerDrawX, playerDrawY, _shipFrame, flashAlpha, bankAngle, skinFilter);
     }
-  } else {
-    drawAircraftSprite(ctx, skinAircraft, playerDrawX, playerDrawY, _shipFrame, flashAlpha, bankAngle, skinFilter);
   }
 
   ctx.globalAlpha = 1;
@@ -1330,6 +2181,23 @@ function frame(ts = 0) {
     }
 
     // ☢ NUKE label
+    if (t < 0.72) {
+      const pass = Math.min(1, t / 0.72);
+      const b2X = cx;
+      const b2Y = canvas.height + 90 - pass * (canvas.height + 220);
+      const b2Size = Math.min(canvas.width * 0.34, canvas.height * 0.24, 210);
+      const tilt = Math.sin(pass * Math.PI) * 0.08;
+      drawAircraftSprite(ctx, 'b2', b2X, b2Y, 0, 0.95, tilt);
+      ctx.save();
+      ctx.globalAlpha = 0.68 * (1 - Math.abs(pass - 0.45));
+      ctx.fillStyle = '#ff9f1c';
+      ctx.beginPath();
+      ctx.ellipse(b2X - b2Size * 0.08, b2Y + b2Size * 0.34, b2Size * 0.05, b2Size * 0.18, 0, 0, Math.PI * 2);
+      ctx.ellipse(b2X + b2Size * 0.08, b2Y + b2Size * 0.34, b2Size * 0.05, b2Size * 0.18, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+
     if (t > 0.04 && t < 0.78) {
       const ta = t < 0.15 ? t / 0.15 : t > 0.62 ? (0.78 - t) / 0.16 : 1;
       ctx.save();
@@ -1383,32 +2251,227 @@ function nearestEnemies(n) {
     .slice(0, n);
 }
 
+function activeShootingPlan() {
+  if (G.activeBadge === 'combo_master') {
+    return SHOOTING_PLANS.find(plan => plan.id === 'squadron_plus')
+      || SHOOTING_PLANS.find(plan => plan.id === 'default')
+      || SHOOTING_PLANS[0];
+  }
+  return SHOOTING_PLANS.find(plan => plan.id === G.activeShootingPlan)
+    || SHOOTING_PLANS.find(plan => plan.id === 'default')
+    || SHOOTING_PLANS[0];
+}
+
+function activeAircraftAbility() {
+  return AIRCRAFT[G.activeAircraft]?.ability || {};
+}
+
+function sourceForShot(shot) {
+  const mobileScale = isTouchMobile() ? 0.72 : 1;
+  const sideOffset = wingmanSideOffset();
+  if (shot.source === 'leftWingman') {
+    return { x: G.player.x - sideOffset, y: wingmanY(G.player.y) };
+  }
+  if (shot.source === 'rightWingman') {
+    return { x: G.player.x + sideOffset, y: wingmanY(G.player.y) };
+  }
+  return {
+    x: G.player.x + (shot.x || 0) * mobileScale,
+    y: G.player.y - 42 + (shot.y || 0) * mobileScale,
+  };
+}
+
+function wingmanSideOffset() {
+  const size = getPlayerSize();
+  return Math.max(size * 0.82, Math.min(canvas.width * (isTouchMobile() ? 0.23 : 0.18), size * 1.28));
+}
+
+function wingmanY(playerY) {
+  return playerY + getPlayerSize() * 0.34;
+}
+
+function targetPointForShot(source, shot) {
+  const angle = shot.angle || 0;
+  const distance = Math.max(canvas.height * 1.4, 900);
+  return {
+    x: source.x + Math.sin(angle) * distance,
+    y: source.y - Math.cos(angle) * distance,
+  };
+}
+
+function firePlayerShootingPlan() {
+  const plan = activeShootingPlan();
+  const shots = Array.isArray(plan?.missiles) && plan.missiles.length
+    ? plan.missiles
+    : [{ x: 0, y: 0, angle: 0 }];
+  if (!G.enemies.some(e => e.active)) return false;
+
+  const ability = activeAircraftAbility();
+  const speed = (isTouchMobile() ? 9.8 : 8.4) * MISSILE_SPEED_SCALE * (ability.missileSpeed || 1);
+  const aircraftShots = ability.bonusShots
+    ? shots.flatMap(shot => [shot, { ...shot, x: (shot.x || 0) + 18, angle: (shot.angle || 0) + 0.025 }])
+    : shots;
+  for (const shot of aircraftShots) {
+    const source = sourceForShot(shot);
+    const target = targetPointForShot(source, shot);
+    const damage = (shot.damage || 1) * (ability.damage || 1);
+    const missile = createMissile(source.x, source.y, target.x, target.y, speed, null, ability.weapon === 'xray' ? '#ff2020' : '#00d4ff', damage);
+    missile.fromPlayer = true;
+    missile.type = ability.weapon || G.activeMissileType || 'default';
+    G.missiles.push(missile);
+  }
+  if (G.missiles.length) SFX.missile();
+  return true;
+}
+
+function fireAirdropXray() {
+  if (!G.enemies.some(e => e.active)) return false;
+  const sourceX = G.player.x;
+  const sourceY = G.player.y - 42;
+  const missile = createMissile(
+    sourceX, sourceY, sourceX, sourceY - Math.max(canvas.height * 1.4, 900),
+    (isTouchMobile() ? 11.2 : 9.6) * MISSILE_SPEED_SCALE,
+    null, '#ff2020', 1,
+  );
+  missile.fromPlayer = true;
+  missile.type = 'xray';
+  G.missiles.push(missile);
+  SFX.missile();
+  return true;
+}
+
+function updateAirdropXrayQuestionPause(now = performance.now()) {
+  const active = (G.airdropXrayUntil || 0) > now;
+  const qbox = document.getElementById('question-box');
+
+  if (active) {
+    if (!G.airdropXrayQuestionPaused) {
+      G.airdropXrayQuestionPaused = true;
+      G.airdropXrayResumeQuestion = false;
+    }
+
+    // A delayed nextQuestion() may run after the laser has already started.
+    // Re-cancel any equation and timer that appears during the whole bonus.
+    const questionNeedsPause = !!G.question && !G.answerLocked;
+    if (questionNeedsPause) G.airdropXrayResumeQuestion = true;
+    if (G.timerInterval) {
+      clearInterval(G.timerInterval);
+      G.timerInterval = null;
+    }
+    if (qbox) {
+      qbox.classList.add('shooting-hidden');
+      qbox.style.visibility = 'hidden';
+    }
+  } else if (!active && G.airdropXrayQuestionPaused) {
+    const shouldResume = G.airdropXrayResumeQuestion && !G.answerLocked;
+    G.airdropXrayQuestionPaused = false;
+    G.airdropXrayResumeQuestion = false;
+    if (shouldResume && qbox) {
+      qbox.classList.remove('shooting-hidden', 'fading', 'question-inactive');
+      qbox.style.visibility = '';
+      void qbox.offsetWidth;
+      qbox.classList.add('resume-appearing');
+      setTimeout(() => qbox.classList.remove('resume-appearing'), 420);
+      startTimer(false);
+    }
+  }
+}
+
+function updatePlayerAutoFire(now = performance.now()) {
+  const plan = activeShootingPlan();
+  const xrayActive = (G.airdropXrayUntil || 0) > now;
+  const cadenceMs = xrayActive ? 500 : Math.max(0.35, Number(plan?.cadence || 5) * (activeAircraftAbility().fireRate || 1)) * 1000;
+  const inShootingWindow = xrayActive || _shootingWindowUntil > now;
+
+  if (G.airdropXrayShotReset) {
+    G.airdropXrayShotReset = false;
+    _nextPlayerShotAt = now;
+  }
+
+  // Weapons are a reward for a correct answer. Never carry a queued shot
+  // into the question phase or into the next shooting window.
+  if (!inShootingWindow) {
+    _nextPlayerShotAt = 0;
+    return;
+  }
+  if (_cutsceneActive || _transitioning || _correctionWaiting || !G.enemies.some(e => e.active)) {
+    return;
+  }
+  if (!_nextPlayerShotAt) _nextPlayerShotAt = now + cadenceMs;
+  if (now < _nextPlayerShotAt) return;
+  const fired = xrayActive ? fireAirdropXray() : firePlayerShootingPlan();
+  _nextPlayerShotAt = now + (fired ? cadenceMs : 500);
+}
+
 function fireEnemyMissile() {
   const enemy = nearestEnemy();
   if (!enemy) return;
-  const m = createMissile(enemy.x, enemy.y, G.player.x, G.player.y, isTouchMobile() ? 3.8 : 2.5, null, '#ef4444');
+  const m = createMissile(
+    enemy.x,
+    enemy.y,
+    enemy.x,
+    enemy.y + 100,
+    (isTouchMobile() ? 3.8 : 2.5) * MISSILE_SPEED_SCALE,
+    null,
+    '#ef4444',
+  );
   G.enemyMissiles.push(m);
   SFX.missile();
+}
+
+function hasNukePlanEquipped() {
+  return G.activeShootingPlan === 'blackbird_overload';
+}
+
+function updateNukeButton(now = performance.now()) {
+  const btn = $('btn-nuke-strike');
+  if (!btn) return;
+  const enabled = hasNukePlanEquipped() && !isTutorialActive();
+  btn.classList.toggle('hidden', !enabled);
+  if (!enabled) return;
+
+  const remaining = Math.max(0, _nukeReadyAt - now);
+  if (remaining > 0) {
+    btn.disabled = true;
+    btn.textContent = `B-2 ${Math.ceil(remaining / 1000)}s`;
+  } else if (_nukeSweepUntil > now) {
+    btn.disabled = true;
+    btn.textContent = 'NUKE';
+  } else {
+    btn.disabled = false;
+    btn.textContent = getLang() === 'fr' ? 'B-2 PRET' : 'B-2 READY';
+  }
+}
+
+function triggerNukeStrike() {
+  const now = performance.now();
+  if (!hasNukePlanEquipped() || isTutorialActive() || now < _nukeReadyAt) return;
+  _nukeAnim = 90;
+  _nukeApplied = false;
+  _nukeSweepUntil = now + NUKE_SWEEP_MS;
+  _nukeReadyAt = now + NUKE_COOLDOWN_MS;
+  _nukedBosses = new Set();
+  G.enemyMissiles = [];
+  SFX.missile();
+  updateNukeButton(now);
 }
 
 function applyNuke() {
   const toRemove = [];
   for (const e of G.enemies) {
     if (!e.active) continue;
-    if (e.type === 'boss') {
-      e.currentHp = Math.max(1, Math.floor((e.maxHp || e.currentHp) / 2));
-      e.shakeTick  = 30;
-      spawnExplosion(G.particles, e.x, e.y, '#ff6600', 24);
-      SFX.explode();
-    } else {
-      spawnExplosion(G.particles, e.x, e.y, e.color, 22);
-      SFX.explode();
-      toRemove.push(e);
-    }
+    if (e.type === 'boss' && _nukedBosses.has(e)) continue;
+    if (e.type === 'boss') _nukedBosses.add(e);
+    spawnExplosion(G.particles, e.x, e.y, e.type === 'boss' ? '#ff6600' : e.color, e.type === 'boss' ? 34 : 22);
+    SFX.explode();
+    toRemove.push(e);
   }
   toRemove.forEach(e => { e.active = false; });
   G.enemies = G.enemies.filter(e => e.active);
 }
+
+const MISSILE_HIT_RECOVERY_MS = 3000;
+const MISSILE_HIT_FEEDBACK_MS = 450;
 
 function onEnemyMissileHit() {
   if (G.lives <= 0 || _invincible > 0) return;
@@ -1420,6 +2483,16 @@ function onEnemyMissileHit() {
   spawnExplosion(G.particles, G.player.x, G.player.y, '#ef4444', 14);
   SFX.explode();
   shakeFrames = 14;
+
+  // Remove the current equation immediately. The next one is created and
+  // revealed only after the missile-hit recovery period has finished.
+  const questionBox = document.getElementById('question-box');
+  if (questionBox) {
+    questionBox.classList.remove('fading', 'appearing', 'resume-appearing');
+    questionBox.classList.add('question-inactive');
+    questionBox.style.visibility = 'hidden';
+  }
+
   if (!G.answerLocked && G.question) {
     G.answerLocked = true;
     G.questionsAnswered++;
@@ -1429,24 +2502,61 @@ function onEnemyMissileHit() {
     updateStreakHUD();
     clearInterval(G.timerInterval);
     G.timerInterval = null;
-    G.enemyMissiles = [];
     document.querySelectorAll('.answer-btn').forEach(b => {
       b.classList.add('wrong');
       b.disabled = true;
     });
-    revealCorrectAnswer();
-    waitForCorrectionContinue(() => loseLife(), _sessionId);
+    const sid = _sessionId;
+    _revealTimer = setTimeout(() => {
+      if (_sessionId === sid) {
+        loseLife({ resumeDelayMs: MISSILE_HIT_RECOVERY_MS - MISSILE_HIT_FEEDBACK_MS });
+      }
+    }, MISSILE_HIT_FEEDBACK_MS);
     return;
   }
+  loseLife({ resumeDelayMs: MISSILE_HIT_RECOVERY_MS });
+}
+
+function onEnemyAircraftCollision(enemy) {
+  if (!enemy?.active || G.lives <= 0 || _invincible > 0) return;
+
+  // A regular aircraft is destroyed by the impact. Bosses remain active but
+  // the player's invincibility window prevents repeated collision damage.
+  if (enemy.type !== 'boss') enemy.active = false;
+  spawnMissileExplosion(G.particles, enemy.x, enemy.y, 'default', 34);
+  spawnExplosion(G.particles, enemy.x, enemy.y, enemy.color || '#ef4444', 20);
+  spawnMissileExplosion(G.particles, G.player.x, G.player.y, 'default', 26);
+  spawnExplosion(G.particles, G.player.x, G.player.y, '#ef4444', 18);
+  SFX.explode();
+  shakeFrames = 16;
+  pruneEnemies(canvas.height + 80);
+
+  // Stop the current equation cleanly. A collision costs a life, but it does
+  // not count as a wrong mathematical answer.
+  if (!G.answerLocked) {
+    G.answerLocked = true;
+    clearInterval(G.timerInterval);
+    G.timerInterval = null;
+    document.querySelectorAll('.answer-btn').forEach(button => {
+      button.disabled = true;
+      button.style.pointerEvents = 'none';
+    });
+  }
+
   loseLife();
 }
 
 function onMissileHit(enemy, missile) {
   SFX.explode();
-  const destroyed = hitEnemy(enemy, missile?.damage ?? 1);
+  const badgeDamage = G.activeBadge === 'flawless' ? 1.15 : (G.activeBadge === 'boss_hunter' && enemy.type === 'boss' ? 1.25 : 1);
+  const destroyed = hitEnemy(enemy, (missile?.damage ?? 1) * badgeDamage);
+  if (enemy.type === 'boss') updateBossHealthBar(enemy);
   if (destroyed) {
-    spawnExplosion(G.particles, enemy.x, enemy.y, enemy.color, 18);
+    spawnMissileExplosion(G.particles, enemy.x, enemy.y, missile?.type || 'default', 18);
     enemy.active = false;
+    // Every aircraft destroyed by the player leaves a collectible coin at
+    // its last position. The coin is awarded only if the player picks it up.
+    spawnMapCoin(canvas.width, enemy.y, enemy.x, 1);
     shakeFrames  = 6;
     pruneEnemies(canvas.height + 80);
     // Boss killed → win the boss level immediately
@@ -1461,6 +2571,7 @@ function onMissileHit(enemy, missile) {
 // ── QUESTION CYCLE ───────────────────────────────────────────────────────────
 function nextQuestion() {
   if (_transitioning) return;
+  stopShootingWindow();
   const questionTarget = isTutorialActive() ? tutorialQuestionTarget() : levelCfg.questionCount;
   if (!levelCfg.isBossLevel && G.questionsAnswered >= questionTarget) {
     if (isTutorialActive() && _tutorialRound === 1) {
@@ -1491,15 +2602,28 @@ function nextQuestion() {
   clearTimeout(_revealTimer);
   _revealTimer = null;
 
+  const resumeFromCorrection = _smoothResumeAfterCorrection;
+  _smoothResumeAfterCorrection = false;
+
   // Undim and resume game loop
   const overlay = $('game-pause-overlay');
-  overlay.classList.remove('dimmed');
+  if (resumeFromCorrection) overlay.classList.remove('correction-dimmed');
+  else overlay.classList.remove('dimmed', 'correction-dimmed');
   if (!G.animFrame && !_cutsceneActive) _queueFrame(_nqSid);
 
   const reveal = $('correct-answer-reveal');
   const qbox   = $('question-box');
+  const qboxWasHidden = qbox.style.visibility === 'hidden'
+    || qbox.classList.contains('shooting-hidden')
+    || qbox.classList.contains('question-inactive');
+  qbox.classList.remove('correction-active');
 
-  qbox.classList.add('fading');
+  if (!qboxWasHidden) {
+    qbox.style.visibility = '';
+    qbox.classList.add('fading');
+  } else {
+    qbox.classList.add('fading');
+  }
 
   setTimeout(() => {
     // If the level ended while we were transitioning, abort
@@ -1527,17 +2651,41 @@ function nextQuestion() {
       btns.appendChild(btn);
     });
 
-    // Fade back in
-    qbox.classList.remove('fading');
-    qbox.classList.add('appearing');
-    setTimeout(() => { qbox.classList.remove('appearing'); _transitioning = false; }, 730);
-    updateTutorialHUD();
-    startTimer();
-  }, 620);
+    // If the aircraft used the panel's space, fly it clear before revealing
+    // the equation. This prevents any part of the plane entering the panel.
+    const returnDuration = returnPlayerAboveQuestionBox();
+    const revealQuestionPanel = () => {
+      if (_sessionId !== _nqSid) return;
+      qbox.classList.remove('question-inactive');
+      qbox.style.visibility = '';
+      qbox.classList.remove('fading', 'shooting-hidden', 'resume-appearing', 'appearing');
+      void qbox.offsetWidth;
+      qbox.classList.add(resumeFromCorrection ? 'resume-appearing' : 'appearing');
+      if (resumeFromCorrection) {
+        startSmoothGameResume();
+        requestAnimationFrame(() => overlay.classList.remove('dimmed', 'correction-dimmed'));
+      }
+      const appearClass = resumeFromCorrection ? 'resume-appearing' : 'appearing';
+      const appearMs = resumeFromCorrection ? 920 : 730;
+      setTimeout(() => { qbox.classList.remove(appearClass); _transitioning = false; }, appearMs);
+      updateTutorialHUD();
+      startTimer();
+    };
+    if (returnDuration) setTimeout(revealQuestionPanel, returnDuration + 40);
+    else revealQuestionPanel();
+  }, qboxWasHidden ? 0 : 620);
 }
 
 function startTimer(resetTime = true) {
   if (G.timerInterval) clearInterval(G.timerInterval);
+  G.timerInterval = null;
+  const timerWrap = $('timer-bar-wrap');
+  if (_levelEnding) {
+    timerWrap.classList.add('timer-finished');
+    return;
+  }
+  timerWrap.classList.remove('timer-finished');
+  timerWrap.style.visibility = '';
 
   // Practice unlimited mode — freeze timer bar, no countdown
   if (G.practiceMode && G.practiceTimeLimit === null) {
@@ -1561,18 +2709,15 @@ function startTimer(resetTime = true) {
   }
   $('timer-bar-wrap').classList.remove('tutorial-no-timer');
 
-  const aircraft   = AIRCRAFT[G.activeAircraft] || AIRCRAFT.t6;
   const baseTime   = G.practiceMode
     ? G.practiceTimeLimit
     : levelCfg.timeLimit + (levelCfg.weather?.timeMod || 0);
   const adjustedBaseTime = isTutorialActive()
     ? Math.max(9, baseTime + 4)
-    : G.practiceMode ? baseTime : baseTime + getOnboardingTimerBonus();
-  const timerLimit = aircraft.timerOverride != null
-    ? Math.min(aircraft.timerOverride, adjustedBaseTime)
-    : adjustedBaseTime;
+    : G.practiceMode ? baseTime : baseTime + getOnboardingTimerBonus()
+      + (G.activeBadge === 'lightning_reflex' ? 5 : 0);
   if (resetTime) {
-    G.timeLeft  = Math.max(3, timerLimit);
+    G.timeLeft  = Math.max(3, adjustedBaseTime);
     _timerTotal = G.timeLeft;
   }
   const currentPct = resetTime ? 100 : Math.max(0, G.timeLeft / _timerTotal) * 100;
@@ -1609,88 +2754,51 @@ function handleAnswer(choice, btn) {
   if (G.answerLocked) return;
   G.answerLocked = true;
   clearInterval(G.timerInterval);
+  G.timerInterval = null;
+  $('timer-bar-wrap').classList.add('timer-finished');
   document.querySelectorAll('.answer-btn').forEach(b => {
     b.disabled = true;
     b.style.pointerEvents = 'none';
   });
 
   const correct = choice === G.question.answer;
+  G.sessionResponseTimeTotal = (G.sessionResponseTimeTotal || 0) + Math.max(0, _timerTotal - G.timeLeft);
+  G.sessionResponseCount = (G.sessionResponseCount || 0) + 1;
   btn.classList.add(correct ? 'correct' : 'wrong');
 
   if (correct) {
     SFX.correct();
+    const now = performance.now();
+    // A correct answer must not be punished by a missile that was already
+    // touching the player while their attention was on the equation.
+    const safetyRadiusSq = CORRECT_ANSWER_SAFETY_RADIUS * CORRECT_ANSWER_SAFETY_RADIUS;
+    G.enemyMissiles = G.enemyMissiles.filter(missile => {
+      const dx = missile.x - G.player.x;
+      const dy = missile.y - G.player.y;
+      return dx * dx + dy * dy > safetyRadiusSq;
+    });
+    _invincible = Math.max(_invincible, CORRECT_ANSWER_INVINCIBLE_FRAMES);
+    const cadenceMs = Math.max(0.35, Number(activeShootingPlan()?.cadence || 5) * (activeAircraftAbility().fireRate || 1)) * 1000;
+    _shootingWindowUntil = now + GOOD_ANSWER_SHOOTING_WINDOW_MS;
+    firePlayerShootingPlan();
+    _nextPlayerShotAt = now + cadenceMs;
     G.correctAnswers++;
+    // Coins are earned only by answering correctly. A missed, timed-out, or
+    // incorrect question never releases a collectible coin.
+    releaseCorrectAnswerCoins();
     if (G.correctAnswers > 0 && G.correctAnswers % 5 === 0) showAnswerCelebration();
     G.questionsAnswered++;
     recordTutorialAnswer(G.question.op, true);
     showTutorialFeedback(true);
     G.sessionXP += calcSpeedXP(G.timeLeft, _timerTotal) + (G.likesMath ? 1 : 0);
     G.streak++;
+    G.bestAnswerStreak = Math.max(G.bestAnswerStreak || 0, G.streak);
+    save('bestAnswerStreak', G.bestAnswerStreak);
     updateStreakHUD();
     if (G.streak === 3 || G.streak === 5) SFX.streak();
     trackMission('correct_answers', 1);
     trackMission('max_streak', G.streak);
 
-    const aircraft = AIRCRAFT[G.activeAircraft] || AIRCRAFT.t6;
-
-    if (aircraft.ability === 'stealth') {
-      _stealthAnswers++;
-      if (_stealthAnswers % 5 === 0) {
-        _stealthActive = true;
-        _stealthTicks  = 600; // 10 s at 60 fps
-      }
-    }
-
-    if (aircraft.ability === 'multiStealth') {
-      _stealthAnswers++;
-      if (_stealthAnswers % 3 === 0) {
-        _stealthActive = true;
-        _stealthTicks  = 600; // 10 s at 60 fps
-      }
-    }
-
-    if (aircraft.ability === 'machineGun') {
-      _mgAnswers++;
-      if (_mgAnswers % 5 === 0) {
-        _mgActive    = true;
-        _mgTicks     = 300; // 5 s at 60 fps
-        _mgFireTimer = 0;
-      }
-    }
-
-    if (aircraft.ability === 'nuke') {
-      _nukeAnswers++;
-      if (_nukeAnswers % 10 === 0) {
-        _nukeAnim    = 90;
-        _nukeApplied = false;
-      }
-    }
-
-    const baseSpeed    = aircraft.ability === 'fastMissile' ? 13 : 8;
-    const speed        = baseSpeed * (aircraft.missileSpdMult ?? 1);
-    const damage       = aircraft.ability === 'doubleDamage' ? 2
-                       : aircraft.ability === 'heavyMissile' ? 1.4
-                       : aircraft.ability === 'tripleShot'  ? 1.25
-                       : 1;
-    const missileColor = G.prestige >= 3 ? '#a855f7' : '#00d4ff';
-    const target       = nearestEnemy();
-    const shotSid      = _sessionId;
-    if (target) {
-      if (aircraft.ability === 'multiShot' || aircraft.ability === 'multiStealth') {
-        nearestEnemies(2).forEach((t, i) => {
-          G.missiles.push(createMissile(G.player.x, G.player.y, t.x, t.y, speed, t.id, missileColor, damage));
-          setTimeout(() => { if (_sessionId === shotSid) SFX.missile(); }, i * 60);
-        });
-      } else if (aircraft.ability === 'tripleShot') {
-        nearestEnemies(3).forEach((t, i) => {
-          G.missiles.push(createMissile(G.player.x, G.player.y, t.x, t.y, speed, t.id, missileColor, damage));
-          setTimeout(() => { if (_sessionId === shotSid) SFX.missile(); }, i * 60);
-        });
-      } else {
-        G.missiles.push(createMissile(G.player.x, G.player.y, target.x, target.y, speed, target.id, missileColor, damage));
-        SFX.missile();
-      }
-    }
   } else {
     SFX.wrong();
     G.questionsAnswered++;
@@ -1698,8 +2806,8 @@ function handleAnswer(choice, btn) {
     showTutorialFeedback(false);
     G.streak = 0;
     updateStreakHUD();
-    revealCorrectAnswer();
     // Wrong answer breaks the SR-71 run — reset all cube progress
+    revealCorrectAnswer(choice);
     if (!G.practiceMode && G.currentLevel <= 30) {
       G.sr71WrongAnswers = (G.sr71WrongAnswers || 0) + 1;
       G.sr71CleanLevels  = [];
@@ -1709,24 +2817,131 @@ function handleAnswer(choice, btn) {
   }
 
   const sid = _sessionId;
-  const delay = correct ? (_nukeAnim > 0 ? 2000 : 600) : 0;
-  if (correct) _revealTimer = setTimeout(() => {
-    if (_sessionId !== sid) return;
-    if (isTutorialActive()) nextQuestion();
-    else if (levelCfg.isBossLevel || G.questionsAnswered < levelCfg.questionCount) nextQuestion();
-    else endLevel(true);
-  }, delay);
+  if (correct) {
+    const qbox = document.getElementById('question-box');
+    if (qbox) {
+      qbox.classList.add('fading', 'shooting-hidden');
+      setTimeout(() => {
+        if (_sessionId === sid) qbox.style.visibility = 'hidden';
+      }, 620);
+    }
+    _revealTimer = setTimeout(() => advanceAfterCorrectAnswer(sid), GOOD_ANSWER_SHOOTING_WINDOW_MS);
+  }
 
   if (!correct) {
-    if (isTutorialActive()) {
-      _revealTimer = setTimeout(() => { if (_sessionId === sid) loseLife(); }, 1800);
-    } else {
-      waitForCorrectionContinue(() => loseLife(), sid);
-    }
+    waitForCorrectionContinue(() => loseLife(), sid);
   }
 }
 
-function buildExplanation(q) {
+function listCountingSteps(start, count, direction = 1) {
+  const values = [];
+  for (let i = 1; i <= Math.min(count, 12); i++) values.push(start + i * direction);
+  const suffix = count > 12 ? ', ...' : '';
+  return values.join(', ') + suffix;
+}
+
+function buildMentalMathExplanation(q, picked = null) {
+  const { a, b, op, answer } = q;
+  const lang = getLang();
+  const isFr = lang === 'fr';
+  const sym = op === '*' ? 'x' : op === '/' ? '/' : op;
+  const eq = `${a} ${sym} ${b} = ${answer}`;
+  const pickedText = picked == null
+    ? ''
+    : isFr ? `Tu as choisi ${picked}. ` : `You chose ${picked}. `;
+
+  if (op === '+') {
+    if (b <= 12) {
+      const steps = listCountingSteps(a, b, 1);
+      return isFr
+        ? `${pickedText}Compte ${b} pas apres ${a}: ${steps}. Donc ${eq}.`
+        : `${pickedText}Count ${b} steps after ${a}: ${steps}. So ${eq}.`;
+    }
+    const rounded = Math.ceil(b / 10) * 10;
+    if (rounded !== b && rounded - b <= 4) {
+      return isFr
+        ? `${pickedText}Ajoute ${rounded}, puis enleve ${rounded - b}. ${a} + ${rounded} = ${a + rounded}, puis ${a + rounded} - ${rounded - b} = ${answer}.`
+        : `${pickedText}Add ${rounded}, then take away ${rounded - b}. ${a} + ${rounded} = ${a + rounded}, then ${a + rounded} - ${rounded - b} = ${answer}.`;
+    }
+    return isFr
+      ? `${pickedText}Separe les nombres: dizaines avec dizaines, unites avec unites. Ensuite, rassemble tout: ${eq}.`
+      : `${pickedText}Split the numbers: tens with tens, ones with ones. Then put them together: ${eq}.`;
+  }
+
+  if (op === '-') {
+    if (b <= 12) {
+      const steps = listCountingSteps(a, b, -1);
+      return isFr
+        ? `${pickedText}Recule de ${b} pas depuis ${a}: ${steps}. Donc ${eq}.`
+        : `${pickedText}Count back ${b} steps from ${a}: ${steps}. So ${eq}.`;
+    }
+    const rounded = Math.ceil(b / 10) * 10;
+    if (rounded !== b && rounded - b <= 5) {
+      return isFr
+        ? `${pickedText}Enleve ${rounded}, puis rajoute ${rounded - b}. ${a} - ${rounded} = ${a - rounded}, puis ${a - rounded} + ${rounded - b} = ${answer}.`
+        : `${pickedText}Take away ${rounded}, then add back ${rounded - b}. ${a} - ${rounded} = ${a - rounded}, then ${a - rounded} + ${rounded - b} = ${answer}.`;
+    }
+    return isFr
+      ? `${pickedText}Va par etapes: enleve les dizaines, puis les unites. ${eq}.`
+      : `${pickedText}Go step by step: subtract the tens, then the ones. ${eq}.`;
+  }
+
+  if (op === '*') {
+    if (a <= 6 && b <= 12) {
+      const groups = Array.from({ length: a }, () => b).join(' + ');
+      return isFr
+        ? `${pickedText}${a} groupes de ${b}: ${groups} = ${answer}.`
+        : `${pickedText}${a} groups of ${b}: ${groups} = ${answer}.`;
+    }
+    if (b === 5 || a === 5) {
+      const other = a === 5 ? b : a;
+      return isFr
+        ? `${pickedText}Pour x5: fais ${other} x 10 = ${other * 10}, puis divise par 2 = ${answer}.`
+        : `${pickedText}For x5: do ${other} x 10 = ${other * 10}, then divide by 2 = ${answer}.`;
+    }
+    if (b === 9 || a === 9) {
+      const other = a === 9 ? b : a;
+      return isFr
+        ? `${pickedText}Pour x9: fais ${other} x 10 = ${other * 10}, puis enleve ${other} = ${answer}.`
+        : `${pickedText}For x9: do ${other} x 10 = ${other * 10}, then take away ${other} = ${answer}.`;
+    }
+    if ((b === 11 && a >= 10 && a < 100) || (a === 11 && b >= 10 && b < 100)) {
+      const other = a === 11 ? b : a;
+      return isFr
+        ? `${pickedText}Pour x11: additionne les deux chiffres de ${other}, puis mets le total au milieu. ${eq}.`
+        : `${pickedText}For x11: add the two digits of ${other}, then place the total in the middle. ${eq}.`;
+    }
+    return isFr
+      ? `${pickedText}Pense en groupes: ${a} groupes de ${b}. Compte par bonds jusqu'a ${answer}. ${eq}.`
+      : `${pickedText}Think in groups: ${a} groups of ${b}. Count by jumps up to ${answer}. ${eq}.`;
+  }
+
+  if (op === '/') {
+    if (answer <= 12) {
+      return isFr
+        ? `${pickedText}Demande: combien de groupes de ${b} font ${a}? ${answer} groupes, car ${answer} x ${b} = ${a}.`
+        : `${pickedText}Ask: how many groups of ${b} make ${a}? ${answer} groups, because ${answer} x ${b} = ${a}.`;
+    }
+    if (b === 5) {
+      return isFr
+        ? `${pickedText}Pour diviser par 5: multiplie par 2, puis divise par 10. ${a} x 2 = ${a * 2}, puis /10 = ${answer}.`
+        : `${pickedText}To divide by 5: multiply by 2, then divide by 10. ${a} x 2 = ${a * 2}, then /10 = ${answer}.`;
+    }
+    if (b === 4) {
+      return isFr
+        ? `${pickedText}Pour diviser par 4: divise par 2, puis encore par 2. ${a} / 2 = ${a / 2}, puis /2 = ${answer}.`
+        : `${pickedText}To divide by 4: divide by 2, then by 2 again. ${a} / 2 = ${a / 2}, then /2 = ${answer}.`;
+    }
+    return isFr
+      ? `${pickedText}Cherche combien de ${b} rentrent dans ${a}. ${eq}.`
+      : `${pickedText}Ask how many ${b}s fit in ${a}. ${eq}.`;
+  }
+
+  return eq;
+}
+
+function buildExplanation(q, picked = null) {
+  return buildMentalMathExplanationV2(q, picked);
   const { a, b, op, answer } = q;
   const keyMap = { '+': 'explainAdd', '-': 'explainSub', '*': 'explainMul', '/': 'explainDiv' };
   const key = keyMap[op];
@@ -1737,7 +2952,183 @@ function buildExplanation(q) {
   return t(key).replace(/\{(\w+)\}/g, (_, k) => ({ a, b, answer })[k] ?? k);
 }
 
-function revealCorrectAnswer() {
+function isCloseMathSlip(q, picked) {
+  if (picked == null || !Number.isFinite(Number(picked))) return false;
+  const diff = Math.abs(Number(picked) - Number(q.answer));
+  if (diff === 0) return false;
+  const scale = Math.max(3, Math.round(Math.abs(Number(q.answer)) * 0.08));
+  return diff <= scale || diff <= 2;
+}
+
+function buildCorrectionIntro(q, picked = null) {
+  const isFr = getLang() === 'fr';
+  if (isCloseMathSlip(q, picked)) {
+    return isFr
+      ? 'Presque ! Petit glissement de calcul.'
+      : 'Almost! Just a small calculation slip.';
+  }
+  return isFr
+    ? 'Pas grave ! Regardons la strategie.'
+    : "No worries! Let's use a strategy.";
+}
+
+function buildMentalMathExplanationV2(q, picked = null) {
+  const { a, b, op, answer } = q;
+  const isFr = getLang() === 'fr';
+  const sym = op === '*' ? 'x' : op === '/' ? '/' : op;
+  const eq = `${a} ${sym} ${b} = ${answer}`;
+
+  if (op === '+') {
+    const rounded = Math.ceil(b / 10) * 10;
+    if (b >= 8 && rounded !== b && rounded - b <= 5) {
+      return isFr
+        ? `Arrondis ${b} a ${rounded}. ${a} + ${rounded} = ${a + rounded}. Puis retire ${rounded - b}: ${answer}.`
+        : `Round ${b} to ${rounded}. ${a} + ${rounded} = ${a + rounded}. Then take away ${rounded - b}: ${answer}.`;
+    }
+    const tens = Math.floor(b / 10) * 10;
+    const ones = b - tens;
+    if (tens > 0 && ones > 0) {
+      return isFr
+        ? `Coupe ${b} en ${tens} et ${ones}. ${a} + ${tens} = ${a + tens}. Puis + ${ones} = ${answer}.`
+        : `Split ${b} into ${tens} and ${ones}. ${a} + ${tens} = ${a + tens}. Then + ${ones} = ${answer}.`;
+    }
+    const steps = listCountingSteps(a, b, 1);
+    return isFr
+      ? `Avance de ${b} pas apres ${a}: ${steps}. Donc ${eq}.`
+      : `Count ${b} steps after ${a}: ${steps}. So ${eq}.`;
+  }
+
+  if (op === '-') {
+    const rounded = Math.ceil(b / 10) * 10;
+    if (b >= 8 && rounded !== b && rounded - b <= 5) {
+      return isFr
+        ? `Arrondis ${b} a ${rounded}. ${a} - ${rounded} = ${a - rounded}. Puis rajoute ${rounded - b}: ${answer}.`
+        : `Round ${b} to ${rounded}. ${a} - ${rounded} = ${a - rounded}. Then add back ${rounded - b}: ${answer}.`;
+    }
+    const tens = Math.floor(b / 10) * 10;
+    const ones = b - tens;
+    if (tens > 0 && ones > 0) {
+      return isFr
+        ? `Enleve d'abord ${tens}: ${a} - ${tens} = ${a - tens}. Puis enleve ${ones}: ${answer}.`
+        : `Take away ${tens} first: ${a} - ${tens} = ${a - tens}. Then take away ${ones}: ${answer}.`;
+    }
+    const steps = listCountingSteps(a, b, -1);
+    return isFr
+      ? `Recule de ${b} pas depuis ${a}: ${steps}. Donc ${eq}.`
+      : `Count back ${b} steps from ${a}: ${steps}. So ${eq}.`;
+  }
+
+  if (op === '*') {
+    if (b === 5 || a === 5) {
+      const other = a === 5 ? b : a;
+      return isFr
+        ? `Pour x5, fais x10 puis coupe en deux. ${other} x 10 = ${other * 10}. La moitie = ${answer}.`
+        : `For x5, do x10 then cut it in half. ${other} x 10 = ${other * 10}. Half is ${answer}.`;
+    }
+    if (b === 9 || a === 9) {
+      const other = a === 9 ? b : a;
+      return isFr
+        ? `Pour x9, fais x10 puis enleve une fois le nombre. ${other} x 10 = ${other * 10}. ${other * 10} - ${other} = ${answer}.`
+        : `For x9, do x10 then take away the number once. ${other} x 10 = ${other * 10}. ${other * 10} - ${other} = ${answer}.`;
+    }
+    if ((b === 11 && a >= 10 && a < 100) || (a === 11 && b >= 10 && b < 100)) {
+      const other = a === 11 ? b : a;
+      const digits = String(other).split('').map(Number);
+      const middle = digits[0] + digits[1];
+      return isFr
+        ? `Pour x11, additionne les deux chiffres de ${other}: ${digits[0]} + ${digits[1]} = ${middle}. Mets le total au milieu: ${answer}.`
+        : `For x11, add the two digits of ${other}: ${digits[0]} + ${digits[1]} = ${middle}. Put it in the middle: ${answer}.`;
+    }
+    if (a % 2 === 0 && b * 2 <= 100) {
+      return isFr
+        ? `Simplifie: coupe ${a} en deux et double ${b}. ${a} x ${b} devient ${a / 2} x ${b * 2}. Resultat: ${answer}.`
+        : `Make it simpler: halve ${a} and double ${b}. ${a} x ${b} becomes ${a / 2} x ${b * 2}. Result: ${answer}.`;
+    }
+    if (a <= 6 && b <= 12) {
+      const groups = Array.from({ length: a }, () => b).join(' + ');
+      return isFr
+        ? `${a} groupes de ${b}: ${groups} = ${answer}.`
+        : `${a} groups of ${b}: ${groups} = ${answer}.`;
+    }
+    return isFr
+      ? `Pense en groupes: ${a} groupes de ${b}. Compte par bonds jusqu'a ${answer}.`
+      : `Think in groups: ${a} groups of ${b}. Count by jumps up to ${answer}.`;
+  }
+
+  if (op === '/') {
+    if (b === 5) {
+      return isFr
+        ? `Pour diviser par 5, double puis divise par 10. ${a} x 2 = ${a * 2}. Puis /10 = ${answer}.`
+        : `To divide by 5, double then divide by 10. ${a} x 2 = ${a * 2}. Then /10 = ${answer}.`;
+    }
+    if (b === 4) {
+      return isFr
+        ? `Pour diviser par 4, coupe en deux deux fois. ${a} / 2 = ${a / 2}. Puis /2 = ${answer}.`
+        : `To divide by 4, halve it twice. ${a} / 2 = ${a / 2}. Then /2 = ${answer}.`;
+    }
+    return isFr
+      ? `Demande: combien de groupes de ${b} font ${a}? ${answer} groupes, car ${answer} x ${b} = ${a}.`
+      : `Ask: how many groups of ${b} make ${a}? ${answer} groups, because ${answer} x ${b} = ${a}.`;
+  }
+
+  return eq;
+}
+
+function ensureCorrectionRevealMarkup() {
+  const banner = $('correct-answer-reveal');
+  if (!banner) return null;
+  if (!$('car-step1') || !$('car-step2') || !$('car-step3') || !$('car-step4') || !$('car-step5') || !$('btn-correction-continue')) {
+    banner.innerHTML = `
+      <div id="car-step1" class="car-step car-step-wrong"></div>
+      <div id="car-step2" class="car-step car-step-how"></div>
+      <div id="car-step3" class="car-step car-step-how"></div>
+      <div id="car-step4" class="car-step car-step-check"></div>
+      <div id="car-step5" class="car-step car-step-answer"></div>
+      <button id="btn-correction-continue" class="correction-continue-btn" type="button"></button>
+    `;
+  }
+  return banner;
+}
+
+function buildClearCorrectionSteps(q, picked = null) {
+  const { a, b, op, answer } = q;
+  const isFr = getLang() === 'fr';
+  const symbol = op === '*' ? '×' : op === '/' ? '÷' : op;
+  const explanation = buildExplanation(q, picked)
+    .replace(/^.*?(?:Your answer was|Ta reponse etait).*?\.\s*/i, '')
+    .trim();
+  const sentences = explanation.split(/\.\s+/).map(s => s.replace(/\.$/, '').trim()).filter(Boolean);
+  const method1 = sentences[0] || `${a} ${symbol} ${b}`;
+  const method2 = sentences.slice(1).join('. ') || (isFr ? 'Verifie chaque valeur de position.' : 'Check each place value.');
+
+  let setup = `${a} ${symbol} ${b}`;
+  // Keep the complete calculation on one line for fast, unambiguous reading.
+  setup = `${a} ${symbol} ${b} = ?`;
+
+  let check;
+  if (op === '+') check = `${answer} - ${b} = ${a}`;
+  else if (op === '-') check = `${answer} + ${b} = ${a}`;
+  else if (op === '*') check = `${answer} ÷ ${b} = ${a}`;
+  else if (op === '/') check = `${answer} × ${b} = ${a}`;
+  else check = `${a} ${symbol} ${b} = ${answer}`;
+
+  return [
+    buildCorrectionIntro(q, picked),
+    `${isFr ? 'ETAPE 1 — PLACE LES NOMBRES' : 'STEP 1 — SET UP THE NUMBERS'}\n${setup}`,
+    `${isFr ? 'ETAPE 2 — CALCULE' : 'STEP 2 — CALCULATE'}\n${method1}${method2 ? `. ${method2}` : ''}`,
+    `${isFr ? 'ETAPE 3 — VERIFIE' : 'STEP 3 — CHECK'}\n${check}`,
+    `${isFr ? 'BONNE REPONSE' : 'CORRECT ANSWER'} : ${answer}`,
+  ];
+}
+
+function revealCorrectAnswer(picked = null) {
+  stopShootingWindow();
+  const qbox = document.getElementById('question-box');
+  if (qbox) {
+    qbox.classList.remove('fading', 'appearing', 'shooting-hidden');
+    qbox.classList.add('correction-active');
+    qbox.style.visibility = '';
+  }
   const correct = String(G.question.answer).trim();
   document.querySelectorAll('.answer-btn').forEach(b => {
     b.disabled = false;
@@ -1748,45 +3139,45 @@ function revealCorrectAnswer() {
     b.disabled = true;
   });
 
-  const banner = $('correct-answer-reveal');
+  const banner = ensureCorrectionRevealMarkup();
+  if (!banner) return;
   banner.classList.remove('hidden', 'hiding');
+  banner.style.display = 'flex';
+  banner.style.visibility = 'visible';
+  banner.style.opacity = '1';
   const continueBtn = $('btn-correction-continue');
   if (continueBtn) {
     continueBtn.textContent = getLang() === 'fr' ? 'CONTINUER' : 'CONTINUE';
     continueBtn.disabled = false;
-    continueBtn.style.display = isTutorialActive() ? 'none' : 'block';
+    continueBtn.style.display = 'block';
     continueBtn.onclick = null;
   }
 
   const s1 = $('car-step1'), s2 = $('car-step2'), s3 = $('car-step3');
+  const s4 = $('car-step4'), s5 = $('car-step5');
   s1.className = 'car-step car-step-wrong';
   s2.className = 'car-step car-step-how';
-  s3.className = 'car-step car-step-answer';
+  s3.className = 'car-step car-step-how';
+  s4.className = 'car-step car-step-check';
+  s5.className = 'car-step car-step-answer';
 
-  s1.textContent = t('wrongReveal');
-  s2.textContent = buildExplanation(G.question);
-  s3.textContent = `${t('answerReveal')} ${correct}`;
+  const correctionSteps = buildClearCorrectionSteps(G.question, picked);
+  [s1, s2, s3, s4, s5].forEach((s, index) => {
+    s.textContent = correctionSteps[index];
+    s.classList.remove('visible');
+    setTimeout(() => s.classList.add('visible'), 80 + index * 180);
+  });
 
-  [s1, s2, s3].forEach(s => s.classList.remove('visible'));
-  setTimeout(() => s1.classList.add('visible'), 80);
-  setTimeout(() => s2.classList.add('visible'), 340);
-  setTimeout(() => s3.classList.add('visible'), 620);
-
-  // Smoothly dim + freeze the game
+  // Dim and freeze the game while the player reads the correction.
   const overlay = $('game-pause-overlay');
-  overlay.classList.add('dimmed');
-  setTimeout(() => {
-    cancelAnimationFrame(G.animFrame);
-    G.animFrame = null;
-  }, 600);
+  overlay.classList.add('dimmed', 'correction-dimmed');
+  cancelAnimationFrame(G.animFrame);
+  G.animFrame = null;
 }
 
 function waitForCorrectionContinue(onContinue, sid) {
   const btn = $('btn-correction-continue');
-  if (!btn) {
-    _revealTimer = setTimeout(() => { if (_sessionId === sid) onContinue(); }, 10000);
-    return;
-  }
+  if (!btn) return;
   _correctionWaiting = true;
   btn.disabled = false;
   btn.style.display = 'block';
@@ -1794,11 +3185,36 @@ function waitForCorrectionContinue(onContinue, sid) {
     e.stopPropagation();
     if (!_correctionWaiting || _sessionId !== sid) return;
     _correctionWaiting = false;
+    _smoothResumeAfterCorrection = true;
     btn.disabled = true;
     btn.onclick = null;
+    $('correct-answer-reveal')?.classList.add('hiding');
+    const qbox = document.getElementById('question-box');
+    if (qbox) {
+      qbox.classList.add('fading', 'shooting-hidden');
+      qbox.style.visibility = 'hidden';
+    }
+    const qText = document.getElementById('question-text');
+    const answerBtns = document.getElementById('answer-buttons');
+    if (qText) qText.textContent = '';
+    if (answerBtns) answerBtns.innerHTML = '';
     clearTimeout(_revealTimer);
-    _revealTimer = null;
-    onContinue();
+    _revealTimer = setTimeout(() => {
+      if (_sessionId !== sid) return;
+      $('game-pause-overlay')?.classList.remove('correction-dimmed');
+      const qbox = document.getElementById('question-box');
+      qbox?.classList.remove('correction-active', 'fading');
+      const reveal = $('correct-answer-reveal');
+      if (reveal) {
+        reveal.classList.add('hidden');
+        reveal.classList.remove('hiding');
+        reveal.style.display = '';
+        reveal.style.visibility = '';
+        reveal.style.opacity = '';
+      }
+      _revealTimer = null;
+      onContinue();
+    }, 260);
   };
 }
 
@@ -1812,12 +3228,8 @@ function handleTimeout() {
   updateStreakHUD();
   SFX.wrong();
   document.querySelectorAll('.answer-btn').forEach(b => { b.classList.add('wrong'); b.disabled = true; });
-  revealCorrectAnswer();
   const sid = _sessionId;
-  if (isTutorialActive()) {
-    _revealTimer = setTimeout(() => { if (_sessionId === sid) loseLife(); }, 1800);
-    return;
-  }
+  revealCorrectAnswer(null);
   waitForCorrectionContinue(() => loseLife(), sid);
 }
 
@@ -1847,12 +3259,6 @@ function playDeathCutscene(onDone) {
   const snapshot = new Image();
   snapshot.src = canvas.toDataURL();
 
-  const activeSkinData   = SKINS.find(s => s.id === G.activeSkin);
-  const activeLiveryData = SKINS.find(s => s.id === G.activeLivery);
-  const skinFilter   = activeLiveryData?.filter || '';
-  const skinAircraft = (activeSkinData ?? activeLiveryData)?.aircraft ?? G.activeAircraft;
-  const skinImgKey   = activeSkinData?.skinImg || activeSkinData?.offerImg;
-  const skinImgEl    = skinImgKey ? _skinImgCache[skinImgKey] : null;
   const playerSz     = getPlayerSize();
 
   // Retro sprite frames from Legacy Collection
@@ -1877,14 +3283,7 @@ function playDeathCutscene(onDone) {
   }
 
   function _drawPlayer() {
-    if (skinImgEl?.complete) {
-      ctx.save();
-      ctx.translate(px, py);
-      ctx.drawImage(skinImgEl, -playerSz / 2, -playerSz / 2, playerSz, playerSz);
-      ctx.restore();
-    } else {
-      drawAircraftSprite(ctx, skinAircraft, px, py, 0, 1, 0, skinFilter);
-    }
+    drawAircraftSprite(ctx, G.activeAircraft, px, py, 0, 1, 0);
   }
 
   function _drawRetroFrame(frames, idx, cx, cy, size) {
@@ -2048,7 +3447,7 @@ function playDeathCutscene(onDone) {
   cutRaf = requestAnimationFrame(step);
 }
 
-function loseLife() {
+function loseLife({ resumeDelayMs = 900 } = {}) {
   if (isTutorialActive()) {
     shakeFrames = 6;
     G.streak = 0;
@@ -2079,6 +3478,17 @@ function loseLife() {
     return;
   }
   if (G.lives <= 0) return;
+  if (playerShieldActive()) {
+    _invincible = 180;
+    updateLivesHUD();
+    const sid = _sessionId;
+    setTimeout(() => {
+      if (_sessionId !== sid) return;
+      if (levelCfg.isBossLevel || G.questionsAnswered < levelCfg.questionCount) nextQuestion();
+      else endLevel(true);
+    }, Math.min(resumeDelayMs, 900));
+    return;
+  }
   G.lives--;
   // Do NOT clear G.enemyMissiles — each missile is independent (invincibility frames protect the player)
   updateLivesHUD();
@@ -2091,25 +3501,34 @@ function loseLife() {
       questionsAnswered: G.questionsAnswered,
       streak:            G.streak,
     };
-    cancelAnimationFrame(G.animFrame);
-    G.animFrame = null;
-    const sid2 = _sessionId;
-    playDeathCutscene(() => { if (_sessionId === sid2) endLevel(false); });
+    _playerDestroyed = true;
+    G.answerLocked = true;
+    G.enemyMissiles = [];
+    stopShootingWindow();
+    spawnMissileExplosion(G.particles, G.player.x, G.player.y, 'default', 24);
+    SFX.explode?.();
+    shakeFrames = 10;
+    const gameOverSid = _sessionId;
+    setTimeout(() => {
+      if (_sessionId === gameOverSid) endLevel(false);
+    }, 520);
     return;
   }
-  _invincible = 120;
+  // Keep the aircraft protected throughout longer recovery sequences, such as
+  // the three-second regeneration period after an enemy missile hit.
+  _invincible = Math.max(120, Math.ceil(resumeDelayMs / (1000 / 60)));
   spawnTimer  = adaptiveSpawnRate();
   setTimeout(() => {
     if (_sessionId !== sid) return;
     if (levelCfg.isBossLevel || G.questionsAnswered < levelCfg.questionCount) nextQuestion();
     else endLevel(true);
-  }, 900);
+  }, resumeDelayMs);
 }
 
 // ── HUD ──────────────────────────────────────────────────────────────────────
 function updateLivesHUD() {
   $('hud-lives').innerHTML = Array.from({ length: _maxLives }, (_, i) =>
-    `<img src="/assets/fx/heart-full.png" style="width:28px;height:28px;image-rendering:pixelated;opacity:${i < G.lives ? '1' : '0.3'}">`
+    `<img src="/assets/fx/Iteam/heart-full.png" style="width:28px;height:28px;image-rendering:pixelated;opacity:${i < G.lives ? '1' : '0.3'}">`
   ).join('');
 }
 
@@ -2118,12 +3537,35 @@ function updateStreakHUD() {
 }
 
 // ── LEVEL END ────────────────────────────────────────────────────────────────
-function endLevel(won) {
+function finishLevel(won) {
+  // Coins and EXP earned in gameplay are temporary until victory. Losing or
+  // leaving the level discards the session counters without changing the
+  // player's saved account balance.
+  if (won) {
+    const earnedCoins = Math.max(0, G.airdropSessionCoins || 0);
+    const earnedXp = Math.max(0, G.airdropSessionXP || 0);
+    G.coins = clampCoins((G.coins || 0) + earnedCoins);
+    G.xp = (G.xp || 0) + earnedXp;
+    G.totalXpEarned = (G.totalXpEarned || 0) + earnedXp;
+    save('coins', G.coins);
+    save('xp', G.xp);
+    save('totalXpEarned', G.totalXpEarned);
+  }
   _cutsceneActive = false;
+  _bossDialogueActive = false;
+  _bossDialogueEntrance = null;
+  _bossDialogueSpeakerIsPlayer = false;
+  _bossDialogueDim = 0;
+  _bossDialogueSpeechStartedAt = 0;
+  _bossPlayerAnchor = null;
+  _finishPlaneAnim = null;
+  _levelEnding = false;
+  _playerDestroyed = false;
   _sessionId++;
   _activeSessionId = 0;
   _gamePausedFromQuit = false;
   G.pausedGameResume = null;
+  stopShootingWindow();
   clearInterval(G.timerInterval);
   _stopGameLoop();
   G.timerInterval = null;
@@ -2132,6 +3574,73 @@ function endLevel(won) {
   recordGuestGamePlayed();
   if (won) trackMission('levels_won', 1);
   if (_onComplete) _onComplete(won);
+}
+
+function updateGameCurrencyHUD() {
+  const coins = document.getElementById('hud-coins-count');
+  const xp = document.getElementById('hud-xp-count');
+  if (coins) coins.textContent = (G.airdropSessionCoins || 0).toLocaleString();
+  if (xp) xp.textContent = (G.airdropSessionXP || 0).toLocaleString();
+}
+
+function updateTimedPlayXp(frameMs) {
+  _timedXpElapsedMs += frameMs;
+  while (_timedXpElapsedMs >= 30000) {
+    _timedXpElapsedMs -= 30000;
+    const roll = Math.random();
+    const reward = roll < 0.55 ? { rarity: 'COMMON', amount: 5 }
+      : roll < 0.82 ? { rarity: 'UNCOMMON', amount: 10 }
+        : roll < 0.94 ? { rarity: 'RARE', amount: 20 }
+          : roll < 0.99 ? { rarity: 'EPIC', amount: 35 }
+            : { rarity: 'LEGENDARY', amount: 50 };
+    G.airdropSessionXP = (G.airdropSessionXP || 0) + reward.amount;
+    G.lastTimedXpRarity = reward.rarity;
+  }
+}
+
+function endLevel(won) {
+  if (!won || _levelEnding || !canvas || !G.player) {
+    if (!_levelEnding) finishLevel(won);
+    return;
+  }
+
+  _levelEnding = true;
+  _cutsceneActive = true;
+  G.answerLocked = true;
+  clearInterval(G.timerInterval);
+  G.timerInterval = null;
+  $('timer-bar-wrap').classList.add('timer-finished');
+  stopShootingWindow();
+  clearInterval(G.timerInterval);
+  G.timerInterval = null;
+  G.enemyMissiles = [];
+  clearQuestionUI();
+
+  const qbox = document.getElementById('question-box');
+  const hud = document.getElementById('game-hud');
+  const timer = document.getElementById('timer-bar-wrap');
+  if (qbox) qbox.style.visibility = 'hidden';
+  if (hud) hud.style.visibility = 'hidden';
+  if (timer) timer.style.visibility = 'hidden';
+  timer?.classList.add('timer-finished');
+
+  const retreatDuration = 620;
+  const boostDuration = 780;
+  _finishPlaneAnim = {
+    start: performance.now(),
+    fromX: G.player.x,
+    fromY: G.player.y,
+    retreatY: Math.min(canvas.height + 20, G.player.y + Math.max(48, canvas.height * 0.12)),
+    exitY: -Math.max(180, canvas.height * 0.32),
+    retreatDuration,
+    boostDuration,
+  };
+
+  const sid = _activeSessionId;
+  if (!G.animFrame) _queueFrame(sid);
+  setTimeout(() => {
+    if (_isActiveSid(sid) && _levelEnding) finishLevel(true);
+  }, retreatDuration + boostDuration + 80);
 }
 
 // ── PUBLIC API ───────────────────────────────────────────────────────────────
@@ -2145,6 +3654,8 @@ let _perfAvgMs = 16.7;
 let _perfLastTs = 0;
 let _perfSamples = 0;
 let _frameStep = 1;
+let _questionFocusBlend = 0;
+let _drawBackgroundEveryOtherFrame = false;
 
 function resetAdaptivePerformance() {
   _perfTier = isTouchMobile() ? 1 : 2;
@@ -2152,28 +3663,30 @@ function resetAdaptivePerformance() {
   _perfLastTs = 0;
   _perfSamples = 0;
   _frameStep = 1;
+  _questionFocusBlend = 0;
+  _drawBackgroundEveryOtherFrame = false;
 }
 
 function adaptiveSpawnRate() {
-  if (!isTouchMobile()) return baseSpawnRate;
-  const mult = _perfTier === 0 ? 1.25 : _perfTier === 1 ? 1.08 : 0.95;
-  return Math.max(68, Math.round(baseSpawnRate * mult));
+  if (!isTouchMobile()) return Math.round(baseSpawnRate * ENEMY_SPAWN_INTERVAL_SCALE);
+  const mult = _perfTier === 0 ? 1.45 : _perfTier === 1 ? 1.14 : 0.98;
+  return Math.max(76, Math.round(baseSpawnRate * mult * ENEMY_SPAWN_INTERVAL_SCALE));
 }
 
 function adaptiveMaxEnemies() {
   if (!isTouchMobile()) return baseMaxEnemies;
-  const cap = _perfTier === 0 ? 4 : _perfTier === 1 ? 5 : 6;
+  const cap = _perfTier === 0 ? 4 : _perfTier === 1 ? 7 : 10;
   return Math.min(baseMaxEnemies, cap);
 }
 
 function trimForAdaptivePerformance() {
   const keepEnemies = adaptiveMaxEnemies();
   while (activeRegularEnemyCount() > keepEnemies) {
-    const idx = G.enemies.findIndex(e => e?.type !== 'boss');
+    let idx = G.enemies.findIndex(e => e?.type !== 'boss');
     if (idx < 0) break;
     G.enemies.splice(idx, 1);
   }
-  const maxMissiles = _perfTier === 0 ? 1 : MAX_ENEMY_MISSILES_TOUCH;
+  const maxMissiles = _perfTier === 0 ? 1 : _perfTier === 1 ? 2 : MAX_ENEMY_MISSILES_TOUCH;
   if (isTouchMobile() && G.enemyMissiles.length > maxMissiles) {
     G.enemyMissiles.splice(0, G.enemyMissiles.length - maxMissiles);
   }
@@ -2191,11 +3704,12 @@ function tuneAdaptivePerformance(ts = 0) {
   if (++_perfSamples < 45) return;
   _perfSamples = 0;
 
-  const lagMs = isTouchMobile() ? 25 : 31;
+  const lagMs = isTouchMobile() ? 23 : 31;
   const smoothMs = isTouchMobile() ? 18 : 19;
   const previous = _perfTier;
   if (_perfAvgMs > lagMs && _perfTier > 0) _perfTier--;
   else if (_perfAvgMs < smoothMs && _perfTier < 2) _perfTier++;
+  _drawBackgroundEveryOtherFrame = isTouchMobile() && _perfTier === 0;
   if (_perfTier < previous) trimForAdaptivePerformance();
 }
 
@@ -2236,34 +3750,61 @@ export function initGame(levelNum, onComplete) {
     return () => {};
   }
   _sessionId++;
+  const airdropSelected = rollAirdropForLevel({ practice: G.practiceMode, tutorial: !!G.tutorialMode });
   _activeSessionId = _sessionId;
   _gamePausedFromQuit = false;
   G.pausedGameResume = null;
+  G.question = null;
+  _transitioning = false;
+  _correctionWaiting = false;
+  clearTimeout(_revealTimer);
+  _revealTimer = null;
+  stopShootingWindow();
+  clearSmoothResumeState();
   _cutsceneActive = false;
-  $('question-box').style.visibility  = '';
+  _bossDialogueActive = false;
+  _bossDialogueSpeechStartedAt = 0;
+  _bossDialogueExit = null;
+  _bossDialogueEntrance = null;
+  _bossDialogueSpeakerIsPlayer = false;
+  _bossDialogueDim = 0;
+  _bossPlayerAnchor = null;
+  _finishPlaneAnim = null;
+  _levelEnding = false;
+  clearQuestionUI();
+  const qbox = document.getElementById('question-box');
+  if (qbox) qbox.style.visibility = '';
   $('game-hud').style.visibility      = '';
   $('timer-bar-wrap').style.visibility = '';
+  $('timer-bar-wrap').classList.remove('timer-finished');
+  document.getElementById('boss-health-wrap')?.classList.add('hidden');
   _invincible    = 0;
+  _playerShieldUntil = 0;
+  _playerShieldReadyAt = 0;
+  _lastShieldHudSecond = -1;
   _bankTilt      = 0;
   _stealthActive = false;
   _stealthTicks  = 0;
   _stealthAnswers = 0;
-  _mgActive    = false;
-  _mgTicks     = 0;
-  _mgAnswers   = 0;
-  _mgFireTimer = 0;
   _nukeAnim    = 0;
   _nukeApplied = false;
-  _nukeAnswers = 0;
+  _nukeSweepUntil = 0;
+  _nukeReadyAt = 0;
+  _nukedBosses = new Set();
+  updateNukeButton();
   clearAnswerCelebration();
   _godMode     = false;
   _tutorialActive = !!G.tutorialMode;
+  _nukeReadyAt = hasNukePlanEquipped() && !_tutorialActive ? performance.now() + NUKE_COOLDOWN_MS : 0;
+  updateNukeButton();
   const savedTutorial = _tutorialActive ? getStoredTutorialProgress() : null;
   _tutorialRound = savedTutorial?.round || 1;
   _tutorialStats = _tutorialActive ? (savedTutorial?.stats || emptyTutorialStats()) : null;
   document.getElementById('tutorial-analysis')?.classList.add('hidden');
   document.getElementById('tutorial-countdown')?.classList.add('hidden');
   document.getElementById('tutorial-feedback')?.classList.add('hidden');
+  document.getElementById('boss-dialogue')?.classList.add('hidden');
+  document.getElementById('boss-dialogue')?.classList.remove('player-speaking');
   document.getElementById('tutorial-captain-guide')?.classList.add('hidden');
   document.getElementById('tutorial-round-summary')?.classList.add('hidden');
   document.getElementById('tutorial-hud')?.classList.toggle('hidden', !_tutorialActive);
@@ -2273,11 +3814,19 @@ export function initGame(levelNum, onComplete) {
   shakeFrames = 0;
   tick        = 0;
   _shipFrame  = 0;
+  _shipAnimLastTs = 0;
   _speedLines = [];
   trackMission('games_played', 1);
   const snap = G.continueState;
   G.continueState = null;
   resetLevel();
+  _timedXpElapsedMs = 0;
+  G.airdropSessionCoins = 0;
+  G.airdropSessionXP = 0;
+  G.airdropXrayUntil = 0;
+  G.airdropXrayShotReset = false;
+  G.airdropXrayQuestionPaused = false;
+  G.airdropXrayResumeQuestion = false;
   G.currentLevel = levelNum;
   if (savedTutorial) {
     G.currentLevel = savedTutorial.currentLevel || levelNum;
@@ -2294,9 +3843,8 @@ export function initGame(levelNum, onComplete) {
     save('sr71CleanLevels',  []);
   }
   levelCfg       = applyOnboardingLevelLength(applyAgeModifiers(getLevel(levelNum), G.playerAge));
-  const aircraft = AIRCRAFT[G.activeAircraft] || AIRCRAFT.t6;
-  if (!snap && aircraft.lives) G.lives = aircraft.lives;
   _maxLives = G.lives;
+  _lastHudLives = null;
   if (snap) {
     G.lives             = snap.lives;
     G.correctAnswers    = snap.correctAnswers;
@@ -2321,9 +3869,6 @@ export function initGame(levelNum, onComplete) {
   $('hud-level').textContent = isTutorialActive() ? copy.hudLevel
     : G.practiceMode ? t('practice_label')
     : levelCfg.isBossLevel ? `${t('bossLevel')}${levelNum}` : `${t('level')} ${levelNum}`;
-  const _hudPrestige = document.getElementById('hud-prestige');
-  if (_hudPrestige) _hudPrestige.innerHTML = getPrestigeBadgeHTML(G.prestige);
-
   if (isTutorialActive()) {
     G.lives = 99;
     _maxLives = 1;
@@ -2332,24 +3877,32 @@ export function initGame(levelNum, onComplete) {
     $('hud-lives').innerHTML = '<span style="opacity:0.3">∞</span>';
   } else {
     updateLivesHUD();
-    if (aircraft.ability === 'extraLife') G.lives = Math.min(G.lives + 1, 5);
     _maxLives = G.lives;
     updateLivesHUD();
   }
   updateStreakHUD();
 
   resetAdaptivePerformance();
-  baseSpawnRate = isTutorialActive() ? 170 : isTouchMobile() ? Math.max(72, Math.round(levelCfg.spawnRate * 0.95)) : levelCfg.spawnRate;
-  baseMaxEnemies = isTutorialActive() ? 2 : isTouchMobile() ? Math.min(levelCfg.maxEnemies, 6) : levelCfg.maxEnemies;
+  baseSpawnRate = isTutorialActive() ? 170 : isTouchMobile() ? Math.max(82, Math.round(levelCfg.spawnRate * 1.02)) : levelCfg.spawnRate;
+  baseMaxEnemies = isTutorialActive() ? 2 : levelCfg.maxEnemies;
   spawnRate = baseSpawnRate;
   maxEnemies = baseMaxEnemies;
   spawnTimer = isTouchMobile() ? 22 : 60;
 
   attachInputListeners();
+  const shieldButton = document.getElementById('btn-player-shield');
+  if (shieldButton) {
+    _playerShieldButtonHandler = event => { event.preventDefault(); activatePlayerShield(); };
+    shieldButton.addEventListener('pointerdown', _playerShieldButtonHandler);
+    updatePlayerShieldButton(performance.now(), true);
+  }
 
   const quitBtn = $('btn-quit-game');
+  const nukeBtn = $('btn-nuke-strike');
+  if (nukeBtn) nukeBtn.onclick = triggerNukeStrike;
   quitBtn.onclick = () => {
     _gamePausedFromQuit = true;
+    stopShootingWindow();
     clearInterval(G.timerInterval);
     G.timerInterval = null;
     if (_resizeTimer) {
@@ -2419,25 +3972,20 @@ export function initGame(levelNum, onComplete) {
     preloadBiome(levelCfg.biome, {
       aircraftId: G.activeAircraft,
       enemyTypes: [
-        ...(levelCfg.enemyTypes || []),
-        ...(levelCfg.bossCompanionTypes || []),
+        ...RANDOM_ENEMY_TYPES,
         ...(levelCfg.isBossLevel ? ['boss'] : []),
       ],
     }).then(() => {
       cancelAnimationFrame(_loadRaf);
       if (!_isActiveSid(sid)) return;
       initBackground(levelCfg.biome);
+      initClouds(levelCfg.biome, canvas.width, canvas.height);
+      initAirdrop(airdropSelected, canvas.width, canvas.height);
       _qboxH = $('question-box').offsetHeight || 180;
       placePlayer();
-
-      // Pre-load skin artwork if needed
-      const _skinData = SKINS.find(s => s.id === G.activeSkin);
-      const _skinSrc  = _skinData?.skinImg || _skinData?.offerImg;
-      if (_skinSrc && !_skinImgCache[_skinSrc]) {
-        const _img = new Image();
-        _img.src = _skinSrc;
-        _skinImgCache[_skinSrc] = _img;
-      }
+      // The canvas has its final dimensions here. Creating map coins earlier
+      // can place them outside the visible playfield on a fresh game launch.
+      resetMapCoins();
 
       // Boss level: spawn one static boss centred near top, infinite questions
       if (levelCfg.isBossLevel) {
@@ -2450,6 +3998,106 @@ export function initGame(levelNum, onComplete) {
         boss.x         = canvas.width / 2;
         boss.y         = canvas.height * 0.18;
         boss.speed        = 0;
+        if (levelNum === 10) {
+          boss.a330Boss = true;
+          boss.spriteKey = 'boss-a330';
+          boss.spriteFilter = '';
+          boss.size = 82;
+          boss.antiMissileCycle = 0;
+          boss.antiMissileActive = true;
+          boss.antiMissileRadius = Math.min(canvas.width * 0.30, 150);
+          boss.a330SalvoCooldown = 300;
+          boss.combatActive = false;
+          boss.entryActive = true;
+          boss.entryProgress = 0;
+          boss.spawnAlpha = 0;
+          boss.entryTargetY = canvas.height * 0.19;
+          boss.entryStartY = -Math.max(180, getEnemyDrawSize(boss) * 0.7);
+          boss.y = boss.entryStartY;
+        } else if (levelNum === 20) {
+          boss.b52Boss = true;
+          boss.spriteKey = 'boss-b52';
+          boss.spriteFilter = '';
+          boss.size = 88;
+          boss.antiMissileActive = false;
+          boss.b52LaserCycle = 0;
+          boss.b52LaserCooldown = 18;
+          boss.b52TurretFrame = 0;
+          boss.b52ReturnFrame = 0;
+          boss.b52TurretDirection = 'right';
+          boss.b52TurretAim = 0;
+          boss.animFrame = 0;
+          boss.animFrames = 24;
+          boss.animRate = 0;
+          boss.interpolateFrames = false;
+          boss.combatActive = false;
+          boss.entryActive = true;
+          boss.entryProgress = 0;
+          boss.spawnAlpha = 0;
+          boss.entryTargetY = canvas.height * 0.19;
+          boss.entryStartY = -Math.max(180, getEnemyDrawSize(boss) * 0.7);
+          boss.y = boss.entryStartY;
+        } else if (levelNum === 30) {
+          boss.kawasakiBoss = true;
+          boss.spriteKey = 'boss-kawasaki-c2';
+          boss.spriteFilter = '';
+          boss.size = 88;
+          boss.antiMissileActive = false;
+          boss.b52LaserCycle = 0;
+          boss.b52LaserCooldown = 18;
+          boss.b52TurretAim = 0;
+          boss.animFrame = 0;
+          boss.animFrames = 24;
+          boss.animRate = 0;
+          boss.interpolateFrames = false;
+          boss.combatActive = false;
+          boss.entryActive = true;
+          boss.entryProgress = 0;
+          boss.spawnAlpha = 0;
+          boss.entryTargetY = canvas.height * 0.19;
+          boss.entryStartY = -Math.max(180, getEnemyDrawSize(boss) * 0.7);
+          boss.y = boss.entryStartY;
+        } else if (levelNum === 40) {
+          boss.c5Boss = true;
+          boss.spriteKey = 'boss-c5-galaxy';
+          boss.spriteFilter = '';
+          boss.size = 92;
+          boss.antiMissileActive = false;
+          boss.b52LaserCycle = 0;
+          boss.b52LaserCooldown = 18;
+          boss.b52TurretAim = 0;
+          boss.animFrame = 0;
+          boss.animFrames = 1;
+          boss.animRate = 0;
+          boss.interpolateFrames = false;
+          boss.combatActive = false;
+          boss.entryActive = true;
+          boss.entryProgress = 0;
+          boss.spawnAlpha = 0;
+          boss.entryTargetY = canvas.height * 0.19;
+          boss.entryStartY = -Math.max(180, getEnemyDrawSize(boss) * 0.7);
+          boss.y = boss.entryStartY;
+        } else if (levelNum === 50) {
+          boss.spaceShuttleBoss = true;
+          boss.spriteKey = 'boss-space-shuttle';
+          boss.spriteFilter = '';
+          boss.size = 96;
+          boss.antiMissileActive = false;
+          boss.b52LaserCycle = 0;
+          boss.b52LaserCooldown = 18;
+          boss.b52TurretAim = 0;
+          boss.animFrame = 0;
+          boss.animFrames = 24;
+          boss.animRate = 0;
+          boss.interpolateFrames = false;
+          boss.combatActive = false;
+          boss.entryActive = true;
+          boss.entryProgress = 0;
+          boss.spawnAlpha = 0;
+          boss.entryTargetY = canvas.height * 0.19;
+          boss.entryStartY = -Math.max(180, getEnemyDrawSize(boss) * 0.7);
+          boss.y = boss.entryStartY;
+        }
         boss.bossPhase      = 'pause';
         boss.bossPauseTimer = 150;
         boss.bossBurstMax   = 2 + milestone;
@@ -2498,6 +4146,7 @@ export function initGame(levelNum, onComplete) {
         boss._vy           = 0;
 
         G.enemies.push(boss);
+        updateBossHealthBar(boss);
         // Companions spawn via normal timer — set maxEnemies to companion count
         baseMaxEnemies = isTouchMobile() ? Math.min(levelCfg.bossCompanionMax, 3) : levelCfg.bossCompanionMax;
         maxEnemies = baseMaxEnemies;
@@ -2509,13 +4158,22 @@ export function initGame(levelNum, onComplete) {
         _cutsceneActive = true;
         drawCountdownSafeFrame();
         _lastFrameTs = 0;
-        showStartCountdown(nextQuestion);
+        showStartCountdown(() => {
+          if ([10, 20, 30, 40, 50].includes(levelNum)) startA330BossIntro(nextQuestion);
+          else nextQuestion();
+        });
       };
       if (shouldForceIntroBriefingBeforeFirstRound() || shouldShowIntroBriefing(levelNum)) {
         _cutsceneActive = true;
         _stopGameLoop();
         drawCountdownSafeFrame();
-        showIntroBriefing(startLevelFlow);
+        showIntroBriefing(() => {
+          if (typeof window._showDailyRewardAfterIntro === 'function') {
+            window._showDailyRewardAfterIntro(startLevelFlow);
+          } else {
+            startLevelFlow();
+          }
+        });
       } else startLevelFlow();
     });
   }
@@ -2541,6 +4199,11 @@ export function initGame(levelNum, onComplete) {
     clearInterval(G.timerInterval);
     clearTimeout(_revealTimer);
     _revealTimer = null;
+    stopShootingWindow();
+    _transitioning = false;
+    _correctionWaiting = false;
+    clearSmoothResumeState();
+    G.question = null;
     if (_resizeTimer) {
       clearTimeout(_resizeTimer);
       _resizeTimer = null;
@@ -2554,6 +4217,10 @@ export function initGame(levelNum, onComplete) {
     G.timerInterval = null;
     G.animFrame     = null;
     detachInputListeners();
+    const shieldButton = document.getElementById('btn-player-shield');
+    if (shieldButton && _playerShieldButtonHandler) shieldButton.removeEventListener('pointerdown', _playerShieldButtonHandler);
+    shieldButton?.classList.add('hidden');
+    _playerShieldButtonHandler = null;
     pointerTarget = null;
     _jsOrigin = _jsCurrent = null;
     _touchId  = null;
@@ -2561,8 +4228,7 @@ export function initGame(levelNum, onComplete) {
     velX = 0; velY = 0;
     Object.keys(keys).forEach(k => keys[k] = false);
     if (ctx) { ctx.setTransform(1,0,0,1,0,0); ctx.globalAlpha = 1; }
-    const btns = $('answer-buttons');
-    if (btns) btns.innerHTML = '';
+    clearQuestionUI();
     ro.disconnect();
   };
 }

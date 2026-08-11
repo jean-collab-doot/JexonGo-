@@ -1,5 +1,5 @@
 import { $ } from '../utils/dom.js';
-import { G, autoSave } from '../state.js';
+import { G, autoSave, clampCoins } from '../state.js';
 import { save, load } from '../utils/storage.js';
 import { SFX } from '../audio/sound.js';
 import { calcStars } from '../systems/xp.js';
@@ -9,8 +9,34 @@ import { trackMission } from '../systems/daily.js';
 import { getPilotGrade, getNextGrade } from '../data/pilots.js';
 import { t, getLang } from '../i18n.js';
 import { AIRCRAFT } from '../data/aircraft.js';
+import { coinIcon, expIcon } from '../utils/icons.js';
+import { badgeXpMultiplier, unlockEligibleBadges } from '../data/badges.js';
 
 let _prevHighestLevel = 0;
+
+function showBadgeUnlockCelebrations(badges) {
+  const queue = [...(badges || [])];
+  const showNext = () => {
+    const badge = queue.shift();
+    if (!badge) return;
+    const overlay = document.createElement('div');
+    const rarity = badge.rarity.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    overlay.className = `badge-unlock-overlay badge-rarity-${rarity}`;
+    overlay.innerHTML = `<div class="badge-unlock-rays"></div><div class="badge-unlock-card" role="dialog" aria-modal="true"><span class="badge-unlock-kicker">${getLang()==='fr'?'NOUVEAU BADGE':'NEW BADGE'}</span><img class="badge-unlock-image" src="${badge.image}" alt="${badge.name}"><em>${badge.rarity}</em><h2>${badge.name}</h2><p>${badge.goal}</p><strong>${badge.reward}</strong><button type="button">${getLang()==='fr'?'CONTINUER':'CONTINUE'}</button></div>`;
+    document.body.appendChild(overlay);
+    requestAnimationFrame(() => overlay.classList.add('show'));
+    overlay.querySelector('button').onclick = () => {
+      overlay.classList.add('closing');
+      setTimeout(() => { overlay.remove(); showNext(); }, 320);
+    };
+  };
+  showNext();
+}
+
+// Preview hook used by the Hangar. It never unlocks a badge or grants rewards.
+window._previewBadgeUnlock = badgeOrBadges => showBadgeUnlockCelebrations(
+  Array.isArray(badgeOrBadges) ? badgeOrBadges : (badgeOrBadges ? [badgeOrBadges] : [])
+);
 
 export function initResult(nav) {
   $('btn-result-continue').onclick = () => {
@@ -37,9 +63,9 @@ export function showResult(won) {
   const isConnected = !!G.playerRegistered;
   const guestGamesPlayed = Number(load('guestGamesPlayed', 0)) || 0;
   const shouldAskGuestConnect = !isConnected && !G.practiceMode && guestGamesPlayed >= 5;
-  const canEarnRewards = !G.practiceMode && isConnected;
+  const canEarnRewards = !G.practiceMode;
 
-  const xp    = G.sessionXP || 0;
+  const xp    = Math.round((G.sessionXP || 0) * badgeXpMultiplier());
   const stars = calcStars(correct, answered, hits);
   const accuracy = answered > 0 ? Math.round((correct / answered) * 100) : 0;
   const finalScore = (correct * 100) + (stars * 250) + Math.max(0, xp) + Math.max(0, G.streak || 0) * 25 - hits * 100;
@@ -48,13 +74,19 @@ export function showResult(won) {
   const COINS_PER_STAR = [0, 15, 35, 60];
   const levelBonus     = Math.floor(G.currentLevel / 5) * 5;
   const coinsEarned    = canEarnRewards ? (COINS_PER_STAR[stars] || 0) + levelBonus : 0;
+  const collectedCoins = G.practiceMode ? 0 : Math.max(0, G.airdropSessionCoins || 0);
+  const collectedXp = G.practiceMode ? 0 : Math.max(0, G.airdropSessionXP || 0);
+  const totalCoinsGained = coinsEarned + collectedCoins;
+  const totalXpGained = xp + collectedXp;
 
   _prevHighestLevel = G.highestLevel || 0;
 
   if (canEarnRewards) {
+    G.totalCorrectAnswers = (G.totalCorrectAnswers || 0) + correct;
+    save('totalCorrectAnswers', G.totalCorrectAnswers);
     G.xp            += xp;
     G.totalXpEarned  = (G.totalXpEarned || 0) + xp;
-    G.coins          = (G.coins || 0) + coinsEarned;
+    G.coins          = clampCoins((G.coins || 0) + coinsEarned);
     G.levelStars[G.currentLevel] = Math.max(G.levelStars[G.currentLevel] || 0, stars);
 
     // Update highest level
@@ -80,6 +112,14 @@ export function showResult(won) {
       save('sr71CleanLevels', G.sr71CleanLevels);
     }
     autoSave();
+    const averageResponseTime = (G.sessionResponseCount || 0) > 0 ? (G.sessionResponseTimeTotal || 0) / G.sessionResponseCount : Infinity;
+    const startingLives = 3 + (G.activeBadge === 'steady_recruit' ? 1 : 0) + (AIRCRAFT[G.activeAircraft]?.ability?.extraLives || 0);
+    const newlyUnlockedBadges = unlockEligibleBadges({ won: true, isBoss, accuracy, averageResponseTime, livesLost: Math.max(0, startingLives - (G.lives || 0)) });
+    if (newlyUnlockedBadges.length) {
+      const badge = newlyUnlockedBadges[0];
+      window._currentLevelCfg.badgeReward = badge;
+      setTimeout(() => showBadgeUnlockCelebrations(newlyUnlockedBadges), 500);
+    }
   } else if (!G.practiceMode) {
     window._currentLevelCfg = { isChestLevel: false };
   }
@@ -109,15 +149,15 @@ export function showResult(won) {
 
   const rewardLockLabel = getLang() === 'fr' ? 'CONNECTE-TOI POUR GAGNER' : 'SIGN IN TO EARN';
   const guestTrialLabel = getLang() === 'fr' ? `ESSAI INVITE ${Math.min(guestGamesPlayed, 5)}/5` : `GUEST TRIAL ${Math.min(guestGamesPlayed, 5)}/5`;
-  $('result-xp').textContent = G.practiceMode
+  $('result-xp').innerHTML = G.practiceMode
     ? t('noXpPractice')
     : canEarnRewards
-      ? `+ ${xp} XP`
+      ? `${expIcon()} + ${totalXpGained}`
       : shouldAskGuestConnect
-        ? `${rewardLockLabel} XP`
+        ? `${expIcon()} ${rewardLockLabel}`
         : guestTrialLabel;
   const coinsEl = $('result-coins');
-  if (coinsEl) coinsEl.textContent = (!G.practiceMode && coinsEarned > 0) ? `◎ + ${coinsEarned}` : '';
+  if (coinsEl) coinsEl.innerHTML = !G.practiceMode ? `${coinIcon()} + ${totalCoinsGained}` : '';
   const total = isBoss ? answered : 10;
   $('result-correct').textContent = `${correct} / ${total} ${t('correct')}`;
   const summaryGrid = $('result-summary-grid');
@@ -128,13 +168,15 @@ export function showResult(won) {
         ? rewardLockLabel
         : !canEarnRewards
           ? guestTrialLabel
+      : window._currentLevelCfg?.badgeReward
+        ? `<img class="result-badge-mini" src="${window._currentLevelCfg.badgeReward.image}" alt=""> ${window._currentLevelCfg.badgeReward.name}`
       : window._currentLevelCfg?.isChestLevel
         ? (getLang() === 'fr' ? 'COFFRE' : 'CHEST')
-        : (coinsEarned > 0 ? `◎ ${coinsEarned}` : '--');
+        : (totalCoinsGained > 0 ? `${coinIcon('jg-coin-icon-small')} ${totalCoinsGained}` : '--');
     summaryGrid.innerHTML = [
       [getLang() === 'fr' ? 'SCORE' : 'SCORE', finalScore.toLocaleString()],
-      [getLang() === 'fr' ? 'PIECES' : 'COINS', G.practiceMode ? '0' : (canEarnRewards ? `+${coinsEarned}` : 'LOCKED')],
-      ['XP', G.practiceMode ? '0' : (canEarnRewards ? `+${xp}` : 'LOCKED')],
+      [getLang() === 'fr' ? 'PIECES' : 'COINS', G.practiceMode ? '0' : `+${totalCoinsGained}`],
+      [expIcon(), G.practiceMode ? '0' : `+${totalXpGained}`],
       [getLang() === 'fr' ? 'PRECISION' : 'ACCURACY', `${accuracy}%`],
       [getLang() === 'fr' ? 'TOUCHES' : 'HITS', String(hits)],
       [getLang() === 'fr' ? 'RECOMPENSE' : 'REWARD', rewardLabel],
@@ -179,10 +221,6 @@ export function showResult(won) {
       if (!G.unlockedAircraft.includes('sr71')) {
         G.unlockedAircraft.push('sr71');
         save('unlockedAircraft', G.unlockedAircraft);
-      }
-      if (!G.ownedSkins.includes('exclusive')) {
-        G.ownedSkins.push('exclusive');
-        save('ownedSkins', G.ownedSkins);
       }
       unlockBanner.textContent = t('sr71Unlocked');
       unlockBanner.classList.remove('hidden');

@@ -1,0 +1,35 @@
+# Local source media and design references (not used by the Vite build)
+/DONA2720.MP4
+/motion_*.mp4
+/*.zip
+/ChatGPT Image*.png
+/Email.png
+/Digital caroussel.jpg
+/Digital Marketing Carousel Design*.jpg
+/.codex-b52-files.png
+/.codex_b52_hits.txt
+/.codex_b52_refs.txt
+/_tmp_b52_snippet.png
+
+# Local work/output folders
+/.agents/
+/.claude/
+/.codex/
+/.codex_video_tools/
+/.pnpm-store/
+/.vscode/
+/Carousel JexonGo/
+/Fonds/
+/My project/
+/docs/
+/output/
+/scripts/
+/supabase/
+/tmp/
+
+# Local-only server and planning files
+/server.js
+/codex_prompt_*.md
+/devolopment_plan.md
+/jexongo_game_design_document.md
+/math_correction_prompt.md

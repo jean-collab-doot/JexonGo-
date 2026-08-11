@@ -1,19 +1,21 @@
 // ── SPRITE-BASED MISSILES ─────────────────────────────────────────────────────
-// Uses the pixel-art rocket sprite (single frame, white background → multiply blend).
-// Rocket image points upper-left (~135° in canvas), so offset rotation by -π*0.75
-// to align nose upward for player missiles, downward for enemy missiles.
+// Uses the upright rocket sprite sheet and rotates it to match the missile travel.
 
 import { drawFrame } from './sprites.js';
 import { isTouchMobile } from '../utils/device.js';
+import { G } from '../state.js';
 
-// Rocket image points NW (~225° canvas CW). Offset to point straight up (-90°):
-const ROCKET_ANGLE   = (3 * Math.PI) / 4;  // image native angle from +X axis
-const BOLT_ROT_UP    = -Math.PI / 2 - ROCKET_ANGLE + Math.PI * 2; // nose up
-const BOLT_ROT_DOWN  = BOLT_ROT_UP + Math.PI;                      // nose down
-
-const BOLT_W          = 38;    // draw width
-const BOLT_H          = 38;    // draw height (square — rocket is diagonal)
-const BOLT_FRAME_RATE = 0;
+const BOLT_FRAMES     = 12;
+const BOLT_W          = 24;
+const BOLT_H          = 56;
+const BOLT_FRAME_RATE = 0.38;
+const PLAYER_MISSILE_SPRITES = {
+  fire: 'missile-fire',
+  ice: 'missile-ice',
+  nuke: 'missile-nuke',
+  ray: 'missile-ray',
+  xray: 'airdrop-xray',
+};
 
 // ── FACTORY ───────────────────────────────────────────────────────────────────
 
@@ -36,9 +38,8 @@ export function updateMissiles(missiles, onHit, step = 1) {
     const m = missiles[i];
     m.x += m.vx * step;
     m.y += m.vy * step;
-    m.boltFrame = (m.boltFrame + BOLT_FRAME_RATE) % 4;
-    const dx = m.x - m.tx, dy = m.y - m.ty;
-    if (dx * dx + dy * dy < 18 * 18) { onHit(m); missiles.splice(i, 1); continue; }
+    m.boltFrame = (m.boltFrame + BOLT_FRAME_RATE * step) % BOLT_FRAMES;
+    if (onHit(m)) { missiles.splice(i, 1); continue; }
     if (m.y < -80 || m.x < -100 || m.x > 4000) missiles.splice(i, 1);
   }
 }
@@ -46,10 +47,30 @@ export function updateMissiles(missiles, onHit, step = 1) {
 // ── DRAW ──────────────────────────────────────────────────────────────────────
 
 export function drawMissiles(ctx, missiles, isEnemy = false) {
-  const size = isTouchMobile() ? 28 : BOLT_W;
+  const scale = isTouchMobile() ? 0.78 : 1;
+  const w = BOLT_W * scale;
+  const h = BOLT_H * scale;
   for (const m of missiles) {
+    if (m.type === 'enemy-machine-gun') {
+      const angle = Math.atan2(m.vy, m.vx);
+      ctx.save();
+      ctx.translate(m.x, m.y);
+      ctx.rotate(angle);
+      ctx.fillStyle = '#fff6a8';
+      ctx.shadowColor = '#ffb000';
+      ctx.shadowBlur = 7;
+      ctx.fillRect(-8 * scale, -1.5 * scale, 16 * scale, 3 * scale);
+      ctx.restore();
+      continue;
+    }
+    const isLaser = m.type === 'xray' || m.type === 'enemy-laser';
+    const spriteKey = m.type === 'enemy-laser'
+      ? 'airdrop-xray'
+      : isEnemy
+        ? 'bolt'
+        : (PLAYER_MISSILE_SPRITES[m.type] || PLAYER_MISSILE_SPRITES[G.activeMissileType] || 'bolt');
     const travelAngle = Math.atan2(m.vy, m.vx);
-    const rot = travelAngle - ROCKET_ANGLE + Math.PI;
-    drawFrame(ctx, 'bolt', 0, m.x, m.y, size, size, { rotate: rot });
+    const rot = isLaser ? travelAngle : travelAngle + Math.PI / 2;
+    drawFrame(ctx, spriteKey, m.boltFrame || 0, m.x, m.y, isLaser ? 62 * scale : w, isLaser ? 26 * scale : h, { rotate: rot });
   }
 }

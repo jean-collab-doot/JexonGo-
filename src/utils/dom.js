@@ -2,7 +2,7 @@ export const $ = id => document.getElementById(id);
 
 const SCREEN_IDS = [
   's-menu', 's-levelmap', 's-game',
-  's-hangar', 's-result', 's-chest', 's-gameover', 's-shop',
+  's-hangar', 's-shop', 's-result', 's-chest', 's-gameover',
   's-ranked', 's-ranked-find', 's-ranked-intro', 's-ranked-duel', 's-ranked-result',
   's-briefing', 's-classroom',
   's-arena', 's-grade', 's-register', 's-profile', 's-privacy', 's-terms',

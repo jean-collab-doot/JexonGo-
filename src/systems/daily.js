@@ -1,5 +1,6 @@
-import { G } from '../state.js';
+import { G, clampCoins } from '../state.js';
 import { save } from '../utils/storage.js';
+import { unlockEligibleBadges } from '../data/badges.js';
 
 
 function todayStr() {
@@ -69,13 +70,15 @@ function prunePlayMinutes() {
 
 // ── 7-DAY LOGIN REWARD CYCLE ──────────────────────────────────────────────────
 export const LOGIN_REWARDS = [
-  { day: 1, coins: 150,  xp: 0,    icon: '◎', desc: '150 COINS' },
-  { day: 2, coins: 300,  xp: 50,   icon: '◎', desc: '300 COINS + 50 XP' },
-  { day: 3, coins: 500,  xp: 0,    icon: '◎', desc: '500 COINS' },
-  { day: 4, coins: 500,  xp: 200,  icon: '⚡', desc: '500 COINS + 200 XP' },
-  { day: 5, coins: 800,  xp: 0,    icon: '◎', desc: '800 COINS' },
-  { day: 6, coins: 1000, xp: 300,  icon: '⚡', desc: '1000 COINS + 300 XP' },
-  { day: 7, coins: 2000, xp: 500,  icon: '★', desc: '2000 COINS + 500 XP' },
+  { day: 1, coins: 150,  xp: 0,    icon: 'coin', desc: '150 COINS' },
+  { day: 2, coins: 300,  xp: 50,   icon: 'coin', desc: '300 COINS + 50 XP' },
+  { day: 3, coins: 500,  xp: 0,    icon: 'coin', desc: '500 COINS' },
+  { day: 4, coins: 500,  xp: 200,  icon: '<img class="jg-exp-icon" src="/assets/fx/Caisse/JexonGo_EXP_frame_01.png" alt="EXP">', desc: '500 COINS + 200 XP' },
+  { day: 5, coins: 800,  xp: 0,    icon: 'coin', desc: '800 COINS' },
+  { day: 6, coins: 1000, xp: 300,  icon: '<img class="jg-exp-icon" src="/assets/fx/Caisse/JexonGo_EXP_frame_01.png" alt="EXP">', desc: '1000 COINS + 300 XP' },
+  { day: 7, coins: 2000, xp: 500, badgeId: 'steady_recruit',
+    icon: '<img class="jg-exp-icon" src="/assets/Badges/03_Recrue_Assidue_Commun.png" alt="Recrue Assidue">',
+    desc: '2000 COINS + 500 XP + BADGE' },
 ];
 
 // ── XP RANK TABLE ─────────────────────────────────────────────────────────────
@@ -133,6 +136,9 @@ function seededPick(dateStr) {
 
 export function checkDailyLogin() {
   if (!G.playerRegistered) return { isNewDay: false };
+  // New pilots receive day 1 only after completing the game introduction.
+  if (!G.hasSeenBriefing) return { isNewDay: false, waitingForIntro: true };
+  if (G.dailyStarterPlanComplete) return { isNewDay: false, completed: true };
   const today     = todayStr();
   const lastLogin = G.dailyLastLogin;
   if (lastLogin === today) return { isNewDay: false };
@@ -142,7 +148,7 @@ export function checkDailyLogin() {
   yesterday.setDate(yesterday.getDate() - 1);
   const yStr = yesterday.toISOString().slice(0, 10);
   if (lastLogin === yStr) {
-    G.dailyStreak = ((G.dailyStreak || 0) % 7) + 1;
+    G.dailyStreak = Math.min(7, (G.dailyStreak || 0) + 1);
   } else {
     G.dailyStreak = 1;
   }
@@ -162,14 +168,21 @@ export function checkDailyLogin() {
 }
 
 export function claimDailyReward(reward) {
-  if (!G.playerRegistered) return false;
-  G.coins          += reward.coins || 0;
+  if (!G.playerRegistered || G.dailyLastLogin === todayStr() || G.dailyStarterPlanComplete) {
+    return { claimed: false, badges: [] };
+  }
+  G.coins           = clampCoins((G.coins || 0) + (reward.coins || 0));
   G.xp             += reward.xp    || 0;
+  G.totalXpEarned  += reward.xp    || 0;
   G.dailyLastLogin  = todayStr();
+  if (G.dailyStreak >= 7) G.dailyStarterPlanComplete = true;
+  const badges = reward.badgeId ? unlockEligibleBadges({ source: 'daily-welcome' }) : [];
   save('coins',          G.coins);
   save('xp',             G.xp);
+  save('totalXpEarned',  G.totalXpEarned);
   save('dailyLastLogin', G.dailyLastLogin);
-  return true;
+  save('dailyStarterPlanComplete', G.dailyStarterPlanComplete);
+  return { claimed: true, badges };
 }
 
 export function getMissions() {
@@ -265,7 +278,7 @@ export function claimMission(missionId) {
   if (!m || m.claimed || m.progress < m.target) return false;
   if (!G.playerRegistered) return false;
   m.claimed  = true;
-  G.coins   += m.coins || 0;
+  G.coins    = clampCoins((G.coins || 0) + (m.coins || 0));
   G.xp      += m.xp    || 0;
   save('dailyMissions', G.dailyMissions);
   save('coins', G.coins);
@@ -302,7 +315,7 @@ export function claimSr71Mission() {
   if (!G.sr71Earned || G.sr71MissionClaimed) return false;
   if (!G.playerRegistered) return false;
   G.sr71MissionClaimed = true;
-  G.coins         += SR71_MISSION.coins;
+  G.coins          = clampCoins((G.coins || 0) + SR71_MISSION.coins);
   G.xp            += SR71_MISSION.xp;
   G.totalXpEarned  = (G.totalXpEarned || 0) + SR71_MISSION.xp;
   save('sr71MissionClaimed', true);

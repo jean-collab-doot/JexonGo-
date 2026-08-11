@@ -67,9 +67,10 @@ function _refreshCard() {
   _t('pc-emblem',   _emblem);
   _t('pc-name',     callsign);
   _t('pc-grade',    `${grade.emoji}  ${grade.name}`);
-  _t('pc-rank',     `◎ ${(G.xp || 0).toLocaleString()} XP`);
+  const rankEl = document.getElementById('pc-rank');
+  if (rankEl) rankEl.innerHTML = `<img class="jg-exp-icon" src="/assets/fx/Caisse/JexonGo_EXP_frame_01.png" alt="EXP"> ${(G.xp || 0).toLocaleString()}`;
   _t('pc-aircraft', (aircraft.name || G.activeAircraft).toUpperCase());
-  _t('pc-stats',    `LV.${G.highestLevel || 0}  ·  P${G.prestige}`);
+  _t('pc-stats',    `LV.${G.highestLevel || 0}`);
 
   const mottoEl = document.getElementById('pc-motto');
   if (mottoEl) {

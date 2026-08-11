@@ -55,4 +55,17 @@ export function applyDeviceClasses() {
   root.classList.toggle('touch-mobile', isTouchMobile());
   root.classList.toggle('touch-phone', isPhone());
   root.classList.toggle('touch-tablet', isTablet() && !isPhone());
+  root.classList.toggle('viewport-portrait', height >= width);
+  root.classList.toggle('viewport-landscape', width > height);
+  root.classList.toggle('compact-height', height <= 560);
+
+  const phone = isPhone();
+  const tablet = isTablet() && !phone;
+  root.dataset.deviceSize = phone
+    ? (Math.min(width, height) <= 380 ? 'phone-small' : 'phone')
+    : tablet
+      ? 'tablet'
+      : width >= 1600
+        ? 'desktop-wide'
+        : 'desktop';
 }

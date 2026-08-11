@@ -2,191 +2,95 @@ import { $ } from '../utils/dom.js';
 import { G } from '../state.js';
 import { save } from '../utils/storage.js';
 import { AIRCRAFT, AIRCRAFT_ORDER } from '../data/aircraft.js';
-import { SKINS } from '../data/skins.js';
 import { getPilotGrade } from '../data/pilots.js';
-import { getPrestigeBadgeHTML } from '../data/prestige.js';
-import { t } from '../i18n.js';
+import { t, getLang } from '../i18n.js';
+import { MISSILE_TYPES, SHOOTING_PLANS } from './shop.js';
+import { expIcon } from '../utils/icons.js';
+import { BADGES, unlockEligibleBadges } from '../data/badges.js';
+
+let _hangarPage = 'planes';
 
 export function initHangar(nav) {
-  $('btn-hangar-back').onclick = () => {
-    hideLiveryPanel();
-    nav.toMenu();
-  };
+  $('btn-hangar-back').onclick = () => nav.toMenu();
 }
 
-// ── LIVERY PANEL ──────────────────────────────────────────────────────────────
-let _selectedAircraft = null;
-
-function hideLiveryPanel() {
-  const panel = $('hangar-livery-panel');
-  panel.classList.add('hidden');
-  _selectedAircraft = null;
-}
-
-function showLiveryPanel(id) {
-  _selectedAircraft = id;
-  const plane  = AIRCRAFT[id];
-  const panel  = $('hangar-livery-panel');
-  panel.innerHTML = '';
-
-  const title = document.createElement('div');
-  title.className   = 'hlp-title';
-  title.textContent = plane.name + ' — ' + t('liveries');
-  panel.appendChild(title);
-
-  const grid = document.createElement('div');
-  grid.className = 'hlp-grid';
-
-  grid.appendChild(makeLiveryCard('Default', `/assets/hangar/${id}.png`, null, id));
-
-  SKINS
-    .filter(s => (s.aircraft === id || s.universal) && G.ownedSkins.includes(s.id))
-    .forEach(skin => {
-      const imgSrc = skin.skinImg || skin.offerImg || `/assets/hangar/${id}.png`;
-      grid.appendChild(makeLiveryCard(skin.name, imgSrc, skin, id));
-    });
-
-  panel.appendChild(grid);
-  panel.classList.remove('hidden');
-}
-
-function makeLiveryCard(label, imgSrc, skin, aircraftId) {
-  const isActive = skin
-    ? G.activeLivery === skin.id && G.activeAircraft === aircraftId
-    : G.activeAircraft === aircraftId && !G.activeLivery;
-
-  const card = document.createElement('div');
-  card.className = 'hlp-card' + (isActive ? ' hlp-card-active' : '');
-
-  const img = document.createElement('img');
-  img.src = imgSrc;
-  img.className = 'hlp-img';
-  if (skin && skin.filter && !skin.offerImg) img.style.filter = skin.filter;
-  card.appendChild(img);
-
-  const lbl = document.createElement('div');
-  lbl.className   = 'hlp-label';
-  lbl.textContent = label;
-  card.appendChild(lbl);
-
-  if (isActive) {
-    const badge = document.createElement('div');
-    badge.className   = 'hlp-badge';
-    badge.textContent = '✓';
-    card.appendChild(badge);
-  }
-
-  card.onclick = () => {
-    G.activeAircraft = aircraftId;
-    G.activeLivery   = skin ? skin.id : null;
-    G.activeSkin     = skin ? skin.id : null;
-    save('activeAircraft', G.activeAircraft);
-    save('activeLivery',   G.activeLivery);
-    save('activeSkin',     G.activeSkin);
-    renderHangar();
-    showLiveryPanel(aircraftId);
-  };
-
-  return card;
-}
-
-// ── PILOT GRADE ───────────────────────────────────────────────────────────────
 function meetsGradeRequirement(plane) {
   if (!plane.gradeRequired) return true;
   return (G.highestLevel || 0) >= plane.gradeRequired;
 }
 
-// ── HANGAR GRID ───────────────────────────────────────────────────────────────
 export function renderHangar() {
+  ensureHangarPages();
+  unlockEligibleBadges();
   const grade = getPilotGrade(G.highestLevel || 0);
-  const xpEl  = $('hangar-xp');
-  if (xpEl) xpEl.innerHTML = `${G.xp} XP  |  ${grade.emoji} ${grade.name} ${getPrestigeBadgeHTML(G.prestige)}`;
+  const xpEl = $('hangar-xp');
+  if (xpEl) xpEl.innerHTML = `${expIcon()} ${(G.xp || 0).toLocaleString()} &nbsp;|&nbsp; ${grade.emoji} ${grade.name}`;
 
   const grid = $('hangar-grid');
   grid.innerHTML = '';
 
   AIRCRAFT_ORDER.forEach(id => {
-    const plane    = AIRCRAFT[id];
+    const plane = AIRCRAFT[id];
     const unlocked = G.unlockedAircraft.includes(id);
-    const active   = G.activeAircraft === id;
-    const selected = _selectedAircraft === id;
-    const gradeOk  = meetsGradeRequirement(plane);
+    const active = G.activeAircraft === id;
+    const gradeOk = meetsGradeRequirement(plane);
+    const planeCost = G.activeBadge === 'collector' ? Math.ceil(plane.xpCost * 0.9) : plane.xpCost;
 
     const card = document.createElement('div');
-    card.className = 'hangar-card '
-      + (active ? 'active ' : unlocked ? 'unlocked ' : 'locked ')
-      + (selected ? 'selected' : '');
+    card.className = `hangar-card ${active ? 'active' : unlocked ? 'unlocked' : 'locked'}`;
 
     const img = document.createElement('img');
-    img.src       = `/assets/hangar/${id}.png`;
-    img.className = 'hangar-livery';
-    if (!unlocked) {
-      img.style.opacity = '0.35';
-    } else {
-      const livery = SKINS.find(s => s.id === G.activeLivery && (s.aircraft === id || s.universal));
-      if (livery) {
-        if (livery.skinImg) img.src = livery.skinImg;
-        else if (livery.filter) img.style.filter = livery.filter;
-      }
+    img.src = `/assets/hangar/${id}.png`;
+    img.className = 'hangar-plane-img';
+    if (!unlocked) img.style.opacity = '0.35';
+    if (plane.secret && !unlocked) {
+      img.classList.add('secret-silhouette');
+      img.style.opacity = '0.9';
     }
     card.appendChild(img);
 
     const name = document.createElement('div');
-    name.className   = 'plane-name';
-    name.textContent = plane.name;
+    name.className = 'plane-name';
+    name.textContent = plane.secret && !unlocked ? '???' : plane.name;
     card.appendChild(name);
 
-    // Buff row
-    if (plane.abilityDesc) {
-      const buff = document.createElement('div');
-      buff.className   = 'plane-ability';
-      buff.textContent = `⬆ ${plane.abilityDesc}`;
-      card.appendChild(buff);
-    }
-
-    // Lives bonus row
-    if (plane.livesDesc) {
-      const lives = document.createElement('div');
-      lives.className   = 'plane-ability';
-      lives.textContent = `♥ ${plane.livesDesc}`;
-      card.appendChild(lives);
-    }
-
-    // Debuff row
-    if (plane.debuffDesc && plane.debuffDesc !== 'Standard — no debuff') {
-      const debuff = document.createElement('div');
-      debuff.className   = 'plane-debuff';
-      debuff.textContent = `⬇ ${plane.debuffDesc}`;
-      card.appendChild(debuff);
+    if (plane.ability && !(plane.secret && !unlocked)) {
+      const ability = document.createElement('div');
+      ability.className = 'plane-ability';
+      ability.innerHTML = `<b>${plane.ability.icon} ${plane.ability.name}</b><span>${plane.ability.description}</span>`;
+      card.appendChild(ability);
+    } else if (plane.secret && !unlocked) {
+      const ability = document.createElement('div');
+      ability.className = 'plane-ability secret-ability';
+      ability.innerHTML = '<b>???</b><span>Capacités inconnues</span>';
+      card.appendChild(ability);
     }
 
     const cost = document.createElement('div');
     cost.className = 'plane-cost';
-
-    if (plane.starter) {
+    if (plane.secret && !unlocked) {
+      cost.textContent = 'SECRET · BOSS BADGE';
+      cost.style.color = '#c084fc';
+    } else if (plane.starter) {
       cost.textContent = t('starter');
     } else if (unlocked) {
-      cost.textContent = `${plane.xpCost.toLocaleString()} XP ✓`;
+      cost.textContent = `${planeCost.toLocaleString()} XP OK`;
     } else if (plane.gradeRequired && !gradeOk) {
-      // Locked by grade requirement
-      const reqGrade = plane.gradeLabel || 'CAPTAIN';
-      cost.textContent = `■ ${reqGrade} + ${plane.xpCost.toLocaleString()} XP`;
-      cost.style.color = '#ef4444';
+      cost.textContent = `${planeCost.toLocaleString()} XP`;
+      cost.style.color = 'var(--yellow)';
     } else {
-      cost.textContent = `${plane.xpCost.toLocaleString()} XP`;
+      cost.textContent = `${planeCost.toLocaleString()} XP`;
     }
     card.appendChild(cost);
 
-    // Grade requirement hint
     if (!unlocked && plane.gradeRequired) {
       const hint = document.createElement('div');
       hint.className = 'plane-grade-req';
-      const lvlsLeft = Math.max(0, plane.gradeRequired - (G.highestLevel || 0));
       if (!gradeOk) {
-        hint.textContent = `Need ${plane.gradeLabel} (reach lv ${plane.gradeRequired})`;
+        hint.textContent = `LOCKED · ${plane.gradeLabel} · LV ${plane.gradeRequired}`;
         hint.style.color = '#ef4444';
       } else {
-        hint.textContent = `Grade: ${plane.gradeLabel} ✓`;
+        hint.textContent = `${plane.gradeLabel} OK`;
         hint.style.color = '#00e84b';
       }
       card.appendChild(hint);
@@ -194,30 +98,217 @@ export function renderHangar() {
 
     if (active) {
       const badge = document.createElement('div');
-      badge.className   = 'active-badge';
+      badge.className = 'active-badge';
       badge.textContent = t('active');
       card.appendChild(badge);
     }
 
     if (unlocked) {
       card.addEventListener('click', () => {
-        if (_selectedAircraft === id) { hideLiveryPanel(); renderHangar(); }
-        else { showLiveryPanel(id); renderHangar(); }
+        G.activeAircraft = id;
+        save('activeAircraft', G.activeAircraft);
+        renderHangar();
       });
-    } else if (gradeOk && G.xp >= plane.xpCost) {
-      card.style.cursor      = 'pointer';
+    } else if (!plane.secret && gradeOk && G.xp >= planeCost) {
+      card.style.cursor = 'pointer';
       card.style.borderColor = 'var(--yellow)';
-      cost.style.color       = 'var(--green)';
-      cost.textContent       = `${t('unlock')} (${plane.xpCost} XP)`;
+      cost.style.color = 'var(--green)';
+      cost.textContent = `${t('unlock')} (${planeCost} XP)`;
       card.addEventListener('click', () => {
-        G.xp -= plane.xpCost;
+        G.xp -= planeCost;
         G.unlockedAircraft.push(id);
+        if (!G.acquiredAircraft.includes(id)) G.acquiredAircraft.push(id);
         save('xp', G.xp);
         save('unlockedAircraft', G.unlockedAircraft);
+        save('acquiredAircraft', G.acquiredAircraft);
         renderHangar();
       });
     }
 
     grid.appendChild(card);
   });
+
+  renderHangarArmory();
+  updateHangarPage();
+}
+
+function ensureHangarPages() {
+  const grid = $('hangar-grid');
+  if (!grid?.parentElement) return;
+
+  if (!$('hangar-page-tabs')) {
+    const tabs = document.createElement('div');
+    tabs.id = 'hangar-page-tabs';
+    tabs.className = 'hangar-page-tabs';
+    tabs.innerHTML = `
+      <button class="hangar-page-tab active" type="button" data-hangar-page="planes">AVIONS</button>
+      <button class="hangar-page-tab" type="button" data-hangar-page="armory">ARMEMENT</button>
+      <button class="hangar-page-tab" type="button" data-hangar-page="badges">BADGES</button>
+    `;
+    grid.parentElement.insertBefore(tabs, grid);
+    tabs.querySelectorAll('[data-hangar-page]').forEach(button => {
+      button.addEventListener('click', () => {
+        _hangarPage = button.dataset.hangarPage || 'planes';
+        updateHangarPage();
+      });
+    });
+  }
+
+  if (!$('hangar-armory')) {
+    const armory = document.createElement('section');
+    armory.id = 'hangar-armory';
+    armory.className = 'hangar-armory';
+    grid.parentElement.appendChild(armory);
+  }
+  if (!$('hangar-badges')) {
+    const badges = document.createElement('section');
+    badges.id = 'hangar-badges'; badges.className = 'hangar-badges';
+    grid.parentElement.appendChild(badges);
+  }
+}
+
+function updateHangarPage() {
+  const grid = $('hangar-grid');
+  const armory = $('hangar-armory');
+  const badges = $('hangar-badges');
+  const isArmory = _hangarPage === 'armory';
+  const isBadges = _hangarPage === 'badges';
+  const lang = getLang() === 'fr' ? 'fr' : 'en';
+  const labels = {
+    planes: lang === 'fr' ? 'AVIONS' : 'PLANES',
+    armory: lang === 'fr' ? 'ARMEMENT' : 'WEAPONS',
+    badges: 'BADGES',
+  };
+  grid?.classList.toggle('hidden', isArmory || isBadges);
+  armory?.classList.toggle('hidden', !isArmory);
+  badges?.classList.toggle('hidden', !isBadges);
+  $('hangar-page-tabs')?.querySelectorAll('[data-hangar-page]').forEach(button => {
+    button.textContent = labels[button.dataset.hangarPage] || button.textContent;
+    button.classList.toggle('active', button.dataset.hangarPage === _hangarPage);
+  });
+  if (isBadges) renderHangarBadges();
+}
+
+function renderHangarBadges() {
+  const root=$('hangar-badges'); if(!root)return;
+  const owned=new Set(G.unlockedBadges||[]);
+  root.innerHTML=`<div class="hangar-badges-head"><h2>BADGES</h2><span>${owned.size}/${BADGES.length}</span></div><p class="hangar-badge-preview-hint">Équipe un seul badge à la fois. Clique sur son image pour voir l'animation.</p><div class="hangar-badge-grid">${BADGES.map(b=>{const unlocked=owned.has(b.id);const active=G.activeBadge===b.id;const [value,max]=b.progress?.({})||[0,1];return `<article data-preview-badge="${b.id}" class="hangar-badge-card ${unlocked?'unlocked':'locked'} ${active?'active':''}"><img src="${b.image}" alt="${b.name}"><div><em>${b.rarity}</em><h3>${b.name}</h3><p>${b.goal}</p><strong>${b.reward}</strong><small>${active?'ÉQUIPÉ':unlocked?'DÉBLOQUÉ':`${value.toLocaleString()} / ${max.toLocaleString()}`}</small>${unlocked?`<button type="button" class="hangar-equip-badge" data-equip-badge="${b.id}" ${active?'disabled':''}>${active?'ÉQUIPÉ':'ÉQUIPER'}</button>`:''}</div></article>`}).join('')}</div>`;
+  root.querySelectorAll('[data-preview-badge]').forEach(button => button.addEventListener('click', () => {
+    const badge = BADGES.find(item => item.id === button.dataset.previewBadge);
+    window._previewBadgeUnlock?.(badge);
+  }));
+  root.querySelectorAll('[data-equip-badge]').forEach(button => button.addEventListener('click', event => {
+    event.stopPropagation();
+    G.activeBadge = button.dataset.equipBadge;
+    save('activeBadge', G.activeBadge);
+    renderHangar();
+  }));
+}
+
+function renderHangarArmory() {
+  const armory = $('hangar-armory');
+  if (!armory) return;
+  const lang = getLang() === 'fr' ? 'fr' : 'en';
+  const owned = Array.isArray(G.ownedShootingPlans) ? G.ownedShootingPlans : ['default'];
+  const ownedMissiles = Array.isArray(G.ownedMissileTypes) && G.ownedMissileTypes.length
+    ? G.ownedMissileTypes
+    : [];
+  G.ownedMissileTypes = ownedMissiles;
+  const visiblePlans = SHOOTING_PLANS;
+  const activeMissileType = MISSILE_TYPES.some(type => type.id === G.activeMissileType) && ownedMissiles.includes(G.activeMissileType)
+    ? G.activeMissileType
+    : 'default';
+  G.activeMissileType = activeMissileType;
+
+  armory.innerHTML = `
+    <div class="hangar-armory-title">
+      <span>${lang === 'fr' ? 'ARMEMENT' : 'WEAPONS'}</span>
+      <h2>${lang === 'fr' ? 'Tirs et missiles' : 'Shots and missiles'}</h2>
+    </div>
+
+    <div class="hangar-armory-block">
+      <div class="hangar-armory-head">
+        <h3>${lang === 'fr' ? 'Tir de missile' : 'Missile shot'}</h3>
+        <p>${lang === 'fr' ? 'Choisis le tir equipe pour ton avion.' : 'Choose the shot equipped on your plane.'}</p>
+      </div>
+      <div class="hangar-shot-grid">
+        ${visiblePlans.map(plan => renderShotOption(plan, lang, owned)).join('')}
+      </div>
+    </div>
+
+    <div class="hangar-armory-block">
+      <div class="hangar-armory-head">
+        <h3>${lang === 'fr' ? 'Type de missile' : 'Missile type'}</h3>
+        <p>${lang === 'fr' ? 'Style visuel du missile, a l effigie de JexonGO.' : 'Visual missile style for JexonGO.'}</p>
+      </div>
+      <div class="hangar-missile-grid">
+        ${MISSILE_TYPES.map(type => renderMissileOption(type, lang, activeMissileType, ownedMissiles)).join('')}
+      </div>
+    </div>
+  `;
+
+  armory.querySelectorAll('[data-hangar-shot]').forEach(button => {
+    button.addEventListener('click', () => {
+      const planId = button.dataset.hangarShot;
+      if (!owned.includes(planId)) return;
+      G.activeShootingPlan = planId;
+      save('activeShootingPlan', G.activeShootingPlan);
+      window.dispatchEvent(new CustomEvent('jexongo:shooting-plan-changed', { detail: { planId } }));
+      renderHangar();
+    });
+  });
+
+  armory.querySelectorAll('[data-hangar-missile]').forEach(button => {
+    button.addEventListener('click', () => {
+      const missileId = button.dataset.hangarMissile || '';
+      if (!ownedMissiles.includes(missileId)) return;
+      G.activeMissileType = missileId;
+      save('ownedMissileTypes', G.ownedMissileTypes);
+      save('activeMissileType', G.activeMissileType);
+      renderHangar();
+    });
+  });
+}
+
+function renderShotOption(plan, lang, ownedPlans) {
+  const owned = ownedPlans.includes(plan.id);
+  const active = G.activeShootingPlan === plan.id;
+  const status = active
+    ? (lang === 'fr' ? 'EQUIPE' : 'EQUIPPED')
+    : owned
+      ? (lang === 'fr' ? 'CHOISIR' : 'SELECT')
+      : (lang === 'fr' ? 'BLOQUE' : 'LOCKED');
+  const missileCount = Array.isArray(plan.missiles) ? plan.missiles.length : 1;
+  return `
+    <button class="hangar-shot-card ${active ? 'active' : ''} ${owned ? '' : 'locked'}" type="button" data-hangar-shot="${plan.id}">
+      <span class="hangar-shot-icon">${missileCount}</span>
+      <strong>${plan.title[lang]}</strong>
+      <small>${plan.detail[lang]}</small>
+      <em>${status}</em>
+    </button>
+  `;
+}
+
+function renderMissileOption(type, lang, activeMissileType, ownedMissiles) {
+  const owned = ownedMissiles.includes(type.id);
+  const active = activeMissileType === type.id;
+  const status = active
+    ? (lang === 'fr' ? 'EQUIPE' : 'EQUIPPED')
+    : owned
+      ? (lang === 'fr' ? 'DEBLOQUE' : 'UNLOCKED')
+      : (lang === 'fr' ? 'BLOQUE' : 'LOCKED');
+  return `
+    <button class="hangar-missile-card ${active ? 'active' : ''} ${owned ? 'unlocked' : 'locked'}" type="button" data-hangar-missile="${type.id}" aria-disabled="${owned ? 'false' : 'true'}">
+      <span class="hangar-locker ${owned ? 'is-unlocked' : 'is-locked'}" aria-hidden="true">
+        <span class="hangar-locker-shackle"></span>
+        <span class="hangar-locker-body"></span>
+      </span>
+      <span class="hangar-missile-thumb">
+        <span class="hangar-missile-sprite" style="background-image:url('${type.sprite}')"></span>
+      </span>
+      <strong>${type.title[lang]}</strong>
+      <small>${type.detail[lang]}</small>
+      <em>${status}</em>
+    </button>
+  `;
 }

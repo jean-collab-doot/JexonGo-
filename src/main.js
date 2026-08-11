@@ -7,11 +7,11 @@ import { playWorldCupIntro, stopWorldCupIntro } from './screens/worldcup-intro.j
 import { showOnboarding } from './screens/onboarding.js';
 import { initLevelMap, renderLevelMap } from './screens/levelmap.js';
 import { initHangar, renderHangar } from './screens/hangar.js';
+import { initShop, renderShop } from './screens/shop.js';
 import { initGame } from './screens/game.js';
 import { initResult, showResult } from './screens/result.js';
 import { initChest, showChest, setChestReturn } from './screens/chest.js';
 import { initGameover, showGameover } from './screens/gameover.js';
-import { initShop, renderShop } from './screens/shop.js';
 import { initSettings, loadSettings } from './screens/settings.js';
 import { initRanked, renderRankedLobby } from './screens/ranked.js';
 import { initBriefing, showBriefing } from './screens/briefing.js';
@@ -130,6 +130,7 @@ function _playtimeStr() {
 
 // ── NAVIGATION ──────────────────────────────────────────────────────────────
 let _cleanup = null;
+let _audioSplashStarted = false;
 
 const nav = {
   toMenu() {
@@ -159,7 +160,7 @@ const nav = {
       level: levelNum,
       mode: practiceMode ? 'practice' : 'level',
     });
-    SFX.playMusic('game');
+    SFX.playMusic([10, 20, 30, 40, 50].includes(levelNum) ? 'boss' : 'game');
     _cleanup = initGame(levelNum, (won) => {
       cleanup();
       if (won && G.postTutorialConnectPrompt && !G.playerRegistered && guestTrialUsed()) {
@@ -208,19 +209,19 @@ const nav = {
     trackVirtualPage('/hangar');
     SFX.playMusic('menu');
   },
+  toShop() {
+    cleanup();
+    renderShop();
+    showScreen('s-shop');
+    trackVirtualPage('/shop');
+    SFX.playMusic('menu');
+  },
   toChest(reward, returnTo = 'map') {
     cleanup();
     setChestReturn(returnTo);
     showChest(reward);
     showScreen('s-chest');
     trackVirtualPage('/chest', { returnTo });
-    SFX.playMusic('menu');
-  },
-  toShop() {
-    cleanup();
-    renderShop();
-    showScreen('s-shop');
-    trackVirtualPage('/shop');
     SFX.playMusic('menu');
   },
   toRanked() {
@@ -276,6 +277,17 @@ function showAfterIntroPopups() {
   }
   setTimeout(() => showFeedbackPopup(), 1200);
 }
+
+// Called by the first-level visual introduction. The countdown waits until the
+// welcome gift is claimed, so the reward is clearly shown after the intro.
+window._showDailyRewardAfterIntro = (onDone) => {
+  const daily = checkDailyLogin();
+  if (!daily.isNewDay) {
+    onDone?.();
+    return;
+  }
+  showDailyReward(daily.reward, daily.streak, () => onDone?.());
+};
 
 function deviceIntroLang() {
   return getLang();
@@ -435,10 +447,10 @@ function initGradeScreen() {
 initMenu(nav);
 initLevelMap(nav);
 initHangar(nav);
+initShop(nav);
 initResult(nav);
 initChest(nav);
 initGameover(nav);
-initShop(nav);
 initSettings();
 initRanked(nav);
 initBriefing(nav);
@@ -447,10 +459,47 @@ initGradeScreen();
 initRegistration();
 initFeedback();
 
+if (!document.getElementById('s-menu')?.classList.contains('hidden')) {
+  renderMenu();
+}
+
+document.addEventListener('click', e => {
+  const btn = e.target.closest('button');
+  if (!btn) return;
+
+  if (
+    btn.id === 'btn-map-back' ||
+    btn.id === 'btn-hangar-back' ||
+    btn.id === 'btn-ranked-back' ||
+    btn.id === 'btn-profile-back'
+  ) {
+    e.preventDefault();
+    nav.toMenu();
+    return;
+  }
+
+  if (btn.id === 'btn-briefing-back') {
+    e.preventDefault();
+    nav.toMap();
+    return;
+  }
+
+  if (btn.id === 'btn-privacy-back' || btn.id === 'btn-terms-back' || btn.id === 'btn-reg-close') {
+    e.preventDefault();
+    nav.toMenu();
+  }
+}, true);
+
 // ── GLOBAL BUTTON CLICK SOUND ─────────────────────────────────────────────────
 document.addEventListener('click', e => {
   const btn = e.target.closest('button');
   if (!btn) return;
+  if (!_audioSplashStarted) {
+    _audioSplashStarted = true;
+    SFX.unlock();
+    SFX.playMusic('menu');
+    document.getElementById('audio-splash')?.classList.add('hidden');
+  }
   if (btn.id !== 'btn-audio-start') SFX.click();
   if (!_trackedFirstInteraction) {
     _trackedFirstInteraction = true;
@@ -667,10 +716,12 @@ window.addEventListener('beforeunload', () => {
   }
 });
 
-document.getElementById('btn-audio-start').addEventListener('click', async () => {
+async function startAudioSplash() {
+  if (_audioSplashStarted) return;
+  _audioSplashStarted = true;
   SFX.unlock();
   SFX.playMusic('menu');
-  document.getElementById('audio-splash').classList.add('hidden');
+  document.getElementById('audio-splash')?.classList.add('hidden');
   renderMenu();
   showScreen('s-menu');
 
@@ -703,9 +754,7 @@ document.getElementById('btn-audio-start').addEventListener('click', async () =>
   }
 
   playWorldCupIntro(continueAfterOpeningAnimation);
-});
+}
 
-// Patch shop's chest button to return to shop
-import('./screens/shop.js').then(() => {
-  // shop.js already patches via window._nav.toChest(data, 'shop')
-});
+document.getElementById('btn-audio-start')?.addEventListener('click', startAudioSplash);
+document.getElementById('audio-splash')?.addEventListener('click', startAudioSplash);

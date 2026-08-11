@@ -1,5 +1,5 @@
 // Cloud progression sync — keyed by player email (server: server.js /api/save)
-import { G, saveAll } from '../state.js';
+import { G, saveAll, clampCoins } from '../state.js';
 import { save } from '../utils/storage.js';
 import { getSupabaseAccessToken } from './supabase-client.js';
 
@@ -15,9 +15,9 @@ const CLOUD_SAVE_AVAILABLE =
 
 const PERSIST_KEYS = [
   'xp', 'totalXpEarned', 'coins', 'blueprints', 'chestsWithoutEpic', 'levelStars',
-  'unlockedAircraft', 'activeAircraft', 'ownedSkins', 'activeSkin', 'activeLivery',
-  'prestige', 'sr71Earned', 'sr71MissionClaimed', 'sr71WrongAnswers', 'sr71MissileHits',
-  'sr71CleanLevels', 'highestLevel', 'dailyLastLogin', 'dailyStreak', 'dailyMissions',
+  'unlockedAircraft', 'activeAircraft',
+  'sr71Earned', 'sr71MissionClaimed', 'sr71WrongAnswers', 'sr71MissileHits',
+  'sr71CleanLevels', 'highestLevel', 'dailyLastLogin', 'dailyStreak', 'dailyStarterPlanComplete', 'dailyMissions',
   'dailyMissionDate', 'playMinutesByDay', 'monthlyChallenge', 'claimedRanks', 'rankedLP', 'rankedWins', 'rankedLosses',
   'rankedWinStreak', 'rankedGamesPlayed', 'rankedSeasonStart', 'rankedFirstWinToday',
   'playerName', 'playerEmail', 'playerPhoto', 'playerAge', 'playerGrade',
@@ -84,9 +84,8 @@ export function mergeSaveSnapshots(local, remote) {
 
   out.xp            = Math.max(local.xp || 0, remote.xp || 0);
   out.totalXpEarned = Math.max(local.totalXpEarned || 0, remote.totalXpEarned || 0);
-  out.coins         = Math.max(local.coins || 0, remote.coins || 0);
+  out.coins         = clampCoins(Math.max(local.coins || 0, remote.coins || 0));
   out.highestLevel  = Math.max(local.highestLevel || 0, remote.highestLevel || 0);
-  out.prestige      = Math.max(local.prestige || 0, remote.prestige || 0);
   out.chestsWithoutEpic = Math.max(local.chestsWithoutEpic || 0, remote.chestsWithoutEpic || 0);
   out.rankedLP      = Math.max(local.rankedLP || 0, remote.rankedLP || 0);
 
@@ -101,7 +100,6 @@ export function mergeSaveSnapshots(local, remote) {
   }
 
   out.unlockedAircraft = _union(local.unlockedAircraft, remote.unlockedAircraft);
-  out.ownedSkins       = _union(local.ownedSkins, remote.ownedSkins);
   out.claimedRanks     = _union(local.claimedRanks, remote.claimedRanks);
   out.sr71CleanLevels  = _union(local.sr71CleanLevels, remote.sr71CleanLevels);
 
@@ -135,11 +133,10 @@ export function mergeSaveSnapshots(local, remote) {
     out.dailyMissions    = remote.dailyMissions;
     out.dailyMissionDate = remote.dailyMissionDate;
   }
+  out.dailyStarterPlanComplete = !!(local.dailyStarterPlanComplete || remote.dailyStarterPlanComplete);
 
   if ((remote.highestLevel || 0) >= (local.highestLevel || 0)) {
     out.activeAircraft = remote.activeAircraft ?? local.activeAircraft;
-    out.activeSkin     = remote.activeSkin ?? local.activeSkin;
-    out.activeLivery   = remote.activeLivery ?? local.activeLivery;
   }
 
   out.playerName  = local.playerName  || remote.playerName;

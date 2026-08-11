@@ -34,9 +34,10 @@ const BRIEFING_COPY = {
           'Touch a circle to move the fighter.',
           'Tap the answer button to shoot.',
           '',
-          'WASD image: control the plane on computer.',
-          'W forward, S backward.',
-          'A left, D right.',
+          'On PC: use the keyboard arrow keys.',
+          'Up and down arrows move vertically.',
+          'Left and right arrows move horizontally.',
+          'You can also use W, A, S and D.',
         ],
         imageSlot: 'controls',
       },
@@ -83,9 +84,10 @@ const BRIEFING_COPY = {
           "Touche un cercle pour deplacer l'avion.",
           'Appuie sur une reponse pour tirer.',
           '',
-          'Sur ordinateur: utilise le panneau WASD.',
-          'W avance, S recule.',
-          'A tourne a gauche, D tourne a droite.',
+          'Sur PC: utilise les fleches du clavier.',
+          'Les fleches haut et bas deplacent verticalement.',
+          'Les fleches gauche et droite deplacent horizontalement.',
+          'Tu peux aussi utiliser W, A, S et D.',
         ],
         imageSlot: 'controls',
       },
@@ -108,9 +110,11 @@ function currentBriefingCopy() {
 }
 
 const INTRO_ASSETS = {
-  mission: '/assets/Image intro/Screenshot 2026-06-21 102610.png',
-  lives: '/assets/Image intro/Screenshot 2026-06-21 102626.png',
-  score: '/assets/Image intro/IMG_E5714.JPG',
+  mission: '/assets/Image intro/03_Combat_Helicoptere_Horizontal_F18.png',
+  lives: '/assets/Image intro/05_Coeur.png',
+  score: '/assets/Image intro/04_Etoile.png',
+  controlsDesktop: '/assets/Image intro/01_Commandes_Ordinateur_WASD_Fleches.png',
+  controlsPhone: '/assets/Image intro/02_Commandes_Telephone_Vertical.png',
 };
 
 const easeOutExpo = t => t === 1 ? 1 : 1 - Math.pow(2, -10 * t);
@@ -248,47 +252,32 @@ function renderBriefingMedia(slot) {
 
   const wrap = document.createElement('div');
   wrap.className = `brief-media-frame brief-media-${slot}`;
-  const img = document.createElement('img');
-  img.src = INTRO_ASSETS[slot] || INTRO_ASSETS.mission;
-  img.alt = '';
-  img.decoding = 'async';
-  wrap.appendChild(img);
+  const imageCount = slot === 'lives' || slot === 'score' ? 3 : 1;
+  for (let index = 0; index < imageCount; index++) {
+    const img = document.createElement('img');
+    img.src = INTRO_ASSETS[slot] || INTRO_ASSETS.mission;
+    img.alt = '';
+    img.decoding = 'async';
+    wrap.appendChild(img);
+  }
   return wrap;
 }
 
 function renderControlsMedia() {
   const wrap = document.createElement('div');
-  wrap.className = 'brief-controls-media';
-
-  const stillFrame = document.createElement('div');
-  stillFrame.className = 'brief-media-frame brief-controls-still';
-  const wasd = document.createElement('div');
-  wasd.className = 'brief-wasd-panel';
-  wasd.innerHTML = `
-    <div class="brief-wasd-key brief-wasd-w">W</div>
-    <div class="brief-wasd-key brief-wasd-a">A</div>
-    <div class="brief-wasd-key brief-wasd-s">S</div>
-    <div class="brief-wasd-key brief-wasd-d">D</div>
-  `;
-  stillFrame.append(wasd);
-
-  const phone = document.createElement('div');
-  phone.className = 'brief-phone-demo';
-  phone.innerHTML = `
-    <div class="brief-phone-body">
-      <div class="brief-phone-speaker"></div>
-      <div class="brief-phone-screen">
-        <div class="brief-phone-sky"></div>
-        <div class="brief-phone-answer brief-phone-answer-a">12</div>
-        <div class="brief-phone-answer brief-phone-answer-b">16</div>
-      </div>
-      <div class="brief-touch-thumb brief-thumb-left"></div>
-      <div class="brief-touch-thumb brief-thumb-right"></div>
-      <div class="brief-touch-ring brief-touch-ring-left"></div>
-      <div class="brief-touch-ring brief-touch-ring-right"></div>
-    </div>
-  `;
-  wrap.append(stillFrame, phone);
+  wrap.className = 'brief-media-frame brief-media-controls brief-controls-pair';
+  const controls = [
+    [INTRO_ASSETS.controlsDesktop, 'WASD and arrow-key game controls', 'brief-controls-computer'],
+    [INTRO_ASSETS.controlsPhone, 'Touchscreen game controls', 'brief-controls-phone'],
+  ];
+  for (const [src, alt, className] of controls) {
+    const img = document.createElement('img');
+    img.className = className;
+    img.src = src;
+    img.alt = alt;
+    img.decoding = 'async';
+    wrap.appendChild(img);
+  }
   return wrap;
 }
 
