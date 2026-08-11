@@ -24,10 +24,15 @@ function showBadgeUnlockCelebrations(badges) {
     overlay.className = `badge-unlock-overlay badge-rarity-${rarity}`;
     overlay.innerHTML = `<div class="badge-unlock-rays"></div><div class="badge-unlock-card" role="dialog" aria-modal="true"><span class="badge-unlock-kicker">${getLang()==='fr'?'NOUVEAU BADGE':'NEW BADGE'}</span><img class="badge-unlock-image" src="${badge.image}" alt="${badge.name}"><em>${badge.rarity}</em><h2>${badge.name}</h2><p>${badge.goal}</p><strong>${badge.reward}</strong><button type="button">${getLang()==='fr'?'CONTINUER':'CONTINUE'}</button></div>`;
     document.body.appendChild(overlay);
+    document.documentElement.classList.add('badge-unlock-open');
     requestAnimationFrame(() => overlay.classList.add('show'));
     overlay.querySelector('button').onclick = () => {
       overlay.classList.add('closing');
-      setTimeout(() => { overlay.remove(); showNext(); }, 320);
+      setTimeout(() => {
+        overlay.remove();
+        document.documentElement.classList.remove('badge-unlock-open');
+        showNext();
+      }, 320);
     };
   };
   showNext();
