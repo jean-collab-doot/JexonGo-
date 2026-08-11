@@ -201,6 +201,21 @@ export function loadSave() {
     save('activeAircraft', G.activeAircraft);
     save('aircraftProgressionVersion', 2);
   }
+  // B-2 was briefly marked as a starter aircraft. Remove that accidental
+  // unlock unless the player actually purchased or earned it.
+  if (load('aircraftProgressionVersion', 1) < 3) {
+    if (!G.acquiredAircraft.includes('b2')) {
+      G.unlockedAircraft = G.unlockedAircraft.filter(id => id !== 'b2');
+    }
+    if (!G.unlockedAircraft.includes(G.activeAircraft)) G.activeAircraft = 't6';
+    save('unlockedAircraft', G.unlockedAircraft);
+    save('activeAircraft', G.activeAircraft);
+    save('aircraftProgressionVersion', 3);
+  }
+  if (!G.unlockedAircraft.includes(G.activeAircraft)) {
+    G.activeAircraft = 't6';
+    save('activeAircraft', G.activeAircraft);
+  }
   if (G.unlockedBadges.includes('boss_hunter') && !G.unlockedAircraft.includes('f117')) {
     G.unlockedAircraft.push('f117');
     save('unlockedAircraft', G.unlockedAircraft);
