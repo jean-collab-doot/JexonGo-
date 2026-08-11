@@ -49,9 +49,10 @@ export const AIRCRAFT = {
     ability: { icon: '⚡', name: 'LASER', description: 'Laser shots · double damage', weapon: 'xray', damage: 2 },
   },
   b2: {
-    id: 'b2', name: 'B-2 Spirit', xpCost: 0, starter: true,
+    id: 'b2', name: 'B-2 Spirit', xpCost: 22000, starter: false,
     type: 'bomber',
     color: '#1e293b',
+    gradeRequired: 26, gradeLabel: 'MAJOR',
     ability: { icon: '♥', name: 'ARMORED BOMBER', description: '+1 heart · heavy missiles · +100% damage', extraLives: 1, damage: 2 },
   },
   sr71: {

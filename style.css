@@ -2275,7 +2275,7 @@ html.touch-mobile .menu-offline-banner {
 .hangar-badge-card.active{border-color:#00f5ff;box-shadow:0 0 24px #00eaff99,inset 0 0 18px #00eaff22}.hangar-equip-badge{display:block;margin-top:8px;padding:8px 10px;border:1px solid #00eaff;border-radius:5px;background:#06344d;color:#bffcff;font:700 8px/1 inherit;cursor:pointer}.hangar-equip-badge:disabled{border-color:#fbbf24;background:#4c3605;color:#fff1a1;cursor:default}
 .plane-ability{margin:7px 0;padding:7px;border:1px solid #19d9ff66;border-radius:6px;background:#031b2dcc;text-align:center}.plane-ability b,.plane-ability span{display:block}.plane-ability b{color:#67e8f9;font-size:8px;line-height:1.4}.plane-ability span{margin-top:4px;color:#d7f7ff;font-size:6px;line-height:1.5}
 .hangar-plane-img.secret-silhouette{filter:brightness(0) drop-shadow(0 0 14px #000)!important}.plane-ability.secret-ability{border-color:#4b5563;background:#020202}.plane-ability.secret-ability b,.plane-ability.secret-ability span{color:#737373}
-.hangar-card{height:auto!important;min-height:0!important;overflow:visible;box-sizing:border-box;display:flex;flex-direction:column}.hangar-card .plane-ability{width:100%;box-sizing:border-box;overflow:hidden}.hangar-card .plane-ability span{max-width:100%;white-space:normal;overflow-wrap:anywhere;word-break:normal}.hangar-card .plane-cost{position:static!important;margin-top:auto!important;padding-top:6px;line-height:1.45;white-space:normal}
+.hangar-card{height:auto!important;min-height:0!important;overflow:visible;box-sizing:border-box;display:flex;flex-direction:column}.hangar-card .plane-ability{width:100%;min-height:max-content;box-sizing:border-box;overflow:visible}.hangar-card .plane-ability span{max-width:100%;white-space:normal;overflow:visible;overflow-wrap:anywhere;word-break:normal}.hangar-card .plane-cost{position:static!important;margin-top:auto!important;padding-top:6px;line-height:1.45;white-space:normal}
 .hangar-card .plane-grade-req{width:100%;box-sizing:border-box;margin-top:3px!important;font-size:5px!important;line-height:1.5!important;white-space:normal;overflow-wrap:anywhere;text-align:center}
 .player-shield-button{position:absolute;z-index:24;right:16px;bottom:clamp(190px,29vh,270px);width:76px;height:76px;border:3px solid #38bdf8;border-radius:50%;background:radial-gradient(circle,#0c4f78 0%,#061a31 68%,#020817 100%);box-shadow:0 0 18px #38bdf899,inset 0 0 14px #38bdf866;color:#d9f7ff;font-family:inherit;font-size:7px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:pointer;touch-action:manipulation}.player-shield-button.hidden{display:none}.player-shield-icon{font-family:Arial,sans-serif;font-size:25px;line-height:1}.player-shield-button.active{animation:player-shield-pulse .8s ease-in-out infinite alternate;background:radial-gradient(circle,#22d3ee 0%,#075985 54%,#021025 100%)}.player-shield-button.cooldown{filter:grayscale(.75);opacity:.62;border-color:#64748b;box-shadow:none}.player-shield-button:disabled{cursor:not-allowed}@keyframes player-shield-pulse{to{transform:scale(1.07);box-shadow:0 0 30px #38bdf8,inset 0 0 20px #67e8f9}}
 @media(max-width:600px){.player-shield-button{right:10px;bottom:clamp(180px,27vh,235px);width:66px;height:66px}}
@@ -13708,7 +13708,15 @@ html.touch-phone #s-menu .menu-offline-banner {
   }
 
   #s-shop .shop-missile-card {
-    grid-template-rows: minmax(210px, 36dvh) auto;
+    grid-template-rows: minmax(210px, 36dvh) auto auto;
+  }
+
+  #s-shop .shop-missile-footer {
+    grid-template-columns: 1fr;
+  }
+
+  #s-shop .shop-missile-action {
+    width: 100%;
   }
 
   #s-shop .shop-weapon-footer {
