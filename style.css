@@ -14130,6 +14130,50 @@ html.touch-mobile.viewport-landscape.compact-height #game-hud { min-height:40px;
 html.touch-mobile.viewport-landscape.compact-height #question-box { max-height:52dvh; }
 html.touch-mobile.viewport-landscape.compact-height .answer-btn { min-height:40px; padding-block:7px; }
 
+/* Desktop layout guardrails. The game artwork is designed as a compact
+   portrait playfield; do not stretch its cards and map across ultrawide PCs. */
+html[data-device-size="desktop"] #hangar-grid,
+html[data-device-size="desktop-wide"] #hangar-grid {
+  width:min(1180px,calc(100vw - 48px));
+  margin-inline:auto;
+  grid-template-columns:repeat(4,minmax(210px,1fr));
+  gap:16px;
+  padding:18px;
+}
+html[data-device-size="desktop"] .hangar-card,
+html[data-device-size="desktop-wide"] .hangar-card {
+  min-height:300px!important;
+  padding:16px 12px!important;
+  overflow:hidden;
+}
+html[data-device-size="desktop"] .hangar-plane-img,
+html[data-device-size="desktop-wide"] .hangar-plane-img {
+  width:120px;
+  height:120px;
+}
+html[data-device-size="desktop"] .hangar-card .plane-ability,
+html[data-device-size="desktop-wide"] .hangar-card .plane-ability {
+  min-height:64px;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+}
+html[data-device-size="desktop"] #levelmap-scroll,
+html[data-device-size="desktop-wide"] #levelmap-scroll {
+  width:min(720px,100vw);
+  margin-inline:auto;
+}
+html[data-device-size="desktop"] .map-biome-zone,
+html[data-device-size="desktop-wide"] .map-biome-zone {
+  width:100%;
+}
+html[data-device-size="desktop"] #s-menu .menu-logo-wrap,
+html[data-device-size="desktop-wide"] #s-menu .menu-logo-wrap,
+html[data-device-size="desktop"] #s-menu .menu-subtitle,
+html[data-device-size="desktop-wide"] #s-menu .menu-subtitle {
+  display:none!important;
+}
+
 /* Locked badges show progress only; they are not interactive previews. */
 .hangar-badge-card.locked { cursor:default; }
 .hangar-badge-card.locked:active { transform:none; }

@@ -116,8 +116,9 @@ export function updateAirdrop(step, cw, ch) {
   drop.groundY = ch * 0.62;
   if (drop.state === AIRDROP_STATE.IDLE) {
     drop.delay -= step;
-    // Start the engine sound shortly before the carrier enters the screen.
-    if (!drop.planeSoundStarted && drop.delay <= 120) {
+    // The recording has a gradual engine lead-in, so start it well before
+    // the carrier reaches the visible playfield.
+    if (!drop.planeSoundStarted && drop.delay <= 240) {
       drop.planeSoundStarted = true;
       SFX.airdropPlane?.();
     }
