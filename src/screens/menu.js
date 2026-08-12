@@ -154,16 +154,15 @@ function _updateProfile() {
 async function _handleSignOut() {
   await flushCloudSave();
   await signOutSupabase();
-  G.playerPhoto      = '';
-  G.playerRegistered = false;
-  save('playerPhoto',      '');
-  save('playerRegistered', false);
-  save('playerPassword',   '');
-  _gsiReady = false;
   if (typeof google !== 'undefined' && google.accounts) {
     google.accounts.id.disableAutoSelect();
   }
-  renderMenu();
+  const lang = localStorage.getItem('jexongo_lang');
+  const settings = localStorage.getItem('jexongo_settings');
+  clearAll();
+  if (lang) localStorage.setItem('jexongo_lang', lang);
+  if (settings) localStorage.setItem('jexongo_settings', settings);
+  location.reload();
 }
 
 function _setDeleteAccountError(message) {

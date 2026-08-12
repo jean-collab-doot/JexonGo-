@@ -303,6 +303,8 @@ export const SFX = {
       '/assets/music/gameover2.mp3',
       '/assets/music/Buy.mp3',
       '/assets/music/Choose a level.mp3',
+      '/assets/music/freesound_community-plane-78723.mp3',
+      '/assets/music/soundreality-coins-135571.mp3',
     ].forEach(_loadBuf);
     _resumeAll();
   },
@@ -331,6 +333,12 @@ export const SFX = {
         _tone(ctx, 520, 'triangle', 0.12, 0.28);
         _after(85, () => _tone(_ac(), 760, 'triangle', 0.16, 0.25));
       }, 1.4);
+  },
+  airdropPlane() {
+    _playMediaShot('/assets/music/freesound_community-plane-78723.mp3', 0.7);
+  },
+  coinClaim() {
+    _playMediaShot('/assets/music/soundreality-coins-135571.mp3', 0.85);
   },
   correct() {
     _playBuf('/assets/music/correct.mp3', 0.9, ctx => {

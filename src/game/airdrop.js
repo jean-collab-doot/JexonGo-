@@ -1,5 +1,6 @@
 import { G } from '../state.js';
 import { drawFrame } from './sprites.js';
+import { SFX } from '../audio/sound.js';
 
 export const AIRDROP_STATE = Object.freeze({
   IDLE: 'IDLE', DROP: 'CHEST_DROP', DESCEND: 'CHEST_DESCEND',
@@ -120,6 +121,7 @@ export function updateAirdrop(step, cw, ch) {
       drop.planeTimer = 0;
       drop.planeActive = true;
       drop.planeX = cw * 0.5;
+      SFX.airdropPlane?.();
     }
     return;
   }
@@ -157,6 +159,7 @@ export function updateAirdrop(step, cw, ch) {
         if (!drop.rewardApplied) {
           drop.reward ||= rollReward();
           applyReward(drop.reward);
+          if (drop.reward.type === 'coins') SFX.coinClaim?.();
           drop.rewardApplied = true;
         }
         drop.state = AIRDROP_STATE.DONE;

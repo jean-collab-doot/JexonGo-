@@ -133,15 +133,15 @@ function _buildThemeGrid() {
 async function _signOut() {
   await flushCloudSave();
   await signOutSupabase();
-  G.playerPhoto      = '';
-  G.playerRegistered = false;
-  save('playerPhoto',      '');
-  save('playerRegistered', false);
-  save('playerPassword',   '');
   if (typeof google !== 'undefined' && google?.accounts) {
     google.accounts.id.disableAutoSelect();
   }
-  _nav.toMenu();
+  const lang = localStorage.getItem('jexongo_lang');
+  const settings = localStorage.getItem('jexongo_settings');
+  clearAll();
+  if (lang) localStorage.setItem('jexongo_lang', lang);
+  if (settings) localStorage.setItem('jexongo_settings', settings);
+  location.reload();
 }
 
 function _setDeleteError(message) {

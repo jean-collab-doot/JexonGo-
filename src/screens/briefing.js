@@ -1,6 +1,5 @@
 import { $ } from '../utils/dom.js';
 import { getLevel } from '../data/levels.js';
-import { getStory } from '../data/story.js';
 import { getPilotInfo, getPilotGrade } from '../data/pilots.js';
 import { G } from '../state.js';
 import { t, tOp, getLang } from '../i18n.js';
@@ -33,13 +32,17 @@ export function showBriefing(levelNum) {
   _levelNum = levelNum;
 
   const levelCfg = getLevel(levelNum);
-  const story = getStory(levelNum);
   const pilotInfo = getPilotInfo(G.totalXpEarned || G.xp || 0);
   const grade = getPilotGrade(G.highestLevel || 0);
   const isFr = getLang() === 'fr';
 
-  $('briefing-mission-title').textContent = isFr ? (story.titleFr || story.title) : story.title;
-  $('briefing-story').textContent = isFr ? (story.textFr || story.text) : story.text;
+  const operationNames = levelCfg.ops.map(op => ({ '+': isFr ? 'addition' : 'addition', '-': isFr ? 'soustraction' : 'subtraction', '*': isFr ? 'multiplication' : 'multiplication', '/': isFr ? 'division' : 'division' }[op])).join(', ');
+  const enemyNames = [...new Set(levelCfg.enemyTypes)].map(type => ({ basic: isFr ? 'chasseurs' : 'fighters', fast: isFr ? 'avions rapides' : 'fast aircraft', tank: isFr ? 'hélicoptères blindés' : 'armored helicopters', turner: isFr ? 'Mirages' : 'Mirages', interceptor: isFr ? 'intercepteurs F-14' : 'F-14 interceptors', boss: 'boss' }[type] || type)).join(', ');
+  const biomeName = levelCfg.colors.label;
+  $('briefing-mission-title').textContent = isFr ? `MISSION ${levelNum} · ${biomeName}` : `MISSION ${levelNum} · ${biomeName}`;
+  $('briefing-story').textContent = isFr
+    ? `${levelCfg.questionCount} questions de ${operationNames}, ${levelCfg.timeLimit} s chacune. Affronte ${enemyNames}, récupère ${levelCfg.mapCoinCount} pièces${levelCfg.isBossLevel ? ' et vaincs le boss pour obtenir le coffre' : ''}.`
+    : `${levelCfg.questionCount} ${operationNames} questions, ${levelCfg.timeLimit}s each. Fight ${enemyNames}, collect ${levelCfg.mapCoinCount} coins${levelCfg.isBossLevel ? ', defeat the boss and earn the chest' : ''}.`;
   $('briefing-time').textContent = `${levelCfg.timeLimit}${t('secPerQ')}`;
 
   const timeLabelEl = document.querySelector('.briefing-cond-label[data-key="timeLimit"]');
