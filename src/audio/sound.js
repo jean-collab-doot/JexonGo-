@@ -335,10 +335,18 @@ export const SFX = {
       }, 1.4);
   },
   airdropPlane() {
-    _playMediaShot('/assets/music/freesound_community-plane-78723.mp3', 0.7);
+    _playBuf('/assets/music/freesound_community-plane-78723.mp3', 1,
+      ctx => {
+        _noise(ctx, 1.8, 0.32);
+        _tone(ctx, 95, 'sawtooth', 1.8, 0.18);
+      }, 7);
   },
   coinClaim() {
-    _playMediaShot('/assets/music/soundreality-coins-135571.mp3', 0.85);
+    _playBuf('/assets/music/soundreality-coins-135571.mp3', 1,
+      ctx => {
+        _tone(ctx, 880, 'triangle', 0.1, 0.3);
+        _after(70, () => _tone(_ac(), 1320, 'triangle', 0.15, 0.28));
+      }, 1.4);
   },
   correct() {
     _playBuf('/assets/music/correct.mp3', 0.9, ctx => {

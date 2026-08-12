@@ -838,6 +838,7 @@ function updateAndDrawMapCoins(ctx, cw, ch, step) {
     const dy = coin.y - G.player.y;
     if (dx * dx + dy * dy <= (playerRadius + size * 0.34) ** 2) {
       awardGameplayCoins(coin.value);
+      SFX.coinClaim?.();
       _mapCoins.splice(i, 1);
     } else if (coin.y > ch + size) {
       _mapCoins.splice(i, 1);
