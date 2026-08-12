@@ -14175,6 +14175,50 @@ html[data-device-size="desktop-wide"] #s-menu .menu-subtitle {
   display:none!important;
 }
 
+/* Lobby desktop composition: keep every HUD block in its own lane and leave
+   clear air between the aircraft, PLAY control and bottom navigation. */
+html[data-device-size="desktop"] #s-menu .jg-lobby-status,
+html[data-device-size="desktop-wide"] #s-menu .jg-lobby-status {
+  top:14px;
+  left:230px;
+  right:96px;
+  min-height:72px;
+}
+html[data-device-size="desktop"] #s-menu .jg-lobby-deck,
+html[data-device-size="desktop-wide"] #s-menu .jg-lobby-deck {
+  top:43%;
+  height:min(500px,62vh);
+}
+html[data-device-size="desktop"] #s-menu .menu-plane-showcase,
+html[data-device-size="desktop-wide"] #s-menu .menu-plane-showcase {
+  top:44%;
+  width:clamp(360px,34vw,500px);
+  height:82%;
+}
+html[data-device-size="desktop"] #s-menu .menu-selected-plane,
+html[data-device-size="desktop-wide"] #s-menu .menu-selected-plane {
+  top:-10%;
+  width:min(90%,460px);
+  max-height:78%;
+}
+html[data-device-size="desktop"] #s-menu .menu-plane-showcase::after,
+html[data-device-size="desktop-wide"] #s-menu .menu-plane-showcase::after {
+  bottom:2%;
+  width:min(66%,360px);
+  height:38px;
+}
+html[data-device-size="desktop"] #s-menu #btn-play,
+html[data-device-size="desktop-wide"] #s-menu #btn-play {
+  bottom:clamp(112px,12vh,132px);
+  width:min(430px,34vw);
+}
+html[data-device-size="desktop"] #s-menu .jg-lobby-nav-controls,
+html[data-device-size="desktop-wide"] #s-menu .jg-lobby-nav-controls {
+  bottom:0;
+  width:min(1228px,80vw);
+  height:88px;
+}
+
 /* Locked badges show progress only; they are not interactive previews. */
 .hangar-badge-card.locked { cursor:default; }
 .hangar-badge-card.locked:active { transform:none; }
