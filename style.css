@@ -13931,7 +13931,7 @@ html.touch-mobile #s-menu .menu-subtitle { display:none !important; }
   position:absolute;
   z-index:0;
   left:50%;
-  bottom:14%;
+  bottom:7%;
   width:min(68%,440px);
   height:clamp(24px,5.2vw,54px);
   transform:translateX(-50%);
@@ -13940,6 +13940,7 @@ html.touch-mobile #s-menu .menu-subtitle { display:none !important; }
   filter:blur(5px);
 }
 #s-menu .menu-selected-plane {
+  top:-7%;
   z-index:2;
   width:min(96%,570px);
   max-height:88%;
@@ -13962,8 +13963,8 @@ html.touch-mobile #s-menu .menu-subtitle { display:none !important; }
     transform:translateX(-50%);
   }
   #s-menu .menu-plane-showcase { width:min(104vw,500px); height:96%; }
-  #s-menu .menu-selected-plane { width:min(100%,460px); max-height:88%; }
-  #s-menu .menu-plane-showcase::after { width:72%; bottom:14%; height:32px; }
+  #s-menu .menu-selected-plane { top:-6%; width:min(100%,460px); max-height:88%; }
+  #s-menu .menu-plane-showcase::after { width:72%; bottom:6%; height:32px; }
   #s-menu .jg-lobby-status { overflow:visible; }
   #s-menu .jg-lobby-status {
     display:grid;
