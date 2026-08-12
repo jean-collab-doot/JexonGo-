@@ -13374,7 +13374,8 @@ html.touch-phone #s-menu .menu-offline-banner {
 }
 
 #s-shop .shop-missile-nuke .shop-missile-sprite {
-  transform: none;
+  /* The artwork sits 11.74% to the right inside every sprite cell. */
+  transform: translate(-11.74%, -0.55%);
   transform-origin: 50% 50%;
   rotate: 0deg;
 }
