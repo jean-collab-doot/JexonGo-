@@ -14084,12 +14084,46 @@ html.touch-phone #answer-buttons { gap:clamp(6px,2vw,10px); }
 html.touch-phone .answer-btn { min-width:0; min-height:var(--device-tap); padding:10px 6px; font-size:clamp(8px,2.6vw,11px); }
 html.touch-phone .player-shield-button { min-width:var(--device-tap); min-height:var(--device-tap); }
 html.touch-phone #hangar-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+html.touch-phone .hangar-card {
+  min-height:220px!important;
+  padding:10px 7px 12px!important;
+  gap:4px;
+}
+html.touch-phone .hangar-plane-img {
+  width:clamp(70px,20vw,92px)!important;
+  height:clamp(70px,20vw,92px)!important;
+  margin-bottom:3px!important;
+}
+html.touch-phone .hangar-card .plane-name {
+  min-height:2.8em;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:clamp(6px,1.9vw,8px);
+  line-height:1.4;
+}
+html.touch-phone .hangar-card .plane-ability {
+  min-height:54px;
+  margin:3px 0 0!important;
+  padding:6px 4px;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+}
+html.touch-phone .hangar-card .plane-ability b { font-size:clamp(6px,1.9vw,8px); }
+html.touch-phone .hangar-card .plane-ability span { font-size:clamp(5px,1.55vw,6px); line-height:1.4; }
+html.touch-phone .hangar-card .plane-cost {
+  margin-top:auto!important;
+  padding-top:7px!important;
+  min-height:1.45em;
+}
 
 html[data-device-size="phone-small"] #game-hud { min-height:44px; padding-block:4px; }
 html[data-device-size="phone-small"] .btn-quit-game { width:38px; overflow:hidden; color:transparent; position:relative; }
 html[data-device-size="phone-small"] .btn-quit-game::after { content:'×'; position:absolute; inset:0; display:grid; place-items:center; color:#ff6b6b; font-size:16px; }
 html[data-device-size="phone-small"] #question-box { max-height:48dvh; }
 html[data-device-size="phone-small"] #hangar-grid { grid-template-columns:1fr; }
+html[data-device-size="phone-small"] .hangar-card { min-height:210px!important; }
 html[data-device-size="phone-small"] #s-menu .menu-selected-plane { width:min(92vw,390px); }
 
 html.touch-mobile.viewport-landscape.compact-height #game-hud { min-height:40px; padding-block:3px; }
