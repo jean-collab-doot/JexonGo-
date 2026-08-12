@@ -11535,15 +11535,15 @@ html.touch-phone #menu-canvas {
 
 /* Final phone fit pass for secondary screens. Keep controls readable and prevent clipped panels. */
 @media (max-width: 768px) {
-  :where(html.touch-phone, html) #s-levelmap,
-  :where(html.touch-phone, html) #s-hangar,
-  :where(html.touch-phone, html) #s-shop,
-  :where(html.touch-phone, html) #s-profile,
-  :where(html.touch-phone, html) #s-briefing,
-  :where(html.touch-phone, html) #s-result,
-  :where(html.touch-phone, html) #s-gameover,
-  :where(html.touch-phone, html) #s-chest,
-  :where(html.touch-phone, html) #s-grade {
+  html.touch-phone #s-levelmap,
+  html.touch-phone #s-hangar,
+  html.touch-phone #s-shop,
+  html.touch-phone #s-profile,
+  html.touch-phone #s-briefing,
+  html.touch-phone #s-result,
+  html.touch-phone #s-gameover,
+  html.touch-phone #s-chest,
+  html.touch-phone #s-grade {
     width: var(--app-width, 100vw) !important;
     height: var(--app-height, 100dvh) !important;
     min-height: var(--app-height, 100dvh) !important;
@@ -11551,9 +11551,9 @@ html.touch-phone #menu-canvas {
     box-sizing: border-box !important;
   }
 
-  :where(html.touch-phone, html) .top-bar,
-  :where(html.touch-phone, html) .shop-topbar,
-  :where(html.touch-phone, html) .briefing-topbar {
+  html.touch-phone .top-bar,
+  html.touch-phone .shop-topbar,
+  html.touch-phone .briefing-topbar {
     min-height: 46px !important;
     padding:
       max(7px, env(safe-area-inset-top))
@@ -11563,9 +11563,9 @@ html.touch-phone #menu-canvas {
     gap: 8px !important;
   }
 
-  :where(html.touch-phone, html) .top-bar-title,
-  :where(html.touch-phone, html) .shop-topbar-title,
-  :where(html.touch-phone, html) .briefing-topbar-title {
+  html.touch-phone .top-bar-title,
+  html.touch-phone .shop-topbar-title,
+  html.touch-phone .briefing-topbar-title {
     min-width: 0 !important;
     overflow: hidden !important;
     text-overflow: ellipsis !important;
@@ -11574,14 +11574,14 @@ html.touch-phone #menu-canvas {
     letter-spacing: 1.4px !important;
   }
 
-  :where(html.touch-phone, html) #levelmap-scroll {
+  html.touch-phone #levelmap-scroll {
     height: calc(var(--app-height, 100dvh) - 46px) !important;
     overflow: auto !important;
     padding: 12px 12px max(24px, env(safe-area-inset-bottom)) !important;
     -webkit-overflow-scrolling: touch;
   }
 
-  :where(html.touch-phone, html) #levelmap-nodes {
+  html.touch-phone #levelmap-nodes {
     flex-direction: column !important;
     align-items: center !important;
     justify-content: flex-start !important;
@@ -11591,37 +11591,37 @@ html.touch-phone #menu-canvas {
     --map-zig: clamp(46px, 22vw, 86px);
   }
 
-  :where(html.touch-phone, html) .map-connector {
+  html.touch-phone .map-connector {
     width: 4px !important;
     height: 42px !important;
   }
 
-  :where(html.touch-phone, html) .map-biome-label {
+  html.touch-phone .map-biome-label {
     writing-mode: horizontal-tb !important;
     margin: 4px 0 !important;
     font-size: 6px !important;
   }
 
-  :where(html.touch-phone, html) .map-node {
+  html.touch-phone .map-node {
     width: clamp(50px, 15vw, 62px) !important;
     height: clamp(50px, 15vw, 62px) !important;
     font-size: clamp(8px, 2.6vw, 10px) !important;
   }
 
-  :where(html.touch-phone, html) .map-node-boss {
+  html.touch-phone .map-node-boss {
     width: clamp(58px, 17vw, 72px) !important;
     height: clamp(58px, 17vw, 72px) !important;
   }
 
-  :where(html.touch-phone, html) #hangar-grid,
-  :where(html.touch-phone, html) #hangar-armory {
+  html.touch-phone #hangar-grid,
+  html.touch-phone #hangar-armory {
     height: calc(var(--app-height, 100dvh) - 96px) !important;
     max-height: calc(var(--app-height, 100dvh) - 96px) !important;
     overflow: auto !important;
     -webkit-overflow-scrolling: touch;
   }
 
-  :where(html.touch-phone, html) #hangar-grid {
+  html.touch-phone #hangar-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
     gap: 9px !important;
     padding:
@@ -11632,22 +11632,22 @@ html.touch-phone #menu-canvas {
     align-content: start !important;
   }
 
-  :where(html.touch-phone, html) #hangar-armory {
+  html.touch-phone #hangar-armory {
     margin: 10px max(9px, env(safe-area-inset-right)) max(18px, env(safe-area-inset-bottom)) max(9px, env(safe-area-inset-left)) !important;
   }
 
-  :where(html.touch-phone, html) .hangar-card {
+  html.touch-phone .hangar-card {
     min-width: 0 !important;
     min-height: clamp(150px, 26dvh, 190px) !important;
     padding: 9px 6px !important;
   }
 
-  :where(html.touch-phone, html) .hangar-plane-img {
+  html.touch-phone .hangar-plane-img {
     width: clamp(78px, 22vw, 104px) !important;
     height: clamp(78px, 22vw, 104px) !important;
   }
 
-  :where(html.touch-phone, html) .hangar-livery-panel {
+  html.touch-phone .hangar-livery-panel {
     left: max(8px, env(safe-area-inset-left)) !important;
     right: max(8px, env(safe-area-inset-right)) !important;
     bottom: max(8px, env(safe-area-inset-bottom)) !important;
@@ -11657,11 +11657,11 @@ html.touch-phone #menu-canvas {
     padding: 10px !important;
   }
 
-  :where(html.touch-phone, html) #s-shop {
+  html.touch-phone #s-shop {
     grid-template-rows: auto 1fr auto auto !important;
   }
 
-  :where(html.touch-phone, html) .shop-content {
+  html.touch-phone .shop-content {
     min-height: 0 !important;
     overflow: auto !important;
     padding:
@@ -11672,12 +11672,12 @@ html.touch-phone #menu-canvas {
     -webkit-overflow-scrolling: touch;
   }
 
-  :where(html.touch-phone, html) .shop-currencies {
+  html.touch-phone .shop-currencies {
     min-width: 0 !important;
     gap: 5px !important;
   }
 
-  :where(html.touch-phone, html) .shop-currency-badge {
+  html.touch-phone .shop-currency-badge {
     min-width: 0 !important;
     max-width: 96px !important;
     overflow: hidden !important;
@@ -11686,38 +11686,38 @@ html.touch-phone #menu-canvas {
     font-size: 6px !important;
   }
 
-  :where(html.touch-phone, html) .sc-offers-grid,
-  :where(html.touch-phone, html) .sc-skins-grid,
-  :where(html.touch-phone, html) .sc-chest-shop-grid {
+  html.touch-phone .sc-offers-grid,
+  html.touch-phone .sc-skins-grid,
+  html.touch-phone .sc-chest-shop-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
     gap: 9px !important;
   }
 
-  :where(html.touch-phone, html) .sc-card-px-featured,
-  :where(html.touch-phone, html) .sc-card-px-small,
-  :where(html.touch-phone, html) .sc-chest-shop-card {
+  html.touch-phone .sc-card-px-featured,
+  html.touch-phone .sc-card-px-small,
+  html.touch-phone .sc-chest-shop-card {
     min-height: clamp(150px, 24dvh, 190px) !important;
   }
 
-  :where(html.touch-phone, html) .shop-tabbar {
+  html.touch-phone .shop-tabbar {
     min-height: 54px !important;
     padding-bottom: max(4px, env(safe-area-inset-bottom)) !important;
   }
 
-  :where(html.touch-phone, html) .shop-tab {
+  html.touch-phone .shop-tab {
     min-width: 0 !important;
     min-height: 48px !important;
   }
 
-  :where(html.touch-phone, html) .sett-panel,
-  :where(html.touch-phone, html) .practice-panel,
-  :where(html.touch-phone, html) .daily-panel,
-  :where(html.touch-phone, html) .missions-inner,
-  :where(html.touch-phone, html) .feedback-panel,
-  :where(html.touch-phone, html) .login-modal-panel,
-  :where(html.touch-phone, html) .reset-modal-panel,
-  :where(html.touch-phone, html) .prestige-modal-panel,
-  :where(html.touch-phone, html) .delete-account-panel {
+  html.touch-phone .sett-panel,
+  html.touch-phone .practice-panel,
+  html.touch-phone .daily-panel,
+  html.touch-phone .missions-inner,
+  html.touch-phone .feedback-panel,
+  html.touch-phone .login-modal-panel,
+  html.touch-phone .reset-modal-panel,
+  html.touch-phone .prestige-modal-panel,
+  html.touch-phone .delete-account-panel {
     width: min(440px, calc(var(--app-width, 100vw) - 22px)) !important;
     max-width: calc(var(--app-width, 100vw) - 22px) !important;
     max-height: calc(var(--app-height, 100dvh) - 22px) !important;
@@ -11726,35 +11726,35 @@ html.touch-phone #menu-canvas {
     -webkit-overflow-scrolling: touch;
   }
 
-  :where(html.touch-phone, html) #practice-select .practice-ops-grid {
+  html.touch-phone #practice-select .practice-ops-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
     gap: 9px !important;
   }
 
-  :where(html.touch-phone, html) #practice-select .practice-op-btn {
+  html.touch-phone #practice-select .practice-op-btn {
     min-width: 0 !important;
     min-height: 94px !important;
   }
 
-  :where(html.touch-phone, html) #practice-select .practice-timer-row,
-  :where(html.touch-phone, html) #practice-select .practice-hearts-row {
+  html.touch-phone #practice-select .practice-timer-row,
+  html.touch-phone #practice-select .practice-hearts-row {
     grid-template-columns: 1fr !important;
     gap: 8px !important;
     align-items: stretch !important;
   }
 
-  :where(html.touch-phone, html) #practice-select .practice-timer-btns {
+  html.touch-phone #practice-select .practice-timer-btns {
     display: grid !important;
     grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
     gap: 6px !important;
   }
 
-  :where(html.touch-phone, html) #practice-select .practice-timer-btn {
+  html.touch-phone #practice-select .practice-timer-btn {
     min-width: 0 !important;
     min-height: 36px !important;
   }
 
-  :where(html.touch-phone, html) #s-profile {
+  html.touch-phone #s-profile {
     overflow: auto !important;
     padding:
       max(10px, env(safe-area-inset-top))
@@ -11764,13 +11764,13 @@ html.touch-phone #menu-canvas {
     -webkit-overflow-scrolling: touch;
   }
 
-  :where(html.touch-phone, html) .profile-card {
+  html.touch-phone .profile-card {
     width: min(460px, calc(var(--app-width, 100vw) - 20px)) !important;
     max-height: none !important;
     overflow: visible !important;
   }
 
-  :where(html.touch-phone, html) #s-grade {
+  html.touch-phone #s-grade {
     overflow: auto !important;
     justify-content: flex-start !important;
     padding:
@@ -11780,18 +11780,18 @@ html.touch-phone #menu-canvas {
       max(12px, env(safe-area-inset-left)) !important;
   }
 
-  :where(html.touch-phone, html) .grade-grid {
+  html.touch-phone .grade-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
     width: min(420px, 100%) !important;
     gap: 10px !important;
   }
 
-  :where(html.touch-phone, html) .grade-btn {
+  html.touch-phone .grade-btn {
     min-height: 62px !important;
     font-size: clamp(8px, 2.4vw, 10px) !important;
   }
 
-  :where(html.touch-phone, html) #s-gameover {
+  html.touch-phone #s-gameover {
     overflow: auto !important;
     padding:
       max(16px, env(safe-area-inset-top))
@@ -11838,69 +11838,69 @@ html.touch-phone #menu-canvas {
 }
 
 @media (orientation: landscape) and (max-height: 560px) {
-  :where(html.touch-mobile, html) .top-bar,
-  :where(html.touch-mobile, html) .shop-topbar,
-  :where(html.touch-mobile, html) .briefing-topbar {
+  html.touch-mobile .top-bar,
+  html.touch-mobile .shop-topbar,
+  html.touch-mobile .briefing-topbar {
     min-height: 40px !important;
     padding: 5px 8px !important;
   }
 
-  :where(html.touch-mobile, html) #levelmap-scroll,
-  :where(html.touch-mobile, html) .shop-content {
+  html.touch-mobile #levelmap-scroll,
+  html.touch-mobile .shop-content {
     height: calc(var(--app-height, 100dvh) - 40px) !important;
     overflow: auto !important;
   }
 
-  :where(html.touch-mobile, html) #hangar-grid,
-  :where(html.touch-mobile, html) #hangar-armory {
+  html.touch-mobile #hangar-grid,
+  html.touch-mobile #hangar-armory {
     height: calc(var(--app-height, 100dvh) - 90px) !important;
     max-height: calc(var(--app-height, 100dvh) - 90px) !important;
     overflow: auto !important;
   }
 
-  :where(html.touch-mobile, html) #hangar-grid {
+  html.touch-mobile #hangar-grid {
     grid-template-columns: repeat(4, minmax(96px, 1fr)) !important;
     padding: 8px 10px max(60px, env(safe-area-inset-bottom)) !important;
   }
 
-  :where(html.touch-mobile, html) .hangar-card {
+  html.touch-mobile .hangar-card {
     min-height: 126px !important;
     padding: 7px 5px !important;
   }
 
-  :where(html.touch-mobile, html) .hangar-plane-img {
+  html.touch-mobile .hangar-plane-img {
     width: 68px !important;
     height: 68px !important;
   }
 
-  :where(html.touch-mobile, html) .sc-offers-grid,
-  :where(html.touch-mobile, html) .sc-skins-grid,
-  :where(html.touch-mobile, html) .sc-chest-shop-grid {
+  html.touch-mobile .sc-offers-grid,
+  html.touch-mobile .sc-skins-grid,
+  html.touch-mobile .sc-chest-shop-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
   }
 
-  :where(html.touch-mobile, html) .shop-tabbar {
+  html.touch-mobile .shop-tabbar {
     min-height: 44px !important;
   }
 
-  :where(html.touch-mobile, html) .shop-tab {
+  html.touch-mobile .shop-tab {
     min-height: 40px !important;
   }
 
-  :where(html.touch-mobile, html) .sett-panel,
-  :where(html.touch-mobile, html) .practice-panel,
-  :where(html.touch-mobile, html) .daily-panel,
-  :where(html.touch-mobile, html) .missions-inner,
-  :where(html.touch-mobile, html) .feedback-panel,
-  :where(html.touch-mobile, html) .login-modal-panel,
-  :where(html.touch-mobile, html) .reset-modal-panel,
-  :where(html.touch-mobile, html) .prestige-modal-panel,
-  :where(html.touch-mobile, html) .delete-account-panel {
+  html.touch-mobile .sett-panel,
+  html.touch-mobile .practice-panel,
+  html.touch-mobile .daily-panel,
+  html.touch-mobile .missions-inner,
+  html.touch-mobile .feedback-panel,
+  html.touch-mobile .login-modal-panel,
+  html.touch-mobile .reset-modal-panel,
+  html.touch-mobile .prestige-modal-panel,
+  html.touch-mobile .delete-account-panel {
     width: min(620px, calc(var(--app-width, 100vw) - 18px)) !important;
     max-height: calc(var(--app-height, 100dvh) - 18px) !important;
   }
 
-  :where(html.touch-mobile, html) #practice-select .practice-panel {
+  html.touch-mobile #practice-select .practice-panel {
     width: min(660px, calc(var(--app-width, 100vw) - 18px)) !important;
   }
 }
@@ -12221,19 +12221,19 @@ button,
 }
 
 @media (max-width: 768px) {
-  :where(html.touch-phone, html) #levelmap-nodes {
+  html.touch-phone #levelmap-nodes {
     --map-zig: clamp(58px, 23vw, 92px) !important;
     padding-top: 14px !important;
   }
-  :where(html.touch-phone, html) .map-node {
+  html.touch-phone .map-node {
     width: 102px !important;
     height: 86px !important;
   }
-  :where(html.touch-phone, html) .map-node-boss {
+  html.touch-phone .map-node-boss {
     width: 116px !important;
     height: 98px !important;
   }
-  :where(html.touch-phone, html) .map-connector {
+  html.touch-phone .map-connector {
     height: 60px !important;
   }
 }
@@ -12300,19 +12300,19 @@ button,
 .node-stars { top: -1px !important; }
 
 @media (max-width: 768px) {
-  :where(html.touch-phone, html) .map-node {
+  html.touch-phone .map-node {
     width: 138px !important;
     height: 126px !important;
   }
-  :where(html.touch-phone, html) .map-node-art-regular {
+  html.touch-phone .map-node-art-regular {
     width: 126px;
     height: 128px;
   }
-  :where(html.touch-phone, html) .map-node-boss {
+  html.touch-phone .map-node-boss {
     width: 150px !important;
     height: 142px !important;
   }
-  :where(html.touch-phone, html) .map-node-art-boss {
+  html.touch-phone .map-node-art-boss {
     width: 150px;
     height: 150px;
   }
@@ -12441,39 +12441,39 @@ button,
 }
 
 @media (max-width: 768px) {
-  :where(html.touch-phone, html) #levelmap-scroll {
+  html.touch-phone #levelmap-scroll {
     padding: 0 !important;
   }
 
-  :where(html.touch-phone, html) #levelmap-nodes {
+  html.touch-phone #levelmap-nodes {
     --map-zig: clamp(54px, 18vw, 72px) !important;
     width: 100% !important;
   }
 
-  :where(html.touch-phone, html) .map-biome-zone {
+  html.touch-phone .map-biome-zone {
     width: 100%;
     margin-inline: 0;
     padding-inline: 0;
   }
-  :where(html.touch-phone, html) .map-connector {
+  html.touch-phone .map-connector {
     width: 12px !important;
     height: 180px !important;
     flex-basis: 180px;
     margin-block: -55px;
   }
-  :where(html.touch-phone, html) .map-connector-boss-link {
+  html.touch-phone .map-connector-boss-link {
     height: 290px !important;
     flex-basis: 290px;
     margin-block: -110px;
   }
 
-  :where(html.touch-phone, html) .map-player-plane {
+  html.touch-phone .map-player-plane {
     width: 68px;
     height: 68px;
   }
 
-  :where(html.touch-phone, html) .map-node-zig-left .map-player-plane { right: -50px; }
-  :where(html.touch-phone, html) .map-node-zig-right .map-player-plane { left: -50px; }
+  html.touch-phone .map-node-zig-left .map-player-plane { right: -50px; }
+  html.touch-phone .map-node-zig-right .map-player-plane { left: -50px; }
 
 }
 

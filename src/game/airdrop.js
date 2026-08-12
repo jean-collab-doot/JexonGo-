@@ -87,6 +87,7 @@ export function initAirdrop(enabled, cw, ch) {
     fallTimer: 0,
     planeTimer: 0,
     planeActive: false,
+    planeSoundStarted: false,
     planeX: cw * 0.5,
   };
 }
@@ -115,13 +116,17 @@ export function updateAirdrop(step, cw, ch) {
   drop.groundY = ch * 0.62;
   if (drop.state === AIRDROP_STATE.IDLE) {
     drop.delay -= step;
+    // Start the engine sound shortly before the carrier enters the screen.
+    if (!drop.planeSoundStarted && drop.delay <= 120) {
+      drop.planeSoundStarted = true;
+      SFX.airdropPlane?.();
+    }
     if (drop.delay <= 0) {
       drop.state = AIRDROP_STATE.DROP;
       drop.timer = 0;
       drop.planeTimer = 0;
       drop.planeActive = true;
       drop.planeX = cw * 0.5;
-      SFX.airdropPlane?.();
     }
     return;
   }
