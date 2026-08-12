@@ -136,6 +136,12 @@ async function _signOut() {
   if (typeof google !== 'undefined' && google?.accounts) {
     google.accounts.id.disableAutoSelect();
   }
+  // Prevent the global beforeunload handler from saving the authenticated
+  // state again while this page reloads after sign-out.
+  G.playerRegistered = false;
+  G.playerEmail = '';
+  G.playerPhoto = '';
+  G.playerName = 'PILOT';
   const lang = localStorage.getItem('jexongo_lang');
   const settings = localStorage.getItem('jexongo_settings');
   clearAll();

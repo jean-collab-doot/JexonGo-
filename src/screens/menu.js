@@ -157,6 +157,13 @@ async function _handleSignOut() {
   if (typeof google !== 'undefined' && google.accounts) {
     google.accounts.id.disableAutoSelect();
   }
+  // Mark the in-memory player as signed out before clearing/reloading.
+  // Otherwise beforeunload sees the old authenticated state and saveAll()
+  // immediately recreates the account keys that clearAll() just removed.
+  G.playerRegistered = false;
+  G.playerEmail = '';
+  G.playerPhoto = '';
+  G.playerName = 'PILOT';
   const lang = localStorage.getItem('jexongo_lang');
   const settings = localStorage.getItem('jexongo_settings');
   clearAll();
