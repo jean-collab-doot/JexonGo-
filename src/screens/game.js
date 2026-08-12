@@ -2088,7 +2088,7 @@ function frame(ts = 0) {
   // the player's aircraft.
   updateAirdrop(_frameStep, canvas.width, canvas.height);
   updateGameCurrencyHUD();
-  if (G.lives > _maxLives) {
+  if (!isTutorialActive() && G.lives > _maxLives) {
     _maxLives = G.lives;
   }
   if (_lastHudLives !== G.lives) {
@@ -3528,6 +3528,11 @@ function loseLife({ resumeDelayMs = 900 } = {}) {
 
 // ── HUD ──────────────────────────────────────────────────────────────────────
 function updateLivesHUD() {
+  if (isTutorialActive()) {
+    const copy = tutorialCopy();
+    $('hud-lives').innerHTML = `<span class="tutorial-safe-life">${copy.training}</span>`;
+    return;
+  }
   $('hud-lives').innerHTML = Array.from({ length: _maxLives }, (_, i) =>
     `<img src="/assets/fx/Iteam/heart-full.png" style="width:28px;height:28px;image-rendering:pixelated;opacity:${i < G.lives ? '1' : '0.3'}">`
   ).join('');
