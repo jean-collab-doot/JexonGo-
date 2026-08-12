@@ -13374,7 +13374,7 @@ html.touch-phone #s-menu .menu-offline-banner {
 }
 
 #s-shop .shop-missile-nuke .shop-missile-sprite {
-  transform: translateX(-12%);
+  transform: none;
   transform-origin: 50% 50%;
   rotate: 0deg;
 }
