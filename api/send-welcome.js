@@ -10,14 +10,32 @@ function json(res, status, body) {
 }
 
 function headerValue(req, name) {
-  const value = req.headers?.[name];
-  return Array.isArray(value) ? value[0] : String(value || '');
+  const headers = req.headers || {};
+  const target = name.toLowerCase();
+  const entry = Object.entries(headers)
+    .find(([key]) => String(key).toLowerCase() === target);
+
+  if (!entry) return { present: false, value: '' };
+
+  const rawValue = entry[1];
+  if (Array.isArray(rawValue)) {
+    // A single-item array is a normal representation in some runtimes.
+    // Multiple values are ambiguous and must fail authentication.
+    return {
+      present: true,
+      value: rawValue.length === 1 ? String(rawValue[0] ?? '').trim() : '',
+    };
+  }
+
+  return { present: true, value: String(rawValue ?? '').trim() };
 }
 
 function secretsMatch(received, expected) {
-  if (!received || !expected) return false;
-  const receivedHash = createHash('sha256').update(received).digest();
-  const expectedHash = createHash('sha256').update(expected).digest();
+  const normalizedReceived = String(received ?? '').trim();
+  const normalizedExpected = String(expected ?? '').trim();
+  if (!normalizedReceived || !normalizedExpected) return false;
+  const receivedHash = createHash('sha256').update(normalizedReceived).digest();
+  const expectedHash = createHash('sha256').update(normalizedExpected).digest();
   return timingSafeEqual(receivedHash, expectedHash);
 }
 
@@ -64,14 +82,21 @@ export default async function handler(req, res) {
     return json(res, 405, { ok: false, error: 'method_not_allowed' });
   }
 
-  const webhookSecret = process.env.SUPABASE_WEBHOOK_SECRET;
-  const resendApiKey = process.env.RESEND_API_KEY;
+  const webhookSecret = String(process.env.SUPABASE_WEBHOOK_SECRET ?? '').trim();
+  const resendApiKey = String(process.env.RESEND_API_KEY ?? '').trim();
   if (!webhookSecret || !resendApiKey) {
     console.error('[send-welcome] Required server environment variables are missing.');
     return json(res, 500, { ok: false, error: 'server_not_configured' });
   }
 
-  if (!secretsMatch(headerValue(req, 'x-webhook-secret'), webhookSecret)) {
+  const receivedSecret = headerValue(req, 'x-webhook-secret');
+  console.info('[send-welcome] Webhook secret check.', {
+    headerPresent: receivedSecret.present,
+    receivedLength: receivedSecret.value.length,
+    expectedLength: webhookSecret.length,
+  });
+
+  if (!secretsMatch(receivedSecret.value, webhookSecret)) {
     return json(res, 401, { ok: false, error: 'unauthorized' });
   }
 
