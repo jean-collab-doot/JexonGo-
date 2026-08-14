@@ -1271,7 +1271,10 @@ function _playerLowerLimitY() {
     && qbox.style.visibility !== 'hidden';
   if (!panelVisible) return canvas.height - Math.max(44, getPlayerSize() * 0.5);
 
-  const canvasRect = canvas.getBoundingClientRect();
+  // Canvas position only changes on resize (which nulls _canvasRect via
+  // _setCanvasSize) — reuse it instead of forcing a second layout reflow
+  // here on every frame of gameplay.
+  const canvasRect = _canvasRect || (_canvasRect = canvas.getBoundingClientRect());
   const qboxRect = qbox.getBoundingClientRect();
   if (!canvasRect.height) return canvas.height - _canvasQboxH() - getPlayerSize() * 0.52;
   const panelTop = (qboxRect.top - canvasRect.top) * (canvas.height / canvasRect.height);

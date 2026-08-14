@@ -1,24 +1,46 @@
 // Touch device detection — phone & tablet only; desktop is never flagged.
-// Use functions (not module-load constants) so rotation/resize stay correct.
+// Results are cached: isPhone/isTablet/isTouchMobile are called from
+// per-frame hot paths (particle/missile draw, aircraft draw), and re-running
+// UA regexes every call for a value that only changes on resize/orientation
+// is wasted work. invalidateDeviceFlagsCache() is called from
+// applyDeviceClasses() on those events to keep the cache correct.
 
 const _ua = () => navigator.userAgent;
 
-export function isTablet() {
+let _cachedFlags = null;
+
+function _computeFlags() {
   const ua = _ua();
-  return (
+  const tablet = (
     /iPad/i.test(ua) ||
     (/Macintosh/i.test(ua) && navigator.maxTouchPoints > 1) ||
     (/Android/i.test(ua) && !/Mobile/i.test(ua)) ||
     (navigator.maxTouchPoints > 1 && window.innerWidth >= 768 && window.innerWidth <= 1400)
   );
+  let phone = false;
+  if (!tablet) {
+    if (/iPhone|iPod/i.test(ua)) phone = true;
+    else if (/Android/i.test(ua) && /Mobile/i.test(ua)) phone = true;
+    else phone = ('ontouchstart' in window) && window.innerWidth <= 768;
+  }
+  return { tablet, phone };
+}
+
+function _flags() {
+  if (!_cachedFlags) _cachedFlags = _computeFlags();
+  return _cachedFlags;
+}
+
+export function invalidateDeviceFlagsCache() {
+  _cachedFlags = null;
+}
+
+export function isTablet() {
+  return _flags().tablet;
 }
 
 export function isPhone() {
-  if (isTablet()) return false;
-  const ua = _ua();
-  if (/iPhone|iPod/i.test(ua)) return true;
-  if (/Android/i.test(ua) && /Mobile/i.test(ua)) return true;
-  return ('ontouchstart' in window) && window.innerWidth <= 768;
+  return _flags().phone;
 }
 
 export function isTouchMobile() {
@@ -45,6 +67,7 @@ export const MAX_ENEMY_MISSILES_TOUCH = 2;
 
 /** Apply .touch-mobile / .touch-tablet on <html> for CSS. */
 export function applyDeviceClasses() {
+  invalidateDeviceFlagsCache();
   const root = document.documentElement;
   const viewport = window.visualViewport;
   const width = viewport?.width || window.innerWidth;
