@@ -165,7 +165,7 @@ export function updateAirdrop(step, cw, ch) {
         if (!drop.rewardApplied) {
           drop.reward ||= rollReward();
           applyReward(drop.reward);
-          if (drop.reward.type === 'coins') SFX.coinClaim?.();
+          SFX.coinClaim?.();
           drop.rewardApplied = true;
         }
         drop.state = AIRDROP_STATE.DONE;
