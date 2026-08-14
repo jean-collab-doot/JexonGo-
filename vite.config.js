@@ -1,7 +1,7 @@
 import { cpSync, existsSync, mkdirSync } from 'fs';
 
 const ASSET_DIRS = [
-  'skins', 'music', 'ships', 'enemies', 'fx', 'bg',
+  'skins', 'music', 'ships', 'enemies', 'fx',
   'chest', 'hangar', 'menu', 'planes', 'prestige', 'pilots', 'Maps',
   'World COPE', 'Country Flag', 'Badges', 'levels', 'Image intro',
 ];
