@@ -4,7 +4,7 @@
 //   FETCH    — cache-first for all assets; network-first for HTML/JS
 //   ACTIVATE — delete old caches so stale files never linger
 
-const CACHE_VERSION = 'jexongo-v37';
+const CACHE_VERSION = 'jexongo-v38';
 
 // Critical assets cached immediately on first visit
 const PRECACHE = [
@@ -39,7 +39,7 @@ const PRECACHE = [
   // FX
   '/assets/fx/rocket.png',
   '/assets/fx/explosion-a.png',
-  '/assets/fx/heart-full.png',
+  '/assets/fx/Iteam/heart-full.png',
   // Music
   '/assets/music/music-menu.mp3',
   '/assets/music/music-game.mp3',
