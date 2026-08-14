@@ -3865,7 +3865,10 @@ export function initGame(levelNum, onComplete) {
   G.currentWeather = levelCfg.weather || null;
 
   canvas = $('game-canvas');
-  ctx    = canvas.getContext('2d');
+  // Background always fully repaints the canvas every frame (drawBackground
+  // tiles it edge-to-edge) — alpha:false skips the compositor's alpha-blend
+  // pass against the page behind it, which matters on weaker mobile GPUs.
+  ctx    = canvas.getContext('2d', { alpha: false });
   ctx.setTransform(1,0,0,1,0,0);
   ctx.globalAlpha = 1;
 

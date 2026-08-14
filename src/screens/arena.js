@@ -26,6 +26,8 @@ let _nav     = null;
 let _canvas  = null;
 let _ctx     = null;
 let _raf     = null;
+let _bgGrad  = null;
+let _bgGradH = 0;
 let _session = 0;       // incremented on every enter/leave to cancel stale cbs
 let _returnTarget = 'ranked';
 let _isTournamentMatch = false;
@@ -76,7 +78,7 @@ export async function enterArena() {
 
   _canvas = $('arena-canvas');
   if (!_canvas) return;
-  _ctx = _canvas.getContext('2d');
+  _ctx = _canvas.getContext('2d', { alpha: false });
 
   _resetVisuals();
   SFX.playMusic('arena');
@@ -115,7 +117,7 @@ export function enterArenaTournament(matchMsg) {
 
   _canvas = $('arena-canvas');
   if (!_canvas) return;
-  _ctx = _canvas.getContext('2d');
+  _ctx = _canvas.getContext('2d', { alpha: false });
 
   _resetMatch();
   SFX.playMusic('arena');
@@ -590,10 +592,15 @@ function _frame() {
   _tick++;
 
   // ── Background ─────────────────────────────────────────────────────────────
-  const bg = _ctx.createLinearGradient(0, 0, 0, H);
-  bg.addColorStop(0, '#010408');
-  bg.addColorStop(1, '#060b1c');
-  _ctx.fillStyle = bg;
+  // Gradient stops never change — only rebuild when canvas height changes,
+  // instead of allocating a new gradient on every single frame.
+  if (!_bgGrad || _bgGradH !== H) {
+    _bgGrad = _ctx.createLinearGradient(0, 0, 0, H);
+    _bgGrad.addColorStop(0, '#010408');
+    _bgGrad.addColorStop(1, '#060b1c');
+    _bgGradH = H;
+  }
+  _ctx.fillStyle = _bgGrad;
   _ctx.fillRect(0, 0, W, H);
 
   // Stars (deterministic positions, subtle twinkle)
