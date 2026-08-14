@@ -311,9 +311,11 @@ export const SFX = {
 
   playMusic(key) {
     const MAP = {
+      // ranked/shop share the menu track — the three files were byte-identical
+      // copies of the same audio, each paying its own download cost.
       menu:   '/assets/music/music-menu.mp3',
-      ranked: '/assets/music/music-ranked.mp3',
-      shop:   '/assets/music/music-shop.mp3',
+      ranked: '/assets/music/music-menu.mp3',
+      shop:   '/assets/music/music-menu.mp3',
       game:   '/assets/music/music-play1.mp3',
       boss:   '/assets/music/boss.mp3',
       arena:  '/assets/music/music-arena.mp3',
