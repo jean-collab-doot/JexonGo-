@@ -14056,7 +14056,26 @@ html.touch-tablet #question-box {
   margin-inline:auto;
 }
 html.touch-tablet .answer-btn { min-height:54px; font-size:11px; }
-html.touch-tablet #hangar-grid { grid-template-columns:repeat(3,minmax(0,1fr)); }
+html.touch-tablet #hangar-grid {
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:16px;
+  padding:18px;
+}
+html.touch-tablet .hangar-card {
+  min-height:300px!important;
+  padding:16px 12px!important;
+  overflow:hidden;
+}
+html.touch-tablet .hangar-plane-img {
+  width:120px;
+  height:120px;
+}
+html.touch-tablet .hangar-card .plane-ability {
+  min-height:64px;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+}
 
 html.touch-phone #game-hud {
   min-height:48px;
