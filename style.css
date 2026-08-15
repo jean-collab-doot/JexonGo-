@@ -14077,6 +14077,75 @@ html.touch-tablet .hangar-card .plane-ability {
   justify-content:center;
 }
 
+/* Give tablet the same bordered lobby-status cards phone uses instead of
+   the bare inline row (menu-player-card has no border of its own; the
+   LV chip needs its own boxed treatment to read as a separate card). */
+html.touch-tablet #s-menu .jg-lobby-status {
+  overflow: visible;
+  display: grid;
+  grid-template-columns: minmax(132px,40%) minmax(0,1fr);
+  align-items: center;
+  justify-content: stretch;
+  gap: 9px;
+}
+html.touch-tablet #s-menu .jg-lobby-status .menu-player-card {
+  grid-template-columns: 42px minmax(0,1fr);
+  column-gap: 5px;
+  width: 100%;
+  min-width: 0;
+  padding-right: 7px;
+  overflow: hidden;
+}
+html.touch-tablet #s-menu .jg-lobby-status .menu-player-meta { min-width: 0; gap: 4px; }
+html.touch-tablet #s-menu .jg-lobby-status .menu-hud-name {
+  overflow: hidden;
+  font-size: 8px;
+  line-height: 1.1;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+html.touch-tablet #s-menu .jg-lobby-status .menu-xp-track { width: 100%; height: 10px; border-width: 2px; }
+html.touch-tablet #s-menu .jg-lobby-status .menu-resource-row {
+  min-width: 0;
+  width: 100%;
+  justify-content: flex-end;
+  overflow: hidden;
+}
+html.touch-tablet #s-menu .jg-lobby-status .menu-level-chip {
+  position: absolute;
+  top: calc(100% + 5px);
+  left: -8px;
+  width: calc(100% + 16px);
+  max-width: none;
+  height: 66px;
+  min-height: 66px;
+  padding: 8px 12px 9px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 16px 14px;
+  align-content: center;
+  align-items: center;
+  justify-content: center;
+  column-gap: 12px;
+  row-gap: 3px;
+  border: 2px solid #265981;
+  border-radius: 0;
+  background: linear-gradient(180deg,#102c49f5,#061322f8);
+  box-shadow: 0 4px 0 #020711, inset 0 0 12px #1ddcff18;
+  color: #fff;
+  font-size: 9px;
+}
+html.touch-tablet #s-menu .jg-lobby-status .menu-level-chip > span { color: #62e6ff; justify-self: end; }
+html.touch-tablet #s-menu .jg-lobby-status .menu-level-chip > b { justify-self: start; }
+html.touch-tablet #s-menu .menu-level-progress {
+  grid-column: 1 / -1;
+  position: static;
+  align-self: center;
+  width: 96%;
+  height: 14px;
+  margin: 0 auto;
+}
+
 html.touch-phone #game-hud {
   min-height:48px;
   padding:6px max(7px,env(safe-area-inset-right)) 6px max(7px,env(safe-area-inset-left));
