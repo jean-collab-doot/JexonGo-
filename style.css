@@ -2294,6 +2294,21 @@ html.touch-mobile .menu-offline-banner {
   .badge-unlock-card button{min-height:40px;padding:10px 18px;font-size:8px}
 }
 
+/* Same shrink as above, but keyed off the app's own touch detection instead
+   of (pointer:coarse)/(max-width:1024px) — large Android tablets with a
+   stylus can report pointer:fine and a >1024px viewport, so the media
+   query above misses them and the badge card renders at full desktop
+   size (up to 430px card / 245px image), overflowing small screens. */
+html.touch-mobile .badge-unlock-overlay{inset:auto;top:0;left:0;width:100dvw;height:100dvh;max-width:100dvw;box-sizing:border-box;padding:max(12px,env(safe-area-inset-top)) 14px max(12px,env(safe-area-inset-bottom));contain:layout paint}
+html.touch-mobile .badge-unlock-rays{width:min(115dvw,620px);max-width:none}
+html.touch-mobile .badge-unlock-card{width:min(82dvw,360px);max-width:calc(100dvw - 28px);max-height:calc(100dvh - 28px);box-sizing:border-box;padding:16px 16px 18px;overflow:auto}
+html.touch-mobile .badge-unlock-image{width:clamp(104px,30dvw,170px);height:clamp(104px,30dvw,170px);flex:0 0 auto;margin:6px 0}
+html.touch-mobile .badge-unlock-kicker{font-size:8px;letter-spacing:1px}
+html.touch-mobile .badge-unlock-card h2{margin:7px 0 6px;font-size:clamp(11px,3.2vw,17px);line-height:1.35}
+html.touch-mobile .badge-unlock-card p{font-size:11px;line-height:1.35}
+html.touch-mobile .badge-unlock-card strong{margin:8px 0;font-size:8px}
+html.touch-mobile .badge-unlock-card button{min-height:40px;padding:10px 18px;font-size:8px}
+
 .hangar-card {
   background: var(--bg2);
   border: 2px solid var(--border);

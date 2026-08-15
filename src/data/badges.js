@@ -15,6 +15,7 @@ export const BADGES = [
 ];
 
 export function unlockEligibleBadges(context={}) {
+  if (G.tutorialMode) return [];
   const owned = new Set(G.unlockedBadges || []);
   const unlocked = [];
   for (const badge of BADGES) {
