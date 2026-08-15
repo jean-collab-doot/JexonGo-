@@ -12,6 +12,7 @@ import { isPhone, isTouchMobile, touchMenuCanvasDpr } from '../utils/device.js';
 import { syncAccountFromCloud, deleteCloudSave, flushCloudSave, fetchCloudSave,
          mergeSaveSnapshots, exportSaveSnapshot, applySaveSnapshot } from '../systems/cloud-save.js';
 import { signInWithEmail, signOutSupabase } from '../systems/supabase-client.js';
+import { claimSessionOrBlock, releaseSession, sessionBlockedMessage } from '../systems/session-guard.js';
 import { SFX } from '../audio/sound.js';
 import { coinIcon, expIcon } from '../utils/icons.js';
 
@@ -153,6 +154,7 @@ function _updateProfile() {
 
 async function _handleSignOut() {
   await flushCloudSave();
+  await releaseSession();
   await signOutSupabase();
   if (typeof google !== 'undefined' && google.accounts) {
     google.accounts.id.disableAutoSelect();
@@ -287,6 +289,13 @@ async function _handleLoginSubmit() {
     await signInWithEmail(emailIn, pwIn);
   } catch (_) {
     errEl.textContent = t('loginErrWrong');
+    return;
+  }
+
+  const { blocked } = await claimSessionOrBlock();
+  if (blocked) {
+    await signOutSupabase().catch(() => {});
+    errEl.textContent = sessionBlockedMessage();
     return;
   }
 

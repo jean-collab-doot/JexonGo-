@@ -15,7 +15,7 @@ const SUPABASE_REF = (() => {
   catch (_) { return ''; }
 })();
 
-async function getSupabaseClient() {
+export async function getSupabaseClient() {
   if (!_supabaseClientPromise) {
     _supabaseClientPromise = import('@supabase/supabase-js')
       .then(({ createClient }) => createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {

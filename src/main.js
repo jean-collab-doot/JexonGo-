@@ -1,5 +1,5 @@
 import { G, loadSave, saveAll } from './state.js';
-import { save, load } from './utils/storage.js';
+import { save, load, clearAll } from './utils/storage.js';
 import { showScreen } from './utils/dom.js';
 import { SFX } from './audio/sound.js';
 import { initMenu, renderMenu } from './screens/menu.js';
@@ -23,7 +23,8 @@ import { showDailyReward } from './screens/menu.js';
 import { canSendFeedback, markFeedbackSent, sendFeedback, sendNewPlayerNotification, _resetNewPlayer, _testEmailNow } from './systems/feedback.js';
 import { t, getLang, applyI18n } from './i18n.js';
 import { syncAccountFromCloud, flushCloudSave, pushCloudSave } from './systems/cloud-save.js';
-import { signInWithGoogleIdToken, signUpWithEmail } from './systems/supabase-client.js';
+import { signInWithGoogleIdToken, signUpWithEmail, signOutSupabase } from './systems/supabase-client.js';
+import { claimSessionOrBlock, sessionBlockedMessage } from './systems/session-guard.js';
 import { applyDeviceClasses } from './utils/device.js';
 import { isLevelUnlocked } from './systems/progression.js';
 
@@ -389,6 +390,13 @@ window._onGoogleCredential = async function(response) {
       return;
     }
 
+    const { blocked } = await claimSessionOrBlock();
+    if (blocked) {
+      await signOutSupabase().catch(() => {});
+      _showLoginToast(sessionBlockedMessage(), 4200);
+      return;
+    }
+
     const wasRegistered = G.playerRegistered;
     const previousEmail = (load('playerEmail', '') || '').toLowerCase();
     const shouldStartRecommended = !!load('postTutorialConnectPrompt', false);
@@ -587,6 +595,8 @@ function initRegistration() {
       return;
     }
 
+    await claimSessionOrBlock();
+
     G.playerName          = name;
     G.playerEmail         = email;
     G.playerAge           = age;
@@ -704,12 +714,31 @@ loadSave();
 loadSettings();
 preloadShips(G.activeAircraft);
 
+function _forceSignOutBlocked() {
+  _showLoginToast(sessionBlockedMessage(), 4000);
+  signOutSupabase().catch(() => {}).then(() => {
+    G.playerRegistered = false;
+    G.playerEmail = '';
+    G.playerPhoto = '';
+    G.playerName = 'PILOT';
+    const lang = localStorage.getItem('jexongo_lang');
+    const settings = localStorage.getItem('jexongo_settings');
+    clearAll();
+    if (lang) localStorage.setItem('jexongo_lang', lang);
+    if (settings) localStorage.setItem('jexongo_settings', settings);
+    setTimeout(() => location.reload(), 4000);
+  });
+}
+
 if (G.playerRegistered && G.playerEmail) {
-  syncAccountFromCloud().then(sync => {
-    if (sync?.merged) renderMenu();
-    else if (sync?.offline && window._showToast) {
-      window._showToast(t('syncOffline') || 'Account connected - progress saves on this device.');
-    }
+  claimSessionOrBlock().then(({ blocked }) => {
+    if (blocked) { _forceSignOutBlocked(); return; }
+    return syncAccountFromCloud().then(sync => {
+      if (sync?.merged) renderMenu();
+      else if (sync?.offline && window._showToast) {
+        window._showToast(t('syncOffline') || 'Account connected - progress saves on this device.');
+      }
+    });
   }).catch(() => {});
 }
 
