@@ -2309,7 +2309,7 @@ html.touch-mobile .menu-offline-banner {
 .hangar-card:active { transform: scale(0.97) translate(2px,2px); box-shadow: 1px 1px 0 rgba(0,0,0,0.5); }
 .hangar-card.unlocked  { border-color: var(--border); }
 .hangar-card.active    { border-color: var(--green); box-shadow: 3px 3px 0 #003a10, 0 0 12px rgba(0,232,75,0.3); }
-.hangar-card.locked    { opacity: 0.45; cursor: default; }
+.hangar-card.locked    { opacity: 0.88; border-color: #454560; cursor: default; }
 .hangar-card.selected  { border-color: #60a5fa; box-shadow: 3px 3px 0 #1e3a8a, 0 0 12px rgba(96,165,250,0.4); }
 .hangar-card canvas    { display: block; margin: 0 auto 8px; image-rendering: pixelated; }
 .hangar-plane-img {
