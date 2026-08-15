@@ -14096,6 +14096,7 @@ html.touch-tablet .hangar-card .plane-ability {
    the bare inline row (menu-player-card has no border of its own; the
    LV chip needs its own boxed treatment to read as a separate card). */
 html.touch-tablet #s-menu .jg-lobby-status {
+  top: 66px;
   overflow: visible;
   display: grid;
   grid-template-columns: minmax(132px,40%) minmax(0,1fr);
