@@ -14138,6 +14138,28 @@ html.touch-phone .hangar-card .plane-cost {
   min-height:1.45em;
 }
 
+/* Landscape phones have plenty of width — give cards the same roomy
+   treatment as tablet/desktop instead of the cramped portrait sizing. */
+html.touch-phone.viewport-landscape #hangar-grid {
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:14px;
+  padding:16px;
+}
+html.touch-phone.viewport-landscape .hangar-card {
+  min-height:260px!important;
+  padding:14px 10px!important;
+  gap:4px;
+  overflow:hidden;
+}
+html.touch-phone.viewport-landscape .hangar-plane-img {
+  width:100px!important;
+  height:100px!important;
+  margin-bottom:5px!important;
+}
+html.touch-phone.viewport-landscape .hangar-card .plane-ability {
+  min-height:58px;
+}
+
 html[data-device-size="phone-small"] #game-hud { min-height:44px; padding-block:4px; }
 html[data-device-size="phone-small"] .btn-quit-game { width:38px; overflow:hidden; color:transparent; position:relative; }
 html[data-device-size="phone-small"] .btn-quit-game::after { content:'×'; position:absolute; inset:0; display:grid; place-items:center; color:#ff6b6b; font-size:16px; }
