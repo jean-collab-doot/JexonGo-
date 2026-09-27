@@ -429,20 +429,20 @@
 }
 /* Two ropes hanging the plate from a point above it - each pseudo-element is
    a rivet (radial-gradient dot) at its base plus a twisted-rope texture
-   running up from there, angled inward so both ropes converge toward the
-   swing's pivot (transform-origin, just above center) for a believable
+   running up from there, long enough to reach the top of the page (the
+   screen clips what goes past it), leaning slightly inward for a believable
    hung-sign look. They're part of .jx-plate itself so they swing as one
    rigid body with it instead of needing independent rope physics. */
 .jx-plate::before, .jx-plate::after {
-  content: ''; position: absolute; top: -30px; width: 5px; height: 38px;
+  content: ''; position: absolute; top: -232px; width: 5px; height: 240px;
   border-radius: 2px;
   background:
-    radial-gradient(circle at 50% 94%, #c9b18d 0 3px, #6b5033 4px, transparent 5px),
+    radial-gradient(circle at 50% calc(100% - 3px), #c9b18d 0 3px, #6b5033 4px, transparent 5px),
     repeating-linear-gradient(180deg, #a3865f 0 3px, #6f5738 3px 6px);
   box-shadow: 0 0 0 1px rgba(0,0,0,.35);
 }
-.jx-plate::before { left: 16px; transform-origin: bottom center; transform: rotate(16deg); }
-.jx-plate::after  { right: 16px; transform-origin: bottom center; transform: rotate(-16deg); }
+.jx-plate::before { left: 16px; transform-origin: bottom center; transform: rotate(4deg); }
+.jx-plate::after  { right: 16px; transform-origin: bottom center; transform: rotate(-4deg); }
 
 /* Damped pendulum swing, replayed (via JS re-toggling this class) every time
    the page holding this plate becomes visible - see showScreen() in

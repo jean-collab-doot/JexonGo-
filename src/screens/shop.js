@@ -245,10 +245,10 @@ function startArsenalBlink() {
 // positionArsenalButtons() below does the same cover-fit math the browser
 // does internally, so each button always lands on its own missile.
 const MISSILE_BUTTON_POS = {
-  nuke: { fx: 0.436, fy: 0.40 },
-  ray:  { fx: 0.561, fy: 0.40 },
-  fire: { fx: 0.436, fy: 0.65 },
-  ice:  { fx: 0.561, fy: 0.65 },
+  nuke: { fx: 0.436, fy: 0.378 },
+  ray:  { fx: 0.561, fy: 0.378 },
+  fire: { fx: 0.436, fy: 0.628 },
+  ice:  { fx: 0.561, fy: 0.628 },
 };
 
 function renderMissileButton(m, lang, specialWeapon) {

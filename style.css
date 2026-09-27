@@ -15991,3 +15991,18 @@ html.touch-phone .briefing-mission-title {
 .daily-title,
 .daily-streak-label,
 .daily-claim-btn { line-height: 1.45 !important; }
+
+/* Badge reveal on phones: no square behind the badge. iOS Safari can paint
+   the drop-shadow glow of an animated image as a box, and let the shine band
+   escape its round overflow clip during the animation. The glow is now a
+   round gradient behind the badge, and the shine is clipped by a round mask. */
+.bdg-img { filter: none; position: relative; z-index: 1; }
+.bdg-drop::before {
+  content: ''; position: absolute; inset: -14%; border-radius: 50%; pointer-events: none;
+  background: radial-gradient(circle, color-mix(in srgb, var(--bc) 55%, transparent) 0, color-mix(in srgb, var(--bc) 22%, transparent) 45%, transparent 70%);
+}
+.bdg-shine {
+  z-index: 2;
+  -webkit-mask-image: radial-gradient(circle, #000 69%, transparent 70%);
+  mask-image: radial-gradient(circle, #000 69%, transparent 70%);
+}
