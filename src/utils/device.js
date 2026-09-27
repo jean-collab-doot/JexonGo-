@@ -57,10 +57,21 @@ export function touchMenuCanvasDpr() {
   return isTouchMobile() ? Math.min(window.devicePixelRatio || 1, 1) : 1;
 }
 
+function isTypingOnTouch() {
+  const el = document.activeElement;
+  if (!el || !navigator.maxTouchPoints) return false;
+  if (el.isContentEditable || el.tagName === 'TEXTAREA') return true;
+  return el.tagName === 'INPUT' && !['checkbox', 'radio', 'range', 'button', 'submit'].includes(el.type);
+}
+
 /** Apply .touch-mobile / .touch-tablet on <html> for CSS. */
 export function applyDeviceClasses() {
-  invalidateDeviceFlagsCache();
   const root = document.documentElement;
+  // While typing, the on-screen keyboard shrinks the visible area. Keep the
+  // layout as it was: shrinking every screen to the space above the keyboard
+  // left a black page (practice NUMBERS field). main.js re-applies on blur.
+  if (isTypingOnTouch() && root.style.getPropertyValue('--app-height')) return;
+  invalidateDeviceFlagsCache();
   const viewport = window.visualViewport;
   const width = viewport?.width || window.innerWidth;
   const height = viewport?.height || window.innerHeight;

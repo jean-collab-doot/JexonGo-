@@ -720,16 +720,6 @@ export function showDailyReward(reward, streak, onClaim = null, viewOnly = false
   const daysRow  = $('daily-days-row');
   const showcase = $('daily-reward-showcase');
 
-  if (!G.playerRegistered && !viewOnly) {
-    overlay?.classList.add('hidden');
-    _showToast(getLang() === 'fr'
-      ? 'CONNECTE-TOI AVEC GOOGLE POUR RECEVOIR LES RECOMPENSES QUOTIDIENNES'
-      : 'CONNECT WITH GOOGLE TO RECEIVE DAILY REWARDS');
-    _handleLogin('google');
-    onClaim?.({ claimed: false, requiresConnection: true, badges: [] });
-    return;
-  }
-
   $('daily-streak-label').textContent = getLang() === 'fr' ? `JOUR ${streak}` : `DAY ${streak}`;
 
   daysRow.innerHTML = '';
@@ -760,9 +750,11 @@ export function showDailyReward(reward, streak, onClaim = null, viewOnly = false
   if (viewOnly) {
     const fr = getLang() === 'fr';
     showcase.querySelector('.drs-label').textContent = fr ? 'RÉCOMPENSE RÉCUPÉRÉE' : 'REWARD CLAIMED';
-    const msLeft = Math.max(0, nextAt - Date.now());
-    const hours = Math.floor(msLeft / 3600000);
-    const minutes = Math.ceil((msLeft % 3600000) / 60000);
+    // Round the whole wait up to the minute first, so 23 h 59.5 min reads
+    // 24H 00MIN, never 23H 60MIN.
+    const totalMinutes = Math.ceil(Math.max(0, nextAt - Date.now()) / 60000);
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
     const wait = hours > 0 ? `${hours}H ${String(minutes).padStart(2, '0')}MIN` : `${Math.max(1, minutes)} MIN`;
     $('btn-daily-claim').textContent = nextAt > 0
       ? (fr ? `PROCHAIN JOUR DANS ${wait}` : `NEXT DAY IN ${wait}`)
@@ -770,6 +762,21 @@ export function showDailyReward(reward, streak, onClaim = null, viewOnly = false
     $('btn-daily-claim').onclick = () => {
       overlay.classList.add('hidden');
       onClaim?.({ claimed: false, badges: [] });
+    };
+    overlay.addEventListener('click', e => {
+      if (e.target === overlay) overlay.classList.add('hidden');
+    }, { once: true });
+    return;
+  }
+
+  // Not signed in: the calendar is shown too; claiming needs a Google account.
+  if (!G.playerRegistered) {
+    const fr = getLang() === 'fr';
+    $('btn-daily-claim').textContent = fr ? 'CONNECTE-TOI POUR RÉCUPÉRER' : 'SIGN IN TO CLAIM';
+    $('btn-daily-claim').onclick = () => {
+      overlay.classList.add('hidden');
+      _handleLogin('google');
+      onClaim?.({ claimed: false, requiresConnection: true, badges: [] });
     };
     overlay.addEventListener('click', e => {
       if (e.target === overlay) overlay.classList.add('hidden');

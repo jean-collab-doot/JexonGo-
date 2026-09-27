@@ -15986,3 +15986,8 @@ html.touch-phone .briefing-mission-title {
   letter-spacing: 1.5px !important;
   line-height: 1.5 !important;
 }
+
+/* 7-day rewards: titles/buttons that wrap on two lines must not overlap. */
+.daily-title,
+.daily-streak-label,
+.daily-claim-btn { line-height: 1.45 !important; }

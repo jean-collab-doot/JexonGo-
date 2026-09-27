@@ -841,6 +841,16 @@ window.addEventListener('resize', applyDeviceClasses);
 window.addEventListener('orientationchange', applyDeviceClasses);
 window.visualViewport?.addEventListener('resize', applyDeviceClasses);
 window.visualViewport?.addEventListener('scroll', applyDeviceClasses);
+// Keyboard closed: measure the screen again (skipped while typing).
+document.addEventListener('focusout', () => setTimeout(applyDeviceClasses, 350));
+// Keyboard opened: keep the field being typed in visible above it.
+function _keepFocusedFieldVisible() {
+  const el = document.activeElement;
+  if (!el || !/^(INPUT|TEXTAREA)$/.test(el.tagName)) return;
+  setTimeout(() => el.scrollIntoView({ block: 'center', behavior: 'smooth' }), 120);
+}
+window.visualViewport?.addEventListener('resize', _keepFocusedFieldVisible);
+window.addEventListener('resize', _keepFocusedFieldVisible);
 injectVercelInsights();
 loadSave();
 loadSettings();
@@ -870,7 +880,10 @@ function showDailyRewardOnPageLoad() {
     showDailyReward(LOGIN_REWARDS[day - 1], day, null, true, day < 7 ? Date.now() + DAILY_INTERVAL_MS : 0);
     return;
   }
-  const view = getDailyRewardView();
+  // Players without a Google account see the calendar too (day 1, with a
+  // button to sign in and claim it).
+  const view = getDailyRewardView()
+    || (!G.playerRegistered ? { reward: LOGIN_REWARDS[0], streak: 1, claimed: false } : null);
   if (view) showDailyReward(view.reward, view.streak, null, view.claimed, view.nextAt);
 }
 

@@ -64,6 +64,7 @@ export function playNewPlayerIntro(onDone, { leave = false } = {}) {
     overlay = buildIntro();
     startedAt = performance.now();
   }
+  setYellowPage(true);
   // How long the plane has already been flying (page-load intro: since the
   // page started).
   SFX.introStart(startedAt ? 0 : performance.now());
@@ -79,12 +80,32 @@ export function playNewPlayerIntro(onDone, { leave = false } = {}) {
     });
 }
 
+// Page and browser bar (theme-color) in the intro's yellow while it is on
+// screen, so no other colour shows at the top of a phone.
+function setYellowPage(on) {
+  document.documentElement.classList.toggle('np-yellow', on);
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (!meta) return;
+  if (on) {
+    meta.dataset.base ||= meta.content;
+    meta.content = '#ffc800';
+  } else if (meta.dataset.base) {
+    meta.content = meta.dataset.base;
+  }
+}
+
+function removeIntro(overlay) {
+  overlay.remove();
+  setYellowPage(false);
+}
+
 function carryOn(overlay, onDone, leave) {
   if (leave) {
     // Lobby: it is already rendered underneath; the intro fades away over it.
     onDone?.();
+    setYellowPage(false);   // the lobby shows through as the intro fades
     overlay.classList.add('np-leave');
-    setTimeout(() => overlay.remove(), LEAVE_MS);
+    setTimeout(() => removeIntro(overlay), LEAVE_MS);
     return;
   }
   SFX.introPlay();
@@ -94,6 +115,6 @@ function carryOn(overlay, onDone, leave) {
   overlay.classList.add('np-to-questions');
   setTimeout(() => {
     onDone?.();
-    setTimeout(() => overlay.remove(), 600);
+    setTimeout(() => removeIntro(overlay), 600);
   }, 380);
 }
