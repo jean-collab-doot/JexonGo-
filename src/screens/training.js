@@ -1,4 +1,5 @@
 import { $ } from '../utils/dom.js';
+import { uiIcon } from '../utils/icons.js';
 import { G } from '../state.js';
 import { applyI18n, t, getLang } from '../i18n.js';
 import { save } from '../utils/storage.js';
@@ -109,7 +110,7 @@ function renderTrainingSheet() {
     </div>
 
     <div class="practice-timer-row">
-      <span class="practice-timer-label">⏱ TIMER</span>
+      <span class="practice-timer-label">${uiIcon('clock')} TIMER</span>
       <div class="practice-timer-btns" id="training-timer-btns">
         ${[5, 10, 15, 30, 0].map(s => `<button class="practice-timer-btn" type="button" data-time="${s}">${s === 0 ? '∞' : s + 's'}</button>`).join('')}
       </div>
@@ -199,7 +200,7 @@ function renderTrainingSheet() {
     const fr = getLang() === 'fr';
     body.querySelector('#training-weather-btns').innerHTML =
       `<button class="practice-timer-btn" type="button" data-value="">${t('weatherAuto')}</button>`
-      + options.map(w => `<button class="practice-timer-btn" type="button" data-value="${w.id}">${w.icon} ${fr ? w.labelFr : w.label}</button>`).join('');
+      + options.map(w => `<button class="practice-timer-btn" type="button" data-value="${w.id}">${uiIcon(w.icon)} ${fr ? w.labelFr : w.label}</button>`).join('');
     bindChoiceRow('#training-weather-btns', () => G.practiceWeather, v => {
       G.practiceWeather = v;
       save('practiceWeather', v);

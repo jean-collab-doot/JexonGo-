@@ -4,7 +4,7 @@ export const AIRCRAFT = {
     type: 'trainer',
     color: '#fbbf24',
     ability: {
-      icon: '✈',
+      icon: 'plane',
       name: { en: 'TRAINER', fr: 'ENTRAÎNEUR' },
       description: { en: 'Balanced aircraft, no special ability', fr: 'Avion équilibré, sans capacité spéciale' },
     },
@@ -18,7 +18,7 @@ export const AIRCRAFT = {
     type: 'trainer',
     color: '#60a5fa',
     ability: {
-      icon: '♥',
+      icon: 'heart',
       name: { en: 'REGEN', fr: 'RÉGÉNÉRATION' },
       description: { en: 'Continuously recovers a little health', fr: 'Récupère un peu de vie en continu' },
       regen: true,
@@ -33,7 +33,7 @@ export const AIRCRAFT = {
     type: 'transport',
     color: '#6b7280',
     ability: {
-      icon: '⊕',
+      icon: 'magnet',
       name: { en: 'MAGNET', fr: 'AIMANT' },
       description: { en: 'Pulls in nearby coins and chests', fr: 'Attire les pièces et coffres à proximité' },
       magnet: true,
@@ -48,7 +48,7 @@ export const AIRCRAFT = {
     type: 'attack',
     color: '#78716c',
     ability: {
-      icon: '⁂',
+      icon: 'burst',
       name: { en: 'GAU-8 CANNON', fr: 'CANON GAU-8' },
       description: { en: 'Fires bursts of heavy cannon shells', fr: 'Tire des rafales d’obus de canon puissants' },
       weapon: 'gau8',
@@ -63,7 +63,7 @@ export const AIRCRAFT = {
     type: 'fighter',
     color: '#64748b',
     ability: {
-      icon: '↻',
+      icon: 'rotate',
       name: { en: 'EVASION', fr: 'ESQUIVE' },
       description: { en: 'Dodges enemy missiles automatically for 10 s (30 s recharge)', fr: 'Évite les missiles ennemis automatiquement pendant 10 s (recharge 30 s)' },
       skill: 'evade',
@@ -78,7 +78,7 @@ export const AIRCRAFT = {
     type: 'fighter',
     color: '#475569',
     ability: {
-      icon: '✦',
+      icon: 'sparkle',
       name: { en: 'BURST', fr: 'RAFALE' },
       description: { en: 'Briefly fires two shots instead of one', fr: 'Tire deux projectiles au lieu d’un, brièvement' },
       burst: true,
@@ -94,7 +94,7 @@ export const AIRCRAFT = {
     color: '#94a3b8',
     gradeRequired: 16, gradeLabel: 'CAPTAIN',
     ability: {
-      icon: '◎',
+      icon: 'target',
       name: { en: 'PRECISION', fr: 'PRÉCISION' },
       description: { en: 'Shots can never miss', fr: 'Les tirs ne peuvent jamais manquer' },
       homing: true,
@@ -109,7 +109,7 @@ export const AIRCRAFT = {
     type: 'stealth',
     color: '#334155',
     ability: {
-      icon: '◷',
+      icon: 'clock',
       name: { en: 'GENIUS', fr: 'GÉNIE' },
       description: { en: 'A little more time to answer questions', fr: 'Un peu plus de temps pour répondre aux questions' },
       extraAnswerTime: 4,
@@ -125,7 +125,7 @@ export const AIRCRAFT = {
     color: '#1e293b',
     gradeRequired: 26, gradeLabel: 'MAJOR',
     ability: {
-      icon: '☢',
+      icon: 'radiation',
       name: { en: 'STEALTH + NUKE', fr: 'FURTIF + NUCLÉAIRE' },
       description: { en: 'Stealth for 10 s (30 s recharge). A nuclear bomb every 5 correct answers', fr: 'Furtif pendant 10 s (recharge 30 s). Une bombe nucléaire toutes les 5 bonnes réponses' },
       skill: 'stealth',
@@ -142,7 +142,7 @@ export const AIRCRAFT = {
     color: '#0f172a',
     gradeRequired: 36, gradeLabel: 'COLONEL',
     ability: {
-      icon: '⚡',
+      icon: 'bolt',
       name: { en: 'TURBO', fr: 'TURBO' },
       description: { en: 'Activatable speed boost', fr: 'Boost de vitesse activable' },
       turbo: true,
@@ -157,7 +157,7 @@ export const AIRCRAFT = {
     id: 'f117', name: 'F-117 Nighthawk', xpCost: 0, starter: false, secret: true,
     type: 'stealth', color: '#111827',
     ability: {
-      icon: '≈',
+      icon: 'stealth',
       name: { en: 'JAMMING', fr: 'BROUILLAGE' },
       description: { en: 'Slightly slows nearby enemies', fr: 'Ralentit légèrement les ennemis proches' },
       jam: true,

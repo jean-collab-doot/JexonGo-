@@ -1,5 +1,6 @@
 import { ENEMY_DEFS } from '../data/enemies.js';
 import { ENEMY_SPRITE } from './sprites.js';
+import { SFX } from '../audio/sound.js';
 
 let _eid = 0;
 
@@ -69,6 +70,20 @@ export function spawnEnemy(canvasW, type, options = {}) {
     enemy.headingAngle = 0;
   }
 
+  // Kamikaze F-5: never fires. It dives in, stops for a short lock-on (red
+  // target ring, two beeps), then charges at the player with limited turning,
+  // so a quick sidestep still makes it miss. See the 'kamikaze' path below.
+  if (type === 'fast' && options.kamikaze) {
+    enemy.pathType = 'kamikaze';
+    enemy.kamikaze = true;
+    enemy.kamikazePhase = 'enter';
+    enemy.kamikazeTimer = 0;
+    enemy.kamikazeLockRatio = randFloat(0.12, 0.24);
+    enemy.bankSpriteKey = null;   // turns by rotating the sprite toward its target
+    enemy.headingAngle = 0;
+    enemy.y -= Math.max(0, options.kamikazeDelay || 0);
+  }
+
   // Apache ambush: enter, hover long enough for a short machine-gun attack,
   // then retreat through the top of the screen.
   if (type === 'tank') {
@@ -115,7 +130,9 @@ function smoothStep(t) {
 // speedMultFn(enemy) -> multiplier applied to this enemy's movement this frame
 // (e.g. F-117 jamming slows down whichever enemies are near the player).
 // Defaults to 1 for every enemy, i.e. the previous unconditional behavior.
-export function updateEnemies(enemies, canvasW = 400, canvasH = 800, baseStep = 1, speedMultFn = null) {
+// target: {x, y} of the player for the kamikaze F-5s (null = no target, e.g.
+// while the F-117 is stealthed: they keep flying straight).
+export function updateEnemies(enemies, canvasW = 400, canvasH = 800, baseStep = 1, speedMultFn = null, target = null) {
   for (const e of enemies) {
     if (!e.active) continue;
     const step = speedMultFn ? baseStep * speedMultFn(e) : baseStep;
@@ -127,7 +144,9 @@ export function updateEnemies(enemies, canvasW = 400, canvasH = 800, baseStep = 
       continue;
     }
 
-    if (e.pathType === 'cross') {
+    if (e.pathType === 'kamikaze') {
+      updateKamikaze(e, canvasW, canvasH, step, target);
+    } else if (e.pathType === 'cross') {
       const previousX = e.x;
       e.y += e.speed * step;
       const endY = canvasH + e.size + 20;
@@ -225,6 +244,56 @@ export function updateEnemies(enemies, canvasW = 400, canvasH = 800, baseStep = 
       e.animFrame = (e.animFrame + e.animRate * step) % e.animFrames;
     }
   }
+}
+
+export const KAMIKAZE_LOCK_FRAMES = 66; // ~1.1 s warning before the charge
+const KAMIKAZE_TURN = 0.011;           // max heading change per frame (rad)
+
+function updateKamikaze(e, canvasW, canvasH, step, target) {
+  e.kamikazeTimer += step;
+  if (e.kamikazePhase === 'enter') {
+    e.y += e.speed * 1.2 * step;
+    e.vx = 0;
+    if (e.y >= canvasH * e.kamikazeLockRatio) {
+      e.kamikazePhase = 'lock';
+      e.kamikazeTimer = 0;
+      SFX.kamikazeLock?.();
+    }
+    return;
+  }
+  if (e.kamikazePhase === 'lock') {
+    // Brakes almost to a stop and turns its nose toward the player.
+    e.y += e.speed * 0.15 * step;
+    if (target) {
+      const want = Math.atan2(-(target.x - e.x), target.y - e.y);
+      e.headingAngle += (want - e.headingAngle) * Math.min(1, 0.12 * step);
+    }
+    if (e.kamikazeTimer >= KAMIKAZE_LOCK_FRAMES) {
+      e.kamikazePhase = 'dive';
+      e.kamikazeTimer = 0;
+      e.diveSpeed = e.speed * 1.5;
+      e.diveMax = Math.max(e.speed * 2.6, canvasH * 0.0058);
+      SFX.kamikazeDive?.();
+    }
+    return;
+  }
+  // Dive: accelerates and steers toward the player only during the first part
+  // of the charge; over the last third of the screen it commits to its line,
+  // so moving aside makes it miss. Then it leaves the screen.
+  if (target && e.y < target.y - canvasH * 0.32) {
+    const want = Math.atan2(-(target.x - e.x), target.y - e.y);
+    let diff = want - e.headingAngle;
+    diff = Math.atan2(Math.sin(diff), Math.cos(diff));
+    const turn = KAMIKAZE_TURN * step;
+    e.headingAngle += Math.max(-turn, Math.min(turn, diff));
+  }
+  e.diveSpeed = Math.min(e.diveMax, e.diveSpeed + 0.06 * step);
+  const vx = -Math.sin(e.headingAngle) * e.diveSpeed;
+  const vy = Math.cos(e.headingAngle) * e.diveSpeed;
+  e.x += vx * step;
+  e.y += vy * step;
+  e.vx = 0;
+  if (e.x < -120 || e.x > canvasW + 120 || e.y < -e.size - 200) e.active = false;
 }
 
 // Returns true if enemy is destroyed

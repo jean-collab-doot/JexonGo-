@@ -4,6 +4,7 @@
 // and a glowing Google button (or "later") ends it.
 import { getLang, t } from '../i18n.js';
 
+import { uiIcon } from '../utils/icons.js';
 const GOOGLE_G = `<svg viewBox="0 0 48 48" aria-hidden="true">
   <path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.6 5.4 2.7 13.3l7.9 6.1C12.5 13.6 17.8 9.5 24 9.5z"/>
   <path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.7 6c4.5-4.2 6.9-10.3 6.9-17.7z"/>
@@ -15,8 +16,8 @@ export function showConnectPrompt({ onGoogle, onLater, onLegal } = {}) {
   document.getElementById('connect-prompt')?.remove();
   const fr = getLang() === 'fr';
   const perks = fr
-    ? [['💾', 'Ta progression est sauvegardée'], ['🪙', 'Garde tes pièces et tes avions'], ['📱', 'Joue sur tous tes appareils']]
-    : [['💾', 'Your progress is saved'], ['🪙', 'Keep your coins and planes'], ['📱', 'Play on all your devices']];
+    ? [['save', 'Ta progression est sauvegardée'], ['coin', 'Garde tes pièces et tes avions'], ['phone', 'Joue sur tous tes appareils']]
+    : [['save', 'Your progress is saved'], ['coin', 'Keep your coins and planes'], ['phone', 'Play on all your devices']];
   const overlay = document.createElement('div');
   overlay.id = 'connect-prompt';
   overlay.className = 'cp';
@@ -28,7 +29,7 @@ export function showConnectPrompt({ onGoogle, onLater, onLegal } = {}) {
       <div class="cp-google">${GOOGLE_G}</div>
       <div class="cp-ask">${fr ? 'Connecte-toi avec ton compte Google' : 'Sign in with your Google account'}</div>
       <ul class="cp-perks">
-        ${perks.map(([icon, text], i) => `<li style="--i:${i}"><span>${icon}</span>${text}</li>`).join('')}
+        ${perks.map(([icon, text], i) => `<li style="--i:${i}"><span>${uiIcon(icon)}</span>${text}</li>`).join('')}
       </ul>
       <button class="cp-btn" type="button">${GOOGLE_G}<span>${fr ? 'SE CONNECTER AVEC GOOGLE' : 'SIGN IN WITH GOOGLE'}</span></button>
       <button class="cp-later" type="button">${fr ? 'Plus tard' : 'Later'}</button>

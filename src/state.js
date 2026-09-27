@@ -123,7 +123,7 @@ export const G = {
   playerPhoto:      '',
   playerAge:        0,
   playerRegistered: false,
-  pilotEmblem:      '✈',
+  pilotEmblem:      'plane',
   pilotMotto:       '',
   profileTheme:     'default',
   currentWeather: null,
@@ -191,7 +191,7 @@ export function loadSave() {
   G.playerPhoto       = load('playerPhoto', '');
   G.playerAge         = load('playerAge', 0);
   G.playerGrade       = load('playerGrade', 0);
-  G.pilotEmblem       = load('pilotEmblem', '✈');
+  G.pilotEmblem       = load('pilotEmblem', 'plane');
   G.pilotMotto        = load('pilotMotto', '');
   G.profileTheme      = load('profileTheme', 'default');
   G.practiceTimeLimit = load('practiceTimeLimit', 10);

@@ -1211,6 +1211,15 @@ export const SFX = {
       _after(i * 45, () => _tone(_ac(), f, 'sine', 0.22, 0.09))));
     _after(1120, () => _sweep(3500, 300, 0.5, 0.3));
   },
+  // Kamikaze F-5 locking on (two sharp beeps), then its dive (falling whoosh).
+  kamikazeLock() {
+    _tone(_ac(), 1320, 'square', 0.07, 0.07);
+    _after(110, () => _tone(_ac(), 1320, 'square', 0.07, 0.07));
+  },
+  kamikazeDive() {
+    _sweep(2600, 380, 0.7, 0.3, 1.4);
+    _tone(_ac(), 900, 'sawtooth', 0.6, 0.05, 260);
+  },
   // BOSS ALERT: a two-tone siren with the three red flashes, a heavy slam
   // when the name lands, typewriter ticks under the boss's tagline.
   bossAlert(nameLength = 6) {

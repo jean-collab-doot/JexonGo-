@@ -1,4 +1,5 @@
 import { $ } from '../utils/dom.js';
+import { uiIcon } from '../utils/icons.js';
 import { G } from '../state.js';
 import { SFX } from '../audio/sound.js';
 import { getRankInfo, PLACEMENT_MATCHES } from '../data/ranked.js';
@@ -14,7 +15,7 @@ export function buildRankBadge(lp, small = false) {
   el.style.setProperty('--rc', info.tier.color);
   el.style.setProperty('--rg', info.tier.glow);
   el.innerHTML = `
-    <span class="rb-icon">${info.tier.icon}</span>
+    <span class="rb-icon">${uiIcon(info.tier.icon)}</span>
     <span class="rb-label">${info.divLabel}</span>
     ${!small ? `<span class="rb-lp">${info.lpInDiv} LP</span>` : ''}
   `;
@@ -57,11 +58,11 @@ export function renderRankedLobby() {
   $('ranked-stats').innerHTML =
     isPlacement
       ? `<span class="rk-placement">${t('placementLabel')} ${games}/${PLACEMENT_MATCHES}</span>`
-      : `<span class="rk-stat">✔ ${G.rankedWins || 0}</span><span class="rk-stat-sep">/</span><span class="rk-stat rk-stat-loss">✘ ${G.rankedLosses || 0}</span>`;
+      : `<span class="rk-stat">${uiIcon('check')} ${G.rankedWins || 0}</span><span class="rk-stat-sep">/</span><span class="rk-stat rk-stat-loss">${uiIcon('x')} ${G.rankedLosses || 0}</span>`;
 
   // Win streak badge
   const streak = G.rankedWinStreak || 0;
-  $('ranked-streak').textContent = streak >= 2 ? `🔥 ${streak} ${t('winStreak')}` : '';
+  $('ranked-streak').textContent = streak >= 2 ? `${streak} ${t('winStreak')}` : '';
   $('ranked-streak').style.display = streak >= 2 ? '' : 'none';
 
   // Season timer
@@ -278,7 +279,7 @@ function _oppAnswerThisQ(correct, match, sid, time, fromPlayer = false) {
 
 function _flashDuelResult(symbol, color) {
   const el = $('duel-player-feedback');
-  el.textContent = symbol;
+  el.innerHTML = uiIcon(symbol === '✔' ? 'check' : 'x');
   el.style.color = color;
   el.classList.remove('duel-flash'); void el.offsetWidth;
   el.classList.add('duel-flash');
@@ -286,7 +287,7 @@ function _flashDuelResult(symbol, color) {
 
 function _showOppFeedback(symbol) {
   const el = $('duel-opp-feedback');
-  el.textContent = symbol === '✔' ? '✔' : '✘';
+  el.innerHTML = uiIcon(symbol === '✔' ? 'check' : 'x');
   el.style.color = symbol === '✔' ? '#00e84b' : '#ff2233';
   el.classList.remove('duel-flash'); void el.offsetWidth;
   el.classList.add('duel-flash');
@@ -338,8 +339,8 @@ function _showResult(match, won, draw, result) {
 
   // Breakdown
   let breakdown = '';
-  if (firstWinBonus > 0)    breakdown += `<div class="rr-bonus">⚡ ${t('dailyFirstWin')}  +${firstWinBonus} LP</div>`;
-  if ((G.rankedWinStreak||0) >= 2) breakdown += `<div class="rr-bonus">🔥 ${t('winStreak')}  +${(G.rankedWinStreak||0) >= 3 ? 10 : 5} LP</div>`;
+  if (firstWinBonus > 0)    breakdown += `<div class="rr-bonus">${uiIcon('bolt')} ${t('dailyFirstWin')}  +${firstWinBonus} LP</div>`;
+  if ((G.rankedWinStreak||0) >= 2) breakdown += `<div class="rr-bonus">${uiIcon('heat')} ${t('winStreak')}  +${(G.rankedWinStreak||0) >= 3 ? 10 : 5} LP</div>`;
   $('rr-breakdown').innerHTML = breakdown;
 
   // Promotion / demotion banner

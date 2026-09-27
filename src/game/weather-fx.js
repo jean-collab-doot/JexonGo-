@@ -193,7 +193,16 @@ function updateLightning(ctx, step, player, events) {
     ctx.font = 'bold 26px sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText('⚡', fx.warn.x, fx.warn.y);
+    // Lightning bolt symbol (drawn: no emoji).
+    ctx.beginPath();
+    ctx.moveTo(fx.warn.x + 3, fx.warn.y - 14);
+    ctx.lineTo(fx.warn.x - 8, fx.warn.y + 2);
+    ctx.lineTo(fx.warn.x - 1, fx.warn.y + 2);
+    ctx.lineTo(fx.warn.x - 3, fx.warn.y + 14);
+    ctx.lineTo(fx.warn.x + 8, fx.warn.y - 2);
+    ctx.lineTo(fx.warn.x + 1, fx.warn.y - 2);
+    ctx.closePath();
+    ctx.fill();
     ctx.restore();
     fx.warn.life -= step;
     if (fx.warn.life <= 0) {

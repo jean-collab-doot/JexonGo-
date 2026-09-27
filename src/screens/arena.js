@@ -3,6 +3,7 @@
 // and real-time WebSocket matchmaking.
 
 import { $  }        from '../utils/dom.js';
+import { uiIcon } from '../utils/icons.js';
 import { G  }        from '../state.js';
 import { SFX }       from '../audio/sound.js';
 import { getRankInfo } from '../data/ranked.js';
@@ -510,10 +511,10 @@ function _applyLPChange(delta, won) {
 // ── RESULT SCREEN ─────────────────────────────────────────────────────────────
 function _showResult(msg) {
   const title =
-    msg.opponentLeft  ? `★ OPP DISCONNECTED` :
+    msg.opponentLeft  ? `OPP DISCONNECTED` :
     msg.draw          ? `= ${t('draw')}` :
-    msg.won           ? `✔ ${t('victory')}` :
-                        `✘ ${t('defeat')}`;
+    msg.won           ? `${t('victory')}` :
+                        `${t('defeat')}`;
 
   $('arena-result-title').textContent = title;
   $('arena-result-title').style.color =
@@ -842,7 +843,7 @@ function _hideStatus() { _hide('arena-status'); }
 
 function _feedbackFlash(el, symbol, color) {
   if (!el) return;
-  el.textContent = symbol;
+  el.innerHTML = uiIcon(symbol === '✔' ? 'check' : 'x');
   el.style.color = color;
   el.classList.remove('arena-flash');
   void el.offsetWidth;

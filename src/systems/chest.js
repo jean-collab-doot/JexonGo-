@@ -1,5 +1,5 @@
 import { G, clampCoins, addLifetimeXp } from '../state.js';
-import { coinIcon } from '../utils/icons.js';
+import { coinIcon, uiIcon } from '../utils/icons.js';
 import { AIRCRAFT, AIRCRAFT_ORDER } from '../data/aircraft.js';
 
 // ── CHEST TIERS (20 total — 4 milestone levels per rarity) ────────────────────
@@ -40,7 +40,7 @@ export const ROULETTE_SLOTS = [
   { id: 'coinsLegendary', label: 'BIG COINS',  icon: coinIcon('jg-coin-icon-small'), color: '#fbbf24', rewardType: 'coins', rarityIdx: 3 },
   { id: 'xp200',      label: 'BONUS XP',       icon: '<img class="jg-exp-icon" src="/assets/fx/Caisse/JexonGo_EXP_frame_01.png" alt="EXP">', color: '#00e84b', rewardType: 'xp', xpAmount: 200 },
   { id: 'xp500',      label: 'MEGA XP',        icon: '<img class="jg-exp-icon" src="/assets/fx/Caisse/JexonGo_EXP_frame_01.png" alt="EXP">', color: '#fff700', rewardType: 'xp', xpAmount: 500 },
-  { id: 'aircraft',   label: 'AIRCRAFT',       icon: '✈', color: '#ff2d78', rewardType: 'aircraft', rarityIdx: 4 },
+  { id: 'aircraft',   label: 'AIRCRAFT',       icon: uiIcon('plane'), color: '#ff2d78', rewardType: 'aircraft', rarityIdx: 4 },
 ];
 
 // Weights per tier — index matches ROULETTE_SLOTS order above

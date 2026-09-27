@@ -1,4 +1,5 @@
 import { $ } from '../utils/dom.js';
+import { uiIcon } from '../utils/icons.js';
 import { getLevel, equationExampleForLevel } from '../data/levels.js';
 import { getPilotInfo, getPilotGrade, getPilotGradeRank } from '../data/pilots.js';
 import { rankInsigniaSVG } from '../utils/rank-insignia.js';
@@ -67,7 +68,7 @@ export function showBriefing(levelNum) {
     : `Fly over ${locationName} under ${weatherName.toLowerCase()}. ${levelCfg.questionCount} ${operationNames} questions, ${levelCfg.timeLimit}s each. Fight ${enemyNames}, collect ${levelCfg.mapCoinCount} coins${chestClause}.`;
   $('briefing-time').textContent = `${levelCfg.timeLimit}${t('secPerQ')}`;
   $('briefing-location').textContent = locationName;
-  $('briefing-weather-icon').textContent = weather.icon;
+  $('briefing-weather-icon').innerHTML = uiIcon(weather.icon);
   $('briefing-weather-icon').style.color = weather.color;
   $('briefing-weather').textContent = `${weatherName} — ${weatherDesc}`;
 

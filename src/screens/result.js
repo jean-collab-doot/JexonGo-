@@ -9,7 +9,7 @@ import { trackMission } from '../systems/daily.js';
 import { getPilotGrade, getNextGrade } from '../data/pilots.js';
 import { t, getLang } from '../i18n.js';
 import { AIRCRAFT } from '../data/aircraft.js';
-import { coinIcon, expIcon } from '../utils/icons.js';
+import { coinIcon, expIcon, uiIcon } from '../utils/icons.js';
 import { badgeXpMultiplier, badgeCoinBonus, unlockEligibleBadges } from '../data/badges.js';
 
 let _prevHighestLevel = 0;
@@ -205,13 +205,13 @@ export function showResult(won) {
     ? (fr ? 'ENTRAÎNEMENT' : 'PRACTICE')
     : `${fr ? 'NIVEAU' : 'LEVEL'} ${G.currentLevel}`;
   $('rs-stars').innerHTML = [0, 1, 2].map(i =>
-    `<span class="rs-star ${i < stars ? 'is-on' : ''}" style="--i:${i}">★</span>`).join('');
+    `<span class="rs-star ${i < stars ? 'is-on' : ''}" style="--i:${i}">${uiIcon('star')}</span>`).join('');
 
   // Star goals
   const pct      = answered > 0 ? correct / answered : 0;
   const got2Star = pct >= 0.7;
   const got3Star = pct >= 1 && hits === 0;
-  const goal = (ok, text) => `<div class="rs-goal ${ok ? 'is-ok' : 'is-miss'}"><i>${ok ? '✓' : '✗'}</i><span>${text}</span></div>`;
+  const goal = (ok, text) => `<div class="rs-goal ${ok ? 'is-ok' : 'is-miss'}"><i>${uiIcon(ok ? 'check' : 'x')}</i><span>${text}</span></div>`;
   $('rs-goals').innerHTML =
     goal(got2Star, fr ? `70 %+ de bonnes réponses (${Math.round(pct * 100)} %)` : `70%+ correct answers (${Math.round(pct * 100)}%)`)
     + goal(got3Star, fr ? '100 % de bonnes réponses sans être touché' : '100% correct without being hit');
@@ -276,7 +276,7 @@ export function showResult(won) {
     const prevGrade = getPilotGrade(_prevHighestLevel);
     const newGrade  = getPilotGrade(G.highestLevel);
     if (prevGrade.name !== newGrade.name) {
-      promoBanner.textContent = `${newGrade.emoji} ${t('promoted')}: ${newGrade.name}!`;
+      promoBanner.textContent = `${t('promoted')}: ${newGrade.name}!`;
       promoBanner.style.color = newGrade.color;
       promoBanner.classList.remove('hidden');
       SFX.promoted?.();

@@ -3,6 +3,7 @@
 // one illustrated card per topic, slide transitions, dots, back / next,
 // SKIP, swipe on touch and arrow keys / Enter on keyboard.
 import { G } from '../state.js';
+import { uiIcon } from '../utils/icons.js';
 import { save } from '../utils/storage.js';
 import { getLang } from '../i18n.js';
 import { SFX } from '../audio/sound.js';
@@ -21,67 +22,67 @@ function pages(fr) {
       art: 'mission',
       title: fr ? 'TA MISSION' : 'YOUR MISSION',
       tips: fr ? [
-        ['?', 'Une question de maths apparaît.'],
-        ['⏱', 'Réponds avant la fin du temps : il dépend du niveau.'],
-        ['✓', 'Bonne réponse : ton avion tire sur les ennemis.'],
-        ['✈', 'Détruis les avions ennemis!'],
+        ['help', 'Une question de maths apparaît.'],
+        ['clock', 'Réponds avant la fin du temps : il dépend du niveau.'],
+        ['check', 'Bonne réponse : ton avion tire sur les ennemis.'],
+        ['plane', 'Détruis les avions ennemis!'],
       ] : [
-        ['?', 'A math question appears.'],
-        ['⏱', 'Answer before time runs out: it depends on the level.'],
-        ['✓', 'Right answer: your plane fires at the enemies.'],
-        ['✈', 'Destroy the enemy planes!'],
+        ['help', 'A math question appears.'],
+        ['clock', 'Answer before time runs out: it depends on the level.'],
+        ['check', 'Right answer: your plane fires at the enemies.'],
+        ['plane', 'Destroy the enemy planes!'],
       ],
     },
     {
       art: 'controls',
       title: fr ? 'DÉPLACEMENT' : 'MOVING',
       tips: fr ? [
-        ['⌨', 'Ordinateur : flèches du clavier ou W A S D.'],
-        ['☝', 'Téléphone : glisse ton doigt sur l’écran.'],
-        ['↔', 'Bouge pour éviter les tirs ennemis.'],
+        ['keyboard', 'Ordinateur : flèches du clavier ou W A S D.'],
+        ['touch', 'Téléphone : glisse ton doigt sur l’écran.'],
+        ['move', 'Bouge pour éviter les tirs ennemis.'],
       ] : [
-        ['⌨', 'Computer: arrow keys or W A S D.'],
-        ['☝', 'Phone: slide your finger on the screen.'],
-        ['↔', 'Move to dodge enemy fire.'],
+        ['keyboard', 'Computer: arrow keys or W A S D.'],
+        ['touch', 'Phone: slide your finger on the screen.'],
+        ['move', 'Move to dodge enemy fire.'],
       ],
     },
     {
       art: 'lives',
       title: fr ? 'TES VIES' : 'YOUR LIVES',
       tips: fr ? [
-        ['♥', 'Tu commences avec 3 vies.'],
-        ['✗', 'Mauvaise réponse ou tir ennemi : -1 vie.'],
-        ['!', 'Plus de vies = mission ratée.'],
+        ['heart', 'Tu commences avec 3 vies.'],
+        ['x', 'Mauvaise réponse ou tir ennemi : -1 vie.'],
+        ['warning', 'Plus de vies = mission ratée.'],
       ] : [
-        ['♥', 'You start with 3 lives.'],
-        ['✗', 'Wrong answer or enemy hit: -1 life.'],
-        ['!', 'No lives left = mission failed.'],
+        ['heart', 'You start with 3 lives.'],
+        ['x', 'Wrong answer or enemy hit: -1 life.'],
+        ['warning', 'No lives left = mission failed.'],
       ],
     },
     {
       art: 'bonus',
       title: fr ? 'PIÈCES ET BONUS' : 'COINS & BONUSES',
       tips: fr ? [
-        ['●', 'Les bonnes réponses font tomber des pièces : ramasse-les!'],
-        ['▣', 'Attrape les caisses airdrop pour des bonus surprises.'],
-        ['$', 'Tes pièces achètent des avions et des améliorations.'],
+        ['coin', 'Les bonnes réponses font tomber des pièces : ramasse-les!'],
+        ['crate', 'Attrape les caisses airdrop pour des bonus surprises.'],
+        ['upgrade', 'Tes pièces achètent des avions et des améliorations.'],
       ] : [
-        ['●', 'Right answers drop coins: collect them!'],
-        ['▣', 'Catch airdrop crates for surprise bonuses.'],
-        ['$', 'Coins buy new planes and upgrades.'],
+        ['coin', 'Right answers drop coins: collect them!'],
+        ['crate', 'Catch airdrop crates for surprise bonuses.'],
+        ['upgrade', 'Coins buy new planes and upgrades.'],
       ],
     },
     {
       art: 'stars',
       title: fr ? 'LES ÉTOILES' : 'STARS',
       tips: fr ? [
-        ['★', '3 étoiles : tout bon sans te faire toucher.'],
-        ['★', '2 étoiles : au moins 70 % de bonnes réponses.'],
-        ['▲', 'Gagne de l’XP pour monter de niveau. Bonne chance, pilote!'],
+        ['star', '3 étoiles : tout bon sans te faire toucher.'],
+        ['star', '2 étoiles : au moins 70 % de bonnes réponses.'],
+        ['chevron', 'Gagne de l’XP pour monter de niveau. Bonne chance, pilote!'],
       ] : [
-        ['★', '3 stars: all right and never hit.'],
-        ['★', '2 stars: at least 70% right answers.'],
-        ['▲', 'Earn XP to level up. Good luck, pilot!'],
+        ['star', '3 stars: all right and never hit.'],
+        ['star', '2 stars: at least 70% right answers.'],
+        ['chevron', 'Earn XP to level up. Good luck, pilot!'],
       ],
     },
   ];
@@ -105,7 +106,7 @@ function artHtml(kind) {
           <div class="ht-pc-sky"><div class="ht-mini-t6"></div></div>
           <div class="ht-keys">
             <span class="ht-key ht-key-up">▲</span>
-            <span class="ht-key ht-key-left">◀</span><span class="ht-key">▼</span><span class="ht-key ht-key-right">▶</span>
+            <span class="ht-key ht-key-left">◀︎</span><span class="ht-key">▼</span><span class="ht-key ht-key-right">▶︎</span>
           </div>
           <div class="ht-keys-alt">W A S D</div>
         </div>
@@ -153,7 +154,7 @@ export function showIntroBriefing(onDone) {
     </div>
     <div class="ht-stage"></div>
     <div class="ht-foot">
-      <button class="ht-nav ht-back" type="button" aria-label="${fr ? 'Précédent' : 'Back'}">◀</button>
+      <button class="ht-nav ht-back" type="button" aria-label="${fr ? 'Précédent' : 'Back'}">◀︎</button>
       <div class="ht-dots">${list.map(() => '<span></span>').join('')}</div>
       <button class="ht-nav ht-next" type="button"></button>
     </div>`;
@@ -174,7 +175,7 @@ export function showIntroBriefing(onDone) {
       <div class="ht-art ht-art-${page.art}">${artHtml(page.art)}</div>
       <h2 class="ht-title">${page.title}</h2>
       <ul class="ht-tips">
-        ${page.tips.map(([icon, text], i) => `<li style="--i:${i}"><span class="ht-icon">${icon}</span><span>${text}</span></li>`).join('')}
+        ${page.tips.map(([icon, text], i) => `<li style="--i:${i}"><span class="ht-icon">${uiIcon(icon)}</span><span>${text}</span></li>`).join('')}
       </ul>`;
     const old = stage.querySelector('.ht-card:not(.ht-leaving)');
     if (old) {
@@ -186,7 +187,7 @@ export function showIntroBriefing(onDone) {
     dots.forEach((dot, i) => dot.classList.toggle('on', i === index));
     back.disabled = index === 0;
     const last = index === list.length - 1;
-    nextBtn.textContent = last ? (fr ? 'DÉCOLLER!' : 'TAKE OFF!') : (fr ? 'SUIVANT ▶' : 'NEXT ▶');
+    nextBtn.textContent = last ? (fr ? 'DÉCOLLER!' : 'TAKE OFF!') : (fr ? 'SUIVANT ▶︎' : 'NEXT ▶︎');
     nextBtn.classList.toggle('ht-go', last);
   };
 

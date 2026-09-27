@@ -6,7 +6,7 @@ import { RARITIES, BLUEPRINT_COST, ROULETTE_SLOTS, SLOT_WEIGHTS_BY_TIER, applyRe
 import { trackMission } from '../systems/daily.js';
 import { AIRCRAFT } from '../data/aircraft.js';
 import { t } from '../i18n.js';
-import { coinIcon, expIcon } from '../utils/icons.js';
+import { coinIcon, expIcon, uiIcon } from '../utils/icons.js';
 
 // ── ROULETTE CONFIGURATION ────────────────────────────────────────────────────
 const TILE_W    = 110;   // px width of each tile
@@ -129,7 +129,7 @@ function buildResultCard(reward) {
   card.className = 'chest-result-card';
   card.style.setProperty('--rc', rarity.color);
 
-  let icon  = reward.icon || '⚡';
+  let icon  = reward.icon || uiIcon('gift');
   let title = '';
   let sub   = '';
 

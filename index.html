@@ -94,7 +94,7 @@
         <div class="mc-splash">V2!</div>
       </div>
       <div class="audio-splash-sub">COMBAT MATH AERIEN</div>
-      <button id="btn-audio-start" class="audio-splash-btn">▶ TAPE POUR COMMENCER</button>
+      <button id="btn-audio-start" class="audio-splash-btn">▶︎ TAPE POUR COMMENCER</button>
     </div>
   </div>
 
@@ -110,7 +110,7 @@
   <div id="daily-reward-overlay" class="sett-backdrop hidden">
     <div class="daily-panel">
       <div class="daily-header">
-        <span class="daily-title" data-i18n="dailyReward">🎁 DAILY REWARD</span>
+        <span class="daily-title" data-i18n="dailyReward">DAILY REWARD</span>
         <span id="daily-streak-label" class="daily-streak-label">DAY 1</span>
       </div>
       <div class="daily-days-row" id="daily-days-row"></div>
@@ -124,7 +124,7 @@
   <div id="missions-panel" class="sett-backdrop hidden">
     <img class="jx-bg" src="/assets/hangar/mission-briefing-bg.webp" alt="">
     <div class="jx-shade"></div>
-    <button id="btn-missions-close" class="jx-navbtn jx-navbtn-right" type="button" aria-label="Close">&#9654;</button>
+    <button id="btn-missions-close" class="jx-navbtn jx-navbtn-right" type="button" aria-label="Close">&#9654;&#65038;</button>
     <button id="btn-missions-tablet" class="jx-mission-tablet" type="button" aria-label="Open missions">
       <span class="jx-mission-tablet-tip" data-i18n="yourMissions">YOUR MISSIONS</span>
     </button>
@@ -154,7 +154,7 @@
       <div id="drawer-volume" class="jx-sub">
         <div class="sett-row sett-row-volume">
           <div class="sett-row-left">
-            <span class="sett-icon" id="sett-vol-icon">♪</span>
+            <span class="sett-icon" id="sett-vol-icon"><svg class="ui-icon ui-icon-music" viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/></svg></span>
             <span class="sett-label" data-i18n="volume">SFX</span>
           </div>
           <div class="sett-slider-wrap">
@@ -164,7 +164,7 @@
         </div>
         <div class="sett-row sett-row-volume">
           <div class="sett-row-left">
-            <span class="sett-icon" id="sett-music-icon">♫</span>
+            <span class="sett-icon" id="sett-music-icon"><svg class="ui-icon ui-icon-music" viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/></svg></span>
             <span class="sett-label">MUSIC</span>
           </div>
           <div class="sett-slider-wrap">
@@ -174,7 +174,7 @@
         </div>
         <div class="sett-row">
           <div class="sett-row-left">
-            <span class="sett-icon">✦</span>
+            <span class="sett-icon"><svg class="ui-icon ui-icon-sparkle" viewBox="0 0 24 24" width="1em" height="1em" fill="currentColor" stroke="none" aria-hidden="true" focusable="false"><path d="M12 1.5l2.2 8.3 8.3 2.2-8.3 2.2-2.2 8.3-2.2-8.3L1.5 12l8.3-2.2z"/></svg></span>
             <span class="sett-label" data-i18n="effects">EFFECTS</span>
           </div>
           <button id="sett-effects" class="sett-toggle sett-on">ON</button>
@@ -202,7 +202,7 @@
   <!-- BADGES overlay (opened from the RÉGLAGE drawer) -->
   <div id="badges-overlay" class="sett-backdrop hidden">
     <div class="jx-drawer" style="transform:none;border-radius:24px;width:min(92%,420px);height:auto;max-height:88vh;border-left-width:9px">
-      <button id="btn-badges-close" class="jx-pill" type="button" style="margin-bottom:14px">✕</button>
+      <button id="btn-badges-close" class="jx-pill" type="button" style="margin-bottom:14px" aria-label="Close"><svg class="ui-icon ui-icon-x" viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
       <section id="hangar-badges" class="hangar-badges"></section>
     </div>
   </div>
@@ -210,7 +210,7 @@
   <!-- WEEK TRACKER overlay (opened by tapping the day/play-time tab in the lobby) -->
   <div id="week-overlay" class="sett-backdrop hidden">
     <div class="jx-drawer jx-week-drawer" style="transform:none;border-radius:24px;width:min(94%,460px);height:auto;max-height:88vh;border-left-width:9px">
-      <button id="btn-week-close" class="jx-pill" type="button">✕</button>
+      <button id="btn-week-close" class="jx-pill" type="button" aria-label="Close"><svg class="ui-icon ui-icon-x" viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
 
       <div class="jx-week-head">
         <div class="jx-week-head-text">
@@ -241,11 +241,11 @@
     <div class="pi-card" role="dialog" aria-modal="true" aria-labelledby="plane-info-name">
       <div class="pi-head">
         <h2 class="pi-title" data-i18n="planeInfoTitle">INFORMATION</h2>
-        <button id="btn-plane-info-close" class="pi-close" type="button" aria-label="Close">✕</button>
+        <button id="btn-plane-info-close" class="pi-close" type="button" aria-label="Close"><svg class="ui-icon ui-icon-x" viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
       </div>
       <div id="plane-info-stars" class="pi-stars" aria-hidden="true"></div>
       <div class="pi-stage">
-        <button id="btn-plane-info-prev" class="pi-arrow pi-arrow-left" type="button" aria-label="Previous">&#9664;</button>
+        <button id="btn-plane-info-prev" class="pi-arrow pi-arrow-left" type="button" aria-label="Previous">&#9664;&#65038;</button>
         <div class="pi-screen">
           <canvas id="plane-info-canvas" class="pi-img" role="img" aria-label=""></canvas>
           <div class="pi-scanlines" aria-hidden="true"></div>
@@ -253,7 +253,7 @@
           <span id="plane-info-cost" class="pi-corner pi-corner-bl"></span>
           <span id="plane-info-grade" class="pi-corner pi-corner-br"></span>
         </div>
-        <button id="btn-plane-info-next" class="pi-arrow pi-arrow-right" type="button" aria-label="Next">&#9654;</button>
+        <button id="btn-plane-info-next" class="pi-arrow pi-arrow-right" type="button" aria-label="Next">&#9654;&#65038;</button>
       </div>
       <div class="pi-scroll">
         <h3 id="plane-info-name" class="pi-bar pi-name"></h3>
@@ -289,8 +289,8 @@
         <button id="btn-jx-menu" class="jx-burger" type="button" aria-label="Menu"><i></i><i></i><i></i></button>
       </div>
 
-      <button id="btn-jx-nav-prev" class="jx-navbtn jx-navbtn-left" type="button" aria-label="Missions">&#9664;</button>
-      <button id="btn-jx-nav-next" class="jx-navbtn jx-navbtn-right" type="button" aria-label="Shop">&#9654;</button>
+      <button id="btn-jx-nav-prev" class="jx-navbtn jx-navbtn-left" type="button" aria-label="Missions">&#9664;&#65038;</button>
+      <button id="btn-jx-nav-next" class="jx-navbtn jx-navbtn-right" type="button" aria-label="Shop">&#9654;&#65038;</button>
 
       <div class="jx-daytab">
         <div class="jx-daytab-bot">
@@ -300,10 +300,10 @@
       </div>
 
       <div class="jx-plane-wrap">
-        <button id="btn-lobby-plane-prev" class="jx-planecycle" type="button" aria-label="Previous plane">&#9664;</button>
+        <button id="btn-lobby-plane-prev" class="jx-planecycle" type="button" aria-label="Previous plane">&#9664;&#65038;</button>
         <img id="menu-selected-plane" src="/assets/hangar/t6.webp" alt="Selected aircraft">
         <span id="mp-you-name" class="mp-tag mp-tag-you mp-lobby-you">TOI</span>
-        <button id="btn-lobby-plane-next" class="jx-planecycle" type="button" aria-label="Next plane">&#9654;</button>
+        <button id="btn-lobby-plane-next" class="jx-planecycle" type="button" aria-label="Next plane">&#9654;&#65038;</button>
         <!-- Plane not owned yet (menu.js renderLobbyPlane): its name and price, buys it. -->
         <button id="btn-lobby-plane-buy" class="jx-plane-buy hidden" type="button"></button>
       </div>
@@ -330,7 +330,7 @@
         </svg><span>TOP 20</span>
       </button>
       <div id="lobby-top20" class="top20-panel hidden" role="dialog" aria-label="Top 20">
-        <button id="btn-top20-close" class="top20-close" type="button" aria-label="Fermer">&#10005;</button>
+        <button id="btn-top20-close" class="top20-close" type="button" aria-label="Fermer"><svg class="ui-icon ui-icon-x" viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
         <div id="top20-body" class="top20-body"></div>
       </div>
 
@@ -360,9 +360,9 @@
       </div>
     </div>
     <div class="jx-map-titlebar">
-      <button id="btn-map-biome-prev" class="jx-map-biome-arrow" type="button" aria-label="Previous world">&#9664;</button>
+      <button id="btn-map-biome-prev" class="jx-map-biome-arrow" type="button" aria-label="Previous world">&#9664;&#65038;</button>
       <span id="map-biome-title" class="jx-map-title">PACIFIQUE</span>
-      <button id="btn-map-biome-next" class="jx-map-biome-arrow" type="button" aria-label="Next world">&#9654;</button>
+      <button id="btn-map-biome-next" class="jx-map-biome-arrow" type="button" aria-label="Next world">&#9654;&#65038;</button>
     </div>
     <div id="levelmap-scroll">
       <div id="levelmap-nodes"></div>
@@ -460,8 +460,8 @@
       </div>
       <div id="hangar-body" class="jx-panel-body"></div>
     </div>
-    <button id="btn-hangar-page-left" class="jx-navbtn jx-navbtn-left" type="button" aria-label="Previous">&#9664;</button>
-    <button id="btn-hangar-page-right" class="jx-navbtn jx-navbtn-right" type="button" aria-label="Next">&#9654;</button>
+    <button id="btn-hangar-page-left" class="jx-navbtn jx-navbtn-left" type="button" aria-label="Previous">&#9664;&#65038;</button>
+    <button id="btn-hangar-page-right" class="jx-navbtn jx-navbtn-right" type="button" aria-label="Next">&#9654;&#65038;</button>
   </div>
 
   <!-- RESULT SCREEN -->
@@ -527,8 +527,8 @@
 
     <div class="jx-plate" id="shop-plate" data-i18n="jxShopTitle">MAGASIN</div>
 
-    <button id="btn-shop-page-left" class="jx-navbtn jx-navbtn-left" type="button" aria-label="Previous">&#9664;</button>
-    <button id="btn-shop-page-right" class="jx-navbtn jx-navbtn-right" type="button" aria-label="Next">&#9654;</button>
+    <button id="btn-shop-page-left" class="jx-navbtn jx-navbtn-left" type="button" aria-label="Previous">&#9664;&#65038;</button>
+    <button id="btn-shop-page-right" class="jx-navbtn jx-navbtn-right" type="button" aria-label="Next">&#9654;&#65038;</button>
 
     <div id="shop-content" class="shop-content"></div>
 
@@ -562,12 +562,12 @@
 
     <div class="jx-plate" data-i18n="jxTraining">ENTRAINEMENT</div>
 
-    <button id="btn-training-page-left" class="jx-navbtn jx-navbtn-left" type="button" aria-label="Previous">&#9664;</button>
+    <button id="btn-training-page-left" class="jx-navbtn jx-navbtn-left" type="button" aria-label="Previous">&#9664;&#65038;</button>
 
     <div class="jx-plane-wrap">
-      <button id="btn-training-plane-prev" class="jx-planecycle" type="button" aria-label="Previous plane">&#9664;</button>
+      <button id="btn-training-plane-prev" class="jx-planecycle" type="button" aria-label="Previous plane">&#9664;&#65038;</button>
       <img id="training-selected-plane" src="/assets/hangar/t6.webp" alt="Selected aircraft">
-      <button id="btn-training-plane-next" class="jx-planecycle" type="button" aria-label="Next plane">&#9654;</button>
+      <button id="btn-training-plane-next" class="jx-planecycle" type="button" aria-label="Next plane">&#9654;&#65038;</button>
     </div>
 
     <button id="btn-training-practice" class="jx-cta" type="button" data-i18n="jxPractice">PRATIQUE</button>
@@ -584,7 +584,7 @@
   <div id="s-ranked" class="screen hidden">
     <div class="top-bar">
       <button id="btn-ranked-back" class="btn-icon">&#8592;</button>
-      <span class="top-bar-title" style="color:#ff2277;text-shadow:0 0 10px #ff2277">⚔ RANKED</span>
+      <span class="top-bar-title" style="color:#ff2277;text-shadow:0 0 10px #ff2277">RANKED</span>
       <span id="ranked-season-timer" class="rk-season-timer"></span>
     </div>
     <div class="ranked-lobby-body">
@@ -595,7 +595,7 @@
       <div id="ranked-stats" class="ranked-stats"></div>
       <div id="ranked-streak" class="ranked-win-streak"></div>
       <div id="ranked-firstwin" class="ranked-firstwin"></div>
-      <button id="btn-ranked-play" class="btn btn-primary ranked-play-btn" data-i18n="findMatch">⚔ FIND MATCH</button>
+      <button id="btn-ranked-play" class="btn btn-primary ranked-play-btn" data-i18n="findMatch">FIND MATCH</button>
       <button id="btn-ranked-history" class="btn btn-secondary ranked-hist-btn" data-i18n="matchHistory">≡ MATCH HISTORY</button>
     </div>
   </div>
@@ -663,7 +663,7 @@
     <div id="rr-lp-change" class="rr-lp-change"></div>
     <div class="rr-lp-bar-wrap"><div id="rr-lp-bar" class="rr-lp-bar"></div></div>
     <div id="rr-breakdown" class="rr-breakdown"></div>
-    <button id="btn-rr-rematch" class="btn btn-primary" data-i18n="rematch">⚔ REMATCH</button>
+    <button id="btn-rr-rematch" class="btn btn-primary" data-i18n="rematch">REMATCH</button>
     <button id="btn-rr-lobby"   class="btn btn-secondary" data-i18n="lobby">LOBBY</button>
   </div>
 
@@ -676,9 +676,9 @@
         <div class="arena-hud-side arena-hud-left">
           <div id="arena-my-name" class="arena-pname"></div>
           <div class="arena-hearts">
-            <span id="arena-my-h0" class="arena-heart">♥</span>
-            <span id="arena-my-h1" class="arena-heart">♥</span>
-            <span id="arena-my-h2" class="arena-heart">♥</span>
+            <span id="arena-my-h0" class="arena-heart"><svg class="ui-icon ui-icon-heart" viewBox="0 0 24 24" width="1em" height="1em" fill="currentColor" stroke="none" aria-hidden="true" focusable="false"><path d="M12 21s-8.5-5.4-8.5-11.4A4.6 4.6 0 0 1 12 7a4.6 4.6 0 0 1 8.5 2.6C20.5 15.6 12 21 12 21z"/></svg></span>
+            <span id="arena-my-h1" class="arena-heart"><svg class="ui-icon ui-icon-heart" viewBox="0 0 24 24" width="1em" height="1em" fill="currentColor" stroke="none" aria-hidden="true" focusable="false"><path d="M12 21s-8.5-5.4-8.5-11.4A4.6 4.6 0 0 1 12 7a4.6 4.6 0 0 1 8.5 2.6C20.5 15.6 12 21 12 21z"/></svg></span>
+            <span id="arena-my-h2" class="arena-heart"><svg class="ui-icon ui-icon-heart" viewBox="0 0 24 24" width="1em" height="1em" fill="currentColor" stroke="none" aria-hidden="true" focusable="false"><path d="M12 21s-8.5-5.4-8.5-11.4A4.6 4.6 0 0 1 12 7a4.6 4.6 0 0 1 8.5 2.6C20.5 15.6 12 21 12 21z"/></svg></span>
           </div>
         </div>
         <div class="arena-hud-center">
@@ -688,9 +688,9 @@
         <div class="arena-hud-side arena-hud-right">
           <div id="arena-opp-name" class="arena-pname"></div>
           <div class="arena-hearts">
-            <span id="arena-opp-h0" class="arena-heart">♥</span>
-            <span id="arena-opp-h1" class="arena-heart">♥</span>
-            <span id="arena-opp-h2" class="arena-heart">♥</span>
+            <span id="arena-opp-h0" class="arena-heart"><svg class="ui-icon ui-icon-heart" viewBox="0 0 24 24" width="1em" height="1em" fill="currentColor" stroke="none" aria-hidden="true" focusable="false"><path d="M12 21s-8.5-5.4-8.5-11.4A4.6 4.6 0 0 1 12 7a4.6 4.6 0 0 1 8.5 2.6C20.5 15.6 12 21 12 21z"/></svg></span>
+            <span id="arena-opp-h1" class="arena-heart"><svg class="ui-icon ui-icon-heart" viewBox="0 0 24 24" width="1em" height="1em" fill="currentColor" stroke="none" aria-hidden="true" focusable="false"><path d="M12 21s-8.5-5.4-8.5-11.4A4.6 4.6 0 0 1 12 7a4.6 4.6 0 0 1 8.5 2.6C20.5 15.6 12 21 12 21z"/></svg></span>
+            <span id="arena-opp-h2" class="arena-heart"><svg class="ui-icon ui-icon-heart" viewBox="0 0 24 24" width="1em" height="1em" fill="currentColor" stroke="none" aria-hidden="true" focusable="false"><path d="M12 21s-8.5-5.4-8.5-11.4A4.6 4.6 0 0 1 12 7a4.6 4.6 0 0 1 8.5 2.6C20.5 15.6 12 21 12 21z"/></svg></span>
           </div>
         </div>
       </div>
@@ -715,7 +715,7 @@
         <div id="arena-result-lp"    class="arena-result-lp"></div>
         <div id="arena-result-rank"  class="arena-result-rank"></div>
         <div id="arena-rematch-status" class="arena-rematch-status"></div>
-        <button id="btn-arena-rematch" class="btn btn-primary">⚔ REMATCH</button>
+        <button id="btn-arena-rematch" class="btn btn-primary">REMATCH</button>
         <button id="btn-arena-lobby"   class="btn btn-secondary">LOBBY</button>
       </div>
       <!-- BACK BUTTON -->
@@ -731,7 +731,7 @@
     </div>
 
     <div class="briefing-pilot-row">
-      <span id="briefing-pilot-avatar" class="briefing-pilot-avatar">▷</span>
+      <span id="briefing-pilot-avatar" class="briefing-pilot-avatar"></span>
       <div class="briefing-pilot-info">
         <div id="briefing-pilot-name" class="briefing-pilot-name">CADET</div>
         <div id="briefing-pilot-desc" class="briefing-pilot-desc"></div>
@@ -743,7 +743,7 @@
     </div>
     <div class="briefing-conditions">
       <div class="briefing-condition-row">
-        <span class="briefing-cond-icon">⏱</span>
+        <span class="briefing-cond-icon"><svg class="ui-icon ui-icon-clock" viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="13.5" r="8"/><path d="M12 9.5v4l2.6 2.6M9.5 2h5M12 2v3.5"/></svg></span>
         <div class="briefing-cond-body">
           <div class="briefing-cond-label" data-i18n="timeLimit" data-key="timeLimit">TIME LIMIT</div>
           <div id="briefing-time" class="briefing-cond-desc">20s per question</div>
@@ -757,14 +757,14 @@
         </div>
       </div>
       <div class="briefing-condition-row">
-        <span id="briefing-weather-icon" class="briefing-cond-icon">☀</span>
+        <span id="briefing-weather-icon" class="briefing-cond-icon"><svg class="ui-icon ui-icon-sun" viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="4"/><path d="M12 2v2.5M12 19.5V22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M2 12h2.5M19.5 12H22M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8"/></svg></span>
         <div class="briefing-cond-body">
           <div class="briefing-cond-label" data-i18n="briefingWeather">WEATHER</div>
           <div id="briefing-weather" class="briefing-cond-desc">Clear skies</div>
         </div>
       </div>
       <div class="briefing-condition-row">
-        <span class="briefing-cond-icon">📍</span>
+        <span class="briefing-cond-icon"><svg class="ui-icon ui-icon-pin" viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 21.5s-7-6.3-7-11.5a7 7 0 0 1 14 0c0 5.2-7 11.5-7 11.5z"/><circle cx="12" cy="10" r="2.5"/></svg></span>
         <div class="briefing-cond-body">
           <div class="briefing-cond-label" data-i18n="briefingLocation">LOCATION</div>
           <div id="briefing-location" class="briefing-cond-desc">New York City, USA</div>
@@ -792,7 +792,7 @@
       <div class="gameover-icon-wrap">
         <div class="gameover-ring gameover-ring-1"></div>
         <div class="gameover-ring gameover-ring-2"></div>
-        <div class="gameover-icon">⚠</div>
+        <div class="gameover-icon"><svg class="ui-icon ui-icon-warning" viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18v.01"/></svg></div>
       </div>
       <div id="gameover-title">GAME OVER</div>
       <div id="gameover-score"></div>
@@ -807,7 +807,7 @@
   <!-- REGISTRATION SCREEN -->
   <div id="s-register" class="screen hidden">
     <div class="reg-wrap">
-      <button id="btn-reg-close" class="sett-close" style="position:absolute;top:10px;right:10px;color:#fff;border-color:#fff">✕</button>
+      <button id="btn-reg-close" class="sett-close" style="position:absolute;top:10px;right:10px;color:#fff;border-color:#fff"><svg class="ui-icon ui-icon-x" viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
       <div class="reg-logo">JEXON<span class="reg-logo-go">GO</span></div>
       <div class="reg-tagline">AERIAL MATH COMBAT</div>
       <div class="reg-title" data-i18n="regTitle">CREATE YOUR PILOT</div>
@@ -816,11 +816,11 @@
         <input id="reg-email"    type="email"    class="reg-input" placeholder="EMAIL ADDRESS" data-i18n-placeholder="regEmailPh" autocomplete="email">
         <div class="pw-field-wrap">
           <input id="reg-password" type="password" class="reg-input" placeholder="PASSWORD (6+ CHARS)" data-i18n-placeholder="regPasswordPh" autocomplete="new-password">
-          <button type="button" class="pw-eye-btn" id="btn-reg-pw-toggle" aria-label="Show password">👁</button>
+          <button type="button" class="pw-eye-btn" id="btn-reg-pw-toggle" aria-label="Show password"><svg class="ui-icon ui-icon-eye" viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M2 12s3.8-7 10-7 10 7 10 7-3.8 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></button>
         </div>
         <div class="pw-field-wrap">
           <input id="reg-password-confirm" type="password" class="reg-input" placeholder="CONFIRM PASSWORD" data-i18n-placeholder="regConfirmPasswordPh" autocomplete="new-password">
-          <button type="button" class="pw-eye-btn" id="btn-reg-confirm-pw-toggle" aria-label="Show password">👁</button>
+          <button type="button" class="pw-eye-btn" id="btn-reg-confirm-pw-toggle" aria-label="Show password"><svg class="ui-icon ui-icon-eye" viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M2 12s3.8-7 10-7 10 7 10 7-3.8 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></button>
         </div>
         <select id="reg-age" class="reg-input reg-select">
           <option value="" data-i18n="regAgePh">-- SELECT YOUR AGE --</option>
@@ -859,7 +859,7 @@
           <button id="btn-reg-privacy" type="button" class="reg-policy-link" data-i18n="privacyPolicyLink">PRIVACY POLICY</button>
         </div>
         <div id="reg-error" class="reg-error"></div>
-        <button id="btn-reg-submit" class="btn btn-primary" data-i18n="regSubmit">▶ CREATE PILOT</button>
+        <button id="btn-reg-submit" class="btn btn-primary" data-i18n="regSubmit">▶︎ CREATE PILOT</button>
       </div>
     </div>
   </div>
@@ -1677,18 +1677,18 @@
   <div id="feedback-overlay" class="sett-backdrop hidden">
     <div class="feedback-panel">
       <div class="feedback-header" data-i18n="feedbackTitle">HOW DO YOU LIKE JEXONGO ?</div>
-      <div class="feedback-sub" data-i18n="feedbackSub">★ DAILY FEEDBACK ★</div>
+      <div class="feedback-sub" data-i18n="feedbackSub">DAILY FEEDBACK</div>
       <div class="feedback-stars" id="feedback-stars">
-        <span class="fb-star" data-v="1">★</span>
-        <span class="fb-star" data-v="2">★</span>
-        <span class="fb-star" data-v="3">★</span>
-        <span class="fb-star" data-v="4">★</span>
-        <span class="fb-star" data-v="5">★</span>
+        <span class="fb-star" data-v="1"><svg class="ui-icon ui-icon-star" viewBox="0 0 24 24" width="1em" height="1em" fill="currentColor" stroke="none" aria-hidden="true" focusable="false"><path d="M12 2.5l2.9 6.2 6.6.7-5 4.5 1.4 6.6L12 17.2l-5.9 3.3 1.4-6.6-5-4.5 6.6-.7z"/></svg></span>
+        <span class="fb-star" data-v="2"><svg class="ui-icon ui-icon-star" viewBox="0 0 24 24" width="1em" height="1em" fill="currentColor" stroke="none" aria-hidden="true" focusable="false"><path d="M12 2.5l2.9 6.2 6.6.7-5 4.5 1.4 6.6L12 17.2l-5.9 3.3 1.4-6.6-5-4.5 6.6-.7z"/></svg></span>
+        <span class="fb-star" data-v="3"><svg class="ui-icon ui-icon-star" viewBox="0 0 24 24" width="1em" height="1em" fill="currentColor" stroke="none" aria-hidden="true" focusable="false"><path d="M12 2.5l2.9 6.2 6.6.7-5 4.5 1.4 6.6L12 17.2l-5.9 3.3 1.4-6.6-5-4.5 6.6-.7z"/></svg></span>
+        <span class="fb-star" data-v="4"><svg class="ui-icon ui-icon-star" viewBox="0 0 24 24" width="1em" height="1em" fill="currentColor" stroke="none" aria-hidden="true" focusable="false"><path d="M12 2.5l2.9 6.2 6.6.7-5 4.5 1.4 6.6L12 17.2l-5.9 3.3 1.4-6.6-5-4.5 6.6-.7z"/></svg></span>
+        <span class="fb-star" data-v="5"><svg class="ui-icon ui-icon-star" viewBox="0 0 24 24" width="1em" height="1em" fill="currentColor" stroke="none" aria-hidden="true" focusable="false"><path d="M12 2.5l2.9 6.2 6.6.7-5 4.5 1.4 6.6L12 17.2l-5.9 3.3 1.4-6.6-5-4.5 6.6-.7z"/></svg></span>
       </div>
       <textarea id="feedback-comment" class="feedback-textarea" placeholder="YOUR COMMENT (OPTIONAL)..." data-i18n-placeholder="feedbackCommentPh" maxlength="300"></textarea>
       <div id="feedback-error" class="feedback-error"></div>
       <div class="feedback-btns" id="feedback-btns">
-        <button id="btn-feedback-submit" class="btn btn-primary" data-i18n="feedbackSubmit">▶ SEND FEEDBACK</button>
+        <button id="btn-feedback-submit" class="btn btn-primary" data-i18n="feedbackSubmit">▶︎ SEND FEEDBACK</button>
         <button id="btn-feedback-skip" class="feedback-skip-btn" data-i18n="feedbackSkip">SKIP</button>
       </div>
       <div id="feedback-thanks" class="feedback-thanks hidden"></div>
@@ -1700,15 +1700,15 @@
     <div class="login-modal-panel">
       <div class="login-modal-header">
         <span class="login-modal-title" data-i18n="loginTitle">LOG IN</span>
-        <button id="btn-login-modal-close" class="sett-close">✕</button>
+        <button id="btn-login-modal-close" class="sett-close"><svg class="ui-icon ui-icon-x" viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
       </div>
       <input id="login-modal-email"    type="email"    class="reg-input" placeholder="EMAIL ADDRESS" autocomplete="email">
       <div class="pw-field-wrap">
         <input id="login-modal-password" type="password" class="reg-input" placeholder="PASSWORD" autocomplete="current-password">
-        <button type="button" class="pw-eye-btn" id="btn-login-pw-toggle" aria-label="Show password">👁</button>
+        <button type="button" class="pw-eye-btn" id="btn-login-pw-toggle" aria-label="Show password"><svg class="ui-icon ui-icon-eye" viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M2 12s3.8-7 10-7 10 7 10 7-3.8 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></button>
       </div>
       <div id="login-modal-error" class="login-modal-error"></div>
-      <button id="btn-login-modal-submit" class="btn btn-primary" style="margin-top:4px">▶ LOG IN</button>
+      <button id="btn-login-modal-submit" class="btn btn-primary" style="margin-top:4px">▶︎ LOG IN</button>
     </div>
   </div>
 
@@ -1750,7 +1750,7 @@
   <!-- RESET CONFIRM MODAL -->
   <div id="reset-modal" class="sett-backdrop hidden">
     <div class="reset-modal-panel">
-      <div class="reset-modal-title">⚠ RESET GAME</div>
+      <div class="reset-modal-title"><svg class="ui-icon ui-icon-warning" viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18v.01"/></svg> RESET GAME</div>
       <div class="reset-modal-body">This will erase ALL progress.<br>Levels · XP · Coins · Stars</div>
       <div class="reset-modal-actions">
         <button id="btn-reset-confirm" class="btn btn-danger">RESET EVERYTHING</button>
@@ -1776,11 +1776,11 @@
             <img  id="pc-photo"     class="pc-photo"     src="" alt="" referrerpolicy="no-referrer">
             <img  id="pc-pilot-img" class="pc-pilot-img" src="" alt="">
             <span id="pc-initial"   class="pc-initial">P</span>
-            <span id="pc-emblem"    class="pc-emblem-badge">✈</span>
+            <span id="pc-emblem"    class="pc-emblem-badge"><svg class="ui-icon ui-icon-plane" viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 2.5c.9 0 1.5 1.2 1.5 2.5v4.2l7.5 4.6v2l-7.5-2.3v4l2 1.6V21l-3.5-1-3.5 1v-1.9l2-1.6v-4l-7.5 2.3v-2l7.5-4.6V5c0-1.3.6-2.5 1.5-2.5z"/></svg></span>
           </div>
           <div class="pc-info">
             <div id="pc-name"    class="pc-name">PILOT</div>
-            <div id="pc-grade"   class="pc-grade">▷  CADET</div>
+            <div id="pc-grade"   class="pc-grade">CADET</div>
             <div id="pc-rank"    class="pc-rank"><img class="jg-exp-icon" src="/assets/fx/Caisse/JexonGo_EXP_frame_01.png" alt="EXP"> 0</div>
           </div>
         </div>
@@ -1820,7 +1820,7 @@
         <div id="theme-grid" class="theme-grid"></div>
       </div>
 
-      <button id="btn-profile-save" class="pce-save-btn">▶ SAVE PILOT CARD</button>
+      <button id="btn-profile-save" class="pce-save-btn">▶︎ SAVE PILOT CARD</button>
     </div>
   </div>
 

@@ -16,7 +16,7 @@ import { TOTAL_LEVELS } from '../data/levels.js';
 import { AIRCRAFT, AIRCRAFT_ORDER } from '../data/aircraft.js';
 import { save } from '../utils/storage.js';
 import { paintPlaneInfoFisheye } from './plane-info-fisheye.js';
-import { coinIcon } from '../utils/icons.js';
+import { coinIcon, uiIcon } from '../utils/icons.js';
 import { TYPE_LABELS } from './hangar.js';
 
 // Bot UPGRADE costs (coins) to reach each level.
@@ -167,7 +167,7 @@ function refreshCoinsHud() {
 }
 
 // BOT tab of the lobby HANGAR sheet (MULTI mode), laid out like the UPGRADE
-// tab: radar screen with ◀ ▶ to browse the bot's planes (bought with EXP,
+// tab: radar screen with ◀︎ ▶︎ to browse the bot's planes (bought with EXP,
 // cheaper than the hangar), EQUIP / BUY button, then one bar + row for the
 // plane's ability, the bot's LIVES and its FIRE POWER (coins). While it is
 // open, "Player 2" on the hangar floor shows the bot's plane.
@@ -228,17 +228,17 @@ export function renderBotPanel(body) {
         <h2 class="pi-title">BOT</h2>
       </div>
       <div class="upg-left">
-      <div class="pi-stars" aria-hidden="true">${Array.from({ length: 5 }, (_, i) => `<span class="${i < tier ? 'on' : ''}">★</span>`).join('')}</div>
+      <div class="pi-stars" aria-hidden="true">${Array.from({ length: 5 }, (_, i) => `<span class="${i < tier ? 'on' : ''}">${uiIcon('star')}</span>`).join('')}</div>
       <div class="pi-stage">
-        <button class="pi-arrow pi-arrow-left" type="button" data-cycle="-1" aria-label="${f ? 'Avion précédent' : 'Previous plane'}">&#9664;</button>
+        <button class="pi-arrow pi-arrow-left" type="button" data-cycle="-1" aria-label="${f ? 'Avion précédent' : 'Previous plane'}">&#9664;&#65038;</button>
         <div class="pi-screen">
           <canvas class="pi-img" data-bot-canvas role="img" aria-label="${plane.name}"></canvas>
           <div class="pi-scanlines" aria-hidden="true"></div>
           <span class="pi-corner pi-corner-tl">${typeLabel}</span>
-          <span class="pi-corner pi-corner-bl"><img class="upg-heart-mini" src="${HEART_IMG}" alt=""> ${up.hp} · ✚ ${up.fire}</span>
+          <span class="pi-corner pi-corner-bl"><img class="upg-heart-mini" src="${HEART_IMG}" alt=""> ${up.hp} · ${uiIcon('plus')} ${up.fire}</span>
           <span class="pi-corner pi-corner-br">BOT</span>
         </div>
-        <button class="pi-arrow pi-arrow-right" type="button" data-cycle="1" aria-label="${f ? 'Avion suivant' : 'Next plane'}">&#9654;</button>
+        <button class="pi-arrow pi-arrow-right" type="button" data-cycle="1" aria-label="${f ? 'Avion suivant' : 'Next plane'}">&#9654;&#65038;</button>
       </div>
       <h3 class="pi-bar pi-name">${plane.name}</h3>
       ${owned ? '' : `<p class="pi-text upg-locked">${f
@@ -251,7 +251,7 @@ export function renderBotPanel(body) {
       <div class="upg-scroll">
         <h4 class="pi-bar">${f ? 'CAPACITÉ' : 'ABILITY'}</h4>
         <div class="pi-ability upg-row">
-          <span class="pi-ability-icon upg-icon upg-icon-ability">${ability?.icon || '✈'}</span>
+          <span class="pi-ability-icon upg-icon upg-icon-ability">${uiIcon(ability?.icon || 'plane')}</span>
           <div class="upg-copy">
             <strong>${ability?.name?.[lang] || ''}</strong>
             <p>${ability?.description?.[lang] || ''}</p>

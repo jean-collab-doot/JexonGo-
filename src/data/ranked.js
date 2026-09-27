@@ -3,12 +3,12 @@
 // Elite has no divisions and is uncapped.
 
 export const TIERS = [
-  { id: 'bronze',   name: 'BRONZE',   minLP: 0,    color: '#cd7f32', glow: '#7c4a00', icon: '✦',  divs: 3 },
-  { id: 'silver',   name: 'SILVER',   minLP: 300,  color: '#c0c0c0', glow: '#606060', icon: '★',  divs: 3 },
-  { id: 'gold',     name: 'GOLD',     minLP: 700,  color: '#fbbf24', glow: '#8a6500', icon: '◆',  divs: 3 },
-  { id: 'platinum', name: 'PLATINUM', minLP: 1200, color: '#00d4ff', glow: '#005a70', icon: '❋',  divs: 3 },
-  { id: 'diamond',  name: 'DIAMOND',  minLP: 1800, color: '#a855f7', glow: '#5a1a8a', icon: '⬡',  divs: 3 },
-  { id: 'elite',    name: 'ELITE',    minLP: 2500, color: '#ff2277', glow: '#8a0040', icon: '♛',  divs: 1 },
+  { id: 'bronze',   name: 'BRONZE',   minLP: 0,    color: '#cd7f32', glow: '#7c4a00', icon: 'sparkle',  divs: 3 },
+  { id: 'silver',   name: 'SILVER',   minLP: 300,  color: '#c0c0c0', glow: '#606060', icon: 'star',  divs: 3 },
+  { id: 'gold',     name: 'GOLD',     minLP: 700,  color: '#fbbf24', glow: '#8a6500', icon: 'diamond',  divs: 3 },
+  { id: 'platinum', name: 'PLATINUM', minLP: 1200, color: '#00d4ff', glow: '#005a70', icon: 'burst',  divs: 3 },
+  { id: 'diamond',  name: 'DIAMOND',  minLP: 1800, color: '#a855f7', glow: '#5a1a8a', icon: 'hexagon',  divs: 3 },
+  { id: 'elite',    name: 'ELITE',    minLP: 2500, color: '#ff2277', glow: '#8a0040', icon: 'crown',  divs: 1 },
 ];
 
 const DIV_LABELS = ['III', 'II', 'I'];

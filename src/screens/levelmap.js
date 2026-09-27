@@ -1,4 +1,5 @@
 import { $ } from '../utils/dom.js';
+import { uiIcon } from '../utils/icons.js';
 import { G } from '../state.js';
 import { getLevel, TOTAL_LEVELS, BIOME_META, BIOMES } from '../data/levels.js';
 import { levelState } from '../systems/progression.js';
@@ -67,7 +68,7 @@ function _biomeTitle(biome) {
 // Same slide as the lobby carousel arrows (SWIPE_MS in utils/dom.js), applied
 // to the map content only - territory artwork, route and level nodes. The old
 // world is kept as a ghost layer and pushed out while the new one comes in:
-// 'next' (▶) to the left, 'prev' (◀) to the right. The CRT glass overlay, the
+// 'next' (▶︎) to the left, 'prev' (◀︎) to the right. The CRT glass overlay, the
 // bezel and the title bar stay put.
 const BIOME_SWIPE_MS = 320;
 let _swiping = false;
@@ -224,7 +225,7 @@ function _renderBiomePage(playerLevel) {
     for (let starIndex = 1; starIndex <= 3; starIndex++) {
       const star = document.createElement('span');
       star.className = starIndex <= node.stars ? 'earned' : '';
-      star.textContent = '★';
+      star.innerHTML = uiIcon('star');
       stars.appendChild(star);
     }
     element.appendChild(stars);

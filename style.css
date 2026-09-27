@@ -3067,7 +3067,10 @@ html.touch-mobile .badge-unlock-card button{min-height:40px;padding:10px 18px;fo
 }
 .sc-px-sparkles::before,
 .sc-px-sparkles::after {
-  content: '✦';
+  content: '';
+  width: 8px; height: 8px;
+  background: currentColor;
+  clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%);
   position: absolute;
   color: #fde68a;
   opacity: 0.5;
@@ -15970,3 +15973,6 @@ html.np-boot .np-intro.np-static { display: block; }
   animation: jxMystery 1.6s ease-in-out infinite;
 }
 @keyframes jxMystery { 50% { transform: translate(-50%, -50%) scale(1.12); } }
+
+/* Game icons (src/utils/icons.js uiIcon): sized like the text around them. */
+.ui-icon { display: inline-block; width: 1em; height: 1em; vertical-align: -0.14em; flex: none; }

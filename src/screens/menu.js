@@ -11,7 +11,7 @@ import { syncAccountFromCloud, deleteCloudSave, flushCloudSave, fetchCloudSave,
 import { signInWithEmail, signOutSupabase } from '../systems/supabase-client.js';
 import { claimSessionOrBlock, releaseSession, sessionBlockedMessage } from '../systems/session-guard.js';
 import { SFX } from '../audio/sound.js';
-import { coinIcon, expIcon } from '../utils/icons.js';
+import { coinIcon, expIcon, uiIcon } from '../utils/icons.js';
 import { makeBottomSheet } from '../utils/bottomsheet.js';
 import { bindHangarTabs, renderHangarPanels, buyAircraftFromLobby, planeCost, meetsGradeRequirement } from './hangar.js';
 import { isMultiLobby, openMultiChoices } from './multiplayer.js';
@@ -364,7 +364,7 @@ export function updateSelectedPlaneShowcase(imgEl, nameEl) {
   if (nameEl) nameEl.textContent = aircraft.name.toUpperCase();
 }
 
-// Lobby ◀ ▶: every plane (the secret F-117 only once owned). An owned plane
+// Lobby ◀︎ ▶︎: every plane (the secret F-117 only once owned). An owned plane
 // becomes the active one; a plane not owned yet is only shown (grey), with a
 // button under it to buy it. The game always uses G.activeAircraft.
 let _lobbyPreview = null;
@@ -547,7 +547,7 @@ export function initMenu(nav) {
     btn.addEventListener('click', () => {
       const show = input.type === 'password';
       input.type  = show ? 'text' : 'password';
-      btn.textContent = show ? '🙈' : '👁';
+      btn.innerHTML = uiIcon(show ? 'eyeOff' : 'eye');
     });
   }
   _makePwToggle('btn-login-pw-toggle', 'login-modal-password');
@@ -744,7 +744,7 @@ export function showDailyReward(reward, streak, onClaim = null, viewOnly = false
     card.innerHTML = `
       <span class="ddc-num">D${day}</span>
       <span class="ddc-icon">${r.icon === 'coin' ? coinIcon('jg-coin-icon-small') : r.icon}</span>
-      ${day < streak || (viewOnly && day === streak) ? '<span class="ddc-check">✓</span>' : ''}
+      ${day < streak || (viewOnly && day === streak) ? `<span class="ddc-check">${uiIcon('check')}</span>` : ''}
     `;
     daysRow.appendChild(card);
   });
@@ -759,7 +759,7 @@ export function showDailyReward(reward, streak, onClaim = null, viewOnly = false
 
   if (viewOnly) {
     const fr = getLang() === 'fr';
-    showcase.querySelector('.drs-label').textContent = fr ? 'RÉCOMPENSE RÉCUPÉRÉE ✓' : 'REWARD CLAIMED ✓';
+    showcase.querySelector('.drs-label').textContent = fr ? 'RÉCOMPENSE RÉCUPÉRÉE' : 'REWARD CLAIMED';
     const msLeft = Math.max(0, nextAt - Date.now());
     const hours = Math.floor(msLeft / 3600000);
     const minutes = Math.ceil((msLeft % 3600000) / 60000);

@@ -7,7 +7,7 @@ import { paintPlaneInfoFisheye } from './plane-info-fisheye.js';
 import { t, getLang, applyI18n } from '../i18n.js';
 import { MISSILE_TYPES, SHOOTING_PLANS, renderShotPlanMiniCard, startShopPreview, stopShopPreview } from './shop.js';
 import { BADGES, unlockEligibleBadges } from '../data/badges.js';
-import { coinIcon } from '../utils/icons.js';
+import { coinIcon, uiIcon } from '../utils/icons.js';
 import { isMultiLobby, renderBotPanel, onHangarTabShown } from './multiplayer.js';
 import {
   LIFE_UPGRADE_PRICES, SHOT_UPGRADE_PRICES, HOMING_UPGRADE_PRICES, XP_UPGRADE_PRICES, XP_BONUS_PERCENT, WEAPONS,
@@ -59,7 +59,7 @@ function canBuyAircraft(id) {
   return !G.unlockedAircraft.includes(id) && !plane.secret
     && meetsGradeRequirement(plane) && G.xp >= planeCost(plane);
 }
-// Lobby (◀ ▶ on a plane not owned yet): buy it if possible.
+// Lobby (◀︎ ▶︎ on a plane not owned yet): buy it if possible.
 // Returns 'bought', or why not: 'grade' (level too low) / 'xp' (not enough EXP).
 export function buyAircraftFromLobby(id) {
   const plane = AIRCRAFT[id];
@@ -111,7 +111,7 @@ function openPlaneInfo(id) {
   // Tier = position in the hangar progression, shown as 1–5 stars.
   const tier = Math.max(1, Math.ceil(((AIRCRAFT_ORDER.indexOf(id) + 1) / AIRCRAFT_ORDER.length) * 5));
   const stars = $('plane-info-stars');
-  if (stars) stars.innerHTML = Array.from({ length: 5 }, (_, i) => `<span class="${i < tier ? 'on' : ''}">★</span>`).join('');
+  if (stars) stars.innerHTML = Array.from({ length: 5 }, (_, i) => `<span class="${i < tier ? 'on' : ''}">${uiIcon('star')}</span>`).join('');
 
   const canvas = $('plane-info-canvas');
   if (canvas) {
@@ -125,7 +125,8 @@ function openPlaneInfo(id) {
 
   setText('plane-info-name', hide(plane.name));
   setText('plane-info-desc', hide(plane.description?.[lang] || ''));
-  setText('plane-info-ability-icon', hide(plane.ability?.icon || ''));
+  const abilityIconEl = $('plane-info-ability-icon');
+  if (abilityIconEl) abilityIconEl.innerHTML = secretLocked ? '???' : uiIcon(plane.ability?.icon);
   setText('plane-info-ability-name', hide(plane.ability?.name?.[lang] || ''));
   setText('plane-info-ability-desc', hide(plane.ability?.description?.[lang] || ''));
 
@@ -338,7 +339,7 @@ function renderMissileOption(type, lang, activeMissileType, ownedMissiles) {
 }
 
 // ── UPGRADE (per aircraft: extra lives, extra shots, weapon) ────────────────
-// Laid out like the INFORMATION sheet: title bar, radar screen with ◀ ▶ to
+// Laid out like the INFORMATION sheet: title bar, radar screen with ◀︎ ▶︎ to
 // browse aircraft, then one bar + row per upgrade. Every aircraft keeps its
 // own upgrades (G.planeUpgrades[planeId]).
 let _upgradePlaneId = null;
@@ -468,17 +469,17 @@ function renderUpgradesTab(body) {
         <h2 class="pi-title">UPGRADE</h2>
       </div>
       <div class="upg-left">
-      <div class="pi-stars" aria-hidden="true">${Array.from({ length: 5 }, (_, i) => `<span class="${i < tier ? 'on' : ''}">★</span>`).join('')}</div>
+      <div class="pi-stars" aria-hidden="true">${Array.from({ length: 5 }, (_, i) => `<span class="${i < tier ? 'on' : ''}">${uiIcon('star')}</span>`).join('')}</div>
       <div class="pi-stage">
-        <button class="pi-arrow pi-arrow-left" type="button" data-upg-step="-1" aria-label="Previous">&#9664;</button>
+        <button class="pi-arrow pi-arrow-left" type="button" data-upg-step="-1" aria-label="Previous">&#9664;&#65038;</button>
         <div class="pi-screen">
           <canvas class="pi-img" data-upg-canvas role="img" aria-label="${secretLocked ? '' : plane.name}"></canvas>
           <div class="pi-scanlines" aria-hidden="true"></div>
           <span class="pi-corner pi-corner-tl">${secretLocked ? '???' : typeLabel}</span>
-          <span class="pi-corner pi-corner-bl"><img class="upg-heart-mini" src="${HEART_IMG}" alt=""> +${up.lives} · ✚ +${up.shots}</span>
+          <span class="pi-corner pi-corner-bl"><img class="upg-heart-mini" src="${HEART_IMG}" alt=""> +${up.lives} · ${uiIcon('plus')} +${up.shots}</span>
           <span class="pi-corner pi-corner-br">${plane.gradeRequired ? `LV ${plane.gradeRequired}` : 'LV 1'}</span>
         </div>
-        <button class="pi-arrow pi-arrow-right" type="button" data-upg-step="1" aria-label="Next">&#9654;</button>
+        <button class="pi-arrow pi-arrow-right" type="button" data-upg-step="1" aria-label="Next">&#9654;&#65038;</button>
       </div>
       <h3 class="pi-bar pi-name">${secretLocked ? '???' : plane.name}</h3>
       ${lockedNote}

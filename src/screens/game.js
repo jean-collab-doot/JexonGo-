@@ -1,7 +1,8 @@
 import { G, resetLevel, clampCoins, addSessionCoins, addSessionXp, addLifetimeXp } from '../state.js';
+import { uiIcon } from '../utils/icons.js';
 import { $, showScreen } from '../utils/dom.js';
 import { newQuestion } from '../game/math-engine.js';
-import { spawnEnemy, updateEnemies, hitEnemy } from '../game/enemies.js';
+import { spawnEnemy, updateEnemies, hitEnemy, KAMIKAZE_LOCK_FRAMES } from '../game/enemies.js';
 import { shotDelaySeconds, activeWeapon, homingUpgradeOwned } from '../data/upgrades.js';
 import { createMissile, updateMissiles, drawMissiles } from '../game/missiles.js';
 import { spawnExplosion, spawnHitSpark, spawnMissileExplosion, updateParticles, drawParticles } from '../game/particles.js';
@@ -33,7 +34,7 @@ import { calcSpeedXP } from '../systems/xp.js';
 import { load, save } from '../utils/storage.js';
 import { t, getLang } from '../i18n.js';
 import {
-  isTouchMobile, gameCanvasDpr, MAX_ENEMY_MISSILES_TOUCH,
+  isTouchMobile, gameCanvasDpr,
 } from '../utils/device.js';
 import { setSpriteCanvasWidth } from '../game/aircraft-draw.js';
 import { wsOn, wsSend, wsDisconnect } from '../online/ws-client.js';
@@ -93,9 +94,9 @@ function activatePlayerShield() {
 //   F-16 ESQUIVE  — enemy missiles swerve around the aircraft
 //   B-2 FURTIF    — invisible: enemies stop firing and nothing can hit it
 const AIRCRAFT_SKILLS = {
-  turbo:   { durationMs: 4000,  cooldownMs: 14000, icon: '⚡', label: { fr: 'TURBO',   en: 'TURBO' } },
-  evade:   { durationMs: 10000, cooldownMs: 30000, icon: '↻', label: { fr: 'ESQUIVE', en: 'EVADE' } },
-  stealth: { durationMs: 10000, cooldownMs: 30000, icon: '⊘', label: { fr: 'FURTIF',  en: 'STEALTH' } },
+  turbo:   { durationMs: 4000,  cooldownMs: 14000, icon: 'bolt', label: { fr: 'TURBO',   en: 'TURBO' } },
+  evade:   { durationMs: 10000, cooldownMs: 30000, icon: 'rotate', label: { fr: 'ESQUIVE', en: 'EVADE' } },
+  stealth: { durationMs: 10000, cooldownMs: 30000, icon: 'stealth', label: { fr: 'FURTIF',  en: 'STEALTH' } },
 };
 const SR71_TURBO_SPEED_MULT = 1.55;
 const F16_EVADE_RADIUS = 90;
@@ -131,7 +132,7 @@ function updateAircraftTurboButton(now = performance.now(), force = false) {
   if (!force && displaySecond === _lastTurboHudSecond) return;
   _lastTurboHudSecond = displaySecond;
   const icon = button.querySelector('.aircraft-turbo-icon');
-  if (icon) icon.textContent = skill.icon;
+  if (icon) icon.innerHTML = uiIcon(skill.icon);
   button.classList.toggle('active', activeMs > 0);
   button.classList.toggle('cooldown', activeMs <= 0 && cooldownMs > 0);
   button.disabled = cooldownMs > 0;
@@ -728,7 +729,7 @@ function showBossAlert(levelNum, done) {
     <div class="bab-strip bab-strip-top"></div>
     <div class="bab-strip bab-strip-bottom"></div>
     <div class="bab-content">
-      <div class="bab-warning">⚠ ${fr ? 'ALERTE BOSS' : 'BOSS ALERT'} ⚠</div>
+      <div class="bab-warning">${uiIcon('warning')} ${fr ? 'ALERTE BOSS' : 'BOSS ALERT'} ${uiIcon('warning')}</div>
       <div class="bab-name" style="--n:${nameText.length}">${name}</div>
       <div class="bab-tagline">${fr ? info.fr : info.en}</div>
     </div>`;
@@ -1344,6 +1345,43 @@ function spawnF14Line(count) {
   return planes;
 }
 
+// Kamikaze F-5 warning: a blinking red target ring while it locks on, then a
+// red speed streak behind it during the charge. Plain strokes, no shadowBlur.
+function drawKamikazeMark(e) {
+  const size = getEnemyDrawSize(e);
+  ctx.save();
+  if (e.kamikazePhase === 'lock') {
+    const on = Math.floor(e.kamikazeTimer / 7) % 2 === 0;
+    const r = size * (0.78 - 0.18 * Math.min(1, e.kamikazeTimer / KAMIKAZE_LOCK_FRAMES));
+    ctx.strokeStyle = on ? 'rgba(255,48,48,0.95)' : 'rgba(255,48,48,0.4)';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.arc(e.x, e.y, r, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.beginPath();
+    for (const a of [0, Math.PI / 2, Math.PI, Math.PI * 1.5]) {
+      ctx.moveTo(e.x + Math.cos(a) * r * 0.75, e.y + Math.sin(a) * r * 0.75);
+      ctx.lineTo(e.x + Math.cos(a) * r * 1.3, e.y + Math.sin(a) * r * 1.3);
+    }
+    ctx.stroke();
+  } else {
+    const len = size * 1.4;
+    const bx = Math.sin(e.headingAngle) * len;
+    const by = -Math.cos(e.headingAngle) * len;
+    const grad = ctx.createLinearGradient(e.x, e.y, e.x + bx, e.y + by);
+    grad.addColorStop(0, 'rgba(255,70,40,0.75)');
+    grad.addColorStop(1, 'rgba(255,70,40,0)');
+    ctx.strokeStyle = grad;
+    ctx.lineWidth = size * 0.28;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(e.x, e.y);
+    ctx.lineTo(e.x + bx, e.y + by);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
 function pruneEnemies(limitY = Infinity) {
   for (let i = G.enemies.length - 1; i >= 0; i--) {
     const e = G.enemies[i];
@@ -1499,14 +1537,6 @@ function _moveSpeed() {
 
 function _turnRate() {
   return AIRCRAFT[G.activeAircraft]?.ability?.turnRate || 1;
-}
-
-function _enemyMissileBurstCount() {
-  if (!isTouchMobile()) return 1;
-  if (G.currentLevel >= 41) return 4;
-  if (G.currentLevel >= 26) return 3;
-  if (G.currentLevel >= 11) return 2;
-  return 1;
 }
 
 function normaliseKey(k) {
@@ -2164,7 +2194,16 @@ function frame(ts = 0) {
   );
   // New-player practice break (after question 5): no new enemies.
   const spawnPaused = bossFirstShotGraceActive || guidedBreakActive();
-  if (!spawnPaused) spawnTimer -= _frameStep;
+  if (!spawnPaused) {
+    spawnTimer -= _frameStep;
+    // Keep planes coming one after another: an empty sky brings the next wave
+    // right away, and a single plane left shortens the wait.
+    if (adaptiveMaxEnemies() > 0) {
+      const left = activeRegularEnemyCount();
+      if (left === 0) spawnTimer = Math.min(spawnTimer, 10);
+      else if (left === 1) spawnTimer = Math.min(spawnTimer, 50);
+    }
+  }
   if (!spawnPaused && spawnTimer <= 0) {
     // New-player practice: only lone F-15s (no formations, lasers or gunships).
     const types = _guidedRun ? ['basic'] : RANDOM_ENEMY_TYPES;
@@ -2177,9 +2216,17 @@ function frame(ts = 0) {
       // Apaches now make individual, brief machine-gun ambushes.
       if (activeCount < normalCap) spawned.push(spawnEnemy(canvas.width, 'tank'));
     } else if (type === 'fast') {
-      // F-5 waves: a lone F-5, or a crossing X, V or W formation.
-      const shape = ['solo', 'x', 'v', 'w'][Math.floor(Math.random() * 4)];
-      if (shape === 'solo') {
+      // F-5 waves: a lone F-5, kamikazes, or a crossing X, V or W formation.
+      const shape = ['solo', 'kamikaze', 'x', 'v', 'w'][Math.floor(Math.random() * 5)];
+      if (shape === 'kamikaze') {
+        // 1 or 2 kamikaze F-5s (no guns, they charge the player), one after
+        // another from different spots. A second one only from level 20.
+        const most = G.currentLevel >= 20 ? 2 : 1;
+        const count = Math.min(1 + Math.floor(Math.random() * most), Math.max(1, normalCap - activeCount));
+        for (let i = 0; i < count; i++) {
+          spawned.push(spawnEnemy(canvas.width, 'fast', { kamikaze: true, kamikazeDelay: i * 160 }));
+        }
+      } else if (shape === 'solo') {
         // A single F-5 flying straight down from a random position.
         if (activeCount < normalCap) spawned.push(spawnEnemy(canvas.width, 'fast'));
       } else if (shape === 'x') {
@@ -2218,8 +2265,9 @@ function frame(ts = 0) {
 
     for (const e of spawned) {
       e.speed       *= levelCfg.enemySpeedMult * ENEMY_MOVEMENT_SPEED_SCALE * (_guidedRun ? GUIDED_ENEMY_SPEED : 1);
-      e.fireRate     = Math.max(isTouchMobile() ? 84 : 30, Math.floor(e.fireRate * levelCfg.enemyFireRateMult));
-      e.fireCooldown = (isTouchMobile() ? 96 : 45) + Math.floor(Math.random() * (isTouchMobile() ? 86 : 45));
+      // Same cadence on phone, tablet and computer.
+      e.fireRate     = Math.max(30, Math.floor(e.fireRate * levelCfg.enemyFireRateMult));
+      e.fireCooldown = 45 + Math.floor(Math.random() * 45);
       // Fixed cadence at 60 fps, independent of level: F-15 and F-5 every
       // 5 s, Eurofighter (the 'turner' sprite) every 3 s.
       const fixedFireRate = FIXED_ENEMY_FIRE_RATE[e.type];
@@ -2237,7 +2285,8 @@ function frame(ts = 0) {
   // Level-based missile guidance strength and homing probability
   // ── Enemies ────────────────────────────────────────────────────────────
   updateEnemies(G.enemies, canvas.width, canvas.height, _frameStep,
-    activeAircraftAbility().jam ? enemySpeedMultFor : null);
+    activeAircraftAbility().jam ? enemySpeedMultFor : null,
+    _stealthActive || G.lives <= 0 ? null : G.player);
   // Draw regular enemies first and bosses last. Keep G.enemies untouched so
   // collision, targeting, and spawn logic retain their original data order.
   const layeredEnemies = [
@@ -2281,7 +2330,6 @@ function frame(ts = 0) {
               const missileSpeed = (isTouchMobile() ? 3.8 : 2.8) * MISSILE_SPEED_SCALE;
               const aim = enemyAimTarget(e);
               for (const spread of [-52, 0, 52]) {
-                if (isTouchMobile() && G.enemyMissiles.length >= MAX_ENEMY_MISSILES_TOUCH) break;
                 const launchX = e.x + spread * 0.65;
                 const targetX = aim.x + spread;
                 const missile = createMissile(launchX, e.y + 22, targetX, aim.y, missileSpeed, e.id, '#ef4444');
@@ -2329,7 +2377,6 @@ function frame(ts = 0) {
               const gunOffsets = e.kawasakiBoss ? [-34, 34] : e.spaceShuttleBoss ? [-7, 7] : [0];
               const aim = enemyAimTarget(e);
               for (const gunOffset of gunOffsets) {
-                if (isTouchMobile() && G.enemyMissiles.length >= MAX_ENEMY_MISSILES_TOUCH) break;
                 const laser = createMissile(e.x + gunOffset, e.y + 22, aim.x, aim.y, 7.6 * MISSILE_SPEED_SCALE, e.id, '#ff2020');
                 laser.type = 'enemy-laser';
                 G.enemyMissiles.push(laser);
@@ -2372,13 +2419,11 @@ function frame(ts = 0) {
           && performance.now() >= (e.firstShotAt || 0)) {
           const ms = (e._missileSpd ?? 2.5) * (isTouchMobile() ? 1.45 : 1) * MISSILE_SPEED_SCALE;
           const mc = e._missileColor ?? '#ef4444';
-          if (!isTouchMobile() || G.enemyMissiles.length < MAX_ENEMY_MISSILES_TOUCH) {
-            const muzzleY = e.y + getEnemyDrawSize(e) * 0.30;
-            const aim = enemyAimTarget(e);
-            const em = createMissile(e.x, muzzleY, aim.x, aim.y, ms, e.id, mc);
-            G.enemyMissiles.push(em);
-            SFX.missile();
-          }
+          const muzzleY = e.y + getEnemyDrawSize(e) * 0.30;
+          const aim = enemyAimTarget(e);
+          const em = createMissile(e.x, muzzleY, aim.x, aim.y, ms, e.id, mc);
+          G.enemyMissiles.push(em);
+          SFX.missile();
           e.bossBurstFired++;
           e.bossBurstTimer = e._burstInterval ?? 28;
         }
@@ -2442,31 +2487,30 @@ function frame(ts = 0) {
           e.apacheGunCooldown -= _frameStep;
           if (e.apacheGunCooldown <= 0) {
             if (e.apacheBurstRemaining <= 0) e.apacheBurstRemaining = 7;
-            if (!isTouchMobile() || G.enemyMissiles.length < MAX_ENEMY_MISSILES_TOUCH) {
-              const muzzleX = e.x + (Math.random() - 0.5) * 10;
-              const aim = enemyAimTarget(e);
-              const targetX = aim.x + (Math.random() - 0.5) * 26;
-              const bullet = createMissile(muzzleX, e.y + getEnemyDrawSize(e) * 0.24, targetX, aim.y, 8.5 * MISSILE_SPEED_SCALE, e.id, '#ffd34d');
-              bullet.type = 'enemy-machine-gun';
-              G.enemyMissiles.push(bullet);
-              SFX.missile('gun');
-            }
+            const muzzleX = e.x + (Math.random() - 0.5) * 10;
+            const aim = enemyAimTarget(e);
+            const targetX = aim.x + (Math.random() - 0.5) * 26;
+            const bullet = createMissile(muzzleX, e.y + getEnemyDrawSize(e) * 0.24, targetX, aim.y, 8.5 * MISSILE_SPEED_SCALE, e.id, '#ffd34d');
+            bullet.type = 'enemy-machine-gun';
+            G.enemyMissiles.push(bullet);
+            SFX.missile('gun');
             e.apacheBurstRemaining--;
             e.apacheGunCooldown = e.apacheBurstRemaining > 0 ? 5 : 72;
           }
         }
+      } else if (e.kamikaze) {
+        // Kamikaze F-5: no weapon, the plane itself is the threat.
       } else {
         e.fireCooldown -= _frameStep;
       if (e.fireCooldown <= 0 && inFireZone && !_stealthActive) {
         e.fireCooldown = e.fireRate;
-        const burstCount = _enemyMissileBurstCount();
+        const burstCount = 1;
         // F-5s fire faster blue laser dots instead of red missiles.
         const isBlueDot = e.type === 'fast';
         const enemyMissileSpeed = (isTouchMobile() ? 3.8 : 2.5) * MISSILE_SPEED_SCALE * (isBlueDot ? 1.6 : 1);
         const muzzleY = e.y + getEnemyDrawSize(e) * 0.30;
         const aim = enemyAimTarget(e);
         for (let i = 0; i < burstCount; i++) {
-          if (isTouchMobile() && G.enemyMissiles.length >= MAX_ENEMY_MISSILES_TOUCH) break;
           const spread = (i - (burstCount - 1) / 2) * 28;
           const launchX = e.x + spread * 0.22;
           const targetX = aim.x + spread;
@@ -2485,6 +2529,7 @@ function frame(ts = 0) {
     const origX = e.x;
     e.x += ox;
     const bankAngle = (e.vx || 0) * 0.13;
+    if (e.kamikaze && e.kamikazePhase !== 'enter') drawKamikazeMark(e);
     drawEnemySprite(ctx, e, bankAngle);
     if (e.a330Boss && e.antiMissileActive) {
       const radius = e.antiMissileRadius || getEnemyDrawSize(e) * 0.78;
@@ -2892,7 +2937,7 @@ function frame(ts = 0) {
       ctx.textBaseline = 'middle';
       ctx.font = `bold ${Math.round(canvas.height * 0.11)}px sans-serif`;
       ctx.fillStyle = t < 0.5 ? '#1a0000' : '#ff4400';
-      ctx.fillText('☢ NUKE', canvas.width / 2, canvas.height / 2);
+      ctx.fillText('NUKE', canvas.width / 2, canvas.height / 2);
       ctx.restore();
     }
 
@@ -4977,43 +5022,24 @@ function resetAdaptivePerformance() {
   _drawBackgroundEveryOtherFrame = false;
 }
 
-// Computer (not phone): more enemy planes — they arrive more often and more
-// can be on screen at once. Training / beginner practice keep their own calm pace.
-const DESKTOP_SPAWN_INTERVAL_MULT = 0.7;   // 30% shorter wait between spawns
-const DESKTOP_MAX_ENEMIES_MULT = 1.5;      // +50% enemies on screen
+// Enemy numbers are the same on phone, tablet and computer: more planes, which
+// arrive more often and more of them at once. Training / beginner practice
+// keep their own calm pace. A slow phone is helped by cheaper drawing
+// (tuneAdaptivePerformance), never by removing enemies or shots.
+const SPAWN_INTERVAL_MULT = 0.7;   // 30% shorter wait between spawns
+const MAX_ENEMIES_MULT = 1.5;      // +50% enemies on screen
 
-function desktopExtraEnemies() {
-  return !isTouchMobile() && !isTutorialActive() && !_guidedRun;
+function extraEnemies() {
+  return !isTutorialActive() && !_guidedRun;
 }
 
 function adaptiveSpawnRate() {
-  if (!isTouchMobile()) {
-    return Math.round(baseSpawnRate * ENEMY_SPAWN_INTERVAL_SCALE
-      * (desktopExtraEnemies() ? DESKTOP_SPAWN_INTERVAL_MULT : 1));
-  }
-  const mult = _perfTier === 0 ? 1.25 : _perfTier === 1 ? 1.05 : 0.95;
-  return Math.max(40, Math.round(baseSpawnRate * mult * ENEMY_SPAWN_INTERVAL_SCALE));
+  return Math.round(baseSpawnRate * ENEMY_SPAWN_INTERVAL_SCALE
+    * (extraEnemies() ? SPAWN_INTERVAL_MULT : 1));
 }
 
 function adaptiveMaxEnemies() {
-  if (!isTouchMobile()) {
-    return desktopExtraEnemies() ? Math.ceil(baseMaxEnemies * DESKTOP_MAX_ENEMIES_MULT) : baseMaxEnemies;
-  }
-  const cap = _perfTier === 0 ? 6 : _perfTier === 1 ? 9 : 12;
-  return Math.min(baseMaxEnemies, cap);
-}
-
-function trimForAdaptivePerformance() {
-  const keepEnemies = adaptiveMaxEnemies();
-  while (activeRegularEnemyCount() > keepEnemies) {
-    let idx = G.enemies.findIndex(e => e?.type !== 'boss');
-    if (idx < 0) break;
-    G.enemies.splice(idx, 1);
-  }
-  const maxMissiles = _perfTier === 0 ? 1 : Math.min(2, MAX_ENEMY_MISSILES_TOUCH);
-  if (isTouchMobile() && G.enemyMissiles.length > maxMissiles) {
-    G.enemyMissiles.splice(0, G.enemyMissiles.length - maxMissiles);
-  }
+  return extraEnemies() ? Math.ceil(baseMaxEnemies * MAX_ENEMIES_MULT) : baseMaxEnemies;
 }
 
 function tuneAdaptivePerformance(ts = 0) {
@@ -5030,11 +5056,9 @@ function tuneAdaptivePerformance(ts = 0) {
 
   const lagMs = isTouchMobile() ? 19.5 : 31;
   const smoothMs = isTouchMobile() ? 16.9 : 19;
-  const previous = _perfTier;
   if (_perfAvgMs > lagMs && _perfTier > 0) _perfTier--;
   else if (_perfAvgMs < smoothMs && _perfTier < 2) _perfTier++;
   _drawBackgroundEveryOtherFrame = isTouchMobile() && _perfTier === 0;
-  if (_perfTier < previous) trimForAdaptivePerformance();
 }
 
 function initSpeedLines(cw, ch) {
@@ -5245,7 +5269,7 @@ export function initGame(levelNum, onComplete) {
 
   resetAdaptivePerformance();
   // Training and new-player practice: few, slowly arriving enemies.
-  baseSpawnRate = (isTutorialActive() || _guidedRun) ? 170 : isTouchMobile() ? Math.max(40, Math.round(levelCfg.spawnRate * 1.02)) : levelCfg.spawnRate;
+  baseSpawnRate = (isTutorialActive() || _guidedRun) ? 170 : levelCfg.spawnRate;
   baseMaxEnemies = (isTutorialActive() || _guidedRun) ? 2 : levelCfg.maxEnemies;
   spawnRate = baseSpawnRate;
   maxEnemies = baseMaxEnemies;
@@ -5528,7 +5552,7 @@ export function initGame(levelNum, onComplete) {
         G.enemies.push(boss);
         updateBossHealthBar(boss);
         // Companions spawn via normal timer — set maxEnemies to companion count
-        baseMaxEnemies = isTouchMobile() ? Math.min(levelCfg.bossCompanionMax, 8) : levelCfg.bossCompanionMax;
+        baseMaxEnemies = levelCfg.bossCompanionMax;
         maxEnemies = baseMaxEnemies;
       }
 
