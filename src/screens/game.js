@@ -42,6 +42,7 @@ import { wsOn, wsSend, wsDisconnect } from '../online/ws-client.js';
 const ENEMY_MOVEMENT_SPEED_SCALE = 0.82;
 // Phones and tablets: enemy planes fly 60% faster (they looked slow there).
 const TOUCH_ENEMY_SPEED_MULT = 1.6;
+const TOUCH_F5_EXTRA_SPEED = 1.35;   // F-5s: 35% more on top of that
 const ENEMY_SPAWN_INTERVAL_SCALE = 0.9;
 // Frames between shots (60 fps): F-15 = 5 s, F-5 ('fast') = 5 s,
 // Eurofighter ('turner') = 3 s.
@@ -2269,7 +2270,7 @@ function frame(ts = 0) {
 
     for (const e of spawned) {
       e.speed       *= levelCfg.enemySpeedMult * ENEMY_MOVEMENT_SPEED_SCALE * (_guidedRun ? GUIDED_ENEMY_SPEED : 1)
-        * (isTouchMobile() ? TOUCH_ENEMY_SPEED_MULT : 1);
+        * (isTouchMobile() ? TOUCH_ENEMY_SPEED_MULT * (e.type === 'fast' ? TOUCH_F5_EXTRA_SPEED : 1) : 1);
       // Same cadence on phone, tablet and computer.
       e.fireRate     = Math.max(30, Math.floor(e.fireRate * levelCfg.enemyFireRateMult));
       e.fireCooldown = 45 + Math.floor(Math.random() * 45);
