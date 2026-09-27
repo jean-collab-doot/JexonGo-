@@ -1,20 +1,17 @@
 import { drawFrame } from './sprites.js';
-import { isTouchMobile, maxParticlesTouch } from '../utils/device.js';
 
 export function spawnExplosion(particles, x, y, color, count = 14) {
-  const mobile = isTouchMobile();
   particles.push({
     spriteKey:   'enemy-death',
     x, y,
     frame:       0,
-    frameRate:   mobile ? 0.6 : 0.35,
+    frameRate:   0.35,
     totalFrames: 7,
-    size:        mobile ? Math.max(28, count * 2.2) : Math.max(44, count * 3.5),
+    size:        Math.max(44, count * 3.5),
   });
 }
 
 export function spawnMissileExplosion(particles, x, y, missileType = 'default', count = 14) {
-  const mobile = isTouchMobile();
   const profiles = {
     fire: { spriteKey: 'explosion-fire', glow: '#ff6a00', ring: '#ffcf33', size: 4.0, frames: 12 },
     ice: { spriteKey: 'explosion-ice', glow: '#67e8f9', ring: '#dffbff', size: 5.4, frames: 12 },
@@ -31,14 +28,13 @@ export function spawnMissileExplosion(particles, x, y, missileType = 'default', 
     ring: profile.ring,
     x, y,
     frame: 0,
-    frameRate: mobile ? 0.48 : 0.32,
+    frameRate: 0.32,
     totalFrames: profile.frames,
-    size: mobile ? Math.max(32, count * profile.size * 0.72) : Math.max(50, count * profile.size),
+    size: Math.max(50, count * profile.size),
   });
 }
 
 export function spawnHitSpark(particles, x, y) {
-  if (isTouchMobile()) return;
   particles.push({
     spriteKey:   'spark',
     x, y,
@@ -50,7 +46,7 @@ export function spawnHitSpark(particles, x, y) {
 }
 
 export function updateParticles(particles) {
-  const max = isTouchMobile() ? maxParticlesTouch() : 24;
+  const max = 24;
   for (let i = particles.length - 1; i >= 0; i--) {
     const p = particles[i];
     p.frame += p.frameRate;
@@ -60,7 +56,7 @@ export function updateParticles(particles) {
 }
 
 export function drawParticles(ctx, particles) {
-  const max = isTouchMobile() ? maxParticlesTouch() : 24;
+  const max = 24;
   const limit = Math.min(particles.length, max);
   for (let i = 0; i < limit; i++) {
     const p = particles[i];

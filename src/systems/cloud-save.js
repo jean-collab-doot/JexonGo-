@@ -16,14 +16,15 @@ const CLOUD_SAVE_AVAILABLE =
 const PERSIST_KEYS = [
   'xp', 'totalXpEarned', 'coins', 'blueprints', 'chestsWithoutEpic', 'levelStars',
   'unlockedAircraft', 'activeAircraft',
+  'planeUpgrades',
   'sr71Earned', 'sr71MissionClaimed', 'sr71WrongAnswers', 'sr71MissileHits',
-  'sr71CleanLevels', 'highestLevel', 'dailyLastLogin', 'dailyStreak', 'dailyStarterPlanComplete', 'dailyMissions',
+  'sr71CleanLevels', 'highestLevel', 'lifetimeXpEarned', 'multiXpEarned', 'dailyLastLogin', 'dailyStreak', 'dailyLastClaimAt', 'dailyStarterPlanComplete', 'dailyMissions',
   'dailyMissionDate', 'playMinutesByDay', 'monthlyChallenge', 'claimedRanks', 'rankedLP', 'rankedWins', 'rankedLosses',
   'rankedWinStreak', 'rankedGamesPlayed', 'rankedSeasonStart', 'rankedFirstWinToday',
   'playerName', 'playerEmail', 'playerPhoto', 'playerAge', 'playerGrade',
   'pilotEmblem', 'pilotMotto', 'profileTheme', 'practiceTimeLimit',
   'hasSeenOnboarding', 'likesMath', 'onboardingAgeGroup', 'onboardingGrade',
-  'focusOperation', 'focusOperations', 'pendingPlacement', 'tutorialMode',
+  'focusOperation', 'focusOperations', 'focusTopics', 'schoolLevel', 'playerCountry', 'numberRangeMax', 'pendingPlacement', 'tutorialMode',
   'onboardingStartMode', 'onboardingLevelLength', 'dailyGoalMinutes',
   'tutorialPlan', 'tutorialProgress', 'tutorialCompleted', 'postTutorialConnectPrompt', 'currentLevel',
 ];
@@ -64,7 +65,7 @@ function _hasPilotConfig(snap) {
 function _applyPilotConfig(out, source) {
   const keys = [
     'hasSeenOnboarding', 'likesMath', 'onboardingAgeGroup', 'onboardingGrade',
-    'focusOperation', 'focusOperations', 'pendingPlacement', 'tutorialMode',
+    'focusOperation', 'focusOperations', 'focusTopics', 'schoolLevel', 'playerCountry', 'numberRangeMax', 'pendingPlacement', 'tutorialMode',
     'onboardingStartMode', 'onboardingLevelLength', 'dailyGoalMinutes',
     'tutorialPlan', 'tutorialProgress', 'tutorialCompleted', 'postTutorialConnectPrompt',
     'practiceTimeLimit', 'currentLevel',
@@ -84,6 +85,8 @@ export function mergeSaveSnapshots(local, remote) {
 
   out.xp            = Math.max(local.xp || 0, remote.xp || 0);
   out.totalXpEarned = Math.max(local.totalXpEarned || 0, remote.totalXpEarned || 0);
+  out.lifetimeXpEarned = Math.max(local.lifetimeXpEarned || 0, remote.lifetimeXpEarned || 0);
+  out.multiXpEarned = Math.max(local.multiXpEarned || 0, remote.multiXpEarned || 0);
   out.coins         = clampCoins(Math.max(local.coins || 0, remote.coins || 0));
   out.highestLevel  = Math.max(local.highestLevel || 0, remote.highestLevel || 0);
   out.chestsWithoutEpic = Math.max(local.chestsWithoutEpic || 0, remote.chestsWithoutEpic || 0);
@@ -125,11 +128,17 @@ export function mergeSaveSnapshots(local, remote) {
     out.rankedFirstWinToday = remote.rankedFirstWinToday;
   }
 
-  const lDay = local.dailyLastLogin || '';
-  const rDay = remote.dailyLastLogin || '';
-  if (rDay > lDay) {
-    out.dailyLastLogin   = remote.dailyLastLogin;
+  // 7-day rewards: keep the side with the most recent claim.
+  const lClaim = Number(local.dailyLastClaimAt) || 0;
+  const rClaim = Number(remote.dailyLastClaimAt) || 0;
+  if (rClaim > lClaim) {
+    out.dailyLastClaimAt = rClaim;
     out.dailyStreak      = remote.dailyStreak;
+    out.dailyLastLogin   = remote.dailyLastLogin;
+  }
+  const lDay = local.dailyMissionDate || '';
+  const rDay = remote.dailyMissionDate || '';
+  if (rDay > lDay) {
     out.dailyMissions    = remote.dailyMissions;
     out.dailyMissionDate = remote.dailyMissionDate;
   }
@@ -152,7 +161,7 @@ export function mergeSaveSnapshots(local, remote) {
 
 function _authBody({ authType } = {}) {
   const email = (G.playerEmail || '').toLowerCase().trim();
-  const body = { email, authType: authType || 'supabase' };
+  const body = { email, authType: authType || G.playerAuthType || 'supabase' };
   return body;
 }
 
@@ -196,7 +205,7 @@ export async function pushCloudSave(opts = {}) {
   if (_cloudSaveOffline) return false;
   if (!CLOUD_SAVE_AVAILABLE) return false;
 
-  const authType = opts.authType || 'supabase';
+  const authType = opts.authType || G.playerAuthType || 'supabase';
 
   try {
     const token = await getSupabaseAccessToken();
@@ -272,7 +281,7 @@ export async function syncAccountFromCloud(opts = {}) {
   const email = (G.playerEmail || '').toLowerCase().trim();
   if (!G.playerRegistered || !email) return { ok: false };
 
-  const authType = opts.authType || 'supabase';
+  const authType = opts.authType || G.playerAuthType || 'supabase';
   const local = exportSaveSnapshot();
   const remote = await fetchCloudSave(email, '', authType);
   if (remote?.forbidden) return { ok: false, forbidden: true };

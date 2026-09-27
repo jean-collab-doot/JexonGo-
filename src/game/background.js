@@ -1,19 +1,11 @@
 // ── PARALLAX BACKGROUND ──────────────────────────────────────────────────────
-import { getImage } from './sprites.js';
+import { getImage, biomeBgKey } from './sprites.js';
 import { isTouchMobile } from '../utils/device.js';
 
 function _bgSpeed() {
   if (isTouchMobile()) return 0.1;
   return 0.14;
 }
-
-const LAYER_DEFS = {
-  ocean:  [{ key: 'ocean-bg',  speed: _bgSpeed() }],
-  desert: [{ key: 'desert-bg', speed: _bgSpeed() }],
-  city:   [{ key: 'city-bg',   speed: _bgSpeed() }],
-  arctic: [{ key: 'arctic-bg', speed: _bgSpeed() }],
-  space:  [{ key: 'space-bg',  speed: _bgSpeed() }],
-};
 
 let _layers      = [];
 let _lastCanvasW = 0;
@@ -38,17 +30,16 @@ function buildScaledLayer(layer, img, width) {
   layer.dh = height;
 }
 
-export function initBackground(biome) {
+export function initBackground(biome, levelNum) {
   _activeBiome = biome || 'ocean';
-  const defs = LAYER_DEFS[_activeBiome] ?? LAYER_DEFS.ocean;
-  _layers = defs.map(d => ({
-    key: d.key,
+  _layers = [{
+    key: biomeBgKey(_activeBiome, levelNum),
     speed: _bgSpeed(),
     y: 0,
     positioned: false,
     dh: 0,
     surface: null,
-  }));
+  }];
   _lastCanvasW = 0;
   _lastCanvasH = 0;
 }

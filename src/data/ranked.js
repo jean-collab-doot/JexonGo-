@@ -34,10 +34,6 @@ export function getRankInfo(lp) {
   return { tier, division, divLabel: `${tier.name} ${DIV_LABELS[divIdx]}`, lpInDiv, lpMax: divSize };
 }
 
-export function rankDisplayName(lp) {
-  return getRankInfo(lp).divLabel;
-}
-
 // ── LP CHANGE CALCULATION ─────────────────────────────────────────────────────
 // Base gain/loss adjusted by rating difference between player and opponent.
 // New player protection: first PLACEMENT_MATCHES games → no LP loss.
@@ -94,13 +90,3 @@ export function simulateOpponentAnswer(lp) {
   const time     = Math.max(0.4, avgTime + (Math.random() - 0.5) * 3);
   return { correct, time: +time.toFixed(1) };
 }
-
-// ── SEASON RANK REWARDS ───────────────────────────────────────────────────────
-export const SEASON_REWARDS = {
-  bronze:   { coins: 500,  label: 'BRONZE SEASON REWARD' },
-  silver:   { coins: 1000, label: 'SILVER SEASON REWARD' },
-  gold:     { coins: 2000, label: 'GOLD SEASON REWARD'   },
-  platinum: { coins: 3500, label: 'PLATINUM SEASON REWARD' },
-  diamond:  { coins: 5000, label: 'DIAMOND SEASON REWARD' },
-  elite:    { coins: 8000, label: 'ELITE SEASON REWARD'  },
-};

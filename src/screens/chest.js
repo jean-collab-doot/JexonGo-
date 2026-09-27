@@ -88,6 +88,20 @@ function showRoulette(chestData, onDone) {
     rlStr.style.transform  = `translateX(${endTranslate}px)`;
   });
 
+  // A tick each time a tile passes the pointer (read from the moving strip).
+  const spinStart = performance.now();
+  let lastTile = 0;
+  const tickLoop = () => {
+    const x = new DOMMatrixReadOnly(getComputedStyle(rlStr).transform).m41;
+    const tile = Math.floor((startTranslate - x) / TILE_UNIT + 0.5);
+    if (tile !== lastTile) {
+      lastTile = tile;
+      SFX.rouletteTick(Math.min(1, (performance.now() - spinStart) / 3200));
+    }
+    if (performance.now() - spinStart < 3250) requestAnimationFrame(tickLoop);
+  };
+  requestAnimationFrame(tickLoop);
+
   // After spin, highlight and reveal result
   setTimeout(() => {
     // Highlight winning tile
@@ -101,7 +115,7 @@ function showRoulette(chestData, onDone) {
       if (lbl) lbl.textContent = `+${reward.amount}`;
     }
 
-    SFX.rouletteWin?.();
+    SFX.rouletteWin(slot?.rarityIdx ?? (winSlotId === 'xp500' ? 2 : winSlotId === 'xp200' ? 1 : 0));
 
     // Show result card
     setTimeout(() => { if (onDone) onDone(); }, 600);
@@ -140,6 +154,16 @@ function buildResultCard(reward) {
     } else {
       title = ac?.name || reward.aircraft;
       sub   = `+${reward.pieces} PIECE${reward.pieces > 1 ? 'S' : ''}  ${bar}  ${have}/${needed}`;
+    }
+  } else if (reward.type === 'aircraft') {
+    const ac = AIRCRAFT[reward.aircraft];
+    if (reward._converted) {
+      title = `+${reward.amount} XP`;
+      sub   = `${ac?.name || reward.aircraft} DUPLICATE`;
+    } else {
+      title = ac?.name || reward.aircraft;
+      sub   = 'MYTHIC AIRCRAFT';
+      icon  = `<img src="/assets/hangar/${reward.aircraft}.webp" alt="" class="crc-aircraft-icon">`;
     }
   }
 
@@ -204,7 +228,7 @@ export function showChest(chestData) {
     openBtn.disabled = true;
 
     // Bounce open animation
-    SFX.chest?.();
+    SFX.chestOpen();
     [
       [80,  'scale(1.25) rotate(-6deg)'],
       [220, 'scale(0.88) rotate(3deg)'],
@@ -239,7 +263,10 @@ export function showChest(chestData) {
         save('totalXpEarned',     G.totalXpEarned);
         save('blueprints',        G.blueprints);
         save('chestsWithoutEpic', G.chestsWithoutEpic);
-        if (newlyUnlocked.length) save('unlockedAircraft', G.unlockedAircraft);
+        if (newlyUnlocked.length) {
+          save('unlockedAircraft', G.unlockedAircraft);
+          save('acquiredAircraft', G.acquiredAircraft);
+        }
 
         // Show result card
         if (resultArea) {

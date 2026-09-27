@@ -1,0 +1,8 @@
+{
+  "appId": "com.jexongo.app",
+  "appName": "JexonGo",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https"
+  }
+}

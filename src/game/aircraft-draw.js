@@ -37,12 +37,12 @@ function getPlayerSize() {
   if (_cachedPlayerSizeW !== w) {
     _cachedPlayerSizeW = w;
     if (isTouchMobile()) {
-      const min = isPhone() ? 62 : 96;
-      const max = isPhone() ? 82 : 128;
-      _cachedPlayerSize = Math.round(_clamp(w * 0.24, min, max));
+      const min = isPhone() ? 48 : 72;
+      const max = isPhone() ? 62 : 96;
+      _cachedPlayerSize = Math.round(_clamp(w * 0.18, min, max));
     } else {
       const narrow = w <= 520;
-      _cachedPlayerSize = narrow ? 85 : 150;
+      _cachedPlayerSize = narrow ? 64 : 112;
     }
   }
   return _cachedPlayerSize;
@@ -77,8 +77,8 @@ export function getEnemyDrawSize(enemy) {
   if (enemy?.a330Boss || enemy?.b52Boss || enemy?.kawasakiBoss || enemy?.c5Boss || enemy?.spaceShuttleBoss) {
     const w = _layoutWidth();
     return Math.round(isTouchMobile()
-      ? _clamp(w * 0.56, 160, 235)
-      : _clamp(w * 0.48, 250, 430));
+      ? _clamp(w * 0.40, 115, 170)
+      : _clamp(w * 0.34, 180, 300));
   }
   return isTouchMobile() ? getTouchEnemySize() : enemy.size * getEnemyScale();
 }
@@ -90,7 +90,7 @@ export function drawAircraftSprite(ctx, aircraftId, cx, cy, frame, alpha = 1, ba
   ctx.save();
   ctx.imageSmoothingEnabled = true;
   if (alpha !== 1)  ctx.globalAlpha = alpha;
-  if (skinFilter && !isPhone()) ctx.filter = skinFilter;
+  if (skinFilter) ctx.filter = skinFilter;
   const sz = getPlayerSize();
   drawFrame(ctx, key, frame, cx, cy, sz, sz, { rotate: bankAngle });
   ctx.restore();
@@ -101,19 +101,13 @@ export function drawAircraftSpriteSized(ctx, aircraftId, cx, cy, size, frame, al
   ctx.save();
   ctx.imageSmoothingEnabled = true;
   if (alpha !== 1) ctx.globalAlpha = alpha;
-  if (skinFilter && !isPhone()) ctx.filter = skinFilter;
+  if (skinFilter) ctx.filter = skinFilter;
   drawFrame(ctx, key, frame, cx, cy, size, size, { rotate: bankAngle });
   ctx.restore();
 }
 
-export function drawAircraftPreview(ctx, aircraftId, cx, cy, size) {
-  const key = AIRCRAFT_SPRITE[aircraftId] ?? 'ship-t6';
-  ctx.save();
-  ctx.imageSmoothingEnabled = true;
-  ctx.globalCompositeOperation = 'screen';
-  drawFrame(ctx, key, 0, cx, cy, size, size);
-  ctx.restore();
-}
+// Width / height of one frame of the STS engine sheet (176 x 250).
+const STS_FRAME_RATIO = 176 / 250;
 
 export function drawEnemySprite(ctx, enemy, bankAngle = 0) {
   const size = getEnemyDrawSize(enemy);
@@ -123,12 +117,40 @@ export function drawEnemySprite(ctx, enemy, bankAngle = 0) {
     ctx.save();
     ctx.globalAlpha *= spawnAlpha;
   }
+  // Banking enemies (fast / turner): when moving sideways hard enough, swap the
+  // level-flight sheet for a dedicated bank pose. Sheet row 0 = bank right,
+  // row 1 = bank left; the enemy is drawn 180°-flipped so a screen-right turn
+  // needs the source's LEFT-bank pose (row 1) and vice-versa.
+  // Drive the bank pose off a smoothed signal (bankVis) rather than the raw
+  // per-frame vx: without it the plane snapped from a deep bank straight to
+  // level — and briefly to a yaw the opposite way — the instant a turn ended.
+  const bankSignal = enemy.bankSpriteKey ? (enemy.bankVis ?? enemy.vx ?? 0) : 0;
+  const bankLevel = enemy.bankSpriteKey
+    ? Math.min(4, Math.round(Math.abs(bankSignal) * 3.2))
+    : 0;
+  if (bankLevel > 0) {
+    const row = bankSignal > 0 ? 5 : 0;
+    const drawWidth = size;
+    const drawEnemyFrame = () => drawFrame(
+      ctx, enemy.bankSpriteKey, row + bankLevel, enemy.x, enemy.y, drawWidth, size, { rotate: Math.PI });
+    if (enemy.spriteFilter) {
+      ctx.save();
+      ctx.filter = enemy.spriteFilter;
+      drawEnemyFrame();
+      ctx.restore();
+    } else {
+      drawEnemyFrame();
+    }
+    if (spawnAlpha < 1) ctx.restore();
+    return;
+  }
+
   const drawEnemyFrame = () => {
     if (enemy.interpolateFrames) {
       const current = Math.floor(enemy.animFrame || 0);
       const next = Math.min(11, current + 1);
       const blend = Math.max(0, Math.min(1, (enemy.animFrame || 0) - current));
-      const drawWidth = enemy.spaceShuttleBoss ? size * (1254 / 1500) : size;
+      const drawWidth = enemy.spaceShuttleBoss ? size * STS_FRAME_RATIO : size;
       drawFrame(ctx, enemy.spriteKey, current, enemy.x, enemy.y, drawWidth, size,
         { rotate: Math.PI + rotation, alpha: 1 - blend });
       if (blend > 0.001 && next !== current) {
@@ -136,12 +158,16 @@ export function drawEnemySprite(ctx, enemy, bankAngle = 0) {
           { rotate: Math.PI + rotation, alpha: blend });
       }
     } else {
-      const drawWidth = enemy.spaceShuttleBoss ? size * (1254 / 1500) : size;
-      drawFrame(ctx, enemy.spriteKey, enemy.animFrame, enemy.x, enemy.y, drawWidth, size,
+      const drawWidth = enemy.spaceShuttleBoss ? size * STS_FRAME_RATIO : size;
+      // STS: its engine flames loop continuously (10 frames, ~11 fps).
+      const frame = enemy.spaceShuttleBoss
+        ? Math.floor(performance.now() / 90) % 10
+        : enemy.animFrame;
+      drawFrame(ctx, enemy.spriteKey, frame, enemy.x, enemy.y, drawWidth, size,
         { rotate: Math.PI + rotation });
     }
   };
-  if (enemy.spriteFilter && !isPhone()) {
+  if (enemy.spriteFilter) {
     ctx.save();
     ctx.filter = enemy.spriteFilter;
     drawEnemyFrame();

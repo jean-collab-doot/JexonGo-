@@ -1,20 +1,20 @@
 import { $, showScreen } from '../utils/dom.js';
+import { rollChestTier } from '../systems/chest.js';
 import { G, loadSave, saveAll, clampCoins, MAX_COINS } from '../state.js';
 import { LOGIN_REWARDS, claimDailyReward, getMissions, claimMission,
-         hasPendingMissionClaim, getPlayerRank,
-         getSr71MissionState, claimSr71Mission,
-         getPlayMinuteStats, getMonthlyConfigChallenge } from '../systems/daily.js';
+         hasPendingMissionClaim, getPlayMinuteStats, getMonthlyConfigChallenge } from '../systems/daily.js';
 import { clearAll, save, load } from '../utils/storage.js';
-import { AIRCRAFT } from '../data/aircraft.js';
-import { getPilotInfo } from '../data/pilots.js';
+import { AIRCRAFT, AIRCRAFT_ORDER } from '../data/aircraft.js';
 import { t, getLang, setLang, applyI18n } from '../i18n.js';
-import { isPhone, isTouchMobile, touchMenuCanvasDpr } from '../utils/device.js';
 import { syncAccountFromCloud, deleteCloudSave, flushCloudSave, fetchCloudSave,
          mergeSaveSnapshots, exportSaveSnapshot, applySaveSnapshot } from '../systems/cloud-save.js';
 import { signInWithEmail, signOutSupabase } from '../systems/supabase-client.js';
 import { claimSessionOrBlock, releaseSession, sessionBlockedMessage } from '../systems/session-guard.js';
 import { SFX } from '../audio/sound.js';
 import { coinIcon, expIcon } from '../utils/icons.js';
+import { makeBottomSheet } from '../utils/bottomsheet.js';
+import { bindHangarTabs, renderHangarPanels, buyAircraftFromLobby, planeCost, meetsGradeRequirement } from './hangar.js';
+import { isMultiLobby, openMultiChoices } from './multiplayer.js';
 
 // ── GOOGLE SIGN-IN ───────────────────────────────────────────────────────────
 const GOOGLE_CLIENT_ID = '182729505930-rulb73m14t9qvfpjfbplknrcgn0fqvci.apps.googleusercontent.com';
@@ -121,37 +121,6 @@ function _hideGsiFallback() {
   document.getElementById('gsi-fallback-overlay')?.classList.add('hidden');
 }
 
-function _updateProfile() {
-  const wrap       = document.getElementById('menu-profile');
-  const photoEl    = document.getElementById('menu-profile-photo');
-  const initialEl  = document.getElementById('menu-profile-initial');
-  const nameEl     = document.getElementById('menu-profile-name');
-  const loginDiv   = document.querySelector('.login-divider');
-  const gBtn       = document.getElementById('btn-login-google');
-  const authRow    = document.getElementById('login-auth-row');
-
-  const isLoggedIn = !!G.playerRegistered;
-  const hasPhoto   = !!G.playerPhoto;
-
-  if (wrap) wrap.classList.toggle('hidden', !isLoggedIn);
-
-  if (photoEl) {
-    photoEl.src   = hasPhoto ? G.playerPhoto : '';
-    photoEl.style.display = hasPhoto ? 'block' : 'none';
-  }
-  if (initialEl) {
-    initialEl.textContent = (G.playerName || 'P')[0].toUpperCase();
-    initialEl.style.display = hasPhoto ? 'none' : 'flex';
-  }
-  if (nameEl) nameEl.textContent = G.playerName || 'PILOT';
-
-  if (loginDiv) loginDiv.style.display = isLoggedIn ? 'none' : '';
-  if (gBtn)     { gBtn.style.display   = isLoggedIn ? 'none' : ''; gBtn.classList.toggle('hidden', isLoggedIn); }
-  if (authRow)  authRow.style.display  = isLoggedIn ? 'none' : '';
-
-  document.getElementById('menu-profile-dropdown')?.classList.add('hidden');
-}
-
 async function _handleSignOut() {
   await flushCloudSave();
   await releaseSession();
@@ -159,9 +128,6 @@ async function _handleSignOut() {
   if (typeof google !== 'undefined' && google.accounts) {
     google.accounts.id.disableAutoSelect();
   }
-  // Mark the in-memory player as signed out before clearing/reloading.
-  // Otherwise beforeunload sees the old authenticated state and saveAll()
-  // immediately recreates the account keys that clearAll() just removed.
   G.playerRegistered = false;
   G.playerEmail = '';
   G.playerPhoto = '';
@@ -192,7 +158,6 @@ function _openDeleteAccountModal() {
   if (understand) understand.checked = false;
   if (confirm) confirm.value = '';
   _setDeleteAccountError('');
-  document.getElementById('menu-profile-dropdown')?.classList.add('hidden');
   modal.classList.remove('hidden');
 }
 
@@ -315,8 +280,10 @@ async function _handleLoginSubmit() {
   _closeLoginOverlay();
   G.playerRegistered = true;
   G.playerEmail      = emailIn;
+  G.playerAuthType   = 'email';
   save('playerRegistered', true);
   save('playerEmail',      emailIn);
+  save('playerAuthType',   'email');
   loadSave();
   if (remote?.data) {
     applySaveSnapshot(mergeSaveSnapshots(exportSaveSnapshot(), remote.data));
@@ -328,414 +295,251 @@ async function _handleLoginSubmit() {
   _showToast(t('welcomeBack').replace('{name}', G.playerName || 'PILOT'));
 }
 
-// ── ASSETS ────────────────────────────────────────────────────────────────────
-const PLANE_PATH  = '/assets/menu/anim-3.png';
-const FIRE_PATH   = '/assets/menu/engine-fire.png';
-const FIRE_FRAMES = 4;
-
-function _isMenuMobile() { return isTouchMobile(); }
-
-let _planeImg    = null;
-let _fireImg     = null;
-let _raf         = null;
-let _tick        = 0;
-let _activeVid   = 'v1'; // which video is currently primary
-let _xfadeT      = -1;   // -1 = idle, 0..1 = crossfade progress
-let _lastMenuRender = 0;
-
-function loadAssets() {
-  if (_planeImg) return;
-  _planeImg = new Image(); _planeImg.src = PLANE_PATH;
-
-  _fireImg = new Image(); _fireImg.src = FIRE_PATH;
-
-  const vid = document.getElementById('menu-bg-video');
-  if (vid && !isPhone()) {
-    // Clone for crossfade — both loop independently
-    const vid2 = vid.cloneNode(true);
-    vid2.id = 'menu-bg-video2';
-    vid2.style.opacity = '0';
-    vid2.removeAttribute('loop');
-    vid.parentNode.insertBefore(vid2, vid.nextSibling);
-    vid.removeAttribute('loop');
-
-    vid.style.opacity  = '1';
-    vid2.style.opacity = '0';
-    vid.play().catch(() => {});
-    _activeVid = 'v1';
-    _xfadeT    = -1;
-  } else if (vid) {
-    vid.style.opacity = '1';
-    vid.play().catch(() => {});
-    _activeVid = 'v1';
-    _xfadeT    = -1;
-  }
+// ── TOAST ────────────────────────────────────────────────────────────────────
+let _toastTimer = null;
+function _showToast(msg) {
+  const el = document.getElementById('login-toast');
+  if (!el) return;
+  el.textContent = msg;
+  el.classList.add('toast-show');
+  if (_toastTimer) clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => el.classList.remove('toast-show'), 2200);
 }
-
-// ── DRIFTING CLOUDS ───────────────────────────────────────────────────────────
-// Mimics the 200.gif: white/light clouds scrolling right → left at varying depths
-const CLOUDS = [
-  { xFrac: 1.10, y: 0.08, w: 180, h: 70,  speed: 0.55, alpha: 0.82 },
-  { xFrac: 1.40, y: 0.18, w: 240, h: 90,  speed: 0.40, alpha: 0.70 },
-  { xFrac: 1.70, y: 0.05, w: 130, h: 55,  speed: 0.65, alpha: 0.60 },
-  { xFrac: 2.00, y: 0.28, w: 200, h: 80,  speed: 0.35, alpha: 0.75 },
-  { xFrac: 0.60, y: 0.14, w: 160, h: 60,  speed: 0.50, alpha: 0.65 },
-  { xFrac: 0.20, y: 0.32, w: 110, h: 45,  speed: 0.70, alpha: 0.55 },
-  { xFrac: 2.30, y: 0.22, w: 280, h: 100, speed: 0.30, alpha: 0.72 },
-];
-
-// Store absolute x positions, initialised on first draw
-let _cloudXs = null;
-
-function initClouds(dW) {
-  _cloudXs = CLOUDS.map(c => c.xFrac * dW);
-}
-
-function drawCloud(ctx, x, y, w, h, alpha) {
-  ctx.save();
-  ctx.globalAlpha = alpha;
-  // Build a puffy cloud from overlapping white ellipses
-  const puffs = [
-    { dx: 0,        dy: 0,       rx: w * 0.30, ry: h * 0.55 },
-    { dx: w * 0.22, dy:-h * 0.12,rx: w * 0.28, ry: h * 0.50 },
-    { dx:-w * 0.22, dy:-h * 0.08,rx: w * 0.25, ry: h * 0.45 },
-    { dx: w * 0.42, dy: h * 0.08, rx: w * 0.20, ry: h * 0.38 },
-    { dx:-w * 0.40, dy: h * 0.10, rx: w * 0.18, ry: h * 0.35 },
-  ];
-  const grad = ctx.createRadialGradient(x, y - h * 0.1, 0, x, y, h * 0.7);
-  grad.addColorStop(0,   'rgba(255,255,255,1)');
-  grad.addColorStop(0.6, 'rgba(230,242,255,0.95)');
-  grad.addColorStop(1,   'rgba(200,225,255,0)');
-  ctx.fillStyle = grad;
-  for (const p of puffs) {
-    ctx.beginPath();
-    ctx.ellipse(x + p.dx, y + p.dy, p.rx, p.ry, 0, 0, Math.PI * 2);
-    ctx.fill();
-  }
-  ctx.restore();
-}
-
-function updateDrawClouds(ctx, dW, dH) {
-  if (!_cloudXs) initClouds(dW);
-  for (let i = 0; i < CLOUDS.length; i++) {
-    const c = CLOUDS[i];
-    _cloudXs[i] -= c.speed;
-    if (_cloudXs[i] + c.w < 0) _cloudXs[i] = dW + c.w + Math.random() * 200;
-    drawCloud(ctx, _cloudXs[i], dH * c.y + c.h / 2, c.w, c.h, c.alpha);
-  }
-}
-
-// ── THREE PLANES ──────────────────────────────────────────────────────────────
-const PLANES = [
-  { xFrac: 0.18, startOffset: 0,   speed: 2.8, scale: 0.42, y: null, smoke: [] },
-  { xFrac: 0.50, startOffset: 300, speed: 3.4, scale: 0.65, y: null, smoke: [] },
-  { xFrac: 0.82, startOffset: 600, speed: 2.5, scale: 0.38, y: null, smoke: [] },
-];
-
-// ── SMOKE PARTICLES ───────────────────────────────────────────────────────────
-function spawnSmoke(p, ex, ey) {
-  p.smoke.push({
-    x: ex + (Math.random() - 0.5) * 6,
-    y: ey,
-    r: 3 + Math.random() * 3,
-    alpha: 0.30 + Math.random() * 0.18,
-    vx: (Math.random() - 0.5) * 0.4,
-    vy: 1.0 + Math.random() * 0.7,
-    grow: 0.35,
-  });
-}
-
-function updateDrawSmoke(ctx, p) {
-  for (let i = p.smoke.length - 1; i >= 0; i--) {
-    const s = p.smoke[i];
-    s.x += s.vx; s.y += s.vy; s.r += s.grow; s.alpha -= 0.008;
-    if (s.alpha <= 0) { p.smoke.splice(i, 1); continue; }
-    ctx.save();
-    ctx.globalAlpha = s.alpha;
-    const g = ctx.createRadialGradient(s.x, s.y, 0, s.x, s.y, s.r);
-    g.addColorStop(0, 'rgba(255,255,255,1)');
-    g.addColorStop(1, 'rgba(200,220,240,0)');
-    ctx.fillStyle = g;
-    ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2); ctx.fill();
-    ctx.restore();
-  }
-}
-
-// ── ENGINE FIRE (Legacy sprite) ───────────────────────────────────────────────
-function drawEngineFire(ctx, x, y, size) {
-  if (!_fireImg || !_fireImg.complete || !_fireImg.naturalWidth) return;
-  const fw    = _fireImg.naturalWidth / FIRE_FRAMES;
-  const fh    = _fireImg.naturalHeight;
-  const frame = Math.floor(_tick / 4) % FIRE_FRAMES;
-  const s     = size * 3.5;
-  ctx.save();
-  ctx.globalCompositeOperation = 'screen';
-  ctx.drawImage(_fireImg, frame * fw, 0, fw, fh, x - s / 2, y - s / 2, s, s);
-  ctx.restore();
-}
-
-// ── MAIN DRAW LOOP ────────────────────────────────────────────────────────────
-function drawTick() {
-  const canvas = document.getElementById('menu-canvas');
-  if (!canvas || document.getElementById('s-menu')?.classList.contains('hidden')) {
-    _raf = null; return;
-  }
-  const dW = canvas.clientWidth  || 360;
-  const dH = canvas.clientHeight || 640;
-  if (_isMenuMobile()) {
-    const dpr = touchMenuCanvasDpr();
-    const pw = Math.round(dW * dpr);
-    const ph = Math.round(dH * dpr);
-    if (canvas.width !== pw || canvas.height !== ph) {
-      canvas.width  = pw;
-      canvas.height = ph;
-      canvas.style.width  = dW + 'px';
-      canvas.style.height = dH + 'px';
-    }
-  } else if (canvas.width !== dW || canvas.height !== dH) {
-    canvas.width = dW;
-    canvas.height = dH;
-    canvas.style.width = canvas.style.height = '';
-  }
-
-  const ctx = canvas.getContext('2d');
-  const cW = canvas.width;
-  const cH = canvas.height;
-  ctx.clearRect(0, 0, cW, cH);
-  _tick++;
-
-  // 0. Video crossfade — fully RAF-driven, no timeupdate, no black flash
-  const vid  = document.getElementById('menu-bg-video');
-  const vid2 = document.getElementById('menu-bg-video2');
-  const FADE_DUR  = 1.5;
-  const FADE_STEP = 1 / (FADE_DUR * 60);
-
-  if (!isPhone() && vid && vid2) {
-    const primary   = _activeVid === 'v1' ? vid  : vid2;
-    const secondary = _activeVid === 'v1' ? vid2 : vid;
-    if ((primary.paused || primary.ended) && document.visibilityState !== 'hidden') {
-      if (primary.ended) primary.currentTime = 0;
-      primary.play().catch(() => {});
-    }
-    if (_xfadeT >= 0 && secondary.paused && document.visibilityState !== 'hidden') {
-      secondary.play().catch(() => {});
-    }
-
-    if (_xfadeT < 0) {
-      // Idle — watch for near-end of primary
-      const dur = primary.duration;
-      const cur = primary.currentTime;
-      if (dur > 0 && !isNaN(dur) && cur > 0 && (dur - cur) <= FADE_DUR) {
-        secondary.currentTime = 0;
-        secondary.play().catch(() => {});
-        _xfadeT = 0;
-      }
-    } else {
-      // Crossfade in progress: primary fades out, secondary fades in
-      _xfadeT = Math.min(1, _xfadeT + FADE_STEP);
-      primary.style.opacity   = 1 - _xfadeT;
-      secondary.style.opacity = _xfadeT;
-
-      if (_xfadeT >= 1) {
-        // Secondary is now fully visible — make it the new primary
-        _activeVid = _activeVid === 'v1' ? 'v2' : 'v1';
-        primary.pause();
-        primary.currentTime = 0;
-        primary.style.opacity = '0';
-        _xfadeT = -1;
-      }
-    }
-  }
-
-  // 1. Drifting clouds (desktop only — costly on phone/tablet)
-  if (!isPhone()) updateDrawClouds(ctx, cW, cH);
-
-  // 2. Planes + smoke + fire
-  if (_planeImg && _planeImg.complete && _planeImg.naturalWidth) {
-    const iw = _planeImg.naturalWidth, ih = _planeImg.naturalHeight;
-    const visiblePlanes = _isMenuMobile() ? PLANES.slice(0, 1) : PLANES;
-
-    for (const p of visiblePlanes) {
-      const drawH = cH * p.scale;
-      const drawW = iw * (drawH / ih);
-      const planeXFrac = _isMenuMobile() ? 0.50 : p.xFrac;
-      const bx    = cW * planeXFrac - drawW / 2;
-
-      if (p.y === null) p.y = cH + drawH + p.startOffset;
-      p.y -= _isMenuMobile() ? p.speed * 1.4 : p.speed;
-      if (p.y < -drawH * 2) { p.y = cH + drawH; p.smoke = []; }
-
-      // Accelerate smoke fade as plane nears the top
-      const fadeRatio = p.y < 0 ? Math.max(0, 1 + p.y / drawH) : 1;
-      if (fadeRatio < 1) {
-        for (const s of p.smoke) s.alpha -= 0.04 * (1 - fadeRatio);
-      }
-
-      ctx.save();
-      ctx.imageSmoothingEnabled = true;
-      ctx.globalCompositeOperation = 'multiply';
-      ctx.drawImage(_planeImg, bx, p.y, drawW, drawH);
-      ctx.restore();
-    }
-  }
-
-  _raf = requestAnimationFrame(drawTick);
-}
-
-function _ensureMenuAnimation() {
-  const menu = document.getElementById('s-menu');
-  if (!menu || menu.classList.contains('hidden')) return;
-
-  const vid = document.getElementById('menu-bg-video');
-  if (vid) {
-    vid.style.opacity = vid.style.opacity || '1';
-    if ((vid.paused || vid.ended) && document.visibilityState !== 'hidden') {
-      if (vid.ended) vid.currentTime = 0;
-      vid.play().catch(() => {});
-    }
-  }
-
-  if (!_raf) _raf = requestAnimationFrame(drawTick);
-}
+window._showToast = _showToast;
 
 // ── LANGUAGE ─────────────────────────────────────────────────────────────────
 function _applyLang() {
-  const lang = getLang();
-  const btn  = $('btn-lang');
-  if (btn) btn.textContent = lang === 'fr' ? 'FR' : 'EN';
+  applyI18n();
+}
 
-  const sub = document.querySelector('.menu-subtitle');
-  if (sub) sub.textContent = t('subtitle');
+// ── LOBBY: HANGAR DOOR OPENING ANIMATION ────────────────────────────────────
+// Plays frames 1-19 of the hangar door rolling open (frame 20 exists on disk
+// but is deliberately unused - the door is held open at frame 19 instead),
+// shown once when the game first loads, then held on frame 19 — same
+// resting shot the background used to be permanently. Replays whenever the
+// player switches plane. All 19 are preloaded so the swap never stalls
+// waiting on the network.
+const HANGAR_DOOR_FRAME_COUNT = 19;
+const HANGAR_DOOR_FRAMES = Array.from({ length: HANGAR_DOOR_FRAME_COUNT }, (_, i) =>
+  `/assets/hangar/hangar-door/frame-${String(i + 1).padStart(2, '0')}.webp`);
+const HANGAR_DOOR_FRAME_MS = 45; // 20 frames × 45ms ≈ same ~900ms total as the original 10-frame spec
+let _hangarDoorPreloaded = false;
+let _hangarDoorTimer = null;
+let _hangarDoorPlayedOnBoot = false;
 
-  const map = {
-    'btn-play':      'play',
-    'btn-hangar':    'hangar',
-    'btn-shop':      'shop',
-    'btn-practice':  'practice',
-  };
-  for (const [id, key] of Object.entries(map)) {
-    const el = document.getElementById(id);
-    if (el) el.textContent = t(key);
+function _preloadHangarDoorFrames() {
+  if (_hangarDoorPreloaded) return;
+  _hangarDoorPreloaded = true;
+  HANGAR_DOOR_FRAMES.forEach(src => { const img = new Image(); img.src = src; });
+}
+
+export function playHangarDoorAnimation() {
+  const bg = $('menu-hangar-bg');
+  if (!bg) return;
+  _preloadHangarDoorFrames();
+  if (_hangarDoorTimer) { clearInterval(_hangarDoorTimer); _hangarDoorTimer = null; }
+  let i = 0;
+  bg.src = HANGAR_DOOR_FRAMES[0];
+  _hangarDoorTimer = setInterval(() => {
+    i++;
+    if (i >= HANGAR_DOOR_FRAME_COUNT) {
+      bg.src = HANGAR_DOOR_FRAMES[HANGAR_DOOR_FRAME_COUNT - 1];
+      clearInterval(_hangarDoorTimer);
+      _hangarDoorTimer = null;
+      return;
+    }
+    bg.src = HANGAR_DOOR_FRAMES[i];
+  }, HANGAR_DOOR_FRAME_MS);
+}
+
+// ── LOBBY: PLANE SHOWCASE + CYCLE ───────────────────────────────────────────
+export function updateSelectedPlaneShowcase(imgEl, nameEl) {
+  const aircraftId = G.activeAircraft || 't6';
+  const aircraft = AIRCRAFT[aircraftId] || AIRCRAFT.t6;
+  if (imgEl) {
+    imgEl.src = `/assets/hangar/${aircraftId}.webp`;
+    imgEl.style.filter = '';
+    imgEl.dataset.plane = aircraftId; // lets CSS give specific planes (e.g. the C-130) a bigger showcase size
   }
+  if (nameEl) nameEl.textContent = aircraft.name.toUpperCase();
+}
 
-  // Missions button preserves its badge child
-  const missionsBtn = $('btn-missions');
-  if (missionsBtn) {
-    const badge = missionsBtn.querySelector('.missions-badge');
-    missionsBtn.textContent = t('missions');
-    if (badge) missionsBtn.appendChild(badge);
+// Lobby ◀ ▶: every plane (the secret F-117 only once owned). An owned plane
+// becomes the active one; a plane not owned yet is only shown (grey), with a
+// button under it to buy it. The game always uses G.activeAircraft.
+let _lobbyPreview = null;
+
+function lobbyPlanes() {
+  return AIRCRAFT_ORDER.filter(id => AIRCRAFT[id] && (!AIRCRAFT[id].secret || G.unlockedAircraft.includes(id)));
+}
+
+function renderLobbyPlane() {
+  const img = $('menu-selected-plane');
+  const btn = $('btn-lobby-plane-buy');
+  if (_lobbyPreview && G.unlockedAircraft.includes(_lobbyPreview)) _lobbyPreview = null;
+  const id = _lobbyPreview || G.activeAircraft || 't6';
+  if (img) {
+    img.src = `/assets/hangar/${id}.webp`;
+    img.dataset.plane = id;
+    img.classList.toggle('is-locked', !!_lobbyPreview);
   }
-
-  const dividerSpan = document.querySelector('.login-divider span');
-  if (dividerSpan) dividerSpan.textContent = t('signIn');
-
-  const tabLabels = lang === 'fr'
-    ? { play: 'JOUER', base: 'BASE', pilot: 'PILOTE' }
-    : { play: 'PLAY', base: 'BASE', pilot: 'PILOT' };
-  document.querySelectorAll('.menu-section-tab').forEach(tab => {
-    const key = tab.dataset.menuSection;
-    tab.textContent = tabLabels[key] || key;
-  });
-
+  if (!btn) return;
+  btn.classList.toggle('hidden', !_lobbyPreview);
+  if (!_lobbyPreview) return;
+  const plane = AIRCRAFT[id];
+  const fr = getLang() === 'fr';
+  const gradeOk = meetsGradeRequirement(plane);
+  const cost = planeCost(plane);
+  btn.innerHTML = `<span>${plane.name.toUpperCase()}</span><b>${gradeOk
+    ? `${cost.toLocaleString()} XP`
+    : (fr ? `NIVEAU ${plane.gradeRequired} REQUIS` : `LEVEL ${plane.gradeRequired} REQUIRED`)}</b>`;
+  btn.classList.toggle('is-disabled', !gradeOk || (G.xp || 0) < cost);
 }
 
-function _initMenuSections() {
-  const tabs = [...document.querySelectorAll('.menu-section-tab')];
-  const panels = [...document.querySelectorAll('.menu-section-panel')];
-  if (!tabs.length || !panels.length) return;
-
-  const showSection = section => {
-    tabs.forEach(tab => {
-      const active = tab.dataset.menuSection === section;
-      tab.classList.toggle('mst-active', active);
-      tab.setAttribute('aria-selected', active ? 'true' : 'false');
-    });
-    panels.forEach(panel => {
-      panel.classList.toggle('msp-active', panel.dataset.menuPanel === section);
-    });
-  };
-
-  tabs.forEach(tab => {
-    tab.addEventListener('click', () => showSection(tab.dataset.menuSection || 'play'));
-  });
-  showSection('play');
+function buyLobbyPreview() {
+  const id = _lobbyPreview;
+  if (!id) return;
+  const fr = getLang() === 'fr';
+  const result = buyAircraftFromLobby(id);
+  if (result === 'bought') {
+    G.activeAircraft = id;
+    save('activeAircraft', id);
+    _lobbyPreview = null;
+    renderMenu();
+    playHangarDoorAnimation();
+    return;
+  }
+  SFX.noMoney();
+  const plane = AIRCRAFT[id];
+  _showToast(result === 'grade'
+    ? (fr ? `Atteins le niveau ${plane.gradeRequired} pour débloquer ${plane.name}.` : `Reach level ${plane.gradeRequired} to unlock ${plane.name}.`)
+    : (fr ? `Il te manque ${(planeCost(plane) - (G.xp || 0)).toLocaleString()} XP.` : `You need ${(planeCost(plane) - (G.xp || 0)).toLocaleString()} more XP.`));
 }
 
-// ── PRESTIGE ─────────────────────────────────────────────────────────────────
-function _openResetConfirm() {
-  document.getElementById('reset-modal')?.classList.remove('hidden');
+// Moves to the previous/next plane, wrapping around. { ownedOnly: true } (the
+// training screen) keeps to the planes the player owns.
+export function cyclePlane(dir, { ownedOnly = false } = {}) {
+  if (!ownedOnly) {
+    const list = lobbyPlanes();
+    const cur = list.indexOf(_lobbyPreview || G.activeAircraft);
+    const next = list[((cur === -1 ? 0 : cur) + dir + list.length) % list.length];
+    if (G.unlockedAircraft.includes(next)) {
+      G.activeAircraft = next;
+      save('activeAircraft', next);
+      _lobbyPreview = null;
+    } else {
+      _lobbyPreview = next;
+    }
+    renderLobbyPlane();
+    updateSelectedPlaneShowcase($('training-selected-plane'), null);
+    playHangarDoorAnimation();
+    return;
+  }
+  const unlocked = AIRCRAFT_ORDER.filter(id => G.unlockedAircraft.includes(id));
+  if (unlocked.length < 2) return;
+  const curIdx = unlocked.indexOf(G.activeAircraft);
+  const nextIdx = ((curIdx === -1 ? 0 : curIdx) + dir + unlocked.length) % unlocked.length;
+  G.activeAircraft = unlocked[nextIdx];
+  save('activeAircraft', G.activeAircraft);
+  updateSelectedPlaneShowcase($('menu-selected-plane'), null);
+  updateSelectedPlaneShowcase($('training-selected-plane'), null);
+  playHangarDoorAnimation();
 }
-function _closeResetModal() {
-  document.getElementById('reset-modal')?.classList.add('hidden');
+
+// ── DEV CHEATS ───────────────────────────────────────────────────────────────
+function _grantDevCoins(amount = MAX_COINS) {
+  G.coins = clampCoins((G.coins || 0) + amount);
+  save('coins', G.coins);
+  saveAll();
+  _showToast(`+${amount.toLocaleString()} coins`);
+  renderMenu();
 }
+function _openResetConfirm() { document.getElementById('reset-modal')?.classList.remove('hidden'); }
+function _closeResetModal()  { document.getElementById('reset-modal')?.classList.add('hidden'); }
 function _doReset() {
   _closeResetModal();
-  G.highestLevel  = 0;
-  G.levelStars    = {};
-  G.xp            = 0;
-  G.coins         = 0;
-  G.totalXpEarned = 0;
-  save('highestLevel',  0);
-  save('levelStars',    {});
-  save('xp',            0);
-  save('coins',         0);
-  save('totalXpEarned', 0);
+  G.highestLevel = 0; G.levelStars = {}; G.xp = 0; G.coins = 0; G.totalXpEarned = 0;
+  save('highestLevel', 0); save('levelStars', {}); save('xp', 0);
+  save('coins', 0); save('totalXpEarned', 0);
+  // Shop / hangar purchases too: missiles, shot types, upgrades.
+  G.ownedMissileTypes = []; G.activeMissileType = 'default';
+  G.ownedShootingPlans = ['default']; G.activeShootingPlan = 'default';
+  G.planeUpgrades = {};
+  save('ownedMissileTypes', []); save('activeMissileType', 'default');
+  save('ownedShootingPlans', ['default']); save('activeShootingPlan', 'default');
+  save('planeUpgrades', {});
+  saveAll();
   _showToast('Game reset');
   renderMenu();
 }
 
-
-// ── PUBLIC API ────────────────────────────────────────────────────────────────
+// ── PUBLIC API ───────────────────────────────────────────────────────────────
 export function initMenu(nav) {
-  loadAssets();
-  _initMenuSections();
-  $('btn-play').onclick    = () => nav.toMap();
-  $('btn-hangar').onclick  = () => nav.toHangar();
-  $('btn-shop').onclick    = () => nav.toShop();
-  $('btn-practice').onclick = () => openPracticeSelect(nav);
-  const navArt = document.querySelector('.jg-lobby-nav-art');
-  const navStates = {
-    'btn-missions': '/assets/hangar/JexonGo_Navigation_Buttons/JexonGo_Navigation_Buttons/JexonGo_Nav_Mission_Active.png',
-    'btn-hangar': '/assets/hangar/JexonGo_Navigation_Buttons/JexonGo_Navigation_Buttons/JexonGo_Nav_Hangar_Active.png',
-    'btn-shop': '/assets/hangar/JexonGo_Navigation_Buttons/JexonGo_Navigation_Buttons/JexonGo_Nav_Shop_Active.png',
-    'btn-practice': '/assets/hangar/JexonGo_Navigation_Buttons/JexonGo_Navigation_Buttons/JexonGo_Nav_Practice_Active.png',
+  window._jexongoNav = nav;
+
+  $('btn-play').onclick = () => {
+    // Leave with the active plane on show, not a grey one being looked at.
+    if (_lobbyPreview) { _lobbyPreview = null; renderLobbyPlane(); }
+    if (isMultiLobby()) openMultiChoices(); else nav.toMap();
   };
-  const lobbyNavImage = '/assets/hangar/JexonGo_Navigation_Buttons/JexonGo_Navigation_Buttons/JexonGo_Nav_Lobby_Active.png';
-  Object.entries(navStates).forEach(([id, image]) => {
-    const button = document.getElementById(id);
-    if (!button || !navArt) return;
-    button.addEventListener('pointerdown', () => { navArt.style.backgroundImage = `url('${image}')`; });
+  $('btn-lobby-plane-buy')?.addEventListener('click', buyLobbyPreview);
+
+  // Carousel arrows: ‹ opens the Mission page, › goes to the Shop
+  $('btn-jx-nav-prev')?.addEventListener('click', openMissionsPanel);
+  $('btn-jx-nav-next')?.addEventListener('click', () => nav.toShop('next'));
+
+  // Bottom sheet → pull-up hangar drawer (drag the grip up to see it)
+  const lobbySheet = $('lobby-sheet');
+  if (lobbySheet) {
+    bindHangarTabs('#lobby-sheet');
+    makeBottomSheet(lobbySheet, { onOpen: () => renderHangarPanels() });
+  }
+
+  // Plane cycle
+  $('btn-lobby-plane-prev')?.addEventListener('click', () => cyclePlane(-1));
+  $('btn-lobby-plane-next')?.addEventListener('click', () => cyclePlane(1));
+
+  // Mission panel: back arrow leaves the whole panel; tapping the war-room
+  // scene itself (not the tablet or the mission popup) also leaves it; the
+  // tablet pops the mission list up, and its own X / tapping outside the
+  // popup card closes just that popup, back to the room.
+  $('btn-missions-close')?.addEventListener('click', closeMissionsPanel);
+  $('missions-panel')?.addEventListener('click', e => {
+    if (e.target.closest('.jx-scroll') || e.target.closest('#missions-scroll-backdrop') || e.target.closest('#btn-missions-tablet')) return;
+    closeMissionsPanel();
   });
-  document.querySelector('.jg-lobby-nav-home')?.addEventListener('pointerdown', () => {
-    if (navArt) navArt.style.backgroundImage = `url('${lobbyNavImage}')`;
+  $('btn-missions-tablet')?.addEventListener('click', openMissionsScroll);
+  $('btn-missions-scroll-close')?.addEventListener('click', closeMissionsScroll);
+  $('missions-scroll-backdrop')?.addEventListener('click', e => {
+    if (e.target === $('missions-scroll-backdrop')) closeMissionsScroll();
   });
-  const hudAvatar = document.getElementById('menu-hud-avatar');
-  if (hudAvatar) hudAvatar.onclick = () => {
-    if (!G.playerRegistered) _handleLogin('google');
-  };
-  const googleBtn = document.getElementById('btn-login-google');
-  if (googleBtn) googleBtn.onclick = () => _handleLogin('google');
 
-  const signupBtn = document.getElementById('btn-signup');
-  if (signupBtn) signupBtn.onclick = () => showScreen('s-register');
+  // Day/play-time tab in the lobby corner → full weekly tracker popup.
+  document.querySelector('.jx-daytab')?.addEventListener('click', openWeekTracker);
+  $('btn-week-close')?.addEventListener('click', closeWeekTracker);
+  $('week-overlay')?.addEventListener('click', e => {
+    if (e.target === $('week-overlay')) closeWeekTracker();
+  });
 
-  const loginBtn = document.getElementById('btn-login');
-  if (loginBtn) loginBtn.onclick = () => _openLoginOverlay();
+  // Hamburger → settings drawer is wired in settings.js.
 
-  const loginModalClose = document.getElementById('btn-login-modal-close');
-  if (loginModalClose) loginModalClose.onclick = () => _closeLoginOverlay();
+  // Drawer profile / account
+  document.getElementById('btn-login-google')?.addEventListener('click', () => _handleLogin('google'));
+  document.getElementById('btn-google-signout')?.addEventListener('click', _handleSignOut);
+  document.getElementById('btn-menu-delete-account')?.addEventListener('click', e => {
+    e.stopPropagation();
+    _openDeleteAccountModal();
+  });
 
-  const loginModal = document.getElementById('login-modal');
-  if (loginModal) loginModal.addEventListener('click', e => { if (e.target === loginModal) _closeLoginOverlay(); });
-
-  const loginSubmitBtn = document.getElementById('btn-login-modal-submit');
-  if (loginSubmitBtn) loginSubmitBtn.onclick = () => _handleLoginSubmit();
-
+  // Login / delete-account modals (kept from the old flow)
+  document.getElementById('btn-login-modal-close')?.addEventListener('click', _closeLoginOverlay);
+  document.getElementById('login-modal')?.addEventListener('click', e => {
+    if (e.target === document.getElementById('login-modal')) _closeLoginOverlay();
+  });
+  document.getElementById('btn-login-modal-submit')?.addEventListener('click', _handleLoginSubmit);
   document.getElementById('login-modal-password')?.addEventListener('keydown', e => {
     if (e.key === 'Enter') _handleLoginSubmit();
   });
-
-  // Password visibility toggles — work unlimited times
   function _makePwToggle(btnId, inputId) {
     const btn   = document.getElementById(btnId);
     const input = document.getElementById(inputId);
@@ -750,376 +554,96 @@ export function initMenu(nav) {
   _makePwToggle('btn-reg-pw-toggle',   'reg-password');
   _makePwToggle('btn-reg-confirm-pw-toggle', 'reg-password-confirm');
 
-  document.getElementById('btn-reset-confirm')?.addEventListener('click', _doReset);
-  document.getElementById('btn-reset-cancel')?.addEventListener('click', _closeResetModal);
-  document.getElementById('reset-modal')?.addEventListener('click', e => {
-    if (e.target === document.getElementById('reset-modal')) _closeResetModal();
-  });
-
-  $('btn-missions').onclick      = () => openMissionsPanel();
-  $('btn-missions-close').onclick = () => $('missions-panel').classList.add('hidden');
-  $('missions-panel').addEventListener('click', e => {
-    if (e.target === $('missions-panel')) $('missions-panel').classList.add('hidden');
-  });
-
-  const fbBtn = $('btn-feedback-menu');
-  if (fbBtn) fbBtn.onclick = () => window._showFeedbackPopup?.();
-
-  const avatarBtn = document.getElementById('btn-menu-profile-avatar');
-  if (avatarBtn) {
-    avatarBtn.onclick = e => {
-      e.stopPropagation();
-      document.getElementById('menu-profile-dropdown')?.classList.toggle('hidden');
-    };
-  }
-
-  document.addEventListener('click', () => {
-    document.getElementById('menu-profile-dropdown')?.classList.add('hidden');
-  });
-
-  const signoutBtn = $('btn-google-signout');
-  if (signoutBtn) signoutBtn.onclick = _handleSignOut;
-
-  const deleteAccountBtn = $('btn-menu-delete-account');
-  if (deleteAccountBtn) {
-    deleteAccountBtn.onclick = e => {
-      e.stopPropagation();
-      _openDeleteAccountModal();
-    };
-  }
   document.getElementById('btn-delete-account-cancel')?.addEventListener('click', _closeDeleteAccountModal);
   document.getElementById('btn-delete-account-confirm')?.addEventListener('click', _confirmDeleteAccount);
   document.getElementById('delete-account-modal')?.addEventListener('click', e => {
     if (e.target === document.getElementById('delete-account-modal')) _closeDeleteAccountModal();
   });
 
-  const langBtn = $('btn-lang');
-  if (langBtn) {
-    langBtn.onclick = () => {
-      setLang(getLang() === 'en' ? 'fr' : 'en'); // setLang calls applyI18n() automatically
-      _applyLang();
-    };
-  }
-  applyI18n();
-  _applyLang();
+  document.getElementById('btn-reset-confirm')?.addEventListener('click', _doReset);
+  document.getElementById('btn-reset-cancel')?.addEventListener('click', _closeResetModal);
+  document.getElementById('reset-modal')?.addEventListener('click', e => {
+    if (e.target === document.getElementById('reset-modal')) _closeResetModal();
+  });
 
-  // ── CHEAT CODES (keyboard only, time-window: all keys within 600ms) ──────────
-  const _ct = new Map(); // key → timestamp of last press
+  applyI18n();
+
+  // ── CHEAT CODES (keyboard only, all keys within 600ms) ──────────────────────
+  // Local dev server only (`npm run dev`): never in the published game.
+  // P+0+L reset · P+1+L next level · P+2+5 all levels · B+H+Q+A coins.
+  const _ct = new Map();
   function _held(...keys) {
     const now = Date.now();
     return keys.every(k => _ct.has(k) && now - _ct.get(k) < 600);
   }
   function _clearKeys(...keys) { keys.forEach(k => _ct.delete(k)); }
 
-  document.addEventListener('keydown', e => {
+  if (import.meta.env?.DEV) document.addEventListener('keydown', e => {
     const k = String(e.key || '').toLowerCase();
     if (!k) return;
     _ct.set(k, Date.now());
 
-    // P + 0 + L → reset everything (with confirmation)
-    if (_held('p','0','l')) {
-      _clearKeys('p','0','l');
-      _openResetConfirm();
-    }
-    // P + 1 + L → +1 level
-    if (_held('p','1','l')) {
-      _clearKeys('p','1','l');
+    if (_held('p', '0', 'l')) { _clearKeys('p', '0', 'l'); _openResetConfirm(); }
+    if (_held('p', '1', 'l')) {
+      _clearKeys('p', '1', 'l');
       G.highestLevel = Math.min((G.highestLevel || 0) + 1, 50);
       save('highestLevel', G.highestLevel);
       _showToast('Level → ' + G.highestLevel);
       renderMenu();
     }
-    // P + 2 + 5 → unlock all 50 levels
-    if (_held('p','2','5')) {
-      _clearKeys('p','2','5');
+    if (_held('p', '2', '5')) {
+      _clearKeys('p', '2', '5');
       G.highestLevel = 50;
       save('highestLevel', 50);
       _showToast('All 50 levels unlocked');
       renderMenu();
     }
-    // B + H + Q + A -> fill coins to the maximum.
-    if (_held('b','h','q','a')) {
-      _clearKeys('b','h','q','a');
-      _grantDevCoins();
-    }
+    if (_held('b', 'h', 'q', 'a')) { _clearKeys('b', 'h', 'q', 'a'); _grantDevCoins(); }
   });
-}
-
-function _grantDevCoins(amount = MAX_COINS) {
-  G.coins = clampCoins((G.coins || 0) + amount);
-  save('coins', G.coins);
-  saveAll();
-  _showToast(`+${amount.toLocaleString()} coins`);
-  renderMenu();
-}
-
-let _toastTimer = null;
-function _showToast(msg) {
-  const el = document.getElementById('login-toast');
-  if (!el) return;
-  el.textContent = msg;
-  el.classList.add('toast-show');
-  if (_toastTimer) clearTimeout(_toastTimer);
-  _toastTimer = setTimeout(() => el.classList.remove('toast-show'), 2200);
-}
-window._showToast = _showToast;
-
-function _normalizePracticeOps(ops) {
-  const map = {
-    '+': '+', add: '+', addition: '+',
-    '-': '-', sub: '-', subtraction: '-',
-    '*': '*', x: '*', '×': '*', mul: '*', multiplication: '*',
-    '/': '/', '÷': '/', div: '/', division: '/',
-  };
-  const list = Array.isArray(ops) ? ops : [ops];
-  const normalized = [...new Set(list.map(op => map[String(op || '').toLowerCase().trim()]).filter(Boolean))];
-  return normalized.length ? normalized : ['+'];
-}
-
-function openPracticeSelect(nav) {
-  const panel = $('practice-select');
-  panel.classList.remove('hidden');
-  G.practiceOps = _normalizePracticeOps(G.practiceOps);
-
-  // Sync buttons to current G.practiceOps
-  panel.querySelectorAll('.practice-op-btn').forEach(btn => {
-    const on = G.practiceOps.includes(btn.dataset.op);
-    btn.classList.toggle('pob-active', on);
-  });
-
-  // Op toggle
-  panel.querySelectorAll('.practice-op-btn').forEach(btn => {
-    btn.onclick = () => {
-      const op  = btn.dataset.op;
-      const idx = G.practiceOps.indexOf(op);
-      if (idx === -1) {
-        G.practiceOps.push(op);
-        btn.classList.add('pob-active');
-      } else {
-        if (G.practiceOps.length === 1) return; // keep at least one
-        G.practiceOps.splice(idx, 1);
-        btn.classList.remove('pob-active');
-      }
-    };
-  });
-
-  $('btn-practice-all').onclick = () => {
-    G.practiceOps = ['+', '-', '*', '/'];
-    panel.querySelectorAll('.practice-op-btn').forEach(b => b.classList.add('pob-active'));
-  };
-
-  // Hearts toggle
-  const heartsBtn = $('btn-practice-hearts');
-  const syncHearts = () => {
-    heartsBtn.textContent = G.practiceHearts ? t('on') : t('off');
-    heartsBtn.classList.toggle('poh-active',  G.practiceHearts);
-    heartsBtn.classList.toggle('poh-inactive', !G.practiceHearts);
-  };
-  syncHearts();
-  heartsBtn.onclick = () => { G.practiceHearts = !G.practiceHearts; syncHearts(); };
-
-  // Timer selection
-  const syncTimerBtns = () => {
-    panel.querySelectorAll('.practice-timer-btn').forEach(btn => {
-      const val = btn.dataset.time === '0' ? null : Number(btn.dataset.time);
-      btn.classList.toggle('ptb-active', val === G.practiceTimeLimit);
-    });
-  };
-  syncTimerBtns();
-  panel.querySelectorAll('.practice-timer-btn').forEach(btn => {
-    btn.onclick = () => {
-      G.practiceTimeLimit = btn.dataset.time === '0' ? null : Number(btn.dataset.time);
-      save('practiceTimeLimit', G.practiceTimeLimit);
-      syncTimerBtns();
-    };
-  });
-
-  $('btn-practice-close').onclick = () => panel.classList.add('hidden');
-  panel.onclick = e => { if (e.target === panel) panel.classList.add('hidden'); };
-
-  $('btn-practice-start').onclick = () => {
-    if (G.practiceOps.length === 0) return;
-    panel.classList.add('hidden');
-    nav.toGame(1, true);
-  };
 }
 
 export function renderMenu() {
-  const now = Date.now();
-  const softRefresh = now - _lastMenuRender < 1200;
-  _lastMenuRender = now;
-  for (const p of PLANES) { p.y = null; p.smoke = []; }
-  _cloudXs   = null;
-  if (!softRefresh) {
-    _tick      = 0;
-    _activeVid = 'v1';
-    _xfadeT    = -1;
-  }
-
-  const vid  = document.getElementById('menu-bg-video');
-  const vid2 = document.getElementById('menu-bg-video2');
-  if (vid)  {
-    vid.style.opacity = '1';
-    if (!softRefresh) vid.currentTime = 0;
-    vid.play().catch(() => {});
-  }
-  if (vid2 && !softRefresh) { vid2.style.opacity = '0'; vid2.currentTime = 0; vid2.pause(); }
-
-  if (_raf) { cancelAnimationFrame(_raf); _raf = null; }
-  _raf = requestAnimationFrame(drawTick);
-
-  _updateRankBadge();
-  _updateLobbyDashboard();
+  _updateLobbyHud();
   _updateMissionsBadge();
-  _updateProfile();
   _applyLang();
-
-  const guestGamesPlayed = Number(load('guestGamesPlayed', 0)) || 0;
-  const guestTrialUsed = !G.playerRegistered && guestGamesPlayed >= 5;
-  const offlineBanner = document.getElementById('menu-offline-banner');
-  if (offlineBanner) {
-    const needsTutorialConnect = !!G.postTutorialConnectPrompt && !G.playerRegistered;
-    const isFr = getLang() === 'fr';
-    const level = G.tutorialPlan?.startLevel || G.currentLevel || 1;
-    offlineBanner.classList.toggle('hidden', !needsTutorialConnect && !guestTrialUsed);
-    offlineBanner.classList.toggle('menu-connect-important', needsTutorialConnect || guestTrialUsed);
-    offlineBanner.textContent = needsTutorialConnect
-      ? isFr
-        ? `La connexion est importante: connecte-toi avec ton compte JexonGo pour sauvegarder ton plan Captain Jexongo et continuer au niveau ${level}.`
-        : `Connection is important: sign in with your JexonGo account to save your Captain Jexongo plan and continue at level ${level}.`
-      : '✈ Sign in with your JexonGo account to save your progress and unlock all 50 levels';
-    if (guestTrialUsed && !needsTutorialConnect) {
-      offlineBanner.textContent = isFr
-        ? 'Connecte-toi pour continuer a jouer et sauvegarder ta progression.'
-        : 'Sign in to keep playing and save your progress.';
-    }
+  const sheet = $('lobby-sheet');
+  if (sheet) { sheet.style.transform = ''; sheet.classList.add('is-collapsed'); sheet.classList.remove('is-open'); }
+  // Door-opening animation plays once per app launch — the first time the
+  // lobby is ever shown, whichever flow gets there first (returning player,
+  // new player, tutorial, etc.). Later returns to the lobby just keep
+  // showing frame 10, already left in place by that first run.
+  if (!_hangarDoorPlayedOnBoot) {
+    _hangarDoorPlayedOnBoot = true;
+    playHangarDoorAnimation();
   }
-  const googleBtn = document.getElementById('btn-login-google');
-  if (googleBtn) googleBtn.classList.toggle('login-important', !!G.postTutorialConnectPrompt && !G.playerRegistered && guestTrialUsed);
-  _ensureMenuAnimation();
 }
 
-document.addEventListener('visibilitychange', _ensureMenuAnimation);
-window.addEventListener('focus', _ensureMenuAnimation);
-
-function _updateRankBadge() {
-  const el = document.getElementById('menu-rank-badge');
-  if (!el) return;
-  const earned = G.totalXpEarned || G.xp || 0;
-  const { tier, pct } = getPilotInfo(earned);
-  el.innerHTML = `
-    <span class="mrb-avatar" style="color:${tier.color};text-shadow:0 0 10px ${tier.color}">${tier.avatar}</span>
-    <span style="color:${tier.color}">${tier.name}</span>
-    <div class="mrb-xp-bar-wrap"><div class="mrb-xp-bar" style="width:${pct}%;background:${tier.color}"></div></div>
-    <span class="mrb-rank">${expIcon()} ${(G.xp || 0).toLocaleString()}</span>
-  `;
-}
-
-function _updateLobbyDashboard() {
-  const earned = G.totalXpEarned || G.xp || 0;
-  const { tier, pct } = getPilotInfo(earned);
-  const nameEl = document.getElementById('menu-hud-name');
-  const avatarEl = document.getElementById('menu-hud-avatar');
-  const xpFill = document.getElementById('menu-hud-xp-fill');
-  const coinsEl = document.getElementById('menu-hud-coins');
-  const xpEl = document.getElementById('menu-hud-xp');
-  const levelEl = document.getElementById('menu-hud-level');
-  const levelProgressFill = document.getElementById('menu-level-progress-fill');
-  const seasonFill = document.getElementById('menu-season-fill');
-  const seasonText = document.getElementById('menu-season-text');
-  const dailyPreview = document.getElementById('menu-daily-preview');
-  const planeImg = document.getElementById('menu-selected-plane');
-  const planeName = document.getElementById('menu-selected-plane-name');
-  const widgetTitles = document.querySelectorAll('.menu-widget-title');
-  if (widgetTitles[0]) widgetTitles[0].textContent = getLang() === 'fr' ? 'NIVEAU' : 'LEVEL';
-  if (widgetTitles[1]) widgetTitles[1].textContent = getLang() === 'fr' ? 'DEFIS QUOTIDIENS' : 'DAILY MISSIONS';
-
-  if (nameEl) nameEl.textContent = !G.playerRegistered
-    ? (getLang() === 'fr' ? 'CONNEXION' : 'CONNECT')
-    : ((G.playerName && G.playerName !== 'PILOT') ? G.playerName : tier.name);
-  if (avatarEl) {
-    const guest = !G.playerRegistered;
-    avatarEl.textContent = guest ? 'G' : (G.playerName || tier.name || 'P')[0].toUpperCase();
-    avatarEl.classList.toggle('menu-hud-avatar-connect', guest);
-    avatarEl.setAttribute('aria-label', guest ? 'Connect with Google' : 'Player profile');
-    avatarEl.title = guest ? 'Connect with Google' : (G.playerName || tier.name || 'Player');
-    avatarEl.style.color = guest ? '' : (tier.color || '#06101f');
-  }
-  if (xpFill) xpFill.style.width = `${Math.max(4, Math.min(100, pct || 0))}%`;
+function _updateLobbyHud() {
+  const coinsEl = $('menu-hud-coins');
+  const xpEl = $('menu-hud-xp');
   if (coinsEl) coinsEl.textContent = (G.coins || 0).toLocaleString();
   if (xpEl) xpEl.textContent = (G.xp || 0).toLocaleString();
-  const level = Math.max(1, Math.min(50, G.currentLevel || G.highestLevel || 1));
-  if (levelEl) levelEl.textContent = `${level}/50`;
-  if (levelProgressFill) levelProgressFill.style.width = `${Math.round((level / 50) * 100)}%`;
-  if (seasonFill) seasonFill.style.width = `${Math.round((level / 50) * 100)}%`;
-  if (seasonText) seasonText.textContent = `${level} / 50`;
-  _updateSelectedPlaneShowcase(planeImg, planeName);
 
-  if (dailyPreview) {
-    const missions = getMissions().slice(0, 3);
-    dailyPreview.innerHTML = missions.map(m => {
-      const pctDone = Math.min(100, Math.round((m.progress / Math.max(1, m.target)) * 100));
-      const label = getLang() === 'fr' ? (m.labelFr || m.label) : m.label;
-      return `
-        <div class="menu-daily-row">
-          <div>
-            <div>${label}</div>
-            <div class="menu-daily-bar"><span style="width:${pctDone}%"></span></div>
-          </div>
-          <div class="menu-daily-reward">${coinIcon('jg-coin-icon-small')} ${m.coins}</div>
-        </div>
-      `;
-    }).join('');
-  }
-  _updatePlaytimeDashboard();
-}
+  renderLobbyPlane();
 
-function _updatePlaytimeDashboard() {
-  const el = document.getElementById('menu-playtime-dashboard');
-  if (!el) return;
-  const isFr = getLang() === 'fr';
+  // Day / play-time tab — always visible, even at 0 minutes today; its blue
+  // half fills up (0% empty → 100% at the daily goal) as minutes are logged.
+  const dayTab = document.querySelector('.jx-daytab');
+  const minEl = $('menu-daytab-min');
+  const fillEl = $('menu-daytab-fill');
   const stats = getPlayMinuteStats(getLang());
-  const today = stats.days.find(d => d.isToday)?.minutes || 0;
-  const maxMinutes = Math.max(stats.goal, ...stats.days.map(d => d.minutes), 1);
-  el.innerHTML = `
-    <div class="mpt-head">
-      <span>${isFr ? 'TEMPS DE JEU' : 'PLAY TIME'}</span>
-      <strong>${today} ${isFr ? 'min auj.' : 'min today'}</strong>
-    </div>
-    <div class="mpt-bars">
-      ${stats.days.map(d => {
-        const h = Math.min(96, Math.max(8, Math.round((d.minutes / maxMinutes) * 100)));
-        return `
-          <div class="mpt-day ${d.isToday ? 'mpt-today' : ''}">
-            <div class="mpt-value">${d.minutes}</div>
-            <div class="mpt-track"><span style="height:${h}%"></span></div>
-            <div class="mpt-label">${d.label}</div>
-          </div>
-        `;
-      }).join('')}
-    </div>
-    <div class="mpt-foot">${isFr ? 'Repart chaque lundi' : 'Resets every Monday'}</div>
-  `;
-}
-
-function _updateSelectedPlaneShowcase(imgEl, nameEl) {
-  const aircraftId = G.activeAircraft || 't6';
-  const aircraft = AIRCRAFT[aircraftId] || AIRCRAFT.t6;
-
-  if (imgEl) {
-    imgEl.src = `/assets/hangar/${aircraftId}.png`;
-    imgEl.style.filter = '';
-  }
-  if (nameEl) {
-    nameEl.textContent = aircraft.name.toUpperCase();
-  }
+  const todayStats = stats.days.find(d => d.isToday);
+  const today = todayStats?.minutes || 0;
+  if (dayTab) dayTab.hidden = false;
+  if (minEl) minEl.textContent = `${today} MIN`;
+  if (fillEl) fillEl.style.height = `${todayStats?.pct || 0}%`;
 }
 
 function _updateMissionsBadge() {
-  const btn = document.getElementById('btn-missions');
+  // The "!" now rides on the left carousel arrow (which opens the Mission page).
+  const btn = document.getElementById('btn-jx-nav-prev');
   if (!btn) return;
-  const old = btn.querySelector('.missions-badge');
-  if (old) old.remove();
+  btn.querySelector('.missions-badge')?.remove();
   if (hasPendingMissionClaim()) {
     const badge = document.createElement('span');
     badge.className   = 'missions-badge';
@@ -1128,13 +652,75 @@ function _updateMissionsBadge() {
   }
 }
 
-// ── DAILY REWARD POPUP ────────────────────────────────────────────────────────
-export function showDailyReward(reward, streak, onClaim = null) {
+// ── WEEK TRACKER popup (opened by tapping the day/play-time tab) ─────────────
+function openWeekTracker() {
+  const isFr = getLang() === 'fr';
+  const stats = getPlayMinuteStats(getLang());
+  const today = stats.days.find(d => d.isToday);
+
+  const subtitle = $('jx-week-subtitle');
+  if (subtitle) {
+    subtitle.textContent = isFr
+      ? `Objectif jour : ${stats.goal} min`
+      : `Daily goal: ${stats.goal} min`;
+  }
+  const badgeValue = $('jx-week-badge-value');
+  if (badgeValue) badgeValue.textContent = today?.minutes || 0;
+
+  const row = $('jx-week-row');
+  if (row) {
+    row.innerHTML = stats.days.map(d => `
+      <div class="jx-week-day">
+        <div class="jx-week-pill${d.isToday ? ' is-today' : ''}">
+          <div class="jx-week-pill-fill" style="height:${d.pct || 0}%"></div>
+        </div>
+        <span class="jx-week-day-value">${d.minutes}</span>
+        <span class="jx-week-day-label">${d.isToday ? (isFr ? 'auj' : 'today') : d.label}</span>
+      </div>
+    `).join('');
+  }
+
+  const challenge = getMonthlyConfigChallenge(getLang());
+  const goalTitle = $('jx-week-goal-title');
+  if (goalTitle) goalTitle.textContent = challenge.title;
+  const goalConfig = $('jx-week-goal-config');
+  if (goalConfig) goalConfig.textContent = challenge.config;
+  const label = $('jx-week-goal-label');
+  if (label) label.textContent = challenge.subtitle;
+  const fill = $('jx-week-goal-fill');
+  if (fill) fill.style.width = `${challenge.pct || 0}%`;
+
+  $('week-overlay')?.classList.remove('hidden');
+}
+function closeWeekTracker() { $('week-overlay')?.classList.add('hidden'); }
+
+// ── DRAWER PROFILE (called from settings.js when the drawer opens) ───────────
+export function updateDrawerProfile() {
+  const loginBtn  = document.getElementById('btn-login-google');
+  const nameEl    = document.getElementById('menu-profile-name');
+  const signoutEl = document.getElementById('btn-google-signout');
+  const deleteEl  = document.getElementById('btn-menu-delete-account');
+  const isLoggedIn = !!G.playerRegistered;
+
+  if (loginBtn)  loginBtn.hidden  = isLoggedIn;
+  if (signoutEl) signoutEl.hidden = !isLoggedIn;
+  if (deleteEl)  deleteEl.hidden  = !isLoggedIn;
+  if (nameEl) {
+    nameEl.hidden = !isLoggedIn;
+    nameEl.textContent = isLoggedIn ? (G.playerName || 'PILOT') : '';
+  }
+}
+export { _handleLogin as handleGoogleLogin };
+
+// ── DAILY REWARD POPUP ───────────────────────────────────────────────────────
+// viewOnly: today's reward is already claimed — the calendar is only shown,
+// with today ticked, and the button just closes it.
+export function showDailyReward(reward, streak, onClaim = null, viewOnly = false, nextAt = 0) {
   const overlay  = $('daily-reward-overlay');
   const daysRow  = $('daily-days-row');
   const showcase = $('daily-reward-showcase');
 
-  if (!G.playerRegistered) {
+  if (!G.playerRegistered && !viewOnly) {
     overlay?.classList.add('hidden');
     _showToast(getLang() === 'fr'
       ? 'CONNECTE-TOI AVEC GOOGLE POUR RECEVOIR LES RECOMPENSES QUOTIDIENNES'
@@ -1146,40 +732,61 @@ export function showDailyReward(reward, streak, onClaim = null) {
 
   $('daily-streak-label').textContent = getLang() === 'fr' ? `JOUR ${streak}` : `DAY ${streak}`;
 
-  // Build 7-day cards
   daysRow.innerHTML = '';
   LOGIN_REWARDS.forEach((r, i) => {
     const day  = i + 1;
     const card = document.createElement('div');
     card.className = 'daily-day-card';
-    if (day < streak)      card.classList.add('ddc-claimed');
+    if (day < streak || (viewOnly && day === streak)) card.classList.add('ddc-claimed');
     else if (day === streak) card.classList.add('ddc-today');
     else                     card.classList.add('ddc-future');
 
     card.innerHTML = `
       <span class="ddc-num">D${day}</span>
-      <span class="ddc-icon">${r.badgeId ? r.icon : (r.coins ? coinIcon('jg-coin-icon-small') : r.icon)}</span>
-      ${day < streak ? '<span class="ddc-check">✓</span>' : ''}
+      <span class="ddc-icon">${r.icon === 'coin' ? coinIcon('jg-coin-icon-small') : r.icon}</span>
+      ${day < streak || (viewOnly && day === streak) ? '<span class="ddc-check">✓</span>' : ''}
     `;
     daysRow.appendChild(card);
   });
 
-  // Showcase today's reward
   showcase.innerHTML = `
     <span class="drs-label">${t('todayReward')}</span>
-    <span class="drs-icon">${reward.badgeId ? reward.icon : (reward.coins ? coinIcon('jg-coin-icon-large') : reward.icon)}</span>
-    <span class="drs-value">${reward.desc}</span>
+    <span class="drs-icon">${reward.icon === 'coin' ? coinIcon('jg-coin-icon-large') : reward.icon}</span>
+    <span class="drs-value">${getLang() === 'fr' ? (reward.descFr || reward.desc) : reward.desc}</span>
   `;
 
   overlay.classList.remove('hidden');
 
+  if (viewOnly) {
+    const fr = getLang() === 'fr';
+    showcase.querySelector('.drs-label').textContent = fr ? 'RÉCOMPENSE RÉCUPÉRÉE ✓' : 'REWARD CLAIMED ✓';
+    const msLeft = Math.max(0, nextAt - Date.now());
+    const hours = Math.floor(msLeft / 3600000);
+    const minutes = Math.ceil((msLeft % 3600000) / 60000);
+    const wait = hours > 0 ? `${hours}H ${String(minutes).padStart(2, '0')}MIN` : `${Math.max(1, minutes)} MIN`;
+    $('btn-daily-claim').textContent = nextAt > 0
+      ? (fr ? `PROCHAIN JOUR DANS ${wait}` : `NEXT DAY IN ${wait}`)
+      : (fr ? 'FERMER' : 'CLOSE');
+    $('btn-daily-claim').onclick = () => {
+      overlay.classList.add('hidden');
+      onClaim?.({ claimed: false, badges: [] });
+    };
+    overlay.addEventListener('click', e => {
+      if (e.target === overlay) overlay.classList.add('hidden');
+    }, { once: true });
+    return;
+  }
+
   $('btn-daily-claim').textContent = t('claimReward');
   $('btn-daily-claim').onclick = () => {
-    const result = claimDailyReward(reward);
+    const result = claimDailyReward();
     if (!result.claimed) return;
     SFX.bonusHeart?.();
     overlay.classList.add('hidden');
-    _updateRankBadge();
+    // Chest days: open that chest (roulette) right away, then back to the lobby.
+    if (reward.chestTier !== undefined && window._nav?.toChest) {
+      window._nav.toChest(rollChestTier(reward.chestTier), 'menu');
+    }
     if (result.badges?.length) {
       setTimeout(() => window._previewBadgeUnlock?.(result.badges), 250);
     }
@@ -1190,14 +797,145 @@ export function showDailyReward(reward, streak, onClaim = null) {
   }, { once: true });
 }
 
-// ── MISSIONS PANEL ────────────────────────────────────────────────────────────
+// ── MISSIONS: full-page war-room background, tap the tablet to see missions ─
 let _missionsTimerInterval = null;
 
-function openMissionsPanel() {
+// Desk-lamp glow pulse: 10 frames of the SAME war-room art, palindromic
+// (frame-01≈frame-10, frame-02≈frame-09, ...) so looping 1→10 then
+// restarting at 1 reads as one continuous breathing glow with no seam/jump.
+// Loops for as long as the missions panel stays open; self-stops once it's
+// hidden (same pattern as shop.js's startArsenalBlink).
+const MISSION_LAMP_FRAME_COUNT = 10;
+const MISSION_LAMP_FRAMES = Array.from({ length: MISSION_LAMP_FRAME_COUNT }, (_, i) =>
+  `/assets/hangar/mission-lamp-loop/frame-${String(i + 1).padStart(2, '0')}.webp`);
+const MISSION_LAMP_FRAME_MS = 90;
+let _missionLampPreloaded = false;
+let _missionLampTimer = null;
+
+function _preloadMissionLampFrames() {
+  if (_missionLampPreloaded) return;
+  _missionLampPreloaded = true;
+  MISSION_LAMP_FRAMES.forEach(src => { const img = new Image(); img.src = src; });
+}
+
+function startMissionLampLoop() {
+  const bg = document.querySelector('#missions-panel .jx-bg');
+  if (!bg) return;
+  _preloadMissionLampFrames();
+  if (_missionLampTimer) { clearInterval(_missionLampTimer); _missionLampTimer = null; }
+  let i = 0;
+  bg.src = MISSION_LAMP_FRAMES[0];
+  _missionLampTimer = setInterval(() => {
+    if ($('missions-panel')?.classList.contains('hidden')) {
+      clearInterval(_missionLampTimer);
+      _missionLampTimer = null;
+      return;
+    }
+    i = (i + 1) % MISSION_LAMP_FRAME_COUNT;
+    bg.src = MISSION_LAMP_FRAMES[i];
+  }, MISSION_LAMP_FRAME_MS);
+}
+
+function stopMissionLampLoop() {
+  if (_missionLampTimer) { clearInterval(_missionLampTimer); _missionLampTimer = null; }
+}
+
+// Same slide-in feel as the lobby/shop/training/hangar carousel arrows
+// (see SWIPE_MS in dom.js) — the ‹ button that opens this panel is the
+// carousel's "prev" arrow, so the panel enters from the left and leaves
+// back the same way.
+const MISSIONS_SWIPE_MS = 320;
+
+export function openMissionsPanel() {
   const panel = $('missions-panel');
+  if (!panel) return;
   panel.classList.remove('hidden');
+  panel.style.transition = 'none';
+  panel.style.transform = 'translateX(-100%)';
+  void panel.offsetWidth; // flush the "no transition" jump before animating in
+  requestAnimationFrame(() => {
+    panel.style.transition = `transform ${MISSIONS_SWIPE_MS}ms ease`;
+    panel.style.transform = 'translateX(0)';
+  });
+  $('missions-scroll-backdrop')?.classList.remove('is-open'); // always start on the room, not the popup
+  $('btn-missions-close')?.classList.remove('is-hidden');
   _renderMissions();
   _startMissionsTimer();
+  positionMissionTablet();
+  startMissionLampLoop();
+}
+
+// The tablet hotspot's (fx,fy) as a fraction of the background art's own
+// 1536x1024 canvas (measured from the tablet screen's glowing bezel).
+// #missions-panel .jx-bg is a full-bleed object-fit:cover image, so it's
+// scaled/cropped differently per screen shape — this replicates the browser's
+// own cover-fit math to convert that fraction into real on-screen px, the
+// same trick used for the shop's missile buttons (see positionArsenalButtons
+// in shop.js). Re-run on resize while the panel is open.
+const MISSION_TABLET_POS = { fx: 0.499, fy: 0.489 };
+function positionMissionTablet() {
+  const bg  = document.querySelector('#missions-panel .jx-bg');
+  const btn = $('btn-missions-tablet');
+  if (!bg || !btn) return;
+  const place = () => {
+    const iw = bg.naturalWidth, ih = bg.naturalHeight;
+    if (!iw || !ih) return false;
+    const rect = bg.parentElement.getBoundingClientRect();
+    const vw = rect.width, vh = rect.height;
+    if (!vw || !vh) return false;
+    const scale = Math.max(vw / iw, vh / ih);
+    const dw = iw * scale, dh = ih * scale;
+    const offsetX = (vw - dw) / 2, offsetY = (vh - dh) / 2;
+    btn.style.left = `${offsetX + MISSION_TABLET_POS.fx * dw}px`;
+    btn.style.top  = `${offsetY + MISSION_TABLET_POS.fy * dh}px`;
+    return true;
+  };
+  const tryPlace = () => { if (!place()) requestAnimationFrame(place); };
+  if (bg.complete) requestAnimationFrame(tryPlace);
+  else bg.addEventListener('load', () => requestAnimationFrame(tryPlace), { once: true });
+}
+if (typeof window !== 'undefined') {
+  window.addEventListener('resize', () => {
+    if (!$('missions-panel')?.classList.contains('hidden')) positionMissionTablet();
+  });
+}
+
+function closeMissionsPanel() {
+  const panel = $('missions-panel');
+  if (_missionsTimerInterval) { clearInterval(_missionsTimerInterval); _missionsTimerInterval = null; }
+  stopMissionLampLoop();
+  if (!panel || panel.classList.contains('hidden')) return;
+  panel.style.transition = `transform ${MISSIONS_SWIPE_MS}ms ease`;
+  panel.style.transform = 'translateX(-100%)';
+  let done = false;
+  const finish = e => {
+    if (e && e.target !== panel) return; // ignore a child's own transition bubbling up
+    if (done) return;
+    done = true;
+    panel.classList.add('hidden');
+    panel.style.transition = '';
+    panel.style.transform = '';
+    panel.removeEventListener('transitionend', finish);
+  };
+  panel.addEventListener('transitionend', finish);
+  setTimeout(finish, MISSIONS_SWIPE_MS + 120); // safety net if transitionend never fires
+}
+
+// No swingPlates() here on purpose: this popup's tight overflow:hidden
+// scroll box has no room for a full pendulum swing - mid-animation the
+// plate visibly clips against the box edges and looks broken/off-center,
+// unlike the full-screen Training/Shop headers where it has space to play.
+// The room's own "leave missions" arrow sits behind the tablet popup and
+// otherwise keeps poking out past its edges - hide it while the tablet
+// screen is up, same as tapping outside the popup no longer being able to
+// leave the room by mistake mid-read.
+function openMissionsScroll() {
+  $('missions-scroll-backdrop')?.classList.add('is-open');
+  $('btn-missions-close')?.classList.add('is-hidden');
+}
+function closeMissionsScroll() {
+  $('missions-scroll-backdrop')?.classList.remove('is-open');
+  $('btn-missions-close')?.classList.remove('is-hidden');
 }
 
 function _startMissionsTimer() {
@@ -1215,136 +953,41 @@ function _startMissionsTimer() {
   };
   tick();
   _missionsTimerInterval = setInterval(tick, 1000);
-
-  $('missions-panel').addEventListener('click', function cleanup(e) {
-    if (e.target === $('missions-panel') || e.target.id === 'btn-missions-close') {
-      clearInterval(_missionsTimerInterval);
-      $('missions-panel').removeEventListener('click', cleanup);
-    }
-  });
 }
 
 function _renderMissions() {
-  const list     = $('missions-list');
+  const list = $('missions-list');
+  if (!list) return;
   const missions = getMissions();
   const isConnected = !!G.playerRegistered;
-  const connectLabel = getLang() === 'fr' ? 'CONNEXION' : 'SIGN IN';
-  list.innerHTML = '';
-  _renderPlayStatsCard(list);
+  const isFr = getLang() === 'fr';
+  const connectLabel = isFr ? 'CONNEXION' : 'SIGN IN';
 
-  missions.forEach(m => {
-    const pct  = Math.min(100, Math.round((m.progress / m.target) * 100));
-    const done = m.progress >= m.target;
-
-    const missionLabel = getLang() === 'fr' ? (m.labelFr || m.label) : m.label;
-    const claimBtnText = !isConnected ? connectLabel : m.claimed ? t('claimed') : done ? t('claim') : t('locked');
-
-    const card = document.createElement('div');
-    card.className = 'mission-card' + (m.claimed ? ' mc-claimed' : '');
-    card.innerHTML = `
-      <div class="mission-label">${missionLabel}</div>
-      <div class="mission-progress-row">
-        <div class="mission-bar-wrap">
-          <div class="mission-bar-fill ${done ? 'mbf-done' : ''}" style="width:${pct}%"></div>
+  list.innerHTML = missions.map(m => {
+    const done  = m.progress >= m.target;
+    const label = isFr ? (m.labelFr || m.label) : m.label;
+    const tag = m.group === 'coop' ? 'MULTI' : m.group === 'practice' ? (isFr ? 'PRATIQUE' : 'PRACTICE') : '';
+    const btnText = !isConnected ? connectLabel : m.claimed ? t('claimed') : done ? t('claim') : `${m.progress}/${m.target}`;
+    const disabled = !done || m.claimed || !isConnected;
+    return `
+      <div class="jx-mission${m.claimed ? ' is-claimed' : ''}">
+        <div class="jx-mission-label">${tag ? `<span class="jx-mission-tag is-${m.group}">${tag}</span>` : ''}${label}</div>
+        <div class="jx-mission-rewards">
+          <span>${coinIcon()} ${m.coins}</span>
+          <span>${expIcon()} ${m.xp}</span>
         </div>
-        <span class="mission-count">${m.progress}/${m.target}</span>
-      </div>
-      <div class="mission-reward-row">
-        <span class="mission-reward-text">${coinIcon('jg-coin-icon-small')} ${m.coins}  ${expIcon('jg-coin-icon-small')} ${m.xp}</span>
-        <button class="mission-claim-btn ${m.claimed ? 'mcb-claimed' : (done && isConnected) ? 'mcb-ready' : 'mcb-locked'}"
-                data-id="${m.id}" ${!done || m.claimed || !isConnected ? 'disabled' : ''}>
-          ${claimBtnText}
-        </button>
+        <button data-id="${m.id}" ${disabled ? 'disabled' : ''}>${btnText}</button>
       </div>
     `;
-    list.appendChild(card);
-  });
-
-  // ── Permanent SR-71 challenge card ──────────────────────────────────────────
-  const sr71 = getSr71MissionState();
-  const sr71Done  = sr71.progress >= 1;
-  const sr71Label = getLang() === 'fr' ? sr71.labelFr : sr71.label;
-  const sr71BtnText = !isConnected ? connectLabel : sr71.claimed ? t('claimed') : sr71Done ? t('claim') : t('locked');
-  const cleanSet  = new Set(sr71.cleanLevels || []);
-  const cubesHTML = Array.from({ length: 30 }, (_, i) => {
-    const lvl  = i + 1;
-    const done = cleanSet.has(lvl);
-    return `<div class="sr71-cube${done ? ' sr71-cube-done' : ''}" title="Level ${lvl}"></div>`;
   }).join('');
-  const sr71Card = document.createElement('div');
-  sr71Card.className = 'mission-card mc-sr71' + (sr71.claimed ? ' mc-claimed' : '');
-  sr71Card.innerHTML = `
-    <div class="mission-label" style="color:#ff8c00">★ SR-71 CHALLENGE</div>
-    <div class="mission-label" style="font-size:6px;opacity:0.8;margin-top:2px">${sr71Label}</div>
-    <div class="sr71-cubes">${cubesHTML}</div>
-    <div class="sr71-cube-count">${sr71.cleanLevels.length} / 30 levels</div>
-    <div class="mission-reward-row">
-      <span class="mission-reward-text">${coinIcon('jg-coin-icon-small')} ${sr71.coins}  ${expIcon('jg-coin-icon-small')} ${sr71.xp}</span>
-      <button class="mission-claim-btn ${sr71.claimed ? 'mcb-claimed' : (sr71Done && isConnected) ? 'mcb-ready' : 'mcb-locked'}"
-              data-id="sr71_challenge" ${!sr71Done || sr71.claimed || !isConnected ? 'disabled' : ''}>
-        ${sr71BtnText}
-      </button>
-    </div>
-  `;
-  if (!sr71.claimed && !G.unlockedAircraft.includes('sr71')) list.appendChild(sr71Card);
 
-  list.querySelectorAll('.mission-claim-btn:not([disabled])').forEach(btn => {
+  list.querySelectorAll('button:not([disabled])').forEach(btn => {
     btn.onclick = () => {
-      const claimed = btn.dataset.id === 'sr71_challenge'
-        ? claimSr71Mission()
-        : claimMission(btn.dataset.id);
-      if (claimed) {
+      if (claimMission(btn.dataset.id)) {
         SFX.buy?.();
         _renderMissions();
         _updateMissionsBadge();
-        _updateRankBadge();
       }
     };
   });
-}
-
-function _renderPlayStatsCard(list) {
-  const isFr = getLang() === 'fr';
-  const stats = getPlayMinuteStats(getLang());
-  const month = getMonthlyConfigChallenge(getLang());
-  const maxMinutes = Math.max(stats.goal, ...stats.days.map(d => d.minutes), 1);
-  const bars = stats.days.map(d => {
-    const h = Math.max(8, Math.round((d.minutes / maxMinutes) * 54));
-    const title = `${d.label}: ${d.minutes} min`;
-    return `
-      <div class="play-day${d.isToday ? ' play-day-today' : ''}" title="${title}">
-        <div class="play-bar-shell">
-          <div class="play-bar-fill" style="height:${h}px"></div>
-          <div class="play-goal-line" style="bottom:${Math.min(100, Math.round((stats.goal / maxMinutes) * 100))}%"></div>
-        </div>
-        <span class="play-day-min">${d.minutes}</span>
-        <span class="play-day-label">${d.isToday ? (isFr ? 'auj' : 'now') : d.label}</span>
-      </div>
-    `;
-  }).join('');
-
-  const card = document.createElement('div');
-  card.className = 'mission-card play-stats-card';
-  card.innerHTML = `
-    <div class="play-stats-head">
-      <div>
-        <div class="mission-label play-stats-title">${isFr ? 'TEMPS DE JEU' : 'PLAY TIME'}</div>
-        <div class="play-stats-sub">${isFr ? `Objectif jour: ${stats.goal} min` : `Daily goal: ${stats.goal} min`}</div>
-      </div>
-      <div class="play-stats-total">${stats.days.find(d => d.isToday)?.minutes || 0}<span>min</span></div>
-    </div>
-    <div class="play-graph">${bars}</div>
-    <div class="monthly-challenge">
-      <div class="monthly-title">${month.title}</div>
-      <div class="monthly-config">${month.config}</div>
-      <div class="mission-progress-row">
-        <div class="mission-bar-wrap">
-          <div class="mission-bar-fill" style="width:${month.pct}%"></div>
-        </div>
-        <span class="mission-count">${month.progress}/${month.target} min</span>
-      </div>
-      <div class="monthly-sub">${month.subtitle}</div>
-    </div>
-  `;
-  list.appendChild(card);
 }

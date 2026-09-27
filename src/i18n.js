@@ -37,6 +37,9 @@ const STRINGS = {
     timeLimit:       'TIME LIMIT',
     mathType:        'MATH TYPE',
     secPerQ:         's per question',
+    briefingLocation: 'LOCATION',
+    briefingWeather:  'WEATHER',
+    briefingExample:  'SAMPLE QUESTION',
     briefingStarComplete: 'Complete the level',
     briefingStarAccuracy: '70%+ correct answers',
     briefingStarPerfect:  '100% correct + never hit',
@@ -98,6 +101,9 @@ const STRINGS = {
     starter:         'STARTER',
     active:          'ACTIVE',
     unlock:          'UNLOCK',
+    planeInfoTitle:  'INFORMATION',
+    planeInfoAbility:'ABILITY',
+    planeInfoSpecs:  'SPECIFICATIONS',
 
     // Chest rewards
     chestBronze:     'BRONZE',
@@ -146,12 +152,22 @@ const STRINGS = {
     sub:             'SUB',
     mul:             'MUL',
     div:             'DIV',
+    expo:            'EXPONENT',
+    algebra:         'ALGEBRA',
     selectAll:       'SELECT ALL',
     heartsLives:     '♥ LIVES',
+    practiceDifficulty: 'DIFFICULTY',
+    diffEasy:        'EASY',
+    diffNormal:      'NORMAL',
+    diffHard:        'HARD',
+    practiceBiome:   'BIOME',
+    practiceWeather: 'WEATHER',
+    weatherAuto:     'AUTO',
     start:           '▶ START',
 
     // Missions panel (in menu.js)
     dailyMissions:   'DAILY MISSIONS',
+    yourMissions:    'YOUR MISSIONS',
     claim:           'CLAIM',
     claimed:         'CLAIMED ✓',
     resetsIn:        'RESETS IN',
@@ -285,6 +301,33 @@ const STRINGS = {
     feedbackErrRating: 'PLEASE SELECT A STAR RATING',
     feedbackErrConn:   'SEND FAILED — CHECK CONNECTION',
     feedbackBtn:       '★ FEEDBACK',
+
+    // Lobby redesign
+    jxPlay:            'PLAY',
+    jxShopTitle:       'STORE',
+    jxTraining:        'TRAINING',
+    jxPractice:        'PRACTICE',
+    jxSettings:        'SETTINGS',
+    jxHangarSheet:     'HANGAR',
+    jxFireTypeSheet:   'Shot type',
+    jxEquationSheet:   'Equations',
+    jxMission:         'MISSION',
+    jxAircraftTab:     'PLANES',
+    jxMissileTab:      'MISSILE SHOT',
+    jxUpgradeTab:      'UPGRADE',
+    jxPolicyUser:      'Privacy Policy',
+    jxTermsOfService:  'Terms of Service',
+    legalBackHome:     "← BACK TO HOME",
+    privacyPolicyTitle: 'Privacy Policy',
+    termsOfServiceTitle: 'Terms of Service',
+    legalLastUpdated:  'Last updated: September 13, 2026',
+    jxReview:          'REVIEW',
+    jxBriefingShort:   'BRIEFING',
+    jxLangName:        'ENGLISH',
+    jxVolume:          'VOLUME',
+    jxBadges:          'BADGES',
+    weekTrackerTitle:  'PLAY TIME',
+    jxProfile:         'PROFILE',
   },
 
   fr: {
@@ -325,6 +368,9 @@ const STRINGS = {
     timeLimit:       'LIMITE DE TEMPS',
     mathType:        'TYPE DE CALCUL',
     secPerQ:         's par question',
+    briefingLocation: 'LIEU',
+    briefingWeather:  'MÉTÉO',
+    briefingExample:  'EXEMPLE DE QUESTION',
     briefingStarComplete: 'Terminer le niveau',
     briefingStarAccuracy: '70%+ de bonnes reponses',
     briefingStarPerfect:  '100% correct + aucun impact',
@@ -386,6 +432,9 @@ const STRINGS = {
     starter:         'DÉBUTANT',
     active:          'ACTIF',
     unlock:          'DÉBLOQUER',
+    planeInfoTitle:  'INFORMATION',
+    planeInfoAbility:'CAPACITÉ',
+    planeInfoSpecs:  'FICHE TECHNIQUE',
 
     // Chest rewards
     chestBronze:     'BRONZE',
@@ -434,12 +483,22 @@ const STRINGS = {
     sub:             'SOL',
     mul:             'MUL',
     div:             'DIV',
+    expo:            'EXPOSANT',
+    algebra:         'ALGÈBRE',
     selectAll:       'TOUT SÉLECTIONNER',
     heartsLives:     '♥ VIES',
+    practiceDifficulty: 'DIFFICULTÉ',
+    diffEasy:        'FACILE',
+    diffNormal:      'NORMAL',
+    diffHard:        'DIFFICILE',
+    practiceBiome:   'BIOME',
+    practiceWeather: 'MÉTÉO',
+    weatherAuto:     'AUTO',
     start:           '▶ DÉMARRER',
 
     // Missions panel (in menu.js)
     dailyMissions:   'MISSIONS DU JOUR',
+    yourMissions:    'TES MISSIONS',
     claim:           'RÉCLAMER',
     claimed:         'RÉCLAMÉ ✓',
     resetsIn:        'RÉINITIALISE DANS',
@@ -573,6 +632,33 @@ const STRINGS = {
     feedbackErrRating: 'VEUILLEZ SÉLECTIONNER UNE NOTE',
     feedbackErrConn:   'ÉCHEC D\'ENVOI — VÉRIFIEZ LA CONNEXION',
     feedbackBtn:       '★ AVIS',
+
+    // Lobby redesign
+    jxPlay:            'JOUER',
+    jxShopTitle:       'MAGASIN',
+    jxTraining:        'ENTRAINEMENT',
+    jxPractice:        'PRATIQUE',
+    jxSettings:        'RÉGLAGE',
+    jxHangarSheet:     'HANGAR',
+    jxFireTypeSheet:   'Type de tire',
+    jxEquationSheet:   'équation',
+    jxMission:         'MISSION',
+    jxAircraftTab:     'AVIONS',
+    jxMissileTab:      'TIR DE MISSILE',
+    jxUpgradeTab:      'UPGRADE',
+    jxPolicyUser:      'Politique de confidentialité',
+    jxTermsOfService:  "Conditions d'utilisation",
+    legalBackHome:     "← RETOUR A L'ACCUEIL",
+    privacyPolicyTitle: 'Politique de confidentialité',
+    termsOfServiceTitle: "Conditions d'utilisation",
+    legalLastUpdated:  'Derniere mise a jour : 13 septembre 2026',
+    jxReview:          'AVIS',
+    jxBriefingShort:   'BRIFING',
+    jxLangName:        'FRANÇAIS',
+    jxVolume:          'VOLUME',
+    jxBadges:          'BADGES',
+    weekTrackerTitle:  'TEMPS DE JEU',
+    jxProfile:         'PROFIL',
   },
 };
 
@@ -600,6 +686,12 @@ export function applyI18n() {
     const key = el.dataset.i18n;
     const val = t(key);
     if (val !== key) el.textContent = val;
+  });
+  // Full-document language variants (e.g. the Privacy Policy / Terms of
+  // Service legal text) — each language's content sits in its own element,
+  // and only the one matching the active language is shown.
+  document.querySelectorAll('[data-i18n-lang]').forEach(el => {
+    el.hidden = el.dataset.i18nLang !== _lang;
   });
   document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
     const key = el.dataset.i18nPlaceholder;

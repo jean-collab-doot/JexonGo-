@@ -1,5 +1,5 @@
-import { G, clampCoins } from '../state.js';
-import { save } from '../utils/storage.js';
+import { G, clampCoins, addLifetimeXp } from '../state.js';
+import { load, save } from '../utils/storage.js';
 import { unlockEligibleBadges } from '../data/badges.js';
 
 
@@ -56,7 +56,7 @@ function configuredOpsLabelFr() {
   const ops = Array.isArray(G.focusOperations) && G.focusOperations.length
     ? G.focusOperations
     : G.focusOperation ? [G.focusOperation] : ['+', '-', '*', '/'];
-  return ops.map(op => ({ '+': 'ADD', '-': 'SOU', '*': 'MUL', '/': 'DIV' })[op] || op).join(' + ');
+  return ops.map(op => ({ '+': 'ADD', '-': 'SOUS', '*': 'MULT', '/': 'DIV' })[op] || op).join(' + ');
 }
 
 function prunePlayMinutes() {
@@ -69,16 +69,29 @@ function prunePlayMinutes() {
 }
 
 // ── 7-DAY LOGIN REWARD CYCLE ──────────────────────────────────────────────────
+const EXP_ICON = '<img class="jg-exp-icon" src="/assets/fx/Caisse/JexonGo_EXP_frame_01.png" alt="EXP">';
+const chestIcon = src => `<img class="jg-exp-icon" src="${src}" alt="">`;
+
+// chestTier: a chest of that rarity (see rollChestTier in systems/chest.js)
+// opens right after the claim — 0 BRONZE, 1 SILVER, 2 GOLD, 4 LEGENDARY.
 export const LOGIN_REWARDS = [
-  { day: 1, coins: 150,  xp: 0,    icon: 'coin', desc: '150 COINS' },
-  { day: 2, coins: 300,  xp: 50,   icon: 'coin', desc: '300 COINS + 50 XP' },
-  { day: 3, coins: 500,  xp: 0,    icon: 'coin', desc: '500 COINS' },
-  { day: 4, coins: 500,  xp: 200,  icon: '<img class="jg-exp-icon" src="/assets/fx/Caisse/JexonGo_EXP_frame_01.png" alt="EXP">', desc: '500 COINS + 200 XP' },
-  { day: 5, coins: 800,  xp: 0,    icon: 'coin', desc: '800 COINS' },
-  { day: 6, coins: 1000, xp: 300,  icon: '<img class="jg-exp-icon" src="/assets/fx/Caisse/JexonGo_EXP_frame_01.png" alt="EXP">', desc: '1000 COINS + 300 XP' },
-  { day: 7, coins: 2000, xp: 500, badgeId: 'steady_recruit',
+  { day: 1, coins: 150,  xp: 50,  icon: 'coin',
+    desc: '150 COINS + 50 XP', descFr: '150 PIÈCES + 50 EXP' },
+  { day: 2, coins: 0,    xp: 100, chestTier: 0, icon: chestIcon('/assets/chest/chest-blue.png'),
+    desc: 'BRONZE CHEST + 100 XP', descFr: 'COFFRE BRONZE + 100 EXP' },
+  { day: 3, coins: 300,  xp: 150, icon: EXP_ICON,
+    desc: '300 COINS + 150 XP', descFr: '300 PIÈCES + 150 EXP' },
+  { day: 4, coins: 0,    xp: 200, chestTier: 1, icon: chestIcon('/assets/chest/chest-blue.png'),
+    desc: 'SILVER CHEST + 200 XP', descFr: 'COFFRE ARGENT + 200 EXP' },
+  { day: 5, coins: 500,  xp: 250, badgeId: 'steady_recruit',
     icon: '<img class="jg-exp-icon" src="/assets/Badges/03_Recrue_Assidue_Commun.png" alt="Recrue Assidue">',
-    desc: '2000 COINS + 500 XP + BADGE' },
+    desc: '500 COINS + 250 XP + BADGE', descFr: '500 PIÈCES + 250 EXP + BADGE' },
+  { day: 6, coins: 0,    xp: 300, chestTier: 2, icon: chestIcon('/assets/chest/chest-purple.png'),
+    desc: 'GOLD CHEST + 300 XP', descFr: 'COFFRE OR + 300 EXP' },
+  { day: 7, coins: 1000, xp: 500, chestTier: 4,
+    icon: chestIcon('/assets/chest/chest-legendary.png'),
+    desc: '1000 COINS + 500 XP + LEGENDARY CHEST',
+    descFr: '1000 PIÈCES + 500 EXP + COFFRE LÉGENDAIRE' },
 ];
 
 // ── XP RANK TABLE ─────────────────────────────────────────────────────────────
@@ -119,67 +132,130 @@ const MISSION_POOL = [
   { id: 'open_chest3', label: 'Open 3 chests',              labelFr: 'Ouvrir 3 coffres',                       type: 'open_chest',      target: 3,  coins: 500, xp: 300 },
 ];
 
-function seededPick(dateStr) {
-  const seed = dateStr.replace(/-/g, '') | 0;
-  const pool = [...MISSION_POOL];
+// Team missions (MULTI mode, with the bot or a real player) and practice
+// mode missions: every day adds one of each to the 3 regular missions.
+const COOP_MISSION_POOL = [
+  { id: 'coop_play2',    label: 'Play 2 MULTI games',                     labelFr: 'Jouer 2 parties en MULTI',                         type: 'coop_games',     target: 2,  coins: 200, xp: 100 },
+  { id: 'coop_win1',     label: 'Win 1 level with a teammate',            labelFr: 'Gagner 1 niveau avec un coéquipier',               type: 'coop_wins',      target: 1,  coins: 300, xp: 150 },
+  { id: 'coop_heal2',    label: 'Repair your teammate 2 times',           labelFr: 'Réparer ton coéquipier 2 fois',                    type: 'coop_heals',     target: 2,  coins: 250, xp: 120 },
+  { id: 'coop_correct20',label: 'Answer 20 questions correctly in MULTI', labelFr: 'Répondre juste à 20 questions en MULTI',           type: 'coop_correct',   target: 20, coins: 250, xp: 120 },
+  { id: 'coop_real1',    label: 'Win 1 level with a real player',         labelFr: 'Gagner 1 niveau avec un vrai joueur',              type: 'coop_real_wins', target: 1,  coins: 500, xp: 250 },
+].map(m => ({ ...m, group: 'coop' }));
+const PRACTICE_MISSION_POOL = [
+  { id: 'prac_play2',     label: 'Play 2 practice games',                        labelFr: 'Jouer 2 parties en mode pratique',                    type: 'practice_games',   target: 2,  coins: 150, xp: 60  },
+  { id: 'prac_correct10', label: 'Answer 10 questions correctly in practice',    labelFr: 'Répondre juste à 10 questions en mode pratique',      type: 'practice_correct', target: 10, coins: 150, xp: 80  },
+  { id: 'prac_correct25', label: 'Answer 25 questions correctly in practice',    labelFr: 'Répondre juste à 25 questions en mode pratique',      type: 'practice_correct', target: 25, coins: 300, xp: 150 },
+  { id: 'prac_streak5',   label: 'Get a 5-answer streak in practice',            labelFr: 'Série de 5 bonnes réponses en mode pratique',          type: 'practice_streak',  target: 5,  coins: 200, xp: 100 },
+  { id: 'prac_win1',      label: 'Finish 1 practice game',                       labelFr: 'Terminer 1 partie en mode pratique',                  type: 'practice_wins',    target: 1,  coins: 150, xp: 80  },
+].map(m => ({ ...m, group: 'practice' }));
+
+// Same missions for everyone on a given day (seeded by the date).
+function seededFrom(pool, count, seed) {
+  const left = [...pool];
   const out  = [];
   let s = seed;
-  while (out.length < 3 && pool.length) {
+  while (out.length < count && left.length) {
     s = (s * 1664525 + 1013904223) >>> 0;
-    const idx = s % pool.length;
-    out.push({ ...pool.splice(idx, 1)[0], progress: 0, claimed: false });
+    const idx = s % left.length;
+    out.push({ ...left.splice(idx, 1)[0], progress: 0, claimed: false });
   }
   return out;
 }
 
+function seededPick(dateStr) {
+  const seed = dateStr.replace(/-/g, '') | 0;
+  return [
+    ...seededFrom(MISSION_POOL, 3, seed),
+    ...seededFrom(COOP_MISSION_POOL, 1, seed + 7),
+    ...seededFrom(PRACTICE_MISSION_POOL, 1, seed + 13),
+  ];
+}
+
 // ── PUBLIC API ────────────────────────────────────────────────────────────────
+
+// 7-day rewards (registered players only: Google accounts and newly created
+// accounts; guests get none). G.dailyStreak = how many of the 7 days are
+// claimed. The next day unlocks 24 h after the last claim, and missing days
+// never resets anything: the player simply stays on the same day.
+export const DAILY_INTERVAL_MS = 24 * 60 * 60 * 1000;
+
+// Saves from before the 24 h rule counted the streak by calendar day and could
+// already have advanced it for a day that was never claimed.
+function migrateDailyState() {
+  if (load('dailyVersion', 1) >= 2) return;
+  let claimed = G.dailyLastLogin ? (G.dailyStreak || 0) : 0;
+  const bumpedDay = load('dailyStreakDate', '');
+  if (claimed > 0 && bumpedDay && bumpedDay !== G.dailyLastLogin) claimed -= 1;
+  if (G.dailyStarterPlanComplete) claimed = 7;
+  G.dailyStreak = Math.max(0, Math.min(7, claimed));
+  G.dailyLastClaimAt = G.dailyLastLogin ? Date.parse(`${G.dailyLastLogin}T00:00:00`) || 0 : 0;
+  save('dailyStreak', G.dailyStreak);
+  save('dailyLastClaimAt', G.dailyLastClaimAt);
+  save('dailyVersion', 2);
+}
+
+function dailyClaimedCount() {
+  return G.dailyStarterPlanComplete ? 7 : Math.max(0, Math.min(7, G.dailyStreak || 0));
+}
+
+/** Time (ms) when the next day can be claimed; 0 = right away. */
+export function nextDailyClaimAt() {
+  return G.dailyLastClaimAt ? G.dailyLastClaimAt + DAILY_INTERVAL_MS : 0;
+}
 
 export function checkDailyLogin() {
   if (!G.playerRegistered) return { isNewDay: false };
   // New pilots must finish the complete playable tutorial before rewards begin.
   if (!G.tutorialCompleted) return { isNewDay: false, waitingForTutorial: true };
-  if (G.dailyStarterPlanComplete) return { isNewDay: false, completed: true };
-  const today     = todayStr();
-  const lastLogin = G.dailyLastLogin;
-  if (lastLogin === today) return { isNewDay: false };
+  migrateDailyState();
 
-  // Consecutive day? Increment streak, else reset
-  const yesterday = new Date();
-  yesterday.setDate(yesterday.getDate() - 1);
-  const yStr = yesterday.toISOString().slice(0, 10);
-  if (lastLogin === yStr) {
-    G.dailyStreak = Math.min(7, (G.dailyStreak || 0) + 1);
-  } else {
-    G.dailyStreak = 1;
+  // Fresh missions for each new calendar day
+  const today = todayStr();
+  if (G.dailyMissionDate !== today) {
+    G.dailyMissions    = seededPick(today);
+    G.dailyMissionDate = today;
+    save('dailyMissions',    G.dailyMissions);
+    save('dailyMissionDate', today);
   }
 
-  const reward = LOGIN_REWARDS[(G.dailyStreak - 1) % 7];
-
-  // Fresh missions for the new day
-  G.dailyMissions    = seededPick(today);
-  G.dailyMissionDate = today;
-
-  save('dailyStreak',      G.dailyStreak);
-  save('dailyMissions',    G.dailyMissions);
-  save('dailyMissionDate', today);
-  // NOTE: dailyLastLogin is saved only when the player claims, to re-show on reload
-
-  return { isNewDay: true, reward, streak: G.dailyStreak };
+  const claimed = dailyClaimedCount();
+  if (claimed >= 7) return { isNewDay: false, completed: true };
+  if (Date.now() < nextDailyClaimAt()) return { isNewDay: false };
+  return { isNewDay: true, reward: LOGIN_REWARDS[claimed], streak: claimed + 1 };
 }
 
-export function claimDailyReward(reward) {
-  if (!G.playerRegistered || !G.tutorialCompleted || G.dailyLastLogin === todayStr() || G.dailyStarterPlanComplete) {
-    return { claimed: false, badges: [] };
-  }
+// What the 7-day popup shows on a page load: the next reward to claim, or,
+// while waiting for the 24 h (or once all 7 days are done), the calendar in
+// view-only mode with the last claimed day and the time left.
+export function getDailyRewardView() {
+  const daily = checkDailyLogin();
+  if (daily.isNewDay) return { reward: daily.reward, streak: daily.streak, claimed: false };
+  if (!G.playerRegistered || !G.tutorialCompleted) return null;
+  const streak = Math.max(1, dailyClaimedCount());
+  return {
+    reward: LOGIN_REWARDS[streak - 1], streak, claimed: true,
+    nextAt: streak < 7 ? nextDailyClaimAt() : 0,
+  };
+}
+
+export function claimDailyReward() {
+  const daily = checkDailyLogin();
+  if (!daily.isNewDay) return { claimed: false, badges: [] };
+  const reward = daily.reward;
   G.coins           = clampCoins((G.coins || 0) + (reward.coins || 0));
   G.xp             += reward.xp    || 0;
   G.totalXpEarned  += reward.xp    || 0;
+  addLifetimeXp(reward.xp);
+  G.dailyStreak     = daily.streak;
+  G.dailyLastClaimAt = Date.now();
   G.dailyLastLogin  = todayStr();
   if (G.dailyStreak >= 7) G.dailyStarterPlanComplete = true;
   const badges = reward.badgeId ? unlockEligibleBadges({ source: 'daily-welcome' }) : [];
   save('coins',          G.coins);
   save('xp',             G.xp);
   save('totalXpEarned',  G.totalXpEarned);
+  save('dailyStreak',    G.dailyStreak);
+  save('dailyLastClaimAt', G.dailyLastClaimAt);
   save('dailyLastLogin', G.dailyLastLogin);
   save('dailyStarterPlanComplete', G.dailyStarterPlanComplete);
   return { claimed: true, badges };
@@ -192,6 +268,11 @@ export function getMissions() {
     G.dailyMissionDate = today;
     save('dailyMissions',    G.dailyMissions);
     save('dailyMissionDate', today);
+  } else if (!G.dailyMissions.some(m => m.group)) {
+    // Today's list was made before team / practice missions existed: add
+    // them, keeping the progress of the 3 regular ones.
+    G.dailyMissions = [...G.dailyMissions, ...seededPick(today).filter(m => m.group)];
+    save('dailyMissions', G.dailyMissions);
   }
   return G.dailyMissions;
 }
@@ -245,12 +326,15 @@ export function getMonthlyConfigChallenge(lang = 'en') {
   const ops = isFr ? configuredOpsLabelFr() : configuredOpsLabel();
   const length = G.onboardingLevelLength || 'normal';
   return {
-    title: isFr ? 'DÉFI DU MOIS' : 'MONTH CHALLENGE',
+    // Accents dropped on purpose - the pixel font (retropix) is missing
+    // several accented glyphs and falls back to a mismatched system font
+    // mid-word for just that character otherwise.
+    title: isFr ? 'DEFI DU MOIS' : 'MONTH CHALLENGE',
     subtitle: isFr
       ? `Objectif: ${stats.monthTarget} min ce mois-ci`
       : `Goal: ${stats.monthTarget} min this month`,
     config: isFr
-      ? `Config: année ${grade}, ${ops}, ${length}`
+      ? `Config: niveau ${grade}, ${ops}, ${length}`
       : `Config: grade ${grade}, ${ops}, ${length}`,
     progress: stats.monthTotal,
     target: stats.monthTarget,
@@ -264,7 +348,7 @@ export function trackMission(type, amount = 1) {
   let changed = false;
   for (const m of G.dailyMissions) {
     if (m.claimed || m.type !== type) continue;
-    if (type === 'max_streak') {
+    if (type === 'max_streak' || type === 'practice_streak') {   // best streak, not a sum
       if (amount > m.progress) { m.progress = Math.min(amount, m.target); changed = true; }
     } else {
       if (m.progress < m.target) { m.progress = Math.min(m.progress + amount, m.target); changed = true; }
@@ -280,6 +364,7 @@ export function claimMission(missionId) {
   m.claimed  = true;
   G.coins    = clampCoins((G.coins || 0) + (m.coins || 0));
   G.xp      += m.xp    || 0;
+  addLifetimeXp(m.xp);
   save('dailyMissions', G.dailyMissions);
   save('coins', G.coins);
   save('xp',    G.xp);
@@ -318,6 +403,7 @@ export function claimSr71Mission() {
   G.coins          = clampCoins((G.coins || 0) + SR71_MISSION.coins);
   G.xp            += SR71_MISSION.xp;
   G.totalXpEarned  = (G.totalXpEarned || 0) + SR71_MISSION.xp;
+  addLifetimeXp(SR71_MISSION.xp);
   save('sr71MissionClaimed', true);
   save('coins',        G.coins);
   save('xp',           G.xp);

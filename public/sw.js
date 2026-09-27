@@ -4,7 +4,7 @@
 //   FETCH    — cache-first for all assets; network-first for HTML/JS
 //   ACTIVATE — delete old caches so stale files never linger
 
-const CACHE_VERSION = 'jexongo-v47';
+const CACHE_VERSION = 'jexongo-v75';
 
 // Critical assets cached immediately on first visit
 const PRECACHE = [
@@ -21,35 +21,22 @@ const PRECACHE = [
   '/assets/Maps/JexonGo_Map_Arctique/JexonGo_arctic_High_Altitude_1024x8192.webp',
   '/assets/Maps/JexonGo_Map_Espace/JexonGo_space_High_Altitude_1024x8192.webp',
   // Player ships
-  '/assets/ships/player/t6.png',
-  '/assets/ships/player/pc21.png',
-  '/assets/ships/player/c130.png',
-  '/assets/ships/player/a10.png',
-  '/assets/ships/player/f16.png',
-  '/assets/ships/player/f18.png',
-  '/assets/ships/player/f22.png',
-  '/assets/ships/player/f35.png',
-  '/assets/ships/player/b2.png',
-  '/assets/ships/player/sr71.png',
+  '/assets/ships/player/t6.webp',
+  '/assets/ships/player/pc21.webp',
+  '/assets/ships/player/c130.webp',
+  '/assets/ships/player/a10.webp',
+  '/assets/ships/player/f16.webp',
+  '/assets/ships/player/f18.webp',
+  '/assets/ships/player/f22.webp',
+  '/assets/ships/player/f35.webp',
+  '/assets/ships/player/b2.webp',
+  '/assets/ships/player/sr71.webp',
   // Enemies
   '/assets/enemies/enemy-explosion.png',
   // FX
   '/assets/fx/rocket.png',
   '/assets/fx/explosion-a.png',
   '/assets/fx/Iteam/heart-full.png',
-  // Music
-  '/assets/music/music-menu.mp3',
-  '/assets/music/music-play1.mp3',
-  '/assets/music/music-arena.mp3',
-  '/assets/music/boss.mp3',
-  // SFX
-  '/assets/music/click.mp3',
-  '/assets/music/correct.mp3',
-  '/assets/music/wrong.mp3',
-  '/assets/music/explosion.mp3',
-  '/assets/music/shot.mp3',
-  '/assets/music/win.mp3',
-  '/assets/music/gameover2.mp3',
   // Menu
   '/assets/menu/lobby-bg.png',
 ];

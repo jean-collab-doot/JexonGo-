@@ -2,13 +2,17 @@ import { G, loadSave, saveAll } from './state.js';
 import { save, load, clearAll } from './utils/storage.js';
 import { showScreen } from './utils/dom.js';
 import { SFX } from './audio/sound.js';
-import { initMenu, renderMenu } from './screens/menu.js';
+import { initMenu, renderMenu, handleGoogleLogin } from './screens/menu.js';
+import { showConnectPrompt } from './screens/connect-prompt.js';
 import { playWorldCupIntro, stopWorldCupIntro } from './screens/worldcup-intro.js';
-import { showOnboarding } from './screens/onboarding.js';
-import { initLevelMap, renderLevelMap } from './screens/levelmap.js';
+import { showOnboarding, showBriefingEquationOptions } from './screens/onboarding.js';
+import { playNewPlayerIntro } from './screens/new-player-intro.js';
+import { showIntroBriefing } from './screens/intro-briefing.js';
+import { initLevelMap, renderLevelMap, setMapFocusLevel, setLevelMapPicker, getLevelMapPicker } from './screens/levelmap.js';
 import { initHangar, renderHangar } from './screens/hangar.js';
 import { initShop, renderShop } from './screens/shop.js';
-import { initGame } from './screens/game.js';
+import { initTraining, renderTraining, practiceLevelNumber } from './screens/training.js';
+import { initGame, leaveCoopLink } from './screens/game.js';
 import { initResult, showResult } from './screens/result.js';
 import { initChest, showChest, setChestReturn } from './screens/chest.js';
 import { initGameover, showGameover } from './screens/gameover.js';
@@ -16,9 +20,11 @@ import { initSettings, loadSettings } from './screens/settings.js';
 import { initRanked, renderRankedLobby } from './screens/ranked.js';
 import { initBriefing, showBriefing } from './screens/briefing.js';
 import { initArena, enterArena } from './screens/arena.js';
+import { initMultiplayer, enterMultiplayer, exitMultiplayer, isMultiLobby } from './screens/multiplayer.js';
+import { initLeaderboard, closeLeaderboard } from './screens/leaderboard.js';
 import { resetIntroBriefing } from './screens/intro-briefing.js';
 import { preloadShips } from './game/sprites.js';
-import { checkDailyLogin, recordPlayMinute } from './systems/daily.js';
+import { checkDailyLogin, getDailyRewardView, recordPlayMinute, LOGIN_REWARDS, DAILY_INTERVAL_MS } from './systems/daily.js';
 import { showDailyReward } from './screens/menu.js';
 import { canSendFeedback, markFeedbackSent, sendFeedback, sendNewPlayerNotification, _resetNewPlayer, _testEmailNow } from './systems/feedback.js';
 import { t, getLang, applyI18n } from './i18n.js';
@@ -135,28 +141,42 @@ let _cleanup = null;
 let _audioSplashStarted = false;
 
 const nav = {
-  toMenu() {
+  toMenu(dir) {
     cleanup();
+    leaveCoopLink();
+    G.lastCoopSession = null;
+    exitMultiplayer();
+    closeLeaderboard();
+    setLevelMapPicker(null);
+    // Back in the lobby: the next map visit starts on PACIFIQUE again.
+    setMapFocusLevel(null);
     renderMenu();
-    showScreen('s-menu');
+    showScreen('s-menu', dir);
     trackVirtualPage('/lobby');
     SFX.playMusic('menu');
     _videoResume();
   },
   toMap() {
     cleanup();
+    setLevelMapPicker(null);
     renderLevelMap();
     showScreen('s-levelmap');
     trackVirtualPage('/levels');
     SFX.playMusic('menu');
   },
   toGame(levelNum, practiceMode = false) {
-    if (!practiceMode && !G.tutorialMode && !isLevelUnlocked(levelNum, G.levelStars, G.highestLevel, G.tutorialPlan?.startLevel || 1)) {
+    // A co-op teammate plays the host's level even if it is not unlocked yet.
+    if (!practiceMode && !G.tutorialMode && !G.coopSession && !isLevelUnlocked(levelNum, G.levelStars, G.highestLevel, G.tutorialPlan?.startLevel || 1)) {
       nav.toMap();
       return;
     }
     cleanup();
+    // RETRY in MULTI: same teammate again (bot or real player), back to life.
+    if (G.coopRetry && G.lastCoopSession && !practiceMode) G.coopSession = G.lastCoopSession;
+    G.coopRetry = false;
+    if (!G.coopSession) leaveCoopLink();
     G.practiceMode = practiceMode;
+    if (!practiceMode && !G.tutorialMode) setMapFocusLevel(levelNum);
     showScreen('s-game');
     trackVirtualPage(practiceMode ? '/practice/game' : `/level/${levelNum}`, {
       level: levelNum,
@@ -166,9 +186,28 @@ const nav = {
       level: levelNum,
       mode: practiceMode ? 'practice' : 'level',
     });
-    SFX.playMusic([10, 20, 30, 40, 50].includes(levelNum) ? 'boss' : 'game');
+    // A level (new or replayed) always starts its music from the beginning.
+    SFX.playMusic([10, 20, 30, 40, 50].includes(levelNum) ? 'dialogue' : 'game', { restart: true });
     _cleanup = initGame(levelNum, (won) => {
       cleanup();
+      if (_practiceNumberMaxBeforeRun !== null) {
+        G.practiceNumberMax = _practiceNumberMaxBeforeRun;
+        _practiceNumberMaxBeforeRun = null;
+      }
+      // Beginner practice finished: invite a guest to sign in with Google.
+      const beginnerPracticeDone = won && G.beginnerPracticeDone && !_skipConnectPromptAfterRun;
+      G.beginnerPracticeDone = false;
+      _skipConnectPromptAfterRun = false;
+      if (beginnerPracticeDone && !G.playerRegistered) {
+        showMissionCompleteTransition(() => {
+          renderMenu();
+          showScreen('s-menu');
+          trackVirtualPage('/lobby', { source: 'beginner-practice' });
+          SFX.playMusic('menu');
+          openConnectPrompt();
+        });
+        return;
+      }
       if (won && G.postTutorialConnectPrompt && !G.playerRegistered && guestTrialUsed()) {
         showMissionCompleteTransition(() => {
           renderMenu();
@@ -214,18 +253,25 @@ const nav = {
       }
     });
   },
-  toHangar() {
+  toHangar(dir) {
     cleanup();
     renderHangar();
-    showScreen('s-hangar');
+    showScreen('s-hangar', dir);
     trackVirtualPage('/hangar');
     SFX.playMusic('menu');
   },
-  toShop() {
+  toShop(dir) {
     cleanup();
     renderShop();
-    showScreen('s-shop');
+    showScreen('s-shop', dir);
     trackVirtualPage('/shop');
+    SFX.playMusic('menu');
+  },
+  toTraining(dir) {
+    cleanup();
+    renderTraining();
+    showScreen('s-training', dir);
+    trackVirtualPage('/training');
     SFX.playMusic('menu');
   },
   toChest(reward, returnTo = 'map') {
@@ -249,16 +295,35 @@ const nav = {
       return;
     }
     cleanup();
+    setMapFocusLevel(levelNum);
     showBriefing(levelNum);
     showScreen('s-briefing');
     trackVirtualPage('/briefing', { level: levelNum });
     SFX.playMusic('menu');
   },
-  toArena() {
+  toArena(opts = {}) {
     cleanup();
     showScreen('s-arena');
-    trackVirtualPage('/arena');
-    enterArena();
+    trackVirtualPage('/arena', { mode: opts.mode || 'ranked' });
+    enterArena(opts);
+  },
+  // MULTI: the solo level map picks the co-op level (only unlocked levels).
+  toMapPicker(onPick, onBack) {
+    cleanup();
+    setLevelMapPicker({ onPick, onBack });
+    renderLevelMap();
+    showScreen('s-levelmap');
+    trackVirtualPage('/multiplayer/levels');
+    SFX.playMusic('menu');
+  },
+  // MULTI: the same lobby screen, in multiplayer mode (multiplayer.js).
+  toMulti() {
+    cleanup();
+    renderMenu();
+    showScreen('s-menu');
+    trackVirtualPage('/multiplayer');
+    enterMultiplayer();
+    SFX.playMusic('menu');
   },
   toGradeSelect() {
     cleanup();
@@ -286,14 +351,6 @@ function showMissionCompleteTransition(onDone) {
   }, 1220);
 }
 
-function showAfterIntroPopups() {
-  const _daily = checkDailyLogin();
-  if (_daily.isNewDay) {
-    setTimeout(() => showDailyReward(_daily.reward, _daily.streak), 600);
-  }
-  setTimeout(() => showFeedbackPopup(), 1200);
-}
-
 // Called by the first-level visual introduction. The countdown waits until the
 // welcome gift is claimed, so the reward is clearly shown after the intro.
 window._showDailyRewardAfterIntro = (onDone) => {
@@ -313,15 +370,65 @@ function guestTrialUsed() {
   return !G.playerRegistered && (Number(load('guestGamesPlayed', 0)) || 0) >= 5;
 }
 
-function showNewPlayerIntroFlow(onDone = null) {
+function showNewPlayerIntroFlow(onDone = null, options = {}) {
   renderMenu();
-  showScreen('s-menu');
-  SFX.playMusic('menu');
+  showScreen('s-menu');   // no music: the questionnaire and briefing are silent
   stopWorldCupIntro();
   showOnboarding(() => {
     save('hasSeenOnboarding', true);
     if (onDone) onDone();
     else nav.toGame(G.currentLevel || 1);
+  }, options);
+}
+
+// Every new-player entry (first visit, restart intro, new Google account):
+// the yellow T-6 animation, then the questionnaire, then the first level.
+// After the briefing a new player goes straight into a PRACTICE game, set up
+// from the questionnaire: chosen topics (+ - x / exponent algebra) and number
+// range. Placement / tutorial levels stay pending for the normal levels.
+let _practiceNumberMaxBeforeRun = null;
+let _skipConnectPromptAfterRun = false;   // run started from the BRIFING button
+function startPracticeFromOnboarding({ skipConnectPrompt = false } = {}) {
+  _skipConnectPromptAfterRun = skipConnectPrompt;
+  const extra = { exponent: '^', algebra: 'alg' };
+  const ops = [...new Set((G.focusTopics || []).map(t => extra[t] || t)
+    .filter(op => ['+', '-', '*', '/', '^', 'alg'].includes(op)))];
+  G.practiceOps = ops.length ? ops : ['+', '-', '*', '/'];
+  // Only for this run: the player's own practice number range comes back
+  // when the game ends (see the toGame end callback).
+  _practiceNumberMaxBeforeRun = G.practiceNumberMax;
+  G.practiceNumberMax = G.numberRangeMax || 0;
+  G.onboardingPracticeRun = true;   // game.js: 5 free questions, then timer + 3 lives
+  nav.toGame(practiceLevelNumber(), true);
+}
+
+// Questionnaire done -> straight into the "how to play" briefing (no level
+// loading in between), then practice.
+function startNewPlayerAnimation(onDone = startPracticeFromOnboarding) {
+  playNewPlayerIntro(() => {
+    _audioSplashStarted = true;
+    SFX.unlock();
+    showNewPlayerIntroFlow(() => showIntroBriefing(onDone), { skipWelcome: true });
+  });
+}
+
+// Google sign-in invitation (end of the beginner practice). Its terms /
+// privacy links open those pages; their back button brings it back.
+let _reopenConnectPrompt = false;
+
+// Lobby BRIFING button (settings.js): briefing, then the beginner practice
+// (5 free questions, 5 s break, 5 timed questions with 3 lives, then the
+// Google invitation for guests) — the same run as new players get.
+window._startBriefingPractice = () =>
+  showBriefingEquationOptions(() => showIntroBriefing(() =>
+    startPracticeFromOnboarding({ skipConnectPrompt: true })));   // no Google invitation here
+function openConnectPrompt() {
+  showConnectPrompt({
+    onGoogle: () => handleGoogleLogin('google'),
+    onLegal: kind => {
+      _reopenConnectPrompt = true;
+      showScreen(kind === 'terms' ? 's-terms' : 's-privacy');
+    },
   });
 }
 
@@ -355,14 +462,9 @@ function restartFullIntroFromStart() {
   save('tutorialProgress', null);
   renderMenu();
   showScreen('s-menu');
-  SFX.playMusic('menu');
-  showNewPlayerIntroFlow(() => nav.toGame(G.currentLevel || 1));
+  startNewPlayerAnimation();
 }
 window._restartFullIntro = restartFullIntroFromStart;
-
-function isTextEntryTarget(el) {
-  return !!el?.closest?.('input, textarea, select, [contenteditable="true"]');
-}
 
 function _showLoginToast(msg, duration = 2800) {
   const el = document.getElementById('login-toast');
@@ -405,10 +507,12 @@ window._onGoogleCredential = async function(response) {
     // Always persist identity first so loadSave can read them back
     G.playerName       = name;
     G.playerEmail      = email;
+    G.playerAuthType   = 'google';
     G.playerPhoto      = photo;
     G.playerRegistered = true;
     save('playerName',       name);
     save('playerEmail',      email);
+    save('playerAuthType',   'google');
     save('playerPhoto',      photo);
     save('playerRegistered', true);
 
@@ -434,7 +538,7 @@ window._onGoogleCredential = async function(response) {
       renderMenu();
       _showLoginToast(t('welcomeBack').replace('{name}', name));
     } else if (!G.playerGrade) {
-      showNewPlayerIntroFlow(() => nav.toGame(G.currentLevel || 1));
+      startNewPlayerAnimation();
     } else {
       if (shouldNotifyNewGooglePlayer) {
         sendNewPlayerNotification({ playerName: name, playerEmail: email, playerGrade: G.playerGrade });
@@ -471,6 +575,7 @@ initMenu(nav);
 initLevelMap(nav);
 initHangar(nav);
 initShop(nav);
+initTraining(nav);
 initResult(nav);
 initChest(nav);
 initGameover(nav);
@@ -478,6 +583,13 @@ initSettings();
 initRanked(nav);
 initBriefing(nav);
 initArena(nav);
+initMultiplayer(nav);
+initLeaderboard();
+// MULTI enters multiplayer mode; in that mode the same button reads SOLO.
+document.getElementById('btn-lobby-multi')?.addEventListener('click', () => {
+  if (isMultiLobby()) exitMultiplayer();
+  else nav.toMulti();
+});
 initGradeScreen();
 initRegistration();
 initFeedback();
@@ -489,6 +601,9 @@ if (!document.getElementById('s-menu')?.classList.contains('hidden')) {
 document.addEventListener('click', e => {
   const btn = e.target.closest('button');
   if (!btn) return;
+  // MULTI level pick: the map / briefing back buttons return to MULTI
+  // (their own handlers in levelmap.js / briefing.js).
+  if (getLevelMapPicker() && (btn.id === 'btn-map-back' || btn.id === 'btn-briefing-back')) return;
 
   if (
     btn.id === 'btn-map-back' ||
@@ -510,20 +625,37 @@ document.addEventListener('click', e => {
   if (btn.id === 'btn-privacy-back' || btn.id === 'btn-terms-back' || btn.id === 'btn-reg-close') {
     e.preventDefault();
     nav.toMenu();
+    if (_reopenConnectPrompt && btn.id !== 'btn-reg-close') {
+      _reopenConnectPrompt = false;
+      openConnectPrompt();
+    }
   }
 }, true);
 
 // ── GLOBAL BUTTON CLICK SOUND ─────────────────────────────────────────────────
+// A drag that ends on a button (pulling the HANGAR sheet up/down, swiping a
+// list) is not a click: no sound for it. Tracked on pointerdown/move.
+let _pressX = 0, _pressY = 0, _pressDragged = false;
+document.addEventListener('pointerdown', e => {
+  _pressX = e.clientX; _pressY = e.clientY; _pressDragged = false;
+}, true);
+document.addEventListener('pointermove', e => {
+  if (!_pressDragged && Math.hypot(e.clientX - _pressX, e.clientY - _pressY) > 8) _pressDragged = true;
+}, true);
+
 document.addEventListener('click', e => {
   const btn = e.target.closest('button');
   if (!btn) return;
   if (!_audioSplashStarted) {
     _audioSplashStarted = true;
     SFX.unlock();
-    SFX.playMusic('menu');
+    // Not over the new-player intro / questionnaire / briefing (no music there).
+    if (!document.querySelector('#np-intro, #onboarding-overlay, #brief-overlay')) SFX.playMusic('menu');
     document.getElementById('audio-splash')?.classList.add('hidden');
   }
-  if (btn.id !== 'btn-audio-start') SFX.click();
+  // The takeoff button (level briefing) plays its own sound instead.
+  if (btn.id !== 'btn-audio-start' && btn.id !== 'btn-briefing-fly' && !btn.classList.contains('np-play')
+    && !_pressDragged) SFX.click();
   if (!_trackedFirstInteraction) {
     _trackedFirstInteraction = true;
     trackAnalytics('Game Interaction', { action: 'first_button_click', button: btn.id || 'button' });
@@ -712,7 +844,65 @@ window.visualViewport?.addEventListener('scroll', applyDeviceClasses);
 injectVercelInsights();
 loadSave();
 loadSettings();
+// Players whose questionnaire turned on the old training rounds (before the
+// beginner practice existed) were stuck in training on real levels: turn it
+// off. A placement chosen on purpose in the equation settings is kept.
+if (G.tutorialMode && G.onboardingStartMode !== 'placement') {
+  G.tutorialMode = false;
+  G.tutorialCompleted = true;
+  G.tutorialProgress = null;
+  save('tutorialMode', false);
+  save('tutorialCompleted', true);
+  save('tutorialProgress', null);
+}
 preloadShips(G.activeAircraft);
+
+// Every page load that opens on the lobby shows the 7-day rewards
+// (view-only once today's reward is claimed).
+// Local test only: http://localhost:5173/?daily (or ?daily=3 for day 3)
+// always shows it, view-only, without granting anything.
+function showDailyRewardOnPageLoad() {
+  if (document.getElementById('s-menu')?.classList.contains('hidden')) return;
+  if (document.getElementById('onboarding-overlay') || document.getElementById('np-intro')) return;
+  const dailyTest = import.meta.env?.DEV ? new URLSearchParams(location.search).get('daily') : null;
+  if (dailyTest !== null) {
+    const day = Math.max(1, Math.min(7, Number(dailyTest) || G.dailyStreak || 1));
+    showDailyReward(LOGIN_REWARDS[day - 1], day, null, true, day < 7 ? Date.now() + DAILY_INTERVAL_MS : 0);
+    return;
+  }
+  const view = getDailyRewardView();
+  if (view) showDailyReward(view.reward, view.streak, null, view.claimed, view.nextAt);
+}
+
+// New players (onboarding never done) get the yellow T-6 intro first; its
+// JOUER button (a user gesture, so audio can start) leads into the
+// onboarding questions, then the first level.
+// Local test only: http://localhost:5173/?intro always plays it.
+const forceNewPlayerIntro = import.meta.env?.DEV && new URLSearchParams(location.search).has('intro');
+const knownAccount = G.playerRegistered && G.playerGrade;   // returning account on a new device
+if (forceNewPlayerIntro || (!knownAccount && !(G.hasSeenOnboarding || load('hasSeenOnboarding', false)))) {
+  startNewPlayerAnimation();
+} else {
+  setTimeout(showDailyRewardOnPageLoad, 900);
+}
+// Local test only: http://localhost:5173/?coop=bot starts level 1 with a bot
+// teammate (same as MULTI -> WITH A BOT).
+if (import.meta.env?.DEV && new URLSearchParams(location.search).get('coop') === 'bot') {
+  setTimeout(() => {
+    G.coopSession = { mode: 'bot', partnerName: 'BOT', partnerAircraft: G.botUpgrades?.aircraft || 't6' };
+    nav.toGame(G.currentLevel || 1);
+  }, 800);
+}
+
+// Local test only: http://localhost:5173/?connect shows the Google sign-in
+// invitation of the end of the beginner practice.
+if (import.meta.env?.DEV && new URLSearchParams(location.search).has('connect')) {
+  setTimeout(openConnectPrompt, 600);
+}
+
+// The intro is on screen (or not needed): let the page show normally again.
+document.querySelector('#np-intro.np-static')?.remove();   // not a new player
+document.documentElement.classList.remove('np-boot');
 
 function _forceSignOutBlocked() {
   _showLoginToast(sessionBlockedMessage(), 4000);
@@ -745,11 +935,11 @@ if (G.playerRegistered && G.playerEmail) {
 // Auto-save every 30 seconds for registered players
 setInterval(() => { if (G.playerRegistered) saveAll(); }, 30000);
 
-// Track play minutes only while the player is actively in a game.
+// Track play minutes for any time spent in the app (lobby, hangar, shop,
+// training, levels, etc.) - not just while a level is actually running.
 setInterval(() => {
   if (document.hidden) return;
-  const activeScreen = document.querySelector('.screen:not(.hidden)')?.id;
-  if (activeScreen === 's-game') recordPlayMinute(1);
+  recordPlayMinute(1);
 }, 60000);
 
 // Save when tab closes
@@ -779,9 +969,7 @@ async function startAudioSplash() {
       return;
     }
 
-    showNewPlayerIntroFlow(() => {
-      nav.toGame(G.currentLevel || 1);
-    });
+    startNewPlayerAnimation();
   };
 
   if (tutorialCompleted && tutorialProgress?.active) {

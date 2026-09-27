@@ -65,10 +65,6 @@ export function wsOff(event, fn) {
   _handlers.get(event)?.delete(fn);
 }
 
-export function wsOffAll(event) {
-  _handlers.delete(event);
-}
-
 export function wsDisconnect() {
   if (_ws) { try { _ws.close(); } catch (_) {} _ws = null; }
   _connected = false;

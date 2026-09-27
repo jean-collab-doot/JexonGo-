@@ -39,6 +39,10 @@ export function spawnEnemy(canvasW, type, options = {}) {
     shakeTick:    0,
     fireCooldown: def.fireRate + Math.floor(Math.random() * 60),
     spriteKey:    ENEMY_SPRITE[type] ?? 'enemy-basic-new',
+    // Sideways-moving enemies roll into their turns using a dedicated bank sheet.
+    bankSpriteKey: type === 'fast' ? 'enemy-fast-bank'
+                 : type === 'turner' ? 'enemy-turner-bank'
+                 : null,
     animFrame:    0,
     animRate:     type === 'tank' ? ENEMY_ANIM_RATE * 2 : ENEMY_ANIM_RATE,
     animFrames:   type === 'tank' ? 24 : ENEMY_ANIM_FRAMES,
@@ -56,8 +60,11 @@ export function spawnEnemy(canvasW, type, options = {}) {
     enemy.pathType = 'cross';
     enemy.crossStartY = -def.size - 12 - lane * (canvasW < 500 ? 52 : 68);
     enemy.y = enemy.crossStartY;
-    enemy.crossStartX = options.crossSide < 0 ? edge : canvasW - edge;
-    enemy.crossEndX = options.crossSide < 0 ? canvasW - edge : edge;
+    // Only half of the screen width is crossed sideways, which halves the
+    // horizontal speed; the pair still meets at the centre to draw an X.
+    const crossSpan = (canvasW - edge * 2) * 0.5;
+    enemy.crossStartX = options.crossSide < 0 ? canvasW / 2 - crossSpan / 2 : canvasW / 2 + crossSpan / 2;
+    enemy.crossEndX = options.crossSide < 0 ? canvasW / 2 + crossSpan / 2 : canvasW / 2 - crossSpan / 2;
     enemy.x = enemy.crossStartX;
     enemy.headingAngle = 0;
   }
@@ -100,23 +107,18 @@ export function spawnEnemy(canvasW, type, options = {}) {
   return enemy;
 }
 
-function diamondOffset(enemy, slot) {
-  return [
-    [0, -enemy.formationGapY],
-    [enemy.formationGapX, 0],
-    [0, enemy.formationGapY],
-    [-enemy.formationGapX, 0],
-  ][slot % 4];
-}
-
 function smoothStep(t) {
   const n = Math.max(0, Math.min(1, t));
   return n * n * (3 - 2 * n);
 }
 
-export function updateEnemies(enemies, canvasW = 400, canvasH = 800, step = 1) {
+// speedMultFn(enemy) -> multiplier applied to this enemy's movement this frame
+// (e.g. F-117 jamming slows down whichever enemies are near the player).
+// Defaults to 1 for every enemy, i.e. the previous unconditional behavior.
+export function updateEnemies(enemies, canvasW = 400, canvasH = 800, baseStep = 1, speedMultFn = null) {
   for (const e of enemies) {
     if (!e.active) continue;
+    const step = speedMultFn ? baseStep * speedMultFn(e) : baseStep;
 
     // Boss is fully static — no movement
     if (e.type === 'boss') {
@@ -135,8 +137,11 @@ export function updateEnemies(enemies, canvasW = 400, canvasH = 800, step = 1) {
       const curvedProgress = progress * progress * progress * (progress * (progress * 6 - 15) + 10);
       e.x = e.crossStartX + (e.crossEndX - e.crossStartX) * curvedProgress;
       e.vx = step ? (e.x - previousX) / step : 0;
-      const targetHeading = -Math.atan2(e.vx, Math.max(0.01, e.speed));
-      e.headingAngle += (targetHeading - e.headingAngle) * Math.min(1, 0.10 * step);
+      // Bank enemies show the turn with the dedicated bank sheet, not a yaw
+      // rotation. Keep headingAngle flat and ease a smoothed bank signal so the
+      // pose ramps in and out instead of snapping between levels at turn's end.
+      e.headingAngle = 0;
+      e.bankVis = (e.bankVis || 0) + (e.vx - (e.bankVis || 0)) * Math.min(1, 0.18 * step);
     } else if (e.pathType === 'apache-ambush') {
       e.apacheTimer += step;
       const targetY = canvasH * e.apacheTargetYRatio;
@@ -189,8 +194,8 @@ export function updateEnemies(enemies, canvasW = 400, canvasH = 800, step = 1) {
         }
       }
       e.vx = step ? (e.x - previousX) / step : 0;
-      const targetHeading = -Math.atan2(e.vx, Math.max(0.01, e.speed));
-      e.headingAngle += (targetHeading - e.headingAngle) * Math.min(1, 0.075 * step);
+      e.headingAngle = 0;
+      e.bankVis = (e.bankVis || 0) + (e.vx - (e.bankVis || 0)) * Math.min(1, 0.18 * step);
       e.y += e.speed * step;
     } else if (e.pathType === 'interceptor') {
       e.vx = 0;

@@ -1,16 +1,14 @@
 import { load, save } from './utils/storage.js';
 import { AIRCRAFT } from './data/aircraft.js';
 
-// Tournament event window - edit these two dates to reactivate for future events.
-export const AIR_CUP_START = new Date('2026-06-11T00:00:00Z').getTime();
-export const AIR_CUP_END   = new Date('2026-07-15T23:59:59Z').getTime();
+// Test values (every aircraft, max coins and EXP) only on the local dev
+// server (`npm run dev`, import.meta.env.DEV). Players of the published game
+// start from zero with the T-6.
+const DEV_TEST = !!import.meta.env?.DEV;
 
-export const IS_AIR_CUP_ACTIVE =
-  Date.now() >= AIR_CUP_START && Date.now() <= AIR_CUP_END;
-
-const DEFAULT_UNLOCKED_AIRCRAFT = [
-  't6',
-];
+const DEFAULT_UNLOCKED_AIRCRAFT = DEV_TEST
+  ? ['t6', 'pc21', 'c130', 'a10', 'f16', 'f18', 'f22', 'f35', 'b2', 'sr71', 'f117']
+  : ['t6'];
 
 function withDefaultUnlockedAircraft(list) {
   const unlocked = Array.isArray(list) ? [...list] : [];
@@ -21,17 +19,58 @@ function withDefaultUnlockedAircraft(list) {
 }
 
 export const MAX_COINS = 99999;
-const STARTING_COINS = 0;
+const MAX_XP = 999999;
+const STARTING_COINS = DEV_TEST ? MAX_COINS : 0;
+const STARTING_XP = DEV_TEST ? MAX_XP : 0;
 
 export function clampCoins(value) {
   const n = Number(value) || 0;
   return Math.max(0, Math.min(MAX_COINS, Math.floor(n)));
 }
 
+// Most coins / XP a single game can earn in total (pickups during the level
+// plus the end-of-level bonus).
+export const MAX_GAME_COINS = 100;
+export const MAX_GAME_XP = 150;
+
+// Every XP gain also counts toward the "Fortune de Guerre" badge.
+// Also feeds the TOP 20 leaderboard: EXP from a game with a real teammate
+// (MULTI, not the bot) counts for the MULTIJOUEUR board too.
+export function addLifetimeXp(amount) {
+  const gained = Math.max(0, Number(amount) || 0);
+  G.lifetimeXpEarned = (G.lifetimeXpEarned || 0) + gained;
+  save('lifetimeXpEarned', G.lifetimeXpEarned);
+  if (gained > 0 && (G.coopSession || G.lastCoopSession)?.mode === 'online') {
+    G.multiXpEarned = (G.multiXpEarned || 0) + gained;
+    save('multiXpEarned', G.multiXpEarned);
+  }
+  if (gained > 0) window.dispatchEvent(new Event('jexongo:xp'));
+}
+
+export function addSessionCoins(amount) {
+  G.airdropSessionCoins = Math.min(MAX_GAME_COINS, (G.airdropSessionCoins || 0) + Math.max(0, amount || 0));
+}
+
+// Hangar UPGRADE "XP bonus" of the active aircraft: +10 / +25 / +50 % XP,
+// and the per-game XP cap grows by the same amount.
+const XP_UPGRADE_BONUS = [0, 0.10, 0.25, 0.50];
+export function xpUpgradeMultiplier() {
+  const level = Math.max(0, Math.min(3, G.planeUpgrades?.[G.activeAircraft]?.xp | 0));
+  return 1 + XP_UPGRADE_BONUS[level];
+}
+export function maxGameXp() {
+  return Math.round(MAX_GAME_XP * xpUpgradeMultiplier());
+}
+
+export function addSessionXp(amount) {
+  const gained = Math.round(Math.max(0, amount || 0) * xpUpgradeMultiplier());
+  G.airdropSessionXP = Math.min(maxGameXp(), (G.airdropSessionXP || 0) + gained);
+}
+
 export const G = {
   // --- Persisted ---
-  xp: 0,
-  totalXpEarned: 0, // cumulative XP earned (never decremented — used for pilot grade)
+  xp: STARTING_XP,
+  totalXpEarned: STARTING_XP, // cumulative XP earned (never decremented — used for pilot grade)
   coins: STARTING_COINS,
   blueprints: {},
   chestsWithoutEpic: 0,
@@ -39,13 +78,17 @@ export const G = {
   unlockedAircraft: [...DEFAULT_UNLOCKED_AIRCRAFT],
   acquiredAircraft: [],
   activeAircraft: 't6',
-  unlockedBadges: [], activeBadge: null, totalCorrectAnswers: 0, bestAnswerStreak: 0,
+  unlockedBadges: [], activeBadge: null, totalCorrectAnswers: 0, bestAnswerStreak: 0, flawlessLevels: 0,
+  lifetimeXpEarned: 0,       // XP really earned since the player started (Fortune de Guerre badge)
+  multiXpEarned: 0,          // part of it earned in MULTI games with a real teammate (TOP 20 board)
   comboAcePermanent: false, secretAircraftUnlocked: false,
   ownedShootingPlans: ['default'],
   activeShootingPlan: 'default',
   ownedMissileTypes: [],
   activeMissileType: 'default',
-  playerGrade: 0,       // 0 = not selected, 1-6 = school grade
+  planeUpgrades: {},         // hangar UPGRADE, per aircraft: { lives, shots, homing, xp, weapons, weapon }
+  botUpgrades: { aircraft: 't6', planes: ['t6'], fire: 1, hp: 3 }, // MULTI bot teammate: plane (bought planes), fire power 1-5, lives 3-6
+  playerGrade: 0,      // 0 = not selected, 1-6 = school grade
   highestLevel: 0,      // highest level beaten (drives pilot grade)
   sr71Earned: false,         // true once all 30 levels completed with zero wrong answers
   sr71MissionClaimed: false, // true once the SR-71 challenge mission reward is claimed
@@ -55,7 +98,8 @@ export const G = {
 
   // --- Daily economy ---
   dailyLastLogin:   null,
-  dailyStreak:      0,
+  dailyStreak:      0,        // 7-day rewards: days claimed (0-7)
+  dailyLastClaimAt: 0,        // ms timestamp of the last claim (next one 24 h later)
   dailyStarterPlanComplete: false,
   dailyMissions:    null,
   dailyMissionDate: null,
@@ -75,6 +119,7 @@ export const G = {
   // --- Profile ---
   playerName:       'PILOT',
   playerEmail:      '',
+  playerAuthType:   '',
   playerPhoto:      '',
   playerAge:        0,
   playerRegistered: false,
@@ -89,6 +134,10 @@ export const G = {
   onboardingGrade: 1,
   focusOperation: null,
   focusOperations: [],
+  focusTopics: [],       // onboarding topics incl. exponent / trigonometry / pythagoras
+  schoolLevel: '',       // 'prim1'..'prim6' or 'sec1'..'sec5'
+  playerCountry: '',     // 'quebec' | 'france' | 'usa' | 'other'
+  numberRangeMax: 0,     // onboarding "which numbers": 10, 20, 50, 100 or custom; 0 = level default
   pendingPlacement: false,
   tutorialMode: false,
   onboardingStartMode: 'bases',
@@ -105,6 +154,10 @@ export const G = {
   practiceOps:       ['+', '-', '*', '/'],
   practiceHearts:    true,
   practiceTimeLimit: 10,   // seconds per question; null = unlimited
+  practiceDifficulty: 'normal', // 'easy' | 'normal' | 'hard'
+  practiceNumberMax: 0,         // typed "numbers from 1 to N" in practice; 0 = difficulty default
+  practiceBiome:     'ocean',
+  practiceWeather:   null,  // weather id; null = the level's own weather
   continueState: null,
 
   // --- In-game (reset each level) ---
@@ -134,6 +187,7 @@ export function loadSave() {
   G.playerRegistered  = load('playerRegistered', false);
   G.playerName        = load('playerName', 'PILOT');
   G.playerEmail       = load('playerEmail', '');
+  G.playerAuthType    = load('playerAuthType', '');
   G.playerPhoto       = load('playerPhoto', '');
   G.playerAge         = load('playerAge', 0);
   G.playerGrade       = load('playerGrade', 0);
@@ -141,6 +195,10 @@ export function loadSave() {
   G.pilotMotto        = load('pilotMotto', '');
   G.profileTheme      = load('profileTheme', 'default');
   G.practiceTimeLimit = load('practiceTimeLimit', 10);
+  G.practiceDifficulty = load('practiceDifficulty', 'normal');
+  G.practiceNumberMax = Number(load('practiceNumberMax', 0)) || 0;
+  G.practiceBiome     = load('practiceBiome', 'ocean');
+  G.practiceWeather   = load('practiceWeather', null);
   G.hasSeenOnboarding = load('hasSeenOnboarding', false);
   G.hasSeenBriefing   = load('hasSeenBriefing', false);
   G.likesMath         = load('likesMath', true);
@@ -148,6 +206,10 @@ export function loadSave() {
   G.onboardingGrade   = load('onboardingGrade', 1);
   G.focusOperation    = load('focusOperation', '') || null;
   G.focusOperations   = load('focusOperations', []);
+  G.focusTopics       = load('focusTopics', []);
+  G.schoolLevel       = load('schoolLevel', '');
+  G.playerCountry     = load('playerCountry', '');
+  G.numberRangeMax    = Number(load('numberRangeMax', 0)) || 0;
   if (!G.focusOperations.length && G.focusOperation) G.focusOperations = [G.focusOperation];
   G.pendingPlacement  = load('pendingPlacement', false);
   G.tutorialMode      = load('tutorialMode', false);
@@ -161,16 +223,18 @@ export function loadSave() {
 
   if (!G.playerRegistered) {
     // Guest — reset all progression to zero, never load saved progress
-    G.xp = 0; G.totalXpEarned = 0; G.coins = STARTING_COINS;
+    G.xp = STARTING_XP; G.totalXpEarned = STARTING_XP; G.coins = STARTING_COINS;
     G.blueprints = {}; G.chestsWithoutEpic = 0; G.levelStars = {};
     G.unlockedAircraft = withDefaultUnlockedAircraft(['t6']); G.activeAircraft = 't6';
     G.acquiredAircraft = [];
-    G.unlockedBadges = []; G.activeBadge = null;
+    G.unlockedBadges = []; G.activeBadge = null; G.flawlessLevels = 0; G.lifetimeXpEarned = 0; G.multiXpEarned = 0;
     G.ownedShootingPlans = ['default']; G.activeShootingPlan = 'default'; G.ownedMissileTypes = []; G.activeMissileType = 'default';
+    G.planeUpgrades = {};
+    G.botUpgrades = { aircraft: 't6', planes: ['t6'], fire: 1, hp: 3 };
     G.highestLevel = 0;
     G.sr71Earned = false; G.sr71MissionClaimed = false;
     G.sr71WrongAnswers = 0; G.sr71MissileHits = 0; G.sr71CleanLevels = [];
-    G.dailyLastLogin = null; G.dailyStreak = 0; G.dailyStarterPlanComplete = false;
+    G.dailyLastLogin = null; G.dailyStreak = 0; G.dailyLastClaimAt = 0; G.dailyStarterPlanComplete = false;
     G.dailyMissions = null; G.dailyMissionDate = null; G.claimedRanks = [];
     G.rankedLP = 0; G.rankedWins = 0; G.rankedLosses = 0;
     G.rankedWinStreak = 0; G.rankedGamesPlayed = 0;
@@ -178,8 +242,8 @@ export function loadSave() {
     return;
   }
 
-  G.xp                = load('xp', 0);
-  G.totalXpEarned     = load('totalXpEarned', G.xp);
+  G.xp                = Math.max(load('xp', 0), STARTING_XP);
+  G.totalXpEarned     = Math.max(load('totalXpEarned', G.xp), STARTING_XP);
   G.coins             = clampCoins(Math.max(load('coins', STARTING_COINS), STARTING_COINS));
   G.blueprints        = load('blueprints', {});
   G.chestsWithoutEpic = load('chestsWithoutEpic', 0);
@@ -189,6 +253,8 @@ export function loadSave() {
   if (!Array.isArray(G.acquiredAircraft)) G.acquiredAircraft = [];
   G.activeAircraft    = load('activeAircraft', 't6');
   G.unlockedBadges = load('unlockedBadges', []);
+  // "Tireur d'Élite" and "Maître du Combo" were removed from the game.
+  G.unlockedBadges = G.unlockedBadges.filter(id => id !== 'elite_shooter' && id !== 'combo_master');
   if (load('aircraftProgressionVersion', 1) < 2) {
     const migratedAircraft = [...DEFAULT_UNLOCKED_AIRCRAFT];
     if (load('sr71Earned', false)) migratedAircraft.push('sr71');
@@ -224,6 +290,18 @@ export function loadSave() {
   if (!G.unlockedBadges.includes(G.activeBadge)) G.activeBadge = null;
   G.totalCorrectAnswers = load('totalCorrectAnswers', 0);
   G.bestAnswerStreak = load('bestAnswerStreak', 0);
+  G.flawlessLevels = Number(load('flawlessLevels', 0)) || 0;
+  // First load after this counter was added: start from the XP already
+  // earned (the saved total, unless it is the MAX_XP test value).
+  const savedLifetimeXp = load('lifetimeXpEarned', null);
+  if (savedLifetimeXp === null) {
+    const savedTotal = Number(load('totalXpEarned', 0)) || 0;
+    G.lifetimeXpEarned = savedTotal < MAX_XP ? savedTotal : 0;
+    save('lifetimeXpEarned', G.lifetimeXpEarned);
+  } else {
+    G.lifetimeXpEarned = Number(savedLifetimeXp) || 0;
+  }
+  G.multiXpEarned = Number(load('multiXpEarned', 0)) || 0;
   G.comboAcePermanent = load('comboAcePermanent', false);
   G.secretAircraftUnlocked = load('secretAircraftUnlocked', false);
   G.ownedShootingPlans = load('ownedShootingPlans', ['default']);
@@ -240,6 +318,26 @@ export function loadSave() {
   }
   G.activeMissileType = load('activeMissileType', 'default');
   if (G.activeMissileType !== 'default' && !G.ownedMissileTypes.includes(G.activeMissileType)) G.activeMissileType = 'default';
+  G.planeUpgrades = load('planeUpgrades', {});
+  if (!G.planeUpgrades || typeof G.planeUpgrades !== 'object' || Array.isArray(G.planeUpgrades)) G.planeUpgrades = {};
+  const bot = load('botUpgrades', null) || {};
+  const botPlanes = Array.isArray(bot.planes) ? bot.planes.filter(id => AIRCRAFT[id]) : [];
+  if (!botPlanes.includes('t6')) botPlanes.unshift('t6');
+  G.botUpgrades = {
+    aircraft: botPlanes.includes(bot.aircraft) ? bot.aircraft : 't6',
+    planes: botPlanes,
+    fire: Math.max(1, Math.min(5, bot.fire | 0 || 1)),
+    hp: Math.max(3, Math.min(6, bot.hp | 0 || 3)),
+  };
+  // One-time reset: every aircraft goes back to firing missiles by default.
+  // Bought weapons stay owned and can be re-equipped in the UPGRADE tab.
+  if (load('weaponDefaultVersion', 1) < 2) {
+    for (const record of Object.values(G.planeUpgrades)) {
+      if (record && typeof record === 'object') record.weapon = 'missile';
+    }
+    save('planeUpgrades', G.planeUpgrades);
+    save('weaponDefaultVersion', 2);
+  }
   G.sr71Earned           = load('sr71Earned', false);
   G.sr71MissionClaimed   = load('sr71MissionClaimed', false);
   G.sr71WrongAnswers     = load('sr71WrongAnswers', 0);
@@ -248,6 +346,7 @@ export function loadSave() {
   G.highestLevel         = load('highestLevel', 0);
   G.dailyLastLogin    = load('dailyLastLogin', null);
   G.dailyStreak       = load('dailyStreak', 0);
+  G.dailyLastClaimAt  = Number(load('dailyLastClaimAt', 0)) || 0;
   G.dailyStarterPlanComplete = load('dailyStarterPlanComplete', G.dailyStreak >= 7);
   G.dailyMissions     = load('dailyMissions', null);
   G.dailyMissionDate  = load('dailyMissionDate', null);
@@ -274,14 +373,17 @@ export function saveAll() {
   save('unlockedAircraft',  G.unlockedAircraft);
   save('acquiredAircraft',  G.acquiredAircraft);
   save('activeAircraft',    G.activeAircraft);
-  ['unlockedBadges','activeBadge','totalCorrectAnswers','bestAnswerStreak','comboAcePermanent','secretAircraftUnlocked'].forEach(k=>save(k,G[k]));
+  ['unlockedBadges','activeBadge','totalCorrectAnswers','bestAnswerStreak','flawlessLevels','lifetimeXpEarned','comboAcePermanent','secretAircraftUnlocked'].forEach(k=>save(k,G[k]));
   save('ownedShootingPlans', G.ownedShootingPlans);
   save('activeShootingPlan', G.activeShootingPlan);
   save('ownedMissileTypes', G.ownedMissileTypes);
   save('activeMissileType', G.activeMissileType);
+  save('planeUpgrades',     G.planeUpgrades);
+  save('botUpgrades',       G.botUpgrades);
   save('sr71Earned',        G.sr71Earned);
   save('playerName',        G.playerName);
   save('playerEmail',       G.playerEmail);
+  save('playerAuthType',    G.playerAuthType);
   save('playerPhoto',       G.playerPhoto);
   save('playerAge',         G.playerAge);
   save('playerRegistered',  G.playerRegistered);
@@ -297,6 +399,10 @@ export function saveAll() {
   save('onboardingGrade',   G.onboardingGrade);
   save('focusOperation',    G.focusOperation || '');
   save('focusOperations',   G.focusOperations || []);
+  save('focusTopics',       G.focusTopics || []);
+  save('schoolLevel',       G.schoolLevel || '');
+  save('playerCountry',     G.playerCountry || '');
+  save('numberRangeMax',    G.numberRangeMax || 0);
   save('pendingPlacement',  G.pendingPlacement);
   save('tutorialMode',      G.tutorialMode);
   save('onboardingStartMode', G.onboardingStartMode);
@@ -307,8 +413,13 @@ export function saveAll() {
   save('tutorialCompleted', G.tutorialCompleted);
   save('postTutorialConnectPrompt', G.postTutorialConnectPrompt);
   save('practiceTimeLimit', G.practiceTimeLimit);
+  save('practiceDifficulty', G.practiceDifficulty);
+  save('practiceNumberMax', G.practiceNumberMax || 0);
+  save('practiceBiome',     G.practiceBiome);
+  save('practiceWeather',   G.practiceWeather);
   save('dailyLastLogin',    G.dailyLastLogin);
   save('dailyStreak',       G.dailyStreak);
+  save('dailyLastClaimAt',  G.dailyLastClaimAt);
   save('dailyStarterPlanComplete', G.dailyStarterPlanComplete);
   save('dailyMissions',     G.dailyMissions);
   save('dailyMissionDate',  G.dailyMissionDate);
@@ -344,6 +455,8 @@ export function autoSave() {
   save('activeShootingPlan', G.activeShootingPlan);
   save('ownedMissileTypes', G.ownedMissileTypes);
   save('activeMissileType', G.activeMissileType);
+  save('planeUpgrades',   G.planeUpgrades);
+  save('botUpgrades',     G.botUpgrades);
   save('blueprints',      G.blueprints);
   save('hasSeenOnboarding', G.hasSeenOnboarding);
   save('hasSeenBriefing', G.hasSeenBriefing);
@@ -364,7 +477,8 @@ export function autoSave() {
 }
 
 export function resetLevel() {
-  G.lives              = 3 + (G.activeBadge === 'steady_recruit' ? 1 : 0) + (AIRCRAFT[G.activeAircraft]?.ability?.extraLives || 0);
+  G.lives              = 3 + (G.activeBadge === 'steady_recruit' ? 1 : 0) + (AIRCRAFT[G.activeAircraft]?.ability?.extraLives || 0)
+                       + Math.max(0, Math.min(3, G.planeUpgrades?.[G.activeAircraft]?.lives | 0)); // hangar UPGRADE (per aircraft)
   G.questionsAnswered  = 0;
   G.correctAnswers     = 0;
   G.sessionXP          = 0;

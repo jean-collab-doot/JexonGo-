@@ -216,6 +216,43 @@ function sendBoth(room, data) { send(room.p1, data); send(room.p2, data); }
 // ── QUEUE & ROOMS ─────────────────────────────────────────────────────────────
 const queue = [];     // { ws, name, lp }
 const rooms = new Map();
+
+// ── PRIVATE ROOMS (multiplayer with a code) ─────────────────────────────────
+// A host creates a room and gets a 6-character code; a friend joins with it
+// (codes of 5 to 7 letters/digits are accepted). No LP change for these.
+const privateRooms = new Map();   // code -> { ws, name, lp }
+const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';   // no 0/O, 1/I
+function _newRoomCode() {
+  let code;
+  do {
+    code = Array.from({ length: 6 }, () => CODE_CHARS[randInt(0, CODE_CHARS.length - 1)]).join('');
+  } while (privateRooms.has(code));
+  return code;
+}
+function _cancelHostedRoom(ws) {
+  for (const [code, host] of privateRooms) if (host.ws === ws) privateRooms.delete(code);
+  for (const [code, host] of coopRooms) if (host.ws === ws) coopRooms.delete(code);
+}
+
+// ── CO-OP (MULTI screen): two teammates in the same level ───────────────────
+// The host gets a code; the teammate joins with it. The server then only
+// relays each player's plane position and shots to the other one.
+const coopRooms = new Map();   // code -> { ws, name, aircraft, level }
+function _newCoopCode() {
+  let code;
+  do {
+    code = Array.from({ length: 6 }, () => CODE_CHARS[randInt(0, CODE_CHARS.length - 1)]).join('');
+  } while (coopRooms.has(code) || privateRooms.has(code));
+  return code;
+}
+function _leaveCoop(ws) {
+  const partner = ws._coopPartner;
+  if (partner) {
+    partner._coopPartner = null;
+    send(partner, { type:'coop_partner_left' });
+  }
+  ws._coopPartner = null;
+}
 let _rid = 0;
 
 function tryMatch() {
@@ -233,12 +270,13 @@ function tryMatch() {
 
 const TOTAL_Q = 10;
 
-function _createRoom(a, b) {
+function _createRoom(a, b, opts = {}) {
   const id   = ++_rid;
   const diff = diffFromLP(Math.max(a.lp, b.lp));
 
   const room = {
     id,
+    private: !!opts.private,
     p1: a.ws, p1Name: a.name, p1LP: a.lp, p1HP: 3, p1Score: 0,
     p2: b.ws, p2Name: b.name, p2LP: b.lp, p2HP: 3, p2Score: 0,
     questions: Array.from({ length: TOTAL_Q }, () => generateQuestion(diff)),
@@ -348,15 +386,17 @@ function _endGame(room) {
     type:'game_over', won:p1Won, draw:isDraw, isPerfect:p1Perf,
     yourScore:room.p1Score, oppScore:room.p2Score,
     yourHP:room.p1HP,       oppHP:room.p2HP,
-    lpChange: calcLP(p1Won, isDraw, p1Perf),
+    lpChange: room.private ? 0 : calcLP(p1Won, isDraw, p1Perf),
     tournament: !!room.tournamentId,
+    friendly: room.private,
   });
   send(room.p2, {
     type:'game_over', won:p2Won, draw:isDraw, isPerfect:p2Perf,
     yourScore:room.p2Score, oppScore:room.p1Score,
     yourHP:room.p2HP,       oppHP:room.p1HP,
-    lpChange: calcLP(p2Won, isDraw, p2Perf),
+    lpChange: room.private ? 0 : calcLP(p2Won, isDraw, p2Perf),
     tournament: !!room.tournamentId,
+    friendly: room.private,
   });
 
   const advancingSeat = winner === 'draw'
@@ -570,6 +610,98 @@ wss.on('connection', ws => {
         break;
       }
 
+      case 'create_room': {
+        _leaveCurrentRoom(ws);
+        const qi = queue.findIndex(e => e.ws === ws);
+        if (qi !== -1) queue.splice(qi, 1);
+        _cancelHostedRoom(ws);
+        const code = _newRoomCode();
+        privateRooms.set(code, {
+          ws,
+          name: String(msg.name || 'PILOT').toUpperCase().slice(0, 14),
+          lp:   Math.max(0, Number(msg.lp) || 0),
+        });
+        send(ws, { type:'room_created', code });
+        break;
+      }
+
+      case 'join_code': {
+        const code = String(msg.code || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+        const host = privateRooms.get(code);
+        if (code.length < 5 || code.length > 7 || !host || host.ws === ws
+            || host.ws.readyState !== WebSocket.OPEN) {
+          send(ws, { type:'code_invalid' });
+          break;
+        }
+        privateRooms.delete(code);
+        _leaveCurrentRoom(ws);
+        const qi = queue.findIndex(e => e.ws === ws);
+        if (qi !== -1) queue.splice(qi, 1);
+        _createRoom(host, {
+          ws,
+          name: String(msg.name || 'PILOT').toUpperCase().slice(0, 14),
+          lp:   Math.max(0, Number(msg.lp) || 0),
+        }, { private: true });
+        break;
+      }
+
+      case 'coop_create': {
+        _leaveCoop(ws);
+        _cancelHostedRoom(ws);
+        const code = _newCoopCode();
+        coopRooms.set(code, {
+          ws,
+          name: String(msg.name || 'PILOT').toUpperCase().slice(0, 14),
+          aircraft: String(msg.aircraft || 't6').slice(0, 12),
+          level: Math.max(1, Math.min(50, Number(msg.level) || 1)),
+        });
+        send(ws, { type:'coop_created', code });
+        break;
+      }
+
+      case 'coop_join': {
+        const code = String(msg.code || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+        const host = coopRooms.get(code);
+        if (code.length < 5 || code.length > 7 || !host || host.ws === ws
+            || host.ws.readyState !== WebSocket.OPEN) {
+          send(ws, { type:'coop_invalid' });
+          break;
+        }
+        // Both players must have unlocked the host's level: otherwise the
+        // joiner is told which level it is and the room stays open.
+        const joinerMax = Math.max(1, Number(msg.maxLevel) || 1);
+        if (host.level > joinerMax) {
+          send(ws, { type:'coop_locked', level: host.level, hostName: host.name });
+          // The host learns why nobody arrived (and can pick a lower level).
+          send(host.ws, { type:'coop_join_refused', level: host.level, maxLevel: joinerMax,
+            name: String(msg.name || 'PILOT').toUpperCase().slice(0, 14) });
+          break;
+        }
+        coopRooms.delete(code);
+        _leaveCoop(ws);
+        const name = String(msg.name || 'PILOT').toUpperCase().slice(0, 14);
+        const aircraft = String(msg.aircraft || 't6').slice(0, 12);
+        host.ws._coopPartner = ws;
+        ws._coopPartner = host.ws;
+        send(host.ws, { type:'coop_start', level: host.level, partnerName: name, partnerAircraft: aircraft });
+        send(ws, { type:'coop_start', level: host.level, partnerName: host.name, partnerAircraft: host.aircraft });
+        break;
+      }
+
+      // Relayed as-is to the teammate (position ~15/s, shots, level end).
+      case 'coop_state':
+      case 'coop_shot':
+      case 'coop_done': {
+        if (ws._coopPartner) send(ws._coopPartner, msg);
+        break;
+      }
+
+      case 'coop_leave': {
+        _cancelHostedRoom(ws);
+        _leaveCoop(ws);
+        break;
+      }
+
       case 'join_tournament': {
         if (!isAirCupActive()) {
           send(ws, { type:'error', code:'TOURNAMENT_INACTIVE', message:'TOURNAMENT IS NOT ACTIVE' });
@@ -601,7 +733,13 @@ wss.on('connection', ws => {
         const room = rooms.get(ws._rid);
         if (!room) break;
         room.rematch[ws._seat] = true;
-        if (room.rematch.p1 && room.rematch.p2) {
+        if (room.rematch.p1 && room.rematch.p2 && room.private) {
+          // Private room: the same two friends play again together.
+          rooms.delete(room.id);
+          sendBoth(room, { type:'rematch_accept' });
+          _createRoom({ ws:room.p1, name:room.p1Name, lp:room.p1LP },
+                      { ws:room.p2, name:room.p2Name, lp:room.p2LP }, { private: true });
+        } else if (room.rematch.p1 && room.rematch.p2) {
           // Re-queue both
           const p1w = room.p1, p1n = room.p1Name, p1l = room.p1LP;
           const p2w = room.p2, p2n = room.p2Name, p2l = room.p2LP;
@@ -617,6 +755,7 @@ wss.on('connection', ws => {
       }
 
       case 'leave': {
+        _cancelHostedRoom(ws);
         _leaveCurrentRoom(ws);
         const qi = queue.findIndex(e => e.ws === ws);
         if (qi !== -1) queue.splice(qi, 1);
@@ -630,6 +769,8 @@ wss.on('connection', ws => {
   });
 
   ws.on('close', () => {
+    _cancelHostedRoom(ws);
+    _leaveCoop(ws);
     const qi = queue.findIndex(e => e.ws === ws);
     if (qi !== -1) queue.splice(qi, 1);
 

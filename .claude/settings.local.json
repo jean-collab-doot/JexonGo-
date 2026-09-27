@@ -5,7 +5,32 @@
       "Bash(cp \"d:/Desktop/JexonGo visuel/START/20.png\" \"d:/Desktop/JexonGo V1/public/assets/menu/anim-2.png\")",
       "Bash(cp \"d:/Desktop/JexonGo visuel/START/21.png\" \"d:/Desktop/JexonGo V1/public/assets/menu/anim-3.png\")",
       "Bash(cp \"d:/Desktop/JexonGo visuel/START/22.png\" \"d:/Desktop/JexonGo V1/public/assets/menu/anim-4.png\")",
-      "Bash(xargs grep *)"
+      "Bash(xargs grep *)",
+      "WebFetch(domain:www.skills.sh)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(gh api *)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:api.github.com)",
+      "Bash(curl -s \"https://api.github.com/repos/omer-metin/skills-for-antigravity/contents/skills\")",
+      "Bash(timeout 180 npx vite build)",
+      "Bash(node -e \"console.log\\(require\\('./package.json'\\).devDependencies\\)\")",
+      "Bash(python -)",
+      "Bash(curl -s http://localhost:5178/)",
+      "Bash('/c/Program Files \\(x86\\)/Microsoft/Edge/Application/msedge.exe' --headless=new --disable-gpu --no-sandbox --hide-scrollbars --window-size=400,860 --virtual-time-budget=8000 --screenshot=C:/Users/Jean/AppData/Local/Temp/claude/d--Desktop-JexonGo-V1/f68b61fa-dc92-44a6-bdb6-b8d558a10342/scratchpad/live_dbg.png http://localhost:5178/)",
+      "Bash(python -c 'from PIL import Image;im=Image.open\\(r'\\\\''C:/Users/Jean/AppData/Local/Temp/claude/d--Desktop-JexonGo-V1/f68b61fa-dc92-44a6-bdb6-b8d558a10342/scratchpad/live_dbg.png'\\\\''\\);print\\(im.size\\);im.resize\\(\\(280,602\\)\\).save\\(r'\\\\''C:/Users/Jean/AppData/Local/Temp/claude/d--Desktop-JexonGo-V1/f68b61fa-dc92-44a6-bdb6-b8d558a10342/scratchpad/live_dbg_s.png'\\\\''\\)')",
+      "Bash(node -e \"require\\('ws'\\);console.log\\('ws ok'\\)\")",
+      "Bash(python -c ' *)",
+      "Bash(npx vite *)",
+      "Bash(powershell.exe -NoProfile -Command \"taskkill /F /IM msedge.exe /T 2>&1 | Out-Null; taskkill /F /IM node.exe /T 2>&1 | Out-Null; 'done'\")",
+      "Bash(node --check src/screens/menu.js)",
+      "Bash(node --check src/screens/settings.js)",
+      "Bash(node --check src/screens/hangar.js)",
+      "Bash(node --check src/screens/shop.js)",
+      "Bash(node --check src/screens/training.js)",
+      "Bash(powershell.exe -NoProfile -Command '\\(Get-NetTCPConnection -LocalPort 5178 -ErrorAction SilentlyContinue\\).OwningProcess | Select-Object -Unique | ForEach-Object { Stop-Process -Id $_ -Force -ErrorAction SilentlyContinue }; '\\\\''port 5178 cleared'\\\\''')",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:5178/)",
+      "Bash(node --check src/utils/bottomsheet.js)",
+      "Bash(powershell.exe -NoProfile -Command '\\(Get-NetTCPConnection -LocalPort 5178 -ErrorAction SilentlyContinue\\).OwningProcess | Select-Object -Unique | ForEach-Object { Stop-Process -Id $_ -Force -ErrorAction SilentlyContinue }; Get-Process msedge -ErrorAction SilentlyContinue | Stop-Process -Force; '\\\\''cleaned'\\\\''')"
     ]
   }
 }

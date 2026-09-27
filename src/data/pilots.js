@@ -41,6 +41,12 @@ export function getPilotGrade(highestLevel) {
   return PILOT_GRADES[PILOT_GRADES.length - 1];
 }
 
+/** 0 (CADET, lowest) .. 7 (AIR ACE, highest) — for insignia that scale with rank. */
+export function getPilotGradeRank(grade) {
+  const idx = PILOT_GRADES.indexOf(grade);
+  return idx === -1 ? 0 : PILOT_GRADES.length - 1 - idx;
+}
+
 /** Returns the next grade threshold above highestLevel, or null if max. */
 export function getNextGrade(highestLevel) {
   const cur = getPilotGrade(highestLevel);

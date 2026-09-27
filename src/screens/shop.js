@@ -1,3 +1,4 @@
+import { SFX } from '../audio/sound.js';
 import { $ } from '../utils/dom.js';
 import { G, saveAll, clampCoins } from '../state.js';
 import { load, save } from '../utils/storage.js';
@@ -5,9 +6,10 @@ import { t, applyI18n, getLang } from '../i18n.js';
 import { coinIcon } from '../utils/icons.js';
 import { AIRCRAFT } from '../data/aircraft.js';
 import { AIRCRAFT_SPRITE, drawFrame, getImage, preloadSprite } from '../game/sprites.js';
+import { makeBottomSheet } from '../utils/bottomsheet.js';
 
 let _nav = null;
-let _activeTab = 'featured';
+let _activeTab = 'rewards';
 let _selectedPlan = null;
 let _previewRaf = null;
 let _oceanSheet = null;
@@ -56,15 +58,6 @@ export const SHOOTING_PLANS = [
     missiles: [{ x: 0, y: 0, angle: 0 }],
     title: { fr: 'Tir standard', en: 'Standard Shot' },
     detail: { fr: '1 missile droit toutes les 3 s', en: '1 straight missile every 3s' },
-    icon: 'focus',
-  },
-  {
-    id: 'quick_single',
-    price: 250,
-    cadence: 2,
-    missiles: [{ x: 0, y: 0, angle: 0 }],
-    title: { fr: 'Tir rapide', en: 'Quick Shot' },
-    detail: { fr: '1 missile droit toutes les 2 s', en: '1 straight missile every 2s' },
     icon: 'focus',
   },
   {
@@ -129,13 +122,54 @@ const SHOP_VISIBLE_PLAN_COUNT = SHOOTING_PLANS.filter(plan => plan.id !== 'defau
 export function initShop(nav) {
   _nav = nav;
 
-  $('btn-shop-back')?.addEventListener('click', () => _nav.toMenu());
+  // Carousel: Hangar ‹ Lobby › Shop › Training — shop's prev = Lobby, next = Training.
+  $('btn-shop-page-left')?.addEventListener('click', () => _nav.toMenu('prev'));
+  $('btn-shop-page-right')?.addEventListener('click', () => _nav.toTraining('next'));
+
+  // "Type de tire" pull-up drawer — shot-plan upgrades.
+  const sheet = $('shop-sheet');
+  if (sheet) makeBottomSheet(sheet, { onOpen: renderShopSheet, onClose: stopShopPreview });
+
   document.querySelectorAll('.shop-tab').forEach(btn => {
     btn.addEventListener('click', () => {
-      _activeTab = TAB_META[btn.dataset.tab] ? btn.dataset.tab : 'featured';
+      _activeTab = TAB_META[btn.dataset.tab] ? btn.dataset.tab : 'rewards';
       renderShop();
     });
   });
+}
+
+// The animated "plane firing" card used for shot-plan lists: a tall canvas
+// plays a live preview of that plan's pattern, with the name/price pinned to
+// the top/bottom edges. Shared by the shop's own "Type de tire" sheet and the
+// hangar's missile tab (see renderShotOption in hangar.js) so both show the
+// exact same animation.
+export function renderShotPlanMiniCard(plan, lang) {
+  const specialWeapon = activeAircraftHasSpecialWeapon();
+  const owned = G.ownedShootingPlans.includes(plan.id);
+  const active = !specialWeapon && G.activeShootingPlan === plan.id;
+  const count = Array.isArray(plan.missiles) ? plan.missiles.length : 1;
+  const label = owned
+    ? (active ? (lang === 'fr' ? 'ÉQUIPÉ' : 'EQUIPPED') : (lang === 'fr' ? 'CHOISIR' : 'SELECT'))
+    : `${(plan.price || 0).toLocaleString()} ${coinIcon('jg-coin-icon-small')}`;
+  return `<button class="jx-slot jx-slot-shot ${active ? 'is-active' : ''} ${owned ? '' : 'is-locked'}" type="button" data-plan-id="${plan.id}">
+    <canvas class="shop-plan-mini-canvas" data-mini-plan="${plan.id}"></canvas>
+    <span class="jx-slot-shot-name">${count}× ${plan.title[lang]}</span>
+    <span class="jx-slot-shot-price">${label}</span>
+  </button>`;
+}
+
+function renderShopSheet() {
+  const body = $('shop-sheet-body');
+  if (!body) return;
+  stopShopPreview();
+  const lang = getLang() === 'fr' ? 'fr' : 'en';
+  body.innerHTML = `<div class="jx-list">${
+    getFilteredPlans(lang).map(p => renderShotPlanMiniCard(p, lang)).join('')
+  }</div>`;
+  body.querySelectorAll('[data-plan-id]').forEach(btn => {
+    btn.addEventListener('click', () => { buyOrEquipPlan(btn.dataset.planId); renderShopSheet(); });
+  });
+  startShopPreview();
 }
 
 export function renderShop() {
@@ -149,44 +183,151 @@ export function renderShop() {
   if (coins) coins.textContent = (G.coins || 0).toLocaleString();
   if (xp) xp.textContent = (G.xp || 0).toLocaleString();
 
-  document.querySelectorAll('.shop-tab').forEach(btn => {
-    btn.classList.toggle('shop-tab-active', btn.dataset.tab === _activeTab);
-  });
-
   const content = $('shop-content');
   if (!content) return;
 
   const lang = getLang() === 'fr' ? 'fr' : 'en';
-  const filteredPlans = getFilteredPlans(lang);
-  const isMissileTab = _activeTab === 'rewards';
   const specialWeapon = activeAircraftHasSpecialWeapon();
   const activePlane = AIRCRAFT[getActiveAircraftId()];
 
-  content.innerHTML = `
-    <section class="shop-shooting-list ${specialWeapon ? 'shop-special-weapon-locked' : ''}">
-      ${specialWeapon ? `
-        <div class="shop-special-weapon-notice">
-          <strong>${lang === 'fr' ? 'ARSENAL INDISPONIBLE' : 'ARSENAL UNAVAILABLE'}</strong>
-          <span>${activePlane.name} ${lang === 'fr' ? 'utilise sa propre arme speciale.' : 'uses its own special weapon.'}</span>
-        </div>
-      ` : ''}
-      <div class="shop-section-head">
-        <div>
-          <p>${t(TAB_META[_activeTab]?.key || 'shopTabFeatured')}</p>
-          <h3>${isMissileTab ? (lang === 'fr' ? 'Types de missiles' : 'Missile types') : (lang === 'fr' ? 'Ameliorations de tir' : 'Shooting upgrades')}</h3>
-        </div>
-        <span>${isMissileTab ? MISSILE_TYPES.length : `${filteredPlans.length}/${SHOP_VISIBLE_PLAN_COUNT}`}</span>
-      </div>
-      <div class="${isMissileTab ? 'shop-missile-grid' : 'shop-plan-grid'}">
-        ${isMissileTab
-          ? MISSILE_TYPES.map(missile => renderMissileCard(missile, lang)).join('')
-          : (filteredPlans.map(plan => renderPlanCard(plan, lang)).join('') || renderEmptySearch(lang))}
-      </div>
-    </section>
-  `;
+  const notice = specialWeapon ? `
+    <div class="jx-shop-note">${activePlane.name} — ${lang === 'fr' ? 'arme spéciale, arsenal indisponible' : 'special weapon, arsenal unavailable'}</div>
+  ` : '';
 
-  bindPlanCards();
-  startShopPreview();
+  content.innerHTML = notice;
+
+  const btnsWrap = $('shop-arsenal-btns');
+  if (btnsWrap) {
+    btnsWrap.innerHTML = MISSILE_TYPES.map(m => renderMissileButton(m, lang, specialWeapon)).join('');
+    positionArsenalButtons();
+  }
+  bindJxShop();
+  startArsenalBlink();
+
+  const sheetEl = $('shop-sheet');
+  if (sheetEl) { sheetEl.style.transform = ''; sheetEl.classList.add('is-collapsed'); sheetEl.classList.remove('is-open'); }
+}
+
+// The arsenal art has a matching "lights off" twin (same scene, just the bay
+// corner LEDs switched off) — swapping the background between the two on a
+// timer makes those corner lights blink, like a turn signal ("clignotant").
+const ARSENAL_BG_ON  = '/assets/hangar/shop-missile-arsenal-bg.webp';
+const ARSENAL_BG_OFF = '/assets/hangar/shop-missile-arsenal-bg-off.webp';
+let _arsenalBlinkTimer = null;
+let _arsenalBgPreloaded = false;
+
+function startArsenalBlink() {
+  const bg = document.querySelector('#s-shop .jx-bg');
+  if (!bg) return;
+  if (!_arsenalBgPreloaded) {
+    _arsenalBgPreloaded = true;
+    const off = new Image(); off.src = ARSENAL_BG_OFF;
+  }
+  if (_arsenalBlinkTimer) clearInterval(_arsenalBlinkTimer);
+  let lit = true;
+  _arsenalBlinkTimer = setInterval(() => {
+    if ($('s-shop')?.classList.contains('hidden')) {
+      clearInterval(_arsenalBlinkTimer);
+      _arsenalBlinkTimer = null;
+      return;
+    }
+    lit = !lit;
+    bg.src = lit ? ARSENAL_BG_ON : ARSENAL_BG_OFF;
+  }, 650);
+}
+
+// The missiles are drawn directly into the #s-shop full-screen background
+// (assets/hangar/shop-missile-arsenal-bg.webp, 1536x1024) — these are each
+// missile's (fx,fy) position as a FRACTION of that image, measured from its
+// bay's corner floor-markers. The background is shown with object-fit:cover,
+// so it gets scaled/cropped differently on every screen size; a plain CSS %
+// position would drift off the real artwork the moment the crop changes.
+// positionArsenalButtons() below does the same cover-fit math the browser
+// does internally, so each button always lands on its own missile.
+const MISSILE_BUTTON_POS = {
+  nuke: { fx: 0.436, fy: 0.40 },
+  ray:  { fx: 0.561, fy: 0.40 },
+  fire: { fx: 0.436, fy: 0.65 },
+  ice:  { fx: 0.561, fy: 0.65 },
+};
+
+function renderMissileButton(m, lang, specialWeapon) {
+  const owned  = !!G.ownedMissileTypes?.includes(m.id);
+  const active = !specialWeapon && G.activeMissileType === m.id;
+  const label  = owned
+    ? (active ? (lang === 'fr' ? 'ÉQUIPÉ' : 'EQUIPPED') : (lang === 'fr' ? 'CHOISIR' : 'SELECT'))
+    : m.price.toLocaleString();
+  const pos = MISSILE_BUTTON_POS[m.id] || { fx: 0.5, fy: 0.5 };
+  return `
+    <button class="jx-arsenal-btn" type="button" data-fx="${pos.fx}" data-fy="${pos.fy}"
+            data-jx-missile="${m.id}" data-owned="${owned ? 1 : 0}" data-active="${active ? 1 : 0}">
+      ${label}
+    </button>
+  `;
+}
+
+// Mirrors the browser's own object-fit:cover / object-position:center math for
+// the #s-shop .jx-bg image, so each button can be placed in real pixels on the
+// exact spot its missile ends up at after the background is scaled/cropped to
+// fill the screen. Re-run on resize/orientation change since the crop changes.
+function positionArsenalButtons() {
+  const bg = document.querySelector('#s-shop .jx-bg');
+  const wrap = $('shop-arsenal-btns');
+  if (!bg || !wrap) return;
+  const place = () => {
+    const iw = bg.naturalWidth, ih = bg.naturalHeight;
+    if (!iw || !ih) return false;
+    const rect = wrap.getBoundingClientRect();
+    const vw = rect.width, vh = rect.height;
+    if (!vw || !vh) return false;
+    const scale = Math.max(vw / iw, vh / ih);
+    const dw = iw * scale, dh = ih * scale;
+    const offsetX = (vw - dw) / 2; // object-position-x: center
+    const offsetY = (vh - dh) / 2; // object-position-y: center (see CSS override)
+    wrap.querySelectorAll('.jx-arsenal-btn').forEach(btn => {
+      btn.style.left = `${offsetX + Number(btn.dataset.fx) * dw}px`;
+      btn.style.top  = `${offsetY + Number(btn.dataset.fy) * dh}px`;
+    });
+    return true;
+  };
+  // renderShop() runs BEFORE showScreen('s-shop') unhides the screen, so the
+  // wrap still measures 0x0 right now — defer past this tick (showScreen runs
+  // synchronously right after, well before the next paint) and retry once
+  // more on the following frame as a safety net.
+  const tryPlace = () => { if (!place()) requestAnimationFrame(place); };
+  if (bg.complete) requestAnimationFrame(tryPlace);
+  else bg.addEventListener('load', () => requestAnimationFrame(tryPlace), { once: true });
+}
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('resize', () => {
+    if (!$('s-shop')?.classList.contains('hidden')) positionArsenalButtons();
+  });
+}
+
+function renderPlanCell(p, lang, specialWeapon) {
+  const owned  = G.ownedShootingPlans.includes(p.id);
+  const active = !specialWeapon && G.activeShootingPlan === p.id;
+  const count  = Array.isArray(p.missiles) ? p.missiles.length : 1;
+  const label  = owned
+    ? (active ? (lang === 'fr' ? 'ÉQUIPÉ' : 'EQUIPPED') : (lang === 'fr' ? 'CHOISIR' : 'SELECT'))
+    : (p.price || 0).toLocaleString();
+  return `
+    <div class="jx-shop-cell" data-owned="${owned ? 1 : 0}" data-active="${active ? 1 : 0}">
+      <button class="jx-rack" type="button" data-jx-plan="${p.id}"><span class="jx-plan-count">${count}×</span></button>
+      <button class="jx-price" type="button" data-jx-plan="${p.id}">${label}</button>
+      <small>${p.title[lang]}</small>
+    </div>
+  `;
+}
+
+function bindJxShop() {
+  document.querySelectorAll('[data-jx-missile]').forEach(el => {
+    el.addEventListener('click', () => buyOrEquipMissile(el.dataset.jxMissile));
+  });
+  document.querySelectorAll('[data-jx-plan]').forEach(el => {
+    el.addEventListener('click', () => buyOrEquipPlan(el.dataset.jxPlan));
+  });
 }
 
 function ensureShootingState() {
@@ -395,7 +536,8 @@ function buyOrEquipPlan(planId) {
   const owned = G.ownedShootingPlans.includes(plan.id);
 
   if (!owned) {
-    if ((G.coins || 0) < plan.price) return;
+    if ((G.coins || 0) < plan.price) { SFX.noMoney(); return; }
+    SFX.buy();
     G.coins = Math.max(0, (G.coins || 0) - plan.price);
     G.ownedShootingPlans.push(plan.id);
     save('coins', G.coins);
@@ -420,7 +562,8 @@ function buyOrEquipMissile(missileId) {
 
   const owned = G.ownedMissileTypes.includes(missile.id);
   if (!owned) {
-    if ((G.coins || 0) < missile.price) return;
+    if ((G.coins || 0) < missile.price) { SFX.noMoney(); return; }
+    SFX.buy();
     G.coins = Math.max(0, (G.coins || 0) - missile.price);
     G.ownedMissileTypes.push(missile.id);
     save('coins', G.coins);
@@ -433,16 +576,22 @@ function buyOrEquipMissile(missileId) {
   renderShop();
 }
 
-function stopShopPreview() {
+export function stopShopPreview() {
   if (_previewRaf) {
     cancelAnimationFrame(_previewRaf);
     _previewRaf = null;
   }
 }
 
-function startShopPreview() {
+// Drives every .shop-plan-mini-canvas currently on screen, wherever it lives
+// (the shop's own "Type de tire" sheet, or the hangar's missile tab). A
+// canvas that exists in the DOM but is hidden (its screen/tab switched away)
+// has no offsetParent, so it's skipped and the loop stops itself once none
+// are left visible — no caller needs to explicitly stop it on screen change.
+export function startShopPreview() {
   const canvas = $('shop-shooting-preview');
   if (!canvas && !document.querySelector('.shop-plan-mini-canvas')) return;
+  if (_previewRaf) return; // already running
   ensureOceanSheet();
   preloadSprite('bolt').catch(() => {});
   const activeSprite = AIRCRAFT_SPRITE[getActiveAircraftId()] || 'ship-t6';
@@ -451,10 +600,9 @@ function startShopPreview() {
   const startedAt = performance.now();
 
   const tick = now => {
-    const shopScreen = $('s-shop');
-    const miniCanvases = Array.from(document.querySelectorAll('.shop-plan-mini-canvas'));
-    const hasPreviewCanvas = canvas && document.body.contains(canvas);
-    if (!shopScreen || shopScreen.classList.contains('hidden') || (!hasPreviewCanvas && miniCanvases.length === 0)) {
+    const miniCanvases = Array.from(document.querySelectorAll('.shop-plan-mini-canvas')).filter(el => el.offsetParent !== null);
+    const hasPreviewCanvas = canvas && document.body.contains(canvas) && canvas.offsetParent !== null;
+    if (!hasPreviewCanvas && miniCanvases.length === 0) {
       stopShopPreview();
       return;
     }

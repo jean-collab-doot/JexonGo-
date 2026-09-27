@@ -10,9 +10,9 @@
 // enemyMod:   integer added to maxEnemies
 
 const AGE_BRACKETS = [
-  { maxAge:  6, label: 'CADET',    timeMod: +8, mathMult: 0.60, spawnMod: +120, speedMult: 0.70, fireMult: 1.50, enemyMod: -2 },
-  { maxAge:  8, label: 'ROOKIE',   timeMod: +5, mathMult: 0.75, spawnMod:  +80, speedMult: 0.82, fireMult: 1.30, enemyMod: -1 },
-  { maxAge: 10, label: 'JUNIOR',   timeMod: +3, mathMult: 0.88, spawnMod:  +40, speedMult: 0.92, fireMult: 1.15, enemyMod:  0 },
+  { maxAge:  6, label: 'CADET',    timeMod: +8, mathMult: 0.60, spawnMod:  +50, speedMult: 0.70, fireMult: 1.50, enemyMod: -2 },
+  { maxAge:  8, label: 'ROOKIE',   timeMod: +5, mathMult: 0.75, spawnMod:  +30, speedMult: 0.82, fireMult: 1.30, enemyMod: -1 },
+  { maxAge: 10, label: 'JUNIOR',   timeMod: +3, mathMult: 0.88, spawnMod:  +15, speedMult: 0.92, fireMult: 1.15, enemyMod:  0 },
   { maxAge: 12, label: 'STANDARD', timeMod:  0, mathMult: 1.00, spawnMod:    0, speedMult: 1.00, fireMult: 1.00, enemyMod:  0 },
   { maxAge: 14, label: 'VETERAN',  timeMod: -2, mathMult: 1.15, spawnMod:  -25, speedMult: 1.12, fireMult: 0.90, enemyMod: +1 },
   { maxAge: 16, label: 'ELITE',    timeMod: -4, mathMult: 1.30, spawnMod:  -40, speedMult: 1.22, fireMult: 0.82, enemyMod: +1 },
@@ -34,7 +34,7 @@ export function applyAgeModifiers(levelCfg, playerAge) {
     mathMultCap:       levelCfg.mathMultCap > 0
                          ? Math.max(2, Math.round(levelCfg.mathMultCap * m.mathMult))
                          : 0,
-    spawnRate:         Math.max(60, levelCfg.spawnRate + m.spawnMod),
+    spawnRate:         Math.max(40, levelCfg.spawnRate + m.spawnMod),
     enemySpeedMult:    Math.round(levelCfg.enemySpeedMult * m.speedMult * 100) / 100,
     enemyFireRateMult: Math.round(levelCfg.enemyFireRateMult * m.fireMult * 100) / 100,
     maxEnemies:        Math.max(1,  levelCfg.maxEnemies + m.enemyMod),

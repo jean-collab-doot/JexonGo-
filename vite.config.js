@@ -12,7 +12,13 @@ const copyGameAssets = {
     mkdirSync('dist/assets', { recursive: true });
     for (const dir of ASSET_DIRS) {
       const src = `assets/${dir}`;
-      if (existsSync(src)) cpSync(src, `dist/assets/${dir}`, { recursive: true });
+      if (!existsSync(src)) continue;
+      cpSync(src, `dist/assets/${dir}`, {
+        recursive: true,
+        // assets/music also holds the raw sound packs (kenney_*) and their
+        // zips, used only to pick sounds: the game doesn't load them.
+        filter: from => dir !== 'music' || !/kenney_|\.zip$|desktop\.ini$/i.test(from),
+      });
     }
     if (existsSync('assets/email.min.js')) {
       cpSync('assets/email.min.js', 'dist/assets/email.min.js');
@@ -26,6 +32,13 @@ const copyGameAssets = {
 export default {
   base: './',
   plugins: [copyGameAssets],
+  server: {
+    watch: {
+      // Browser downloads in progress (.crdownload, .part, .tmp) are locked by
+      // Windows: watching them crashes the dev server with EBUSY.
+      ignored: ['**/*.crdownload', '**/*.part', '**/*.tmp', '**/*.zip'],
+    },
+  },
   build: {
     target: 'es2020',
     // Inline small assets (<4 KB) to save HTTP round-trips on mobile

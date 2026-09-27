@@ -1,14 +1,23 @@
-import { G, clampCoins } from '../state.js';
-import { AIRCRAFT } from '../data/aircraft.js';
+import { G, clampCoins, addLifetimeXp } from '../state.js';
+import { coinIcon } from '../utils/icons.js';
+import { AIRCRAFT, AIRCRAFT_ORDER } from '../data/aircraft.js';
 
-// ── CHEST TIERS (one per 10-level milestone) ──────────────────────────────────
-const CHEST_TIERS = [
-  { level: 10, name: 'BRONZE',    color: '#cd7f32', img: '/assets/chest/chest-blue.png',      idx: 0 },
-  { level: 20, name: 'SILVER',    color: '#c0c0c0', img: '/assets/chest/chest-blue.png',      idx: 1 },
-  { level: 30, name: 'GOLD',      color: '#fbbf24', img: '/assets/chest/chest-purple.png',    idx: 2 },
-  { level: 40, name: 'PLATINUM',  color: '#00d4ff', img: '/assets/chest/chest-purple.png',    idx: 3 },
-  { level: 50, name: 'LEGENDARY', color: '#cc44ff', img: '/assets/chest/chest-legendary.png', idx: 4 },
+// ── CHEST TIERS (20 total — 4 milestone levels per rarity) ────────────────────
+// Levels …3,5, 8,10, 13,15… (see isChestLevel in data/levels.js): 2 chests
+// per 5-level block, grouped 4 per rarity so each 10-level world gets one
+// full BRONZE→…→LEGENDARY sweep every other world.
+const CHEST_TIER_DEFS = [
+  { name: 'BRONZE',    color: '#cd7f32', img: '/assets/chest/chest-blue.png' },
+  { name: 'SILVER',    color: '#c0c0c0', img: '/assets/chest/chest-blue.png' },
+  { name: 'GOLD',      color: '#fbbf24', img: '/assets/chest/chest-purple.png' },
+  { name: 'PLATINUM',  color: '#00d4ff', img: '/assets/chest/chest-purple.png' },
+  { name: 'LEGENDARY', color: '#cc44ff', img: '/assets/chest/chest-legendary.png' },
 ];
+const CHEST_LEVELS = [3, 5, 8, 10, 13, 15, 18, 20, 23, 25, 28, 30, 33, 35, 38, 40, 43, 45, 48, 50];
+const CHEST_TIERS = CHEST_LEVELS.map((level, i) => {
+  const idx = Math.floor(i / 4);
+  return { level, idx, ...CHEST_TIER_DEFS[idx] };
+});
 
 // ── RARITIES ──────────────────────────────────────────────────────────────────
 export const RARITIES = [
@@ -16,50 +25,43 @@ export const RARITIES = [
   { id: 'rare',      label: 'RARE',      color: '#60a5fa' },
   { id: 'epic',      label: 'EPIC',      color: '#a855f7' },
   { id: 'legendary', label: 'LEGENDARY', color: '#fbbf24' },
+  { id: 'mythic',    label: 'MYTHIC',    color: '#ff2d78' },
 ];
 
 // ── ROULETTE SLOT DEFINITIONS ─────────────────────────────────────────────────
+// Coins (scaled by rarity, see COIN_MULT_BY_RARITY) and a flat XP bonus make
+// up most drops. One MYTHIC slot can award a full aircraft outright — see
+// buildRewardFromSlot()'s 'aircraft' branch — kept extremely rare via its
+// near-zero weight in SLOT_WEIGHTS_BY_TIER below.
 export const ROULETTE_SLOTS = [
-  { id: 'common',     label: 'COMMON PART',    icon: '■', color: '#94a3b8', rewardType: 'blueprint', rarityIdx: 0 },
-  { id: 'rare',       label: 'RARE PART',      icon: '◈', color: '#60a5fa', rewardType: 'blueprint', rarityIdx: 1 },
-  { id: 'epic',       label: 'EPIC PART',      icon: '✦', color: '#a855f7', rewardType: 'blueprint', rarityIdx: 2 },
-  { id: 'legendary',  label: 'LEGENDARY PART', icon: '◆', color: '#fbbf24', rewardType: 'blueprint', rarityIdx: 3 },
+  { id: 'coinsCommon',    label: 'COINS',      icon: coinIcon('jg-coin-icon-small'), color: '#94a3b8', rewardType: 'coins', rarityIdx: 0 },
+  { id: 'coinsRare',      label: 'COINS',      icon: coinIcon('jg-coin-icon-small'), color: '#60a5fa', rewardType: 'coins', rarityIdx: 1 },
+  { id: 'coinsEpic',      label: 'COINS',      icon: coinIcon('jg-coin-icon-small'), color: '#a855f7', rewardType: 'coins', rarityIdx: 2 },
+  { id: 'coinsLegendary', label: 'BIG COINS',  icon: coinIcon('jg-coin-icon-small'), color: '#fbbf24', rewardType: 'coins', rarityIdx: 3 },
   { id: 'xp200',      label: 'BONUS XP',       icon: '<img class="jg-exp-icon" src="/assets/fx/Caisse/JexonGo_EXP_frame_01.png" alt="EXP">', color: '#00e84b', rewardType: 'xp', xpAmount: 200 },
   { id: 'xp500',      label: 'MEGA XP',        icon: '<img class="jg-exp-icon" src="/assets/fx/Caisse/JexonGo_EXP_frame_01.png" alt="EXP">', color: '#fff700', rewardType: 'xp', xpAmount: 500 },
+  { id: 'aircraft',   label: 'AIRCRAFT',       icon: '✈', color: '#ff2d78', rewardType: 'aircraft', rarityIdx: 4 },
 ];
 
 // Weights per tier — index matches ROULETTE_SLOTS order above
-// [common, rare, epic, legendary, xp200, xp500]  must sum to 100
+// [coinsCommon, coinsRare, coinsEpic, coinsLegendary, xp200, xp500, aircraft]  must sum to 100
 export const SLOT_WEIGHTS_BY_TIER = [
-  [ 54, 29, 10,  2,  5,  0 ],  // 0 Bronze    — mostly common
-  [ 32, 37, 18,  4,  7,  2 ],  // 1 Silver    — common/rare mix
-  [ 13, 30, 34, 12,  7,  4 ],  // 2 Gold      — rare/epic mix
-  [  6, 16, 39, 29,  6,  4 ],  // 3 Platinum  — epic/legendary mix
-  [  0,  9, 31, 50,  5,  5 ],  // 4 Legendary — mostly legendary
+  [ 54, 29, 10,  2,  5,  0,  0 ],  // 0 Bronze    — mostly common
+  [ 32, 37, 18,  4,  7,  2,  0 ],  // 1 Silver    — common/rare mix
+  [ 13, 30, 34, 12,  7,  4,  0 ],  // 2 Gold      — rare/epic mix
+  [  6, 16, 38, 29,  6,  4,  1 ],  // 3 Platinum  — epic/legendary mix, rare aircraft
+  [  0,  9, 31, 46,  5,  5,  4 ],  // 4 Legendary — mostly legendary, aircraft jackpot
 ];
 
-// Blueprint pieces needed to auto-unlock each aircraft via blueprints
+// Kept for existing save data / cloud-sync compatibility (see state.js,
+// systems/cloud-save.js) — chests no longer roll blueprint-part rewards, so
+// this cost table has nothing left reading from it going forward.
 export const BLUEPRINT_COST = {
   pc21: 6, c130: 8, a10: 10, f16: 12,
   f18: 15, f22: 18, f35: 20, b2: 25, sr71: 30,
 };
 
-// Which aircraft can appear in each chest tier
-const BP_POOLS = [
-  ['pc21', 'c130'],
-  ['c130', 'a10', 'f16'],
-  ['a10',  'f16', 'f18'],
-  ['f18',  'f22', 'f35'],
-  ['f22',  'f35', 'b2', 'sr71'],
-];
-
-const BP_PIECES = [1, 2, 3, 5];
-
 // ── HELPERS ───────────────────────────────────────────────────────────────────
-function rand(min, max) {
-  return Math.floor(Math.random() * (max - min + 1)) + min;
-}
-
 function rollRouletteSlot(tierIdx) {
   const weights = SLOT_WEIGHTS_BY_TIER[tierIdx] ?? SLOT_WEIGHTS_BY_TIER[0];
   const roll = Math.random() * 100;
@@ -73,14 +75,26 @@ function rollRouletteSlot(tierIdx) {
 
 // Coins per tier: Bronze→50, Silver→100, Gold→200, Platinum→350, Legendary→500
 const COINS_BY_TIER = [50, 100, 200, 350, 500];
+// Coin slots scale further by their own rarity within that tier (common→legendary).
+const COIN_MULT_BY_RARITY = [1, 1.6, 2.5, 4];
+
+// Every unlockable aircraft is eligible for the MYTHIC drop — the starter
+// (already owned from the start) and the secret F-117 (found its own way,
+// not bought or dropped) are excluded.
+function eligibleAircraftPool() {
+  return AIRCRAFT_ORDER.filter(id => !AIRCRAFT[id]?.starter && !AIRCRAFT[id]?.secret);
+}
+
+const MYTHIC_DUPLICATE_XP = 1500;
 
 function buildRewardFromSlot(slot, tierIdx) {
   if (slot.rewardType === 'coins') {
     const base   = COINS_BY_TIER[tierIdx] ?? 50;
-    const amount = slot.big ? Math.round(base * 2.5) : base;
+    const mult   = COIN_MULT_BY_RARITY[slot.rarityIdx] ?? 1;
+    const amount = Math.round(base * mult);
     return {
       type:   'coins',
-      rarity: slot.big ? 2 : 1,
+      rarity: slot.rarityIdx,
       amount,
       icon:   'coin',
       label:  slot.label,
@@ -88,44 +102,35 @@ function buildRewardFromSlot(slot, tierIdx) {
     };
   }
 
-  if (slot.rewardType === 'xp') {
+  if (slot.rewardType === 'aircraft') {
+    const available = eligibleAircraftPool().filter(id => !G.unlockedAircraft.includes(id));
+    if (!available.length) {
+      // Every aircraft already owned — convert to a big XP bonus instead.
+      return {
+        type: 'xp',
+        rarity: 4,
+        amount: MYTHIC_DUPLICATE_XP,
+        icon: '<img class="jg-exp-icon" src="/assets/fx/Caisse/JexonGo_EXP_frame_01.png" alt="EXP">',
+        label: 'MYTHIC XP',
+        slotId: slot.id,
+      };
+    }
+    const aircraft = available[Math.floor(Math.random() * available.length)];
     return {
-      type: 'xp',
-      rarity: slot.id === 'xp500' ? 3 : 2,
-      amount: slot.xpAmount,
+      type: 'aircraft',
+      rarity: 4,
+      aircraft,
       icon: slot.icon,
       label: slot.label,
       slotId: slot.id,
     };
   }
 
-  // Blueprint
-  const pool = BP_POOLS[tierIdx];
-  const available = pool.filter(id => {
-    const needed = BLUEPRINT_COST[id] || 99;
-    const have   = (G.blueprints || {})[id] || 0;
-    return have < needed && !G.unlockedAircraft.includes(id);
-  });
-
-  if (!available.length) {
-    // All unlocked — give XP bonus instead
-    const xpAmounts = [100, 250, 500, 1000];
-    return {
-      type: 'xp',
-      rarity: slot.rarityIdx,
-      amount: xpAmounts[slot.rarityIdx] ?? 100,
-      icon: '<img class="jg-exp-icon" src="/assets/fx/Caisse/JexonGo_EXP_frame_01.png" alt="EXP">',
-      label: 'BONUS XP',
-      slotId: slot.id,
-    };
-  }
-
-  const aircraft = available[Math.floor(Math.random() * available.length)];
+  // xp
   return {
-    type: 'blueprint',
-    rarity: slot.rarityIdx,
-    aircraft,
-    pieces: BP_PIECES[slot.rarityIdx] ?? 1,
+    type: 'xp',
+    rarity: slot.id === 'xp500' ? 3 : 2,
+    amount: slot.xpAmount,
     icon: slot.icon,
     label: slot.label,
     slotId: slot.id,
@@ -134,10 +139,21 @@ function buildRewardFromSlot(slot, tierIdx) {
 
 // ── MAIN ROLL ─────────────────────────────────────────────────────────────────
 export function rollChest() {
-  const lvl       = G.currentLevel;
-  const milestone = Math.min(Math.floor(lvl / 10) * 10, 50) || 10;
-  const tier      = CHEST_TIERS.find(t => t.level === milestone) || CHEST_TIERS[0];
-  const t         = tier.idx;
+  const lvl  = G.currentLevel;
+  // rollChest() is only called on an actual chest level (see isChestLevel in
+  // data/levels.js), so this matches exactly — the "at or below" fallback
+  // only guards against being called off-schedule.
+  const tier = CHEST_TIERS.find(t => t.level === lvl)
+    || [...CHEST_TIERS].reverse().find(t => t.level <= lvl)
+    || CHEST_TIERS[0];
+  return rollChestTier(tier.idx);
+}
+
+// Daily rewards (see LOGIN_REWARDS in daily.js) give a chest of a fixed
+// rarity: 0 BRONZE, 1 SILVER, 2 GOLD, 3 PLATINUM, 4 LEGENDARY.
+export function rollChestTier(tierIdx) {
+  const t    = Math.max(0, Math.min(CHEST_TIER_DEFS.length - 1, tierIdx | 0));
+  const tier = CHEST_TIER_DEFS[t];
 
   const slot   = rollRouletteSlot(t);
   const reward = buildRewardFromSlot(slot, t);
@@ -162,6 +178,7 @@ export function applyReward(reward) {
   } else if (reward.type === 'xp') {
     G.xp            = (G.xp            || 0) + reward.amount;
     G.totalXpEarned = (G.totalXpEarned || 0) + reward.amount;
+    addLifetimeXp(reward.amount);
 
   } else if (reward.type === 'blueprint') {
     if (!G.blueprints) G.blueprints = {};
@@ -173,6 +190,7 @@ export function applyReward(reward) {
       reward._converted = true;
       G.xp            = (G.xp            || 0) + 50;
       G.totalXpEarned = (G.totalXpEarned || 0) + 50;
+      addLifetimeXp(50);
     } else {
       G.blueprints[reward.aircraft] = have + reward.pieces;
       if (G.blueprints[reward.aircraft] >= needed) {
@@ -180,15 +198,23 @@ export function applyReward(reward) {
         newlyUnlocked.push(reward.aircraft);
       }
     }
+
+
+  } else if (reward.type === 'aircraft') {
+    if (G.unlockedAircraft.includes(reward.aircraft)) {
+      // Safety net for a stale/duplicate roll — buildRewardFromSlot() already
+      // filters these out, so this should not normally happen.
+      reward._converted = true;
+      G.xp            = (G.xp            || 0) + MYTHIC_DUPLICATE_XP;
+      G.totalXpEarned = (G.totalXpEarned || 0) + MYTHIC_DUPLICATE_XP;
+      addLifetimeXp(MYTHIC_DUPLICATE_XP);
+    } else {
+      G.unlockedAircraft.push(reward.aircraft);
+      if (!G.acquiredAircraft.includes(reward.aircraft)) G.acquiredAircraft.push(reward.aircraft);
+      newlyUnlocked.push(reward.aircraft);
+    }
   }
 
   return newlyUnlocked;
 }
 
-// Legacy alias for older chest reward callers.
-export function applyRewards(rewards) {
-  let all = [];
-  const arr = Array.isArray(rewards) ? rewards : [rewards];
-  for (const r of arr) all = all.concat(applyReward(r));
-  return all;
-}

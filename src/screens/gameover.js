@@ -14,6 +14,7 @@ export function initGameover(nav) {
     window._gameResume = null;
     G.pausedGameResume = null;
     G.continueState = null;
+    G.coopRetry = true;   // MULTI: replay with the same teammate (main.js toGame)
     nav.toGame(G.currentLevel, G.practiceMode);
   };
 

@@ -5,6 +5,9 @@ const CLOUD_KEYS = Array.from({ length: 12 }, (_, i) => `cloud-${i + 1}`);
 const clouds = [];
 let enabled = false;
 let spawnDelay = 0;
+// Cloudy and typhoon weather fill the sky with many more (and slightly
+// bigger) clouds.
+let dense = false;
 
 function random(min, max) {
   return min + Math.random() * (max - min);
@@ -12,7 +15,7 @@ function random(min, max) {
 
 function makeCloud(cw, ch, initial = false) {
   const depth = Math.random();
-  const size = random(0.16, 0.28) * cw * (0.72 + depth * 0.55);
+  const size = random(dense ? 0.2 : 0.16, dense ? 0.36 : 0.28) * cw * (0.72 + depth * 0.55);
   const cloud = {
     key: CLOUD_KEYS[Math.floor(Math.random() * CLOUD_KEYS.length)],
     x: random(-size * 0.18, cw - size * 0.82),
@@ -28,14 +31,18 @@ function makeCloud(cw, ch, initial = false) {
   clouds.push(cloud);
 }
 
-export function initClouds(biome, cw, ch) {
+function cloudLimits() {
+  if (!dense) return { count: 16, max: 19 };
+  return isTouchMobile() ? { count: 30, max: 36 } : { count: 42, max: 50 };
+}
+
+export function initClouds(biome, cw, ch, weatherId = null) {
   clouds.length = 0;
-  // Large transparent cloud sprites are expensive on mobile GPUs. The map
-  // already contains cloud detail, so reserve this extra layer for desktop.
-  enabled = biome !== 'space' && !isTouchMobile();
+  enabled = biome !== 'space';
+  dense = weatherId === 'CLOUDY' || weatherId === 'TYPHOON';
   if (!enabled || !cw || !ch) return;
 
-  const count = isTouchMobile() ? 3 : 16;
+  const { count } = cloudLimits();
   for (let i = 0; i < count; i++) makeCloud(cw, ch, true);
   spawnDelay = random(55, 120);
 }
@@ -54,10 +61,10 @@ export function updateClouds(step, cw, ch) {
   }
 
   spawnDelay -= step;
-  const maxClouds = isTouchMobile() ? 4 : 19;
+  const maxClouds = cloudLimits().max;
   if (spawnDelay <= 0 && clouds.length < maxClouds) {
     makeCloud(cw, ch);
-    spawnDelay = random(65, 145);
+    spawnDelay = dense ? random(18, 45) : random(65, 145);
   }
 }
 

@@ -1,5 +1,10 @@
 import { save, load } from '../utils/storage.js';
 
+// Set to false to restore normal progressive unlocking (complete a level to
+// open the next one). While true, every level shows as available regardless
+// of stars/highestLevel — pilot grade, XP, coins etc. are untouched.
+const UNLOCK_ALL_LEVELS = !!import.meta.env?.DEV;   // local dev server only: every level open for testing
+
 export function saveProgress(levelNum, stars, xp) {
   const ls = load('levelStars', {});
   if ((ls[levelNum] || 0) < stars) {
@@ -10,6 +15,7 @@ export function saveProgress(levelNum, stars, xp) {
 }
 
 export function highestUnlockedLevel(levelStars = {}, highestLevel = 0, recommendedLevel = 1) {
+  if (UNLOCK_ALL_LEVELS) return 9999;
   const completed = Object.keys(levelStars)
     .map(Number)
     .filter(Number.isFinite)

@@ -2,6 +2,24 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
+  <!-- New player: paint the intro's yellow from the very first frame and keep
+       the lobby hidden until main.js starts the T-6 intro (np-boot is removed
+       there). Same rule as main.js: onboarding never done, not a known account. -->
+  <script>
+    (function () {
+      try {
+        var get = function (k) { var v = localStorage.getItem('jexongo_' + k); return v === null ? null : JSON.parse(v); };
+        var known = get('playerRegistered') && get('playerGrade');
+        if (new URLSearchParams(location.search).has('intro') || (!known && get('hasSeenOnboarding') !== true)) {
+          document.documentElement.classList.add('np-boot');
+        }
+      } catch (e) {}
+    })();
+  </script>
+  <style>
+    html.np-boot, html.np-boot body { background: #ffc800 !important; }
+    html.np-boot body > *:not(#np-intro) { visibility: hidden !important; }
+  </style>
   <link rel="icon" type="image/png" sizes="64x64" href="./favicon.png?v=3">
   <link rel="icon" type="image/png" sizes="512x512" href="./JEXONGO.png?v=3">
   <link rel="shortcut icon" href="./favicon.png?v=3">
@@ -25,7 +43,6 @@
   <meta name="twitter:title" content="JEXONGO - Combat Mathematique Aerien">
   <meta name="twitter:description" content="Pilote, reponds aux equations et ameliore ton niveau en math avec JexonGO.">
   <meta name="twitter:image" content="https://jexongo.app/JEXONGO.png">
-  <link rel="preload" href="./assets/fonts/PressStart2P-Regular.ttf" as="font" type="font/ttf" crossorigin>
   <script type="application/ld+json">
     {
       "@context": "https://schema.org",
@@ -50,8 +67,25 @@
   </script>
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="src/screens/worldcup-intro.css">
+  <link rel="stylesheet" href="src/screens/lobby-redesign.css">
 </head>
 <body>
+  <!-- New-player intro (src/screens/new-player-intro.js takes it over). It is
+       in the page itself so the T-6 flies in while the game is still loading;
+       the plane hovers in the middle until the game is ready. -->
+  <div id="np-intro" class="np-intro np-static" aria-hidden="true">
+    <div class="np-wind"><i style="--x:11%;--d:0.0s;--l:40px"></i><i style="--x:48%;--d:0.17s;--l:69px"></i><i style="--x:85%;--d:0.34s;--l:98px"></i><i style="--x:22%;--d:0.51s;--l:57px"></i><i style="--x:59%;--d:0.68s;--l:86px"></i><i style="--x:96%;--d:0.85s;--l:45px"></i><i style="--x:33%;--d:0.12s;--l:74px"></i><i style="--x:70%;--d:0.29s;--l:103px"></i><i style="--x:7%;--d:0.46s;--l:62px"></i><i style="--x:44%;--d:0.63s;--l:91px"></i><i style="--x:81%;--d:0.8s;--l:50px"></i><i style="--x:18%;--d:0.07s;--l:79px"></i><i style="--x:55%;--d:0.24s;--l:108px"></i><i style="--x:92%;--d:0.41s;--l:67px"></i></div>
+    <div class="np-plane-wrap">
+      <div class="np-plane" style="background-image:url('/assets/ships/player/t6-animation.webp')"></div>
+      <div class="np-wing-wind np-wing-wind-l"></div>
+      <div class="np-wing-wind np-wing-wind-r"></div>
+    </div>
+    <div class="np-wash"></div>
+    <div class="np-title">
+      <div class="np-logo">JEXON<span>GO</span></div>
+      <button class="np-play" type="button">JOUER</button>
+    </div>
+  </div>
   <!-- AUDIO SPLASH (tap-to-start, guarantees audio unlock) -->
   <div id="audio-splash" class="audio-splash hidden">
     <div class="audio-splash-inner">
@@ -85,203 +119,257 @@
     </div>
   </div>
 
-  <!-- MISSIONS PANEL -->
+  <!-- MISSIONS PANEL: full-page war-room background; tap the tablet on the
+       desk to pop up the mission list. -->
   <div id="missions-panel" class="sett-backdrop hidden">
-    <div class="missions-inner">
-      <div class="sett-header">
-        <span class="sett-title" data-i18n="dailyMissions">⚡ DAILY MISSIONS</span>
-        <button id="btn-missions-close" class="sett-close">✕</button>
-      </div>
-      <div id="missions-timer" class="missions-timer"></div>
-      <div id="missions-list" class="missions-list"></div>
-    </div>
-  </div>
-
-  <!-- PRACTICE MODE SELECTOR -->
-  <div id="practice-select" class="sett-backdrop hidden">
-    <div class="practice-panel">
-      <div class="sett-header">
-        <span class="sett-title" data-i18n="practice">⚡ PRACTICE</span>
-        <button id="btn-practice-close" class="sett-close">✕</button>
-      </div>
-      <div class="practice-body">
-        <div class="practice-subtitle" data-i18n="chooseOps">CHOOSE OPERATIONS</div>
-        <div class="practice-ops-grid">
-          <button class="practice-op-btn pob-active" data-op="+" style="--op-color:#00e84b">
-            <span class="pob-symbol">+</span>
-            <span class="pob-label" data-i18n="add">ADD</span>
-          </button>
-          <button class="practice-op-btn pob-active" data-op="-" style="--op-color:#60a5fa">
-            <span class="pob-symbol">−</span>
-            <span class="pob-label" data-i18n="sub">SUB</span>
-          </button>
-          <button class="practice-op-btn pob-active" data-op="*" style="--op-color:#ff8c00">
-            <span class="pob-symbol">×</span>
-            <span class="pob-label" data-i18n="mul">MUL</span>
-          </button>
-          <button class="practice-op-btn pob-active" data-op="/" style="--op-color:#a855f7">
-            <span class="pob-symbol">÷</span>
-            <span class="pob-label" data-i18n="div">DIV</span>
-          </button>
-        </div>
-        <button id="btn-practice-all" class="practice-all-btn" data-i18n="selectAll">SELECT ALL</button>
-
-        <div class="practice-hearts-row">
-          <span class="practice-hearts-label" data-i18n="heartsLives">❤ LIVES</span>
-          <button id="btn-practice-hearts" class="practice-hearts-btn poh-active">ON</button>
-        </div>
-
-        <div class="practice-timer-row">
-          <span class="practice-timer-label">⏱ TIMER</span>
-          <div class="practice-timer-btns">
-            <button class="practice-timer-btn" data-time="5">5s</button>
-            <button class="practice-timer-btn" data-time="10">10s</button>
-            <button class="practice-timer-btn" data-time="15">15s</button>
-            <button class="practice-timer-btn" data-time="30">30s</button>
-            <button class="practice-timer-btn" data-time="0">∞</button>
-          </div>
-        </div>
-
-        <button id="btn-practice-start" class="btn btn-primary practice-start-btn" data-i18n="start">▶ START</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- SETTINGS PANEL (global overlay) -->
-  <div id="settings-panel" class="sett-backdrop hidden">
-    <div class="sett-panel">
-      <div class="sett-header">
-        <span class="sett-title" data-i18n="settings">⚙ SETTINGS</span>
-        <button id="btn-settings-close" class="sett-close">✕</button>
-      </div>
-
-      <div class="sett-row sett-row-volume">
-        <div class="sett-row-left">
-          <span class="sett-icon" id="sett-vol-icon">♪</span>
-          <span class="sett-label" data-i18n="volume">SFX</span>
-        </div>
-        <div class="sett-slider-wrap">
-          <input type="range" id="sett-volume-slider" class="sett-slider" min="0" max="100" value="80">
-          <span id="sett-volume-val" class="sett-vol-val">80%</span>
-        </div>
-      </div>
-
-      <div class="sett-row sett-row-volume">
-        <div class="sett-row-left">
-          <span class="sett-icon" id="sett-music-icon">♫</span>
-          <span class="sett-label">MUSIC</span>
-        </div>
-        <div class="sett-slider-wrap">
-          <input type="range" id="sett-music-slider" class="sett-slider" min="0" max="100" value="45">
-          <span id="sett-music-val" class="sett-vol-val">45%</span>
-        </div>
-      </div>
-
-      <div class="sett-row">
-        <div class="sett-row-left">
-          <span class="sett-icon">✦</span>
-          <span class="sett-label" data-i18n="effects">EFFECTS</span>
-        </div>
-        <button id="sett-effects" class="sett-toggle sett-on">ON</button>
-      </div>
-
-      <div class="sett-divider"></div>
-
-      <button id="btn-change-equations" class="sett-action-btn" type="button">CHANGER LES EQUATIONS</button>
-      <button id="btn-replay-briefing" class="sett-action-btn" type="button">REPLAY BRIEFING</button>
-      <div class="settings-legal-links">
-        <button id="btn-menu-privacy" class="menu-privacy-link" type="button" data-i18n="privacyPolicyLink">PRIVACY POLICY</button>
-        <button id="btn-menu-terms" class="menu-privacy-link" type="button" data-i18n="termsPolicyLink">TERMS OF USE</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- MENU SCREEN -->
-  <div id="s-menu" class="screen">
-    <div class="menu-top-left">
-      <button id="btn-lang" class="lang-toggle-btn" aria-label="Toggle language">FR</button>
-      <button id="btn-feedback-menu" class="feedback-menu-btn" aria-label="Feedback" data-i18n="feedbackBtn">★ FEEDBACK</button>
-
-      <!-- PROFILE SQUARE (top bar, next to feedback) -->
-      <div id="menu-profile" class="menu-profile hidden">
-      <button class="menu-profile-btn" id="btn-menu-profile-avatar">
-        <img id="menu-profile-photo" class="menu-profile-photo" src="" alt="" referrerpolicy="no-referrer">
-        <span id="menu-profile-initial" class="menu-profile-initial"></span>
-      </button>
-      <div id="menu-profile-dropdown" class="menu-profile-dropdown hidden">
-        <span id="menu-profile-name" class="menu-profile-name"></span>
-        <button id="btn-google-signout" class="menu-profile-signout" data-i18n="signOut">× SIGN OUT</button>
-        <button id="btn-menu-delete-account" class="menu-profile-delete" data-i18n="deleteAccount">DELETE ACCOUNT</button>
-      </div>
-    </div>
-    </div><!-- .menu-top-left -->
-
-    <button id="btn-settings" class="settings-gear-btn" aria-label="Settings">
-      <svg viewBox="0 0 24 24" fill="currentColor" width="22" height="22">
-        <path d="M12 15.5A3.5 3.5 0 0 1 8.5 12 3.5 3.5 0 0 1 12 8.5a3.5 3.5 0 0 1 3.5 3.5 3.5 3.5 0 0 1-3.5 3.5m7.43-2.92c.04-.34.07-.69.07-1.08s-.03-.74-.07-1.08l2.32-1.82c.21-.17.27-.46.14-.7l-2.2-3.82c-.13-.24-.42-.31-.66-.22l-2.73 1.1c-.57-.44-1.18-.8-1.86-1.09l-.41-2.9A.54.54 0 0 0 14 2h-4a.54.54 0 0 0-.54.46l-.41 2.9c-.68.29-1.29.65-1.86 1.09l-2.73-1.1c-.24-.09-.53-.02-.66.22L1.6 9.49c-.13.24-.07.53.14.7l2.32 1.82C4.03 12.35 4 12.69 4 13s.03.65.07.99L1.74 15.8c-.21.17-.27.46-.14.7l2.2 3.82c.13.24.42.31.66.22l2.73-1.1c.57.44 1.18.8 1.86 1.09l.41 2.9c.06.28.28.46.54.46h4c.26 0 .48-.18.54-.46l.41-2.9c.68-.29 1.29-.65 1.86-1.09l2.73 1.1c.24.09.53.02.66-.22l2.2-3.82c.13-.24.07-.53-.14-.7l-2.32-1.81z"/>
-      </svg>
+    <img class="jx-bg" src="/assets/hangar/mission-briefing-bg.webp" alt="">
+    <div class="jx-shade"></div>
+    <button id="btn-missions-close" class="jx-navbtn jx-navbtn-right" type="button" aria-label="Close">&#9654;</button>
+    <button id="btn-missions-tablet" class="jx-mission-tablet" type="button" aria-label="Open missions">
+      <span class="jx-mission-tablet-tip" data-i18n="yourMissions">YOUR MISSIONS</span>
     </button>
-    <div class="menu-content">
-      <header class="jg-lobby-status">
-        <div class="menu-player-card">
-          <button id="menu-hud-avatar" class="menu-hud-avatar" type="button" aria-label="Connect with Google">G</button>
-          <div class="menu-player-meta">
-            <strong id="menu-hud-name" class="menu-hud-name">PILOT</strong>
-            <div class="menu-xp-track"><span id="menu-hud-xp-fill"></span></div>
-          </div>
-        </div>
-        <div class="menu-resource-row">
-          <div class="menu-resource-chip"><img class="jg-coin-icon" src="/assets/fx/Caisse/JexonGo_Coin_frame_01.png" alt=""><b id="menu-hud-coins">0</b></div>
-          <div class="menu-resource-chip"><img class="jg-exp-icon" src="/assets/fx/Caisse/JexonGo_EXP_frame_01.png" alt="EXP"><b id="menu-hud-xp">0</b></div>
-          <div class="menu-resource-chip menu-level-chip">
-            <span>LV</span><b id="menu-hud-level">1/50</b>
-            <div class="menu-level-progress" aria-hidden="true"><i id="menu-level-progress-fill"></i></div>
-          </div>
-        </div>
-      </header>
-      <main class="jg-lobby-deck">
-        <section class="menu-plane-showcase">
-          <div class="jg-hangar-frame"><i></i><i></i><i></i><i></i></div>
-          <div class="menu-plane-ring"></div>
-          <img id="menu-selected-plane" class="menu-selected-plane" src="/assets/hangar/t6.png" alt="Selected aircraft">
-        </section>
-        <div class="menu-widget menu-season-card">
-          <span class="menu-widget-title">LEVEL</span>
-          <div class="menu-season-medal">✦</div>
-          <div class="menu-season-bar"><span id="menu-season-fill"></span></div>
-          <small id="menu-season-text" class="menu-widget-small">1 / 50</small>
-        </div>
-      </main>
-      <div id="menu-rank-badge" class="menu-rank-badge"></div>
-      <div id="menu-playtime-dashboard" class="menu-playtime-dashboard"></div>
 
-      <button id="btn-play" class="btn btn-primary" data-i18n="play">PLAY</button>
-      <div class="jg-lobby-nav-controls">
-        <div class="jg-lobby-nav-art" aria-hidden="true"></div>
-        <button id="btn-missions" class="btn btn-secondary btn-missions-menu" data-i18n="missions">MISSIONS</button>
-        <button id="btn-hangar" class="btn btn-secondary" data-i18n="hangar">HANGAR</button>
-        <div class="jg-lobby-nav-home" role="button" tabindex="0" aria-label="Lobby"></div>
-        <button id="btn-shop" class="btn btn-secondary" data-i18n="shop">SHOP</button>
-        <button id="btn-practice" class="btn btn-secondary" data-i18n="practice">PRACTICE</button>
+    <div id="missions-scroll-backdrop" class="jx-mission-scroll-backdrop">
+      <div class="jx-scroll">
+        <img class="jx-scroll-tablet-frame" src="/assets/hangar/mission-tablet.png" alt="">
+        <button id="btn-missions-scroll-close" class="jx-mission-scroll-x" type="button" aria-label="Close">&times;</button>
+        <div class="jx-scroll-screen">
+          <div class="jx-scroll-title" data-i18n="jxMission">MISSION</div>
+          <div id="missions-timer" class="missions-timer"></div>
+          <div id="missions-list" class="missions-list"></div>
+        </div>
       </div>
-
-      <div class="login-divider"><span>— SIGN IN —</span></div>
-
-      <button class="login-btn login-google" id="btn-login-google" aria-label="Sign in with Google">
-        <span class="login-icon login-game-icon">G</span>
-        <span class="login-btn-text" data-i18n="signInGoogle">SIGN IN WITH GOOGLE</span>
-      </button>
     </div>
   </div>
 
+
+  <!-- SETTINGS DRAWER (RÉGLAGE) -->
+  <div id="settings-panel" class="sett-backdrop hidden">
+    <div class="jx-drawer">
+      <h2 data-i18n="jxSettings">RÉGLAGE</h2>
+
+      <button id="btn-jx-lang" class="jx-pill" type="button" data-i18n="jxLangName">FRANÇAIS</button>
+
+      <button class="jx-pill" type="button" data-jx-sub="drawer-volume" data-i18n="jxVolume">VOLUME</button>
+      <div id="drawer-volume" class="jx-sub">
+        <div class="sett-row sett-row-volume">
+          <div class="sett-row-left">
+            <span class="sett-icon" id="sett-vol-icon">♪</span>
+            <span class="sett-label" data-i18n="volume">SFX</span>
+          </div>
+          <div class="sett-slider-wrap">
+            <input type="range" id="sett-volume-slider" class="sett-slider" min="0" max="100" value="80">
+            <span id="sett-volume-val" class="sett-vol-val">80%</span>
+          </div>
+        </div>
+        <div class="sett-row sett-row-volume">
+          <div class="sett-row-left">
+            <span class="sett-icon" id="sett-music-icon">♫</span>
+            <span class="sett-label">MUSIC</span>
+          </div>
+          <div class="sett-slider-wrap">
+            <input type="range" id="sett-music-slider" class="sett-slider" min="0" max="100" value="45">
+            <span id="sett-music-val" class="sett-vol-val">45%</span>
+          </div>
+        </div>
+        <div class="sett-row">
+          <div class="sett-row-left">
+            <span class="sett-icon">✦</span>
+            <span class="sett-label" data-i18n="effects">EFFECTS</span>
+          </div>
+          <button id="sett-effects" class="sett-toggle sett-on">ON</button>
+        </div>
+        <button id="btn-change-equations" class="sett-action-btn" type="button">CHANGER LES EQUATIONS</button>
+      </div>
+
+      <button id="btn-menu-privacy" class="jx-pill" type="button" data-i18n="jxPolicyUser">Politique de confidentialité</button>
+      <button id="btn-menu-terms" class="jx-pill" type="button" data-i18n="jxTermsOfService">Conditions d'utilisation</button>
+      <button id="btn-feedback-menu" class="jx-pill" type="button" data-i18n="jxReview">AVIS</button>
+      <button id="btn-replay-briefing" class="jx-pill" type="button" data-i18n="jxBriefingShort">BRIFING</button>
+      <button class="jx-pill" type="button" id="btn-jx-badges" data-i18n="jxBadges">BADGES</button>
+
+      <div id="drawer-profile">
+        <button class="login-btn login-google jx-pill" id="btn-login-google" type="button" aria-label="Sign in with Google" data-i18n="signInGoogle">SIGN IN WITH GOOGLE</button>
+        <span id="menu-profile-name" class="menu-profile-name"></span>
+        <button id="btn-google-signout" class="jx-pill" type="button" data-i18n="signOut">× SIGN OUT</button>
+        <button id="btn-menu-delete-account" class="jx-pill" type="button" data-i18n="deleteAccount">DELETE ACCOUNT</button>
+      </div>
+
+      <button id="btn-settings-close" hidden aria-hidden="true"></button>
+    </div>
+  </div>
+
+  <!-- BADGES overlay (opened from the RÉGLAGE drawer) -->
+  <div id="badges-overlay" class="sett-backdrop hidden">
+    <div class="jx-drawer" style="transform:none;border-radius:24px;width:min(92%,420px);height:auto;max-height:88vh;border-left-width:9px">
+      <button id="btn-badges-close" class="jx-pill" type="button" style="margin-bottom:14px">✕</button>
+      <section id="hangar-badges" class="hangar-badges"></section>
+    </div>
+  </div>
+
+  <!-- WEEK TRACKER overlay (opened by tapping the day/play-time tab in the lobby) -->
+  <div id="week-overlay" class="sett-backdrop hidden">
+    <div class="jx-drawer jx-week-drawer" style="transform:none;border-radius:24px;width:min(94%,460px);height:auto;max-height:88vh;border-left-width:9px">
+      <button id="btn-week-close" class="jx-pill" type="button">✕</button>
+
+      <div class="jx-week-head">
+        <div class="jx-week-head-text">
+          <h3 class="jx-week-title" data-i18n="weekTrackerTitle">TEMPS DE JEU</h3>
+          <div class="jx-week-subtitle" id="jx-week-subtitle">Objectif jour : 5 min</div>
+        </div>
+        <div class="jx-week-badge">
+          <span id="jx-week-badge-value" class="jx-week-badge-value">0</span>
+          <span class="jx-week-badge-unit">min</span>
+        </div>
+      </div>
+
+      <div class="jx-week-row" id="jx-week-row"></div>
+
+      <div class="jx-week-divider"></div>
+
+      <div class="jx-week-goal">
+        <div class="jx-week-goal-title" id="jx-week-goal-title">DÉFI DU MOIS</div>
+        <div class="jx-week-goal-config" id="jx-week-goal-config"></div>
+        <div class="jx-week-goal-bar"><div class="jx-week-goal-fill" id="jx-week-goal-fill"></div></div>
+        <div class="jx-week-goal-label" id="jx-week-goal-label">Objectif : 0 min ce mois-ci</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PLANE INFO overlay (opened by tapping the ⓘ button on a hangar plane card) -->
+  <div id="plane-info-overlay" class="sett-backdrop hidden">
+    <div class="pi-card" role="dialog" aria-modal="true" aria-labelledby="plane-info-name">
+      <div class="pi-head">
+        <h2 class="pi-title" data-i18n="planeInfoTitle">INFORMATION</h2>
+        <button id="btn-plane-info-close" class="pi-close" type="button" aria-label="Close">✕</button>
+      </div>
+      <div id="plane-info-stars" class="pi-stars" aria-hidden="true"></div>
+      <div class="pi-stage">
+        <button id="btn-plane-info-prev" class="pi-arrow pi-arrow-left" type="button" aria-label="Previous">&#9664;</button>
+        <div class="pi-screen">
+          <canvas id="plane-info-canvas" class="pi-img" role="img" aria-label=""></canvas>
+          <div class="pi-scanlines" aria-hidden="true"></div>
+          <span id="plane-info-type" class="pi-corner pi-corner-tl"></span>
+          <span id="plane-info-cost" class="pi-corner pi-corner-bl"></span>
+          <span id="plane-info-grade" class="pi-corner pi-corner-br"></span>
+        </div>
+        <button id="btn-plane-info-next" class="pi-arrow pi-arrow-right" type="button" aria-label="Next">&#9654;</button>
+      </div>
+      <div class="pi-scroll">
+        <h3 id="plane-info-name" class="pi-bar pi-name"></h3>
+        <p id="plane-info-desc" class="pi-text"></p>
+        <h4 class="pi-bar" data-i18n="planeInfoAbility">CAPACITÉ</h4>
+        <div class="pi-ability">
+          <span id="plane-info-ability-icon" class="pi-ability-icon"></span>
+          <div>
+            <strong id="plane-info-ability-name"></strong>
+            <p id="plane-info-ability-desc"></p>
+          </div>
+        </div>
+        <h4 class="pi-bar" data-i18n="planeInfoSpecs">FICHE TECHNIQUE</h4>
+        <dl id="plane-info-specs" class="pi-specs"></dl>
+      </div>
+      <div class="pi-actions">
+        <button id="btn-plane-info-action" class="pi-btn" type="button"></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MENU SCREEN (Pixel Arcade redesign) -->
+  <div id="s-menu" class="screen">
+    <div class="menu-content jx-screen">
+      <img id="menu-hangar-bg" class="jx-bg" src="/assets/hangar/hangar-door/frame-19.webp" alt="">
+      <div class="jx-shade"></div>
+
+      <div class="jx-hud">
+        <div class="jx-hud-main">
+          <span class="jx-chip"><img src="/assets/fx/Caisse/JexonGo_Coin_frame_01.png" alt=""><b id="menu-hud-coins">0</b></span>
+          <span class="jx-chip"><img src="/assets/fx/Caisse/JexonGo_EXP_frame_01.png" alt="EXP"><b id="menu-hud-xp">0</b></span>
+        </div>
+        <button id="btn-jx-menu" class="jx-burger" type="button" aria-label="Menu"><i></i><i></i><i></i></button>
+      </div>
+
+      <button id="btn-jx-nav-prev" class="jx-navbtn jx-navbtn-left" type="button" aria-label="Missions">&#9664;</button>
+      <button id="btn-jx-nav-next" class="jx-navbtn jx-navbtn-right" type="button" aria-label="Shop">&#9654;</button>
+
+      <div class="jx-daytab">
+        <div class="jx-daytab-bot">
+          <div class="jx-daytab-fill" id="menu-daytab-fill"></div>
+          <span id="menu-daytab-min">0 MIN</span>
+        </div>
+      </div>
+
+      <div class="jx-plane-wrap">
+        <button id="btn-lobby-plane-prev" class="jx-planecycle" type="button" aria-label="Previous plane">&#9664;</button>
+        <img id="menu-selected-plane" src="/assets/hangar/t6.webp" alt="Selected aircraft">
+        <span id="mp-you-name" class="mp-tag mp-tag-you mp-lobby-you">TOI</span>
+        <button id="btn-lobby-plane-next" class="jx-planecycle" type="button" aria-label="Next plane">&#9654;</button>
+        <!-- Plane not owned yet (menu.js renderLobbyPlane): its name and price, buys it. -->
+        <button id="btn-lobby-plane-buy" class="jx-plane-buy hidden" type="button"></button>
+      </div>
+
+      <!-- MULTI mode (multiplayer.js): "Player 2" / the bot beside the player's plane. -->
+      <div id="mp-lobby-p2" class="mp-lobby-p2" aria-hidden="true">
+        <span id="mp-p2-name" class="mp-tag">Joueur 2</span>
+        <img id="mp-p2-plane" src="/assets/hangar/f18.webp" alt="">
+      </div>
+      <button id="btn-play" class="jx-cta" type="button" data-i18n="jxPlay">JOUER</button>
+      <!-- Multiplayer (src/screens/multiplayer.js): bot or real player with a code. -->
+      <button id="btn-lobby-multi" class="jx-multi-btn" type="button" aria-label="Multijoueur"><span class="jx-multi-ico"><img class="jx-multi-t6" src="/assets/hangar/t6.webp" alt=""><img class="jx-multi-f18" src="/assets/hangar/f18.webp" alt=""></span><span id="jx-multi-label">MULTI</span></button>
+      <div id="mp-sheet" class="mp-sheet hidden"></div>
+      <!-- TOP 20 MONDIAL (src/screens/leaderboard.js): most EXP earned since the start. -->
+      <button id="btn-lobby-top20" class="jx-multi-btn jx-top20-btn" type="button" aria-label="Top 20">
+        <svg class="jx-top20-ico" viewBox="0 0 40 36" aria-hidden="true">
+          <path d="M9 4h22v4h6v5c0 5-4 8-8 8h-1c-1.6 2.6-4 4.2-6 4.6V29h5v4H13v-4h5v-3.4c-2-.4-4.4-2-6-4.6h-1c-4 0-8-3-8-8V8h6V4zm0 8H7v1c0 2 1.4 3.6 3 4-.6-1.6-1-3.2-1-5zm22 0v0c0 1.8-.4 3.4-1 5 1.6-.4 3-2 3-4v-1h-2z" fill="#3a1d00"/>
+          <path d="M11 6h18v6c0 6-4 11-9 11s-9-5-9-11V6z" fill="#ffd84d"/>
+          <path d="M11 6h5v6c0 5 1.6 9 4 11-5 0-9-5-9-11V6z" fill="#fff3a8"/>
+          <path d="M24 6h5v6c0 6-4 11-9 11 3-2 4-6 4-11V6z" fill="#f0a500"/>
+          <path d="M20 8.6l1.6 3.3 3.6.5-2.6 2.5.6 3.6-3.2-1.7-3.2 1.7.6-3.6-2.6-2.5 3.6-.5z" fill="#fff" stroke="#c77700" stroke-width=".8"/>
+          <rect x="15" y="29" width="10" height="4" rx="1" fill="#c8793a"/>
+          <rect x="17.5" y="24" width="5" height="5" fill="#f0a500"/>
+        </svg><span>TOP 20</span>
+      </button>
+      <div id="lobby-top20" class="top20-panel hidden" role="dialog" aria-label="Top 20">
+        <button id="btn-top20-close" class="top20-close" type="button" aria-label="Fermer">&#10005;</button>
+        <div id="top20-body" class="top20-body"></div>
+      </div>
+
+      <div id="lobby-sheet" class="jx-bottomsheet is-collapsed">
+        <button class="jx-sheet-grip" type="button" aria-label="Hangar"><span data-i18n="jxHangarSheet">HANGAR</span></button>
+        <div class="jx-sheet-content">
+          <div class="jx-tabs">
+            <button class="jx-tab is-active" type="button" data-hangar-tab="planes" data-i18n="jxAircraftTab">AVIONS</button>
+            <button class="jx-tab" type="button" data-hangar-tab="missiles" data-i18n="jxMissileTab">TIR DE MISSILE</button>
+            <button class="jx-tab" type="button" data-hangar-tab="upgrades" data-i18n="jxUpgradeTab">UPGRADE</button>
+            <button class="jx-tab jx-tab-bot" type="button" data-hangar-tab="bot">BOT</button>
+          </div>
+          <div class="jx-panel-body"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MULTIPLAYER SCREEN (src/screens/multiplayer.js) -->
   <!-- LEVEL MAP SCREEN -->
-  <div id="s-levelmap" class="screen hidden">
-    <div class="top-bar">
-      <button id="btn-map-back" class="btn-icon">&#8592;</button>
-        <span id="map-xp-display" class="xp-badge"><img class="jg-coin-icon" src="/assets/fx/Caisse/JexonGo_Coin_frame_01.png" alt=""> 0 &nbsp; <img class="jg-exp-icon" src="/assets/fx/Caisse/JexonGo_EXP_frame_01.png" alt="EXP"> 0</span>
+  <div id="s-levelmap" class="screen hidden jx-screen">
+    <div class="jx-hud">
+      <button id="btn-map-back" class="jx-map-back" type="button" aria-label="Back">&#8592;</button>
+      <div class="jx-hud-main">
+        <span class="jx-chip"><img src="/assets/fx/Caisse/JexonGo_Coin_frame_01.png" alt=""><b id="map-coins">0</b></span>
+        <span class="jx-chip"><img src="/assets/fx/Caisse/JexonGo_EXP_frame_01.png" alt="EXP"><b id="map-xp">0</b></span>
+      </div>
+    </div>
+    <div class="jx-map-titlebar">
+      <button id="btn-map-biome-prev" class="jx-map-biome-arrow" type="button" aria-label="Previous world">&#9664;</button>
+      <span id="map-biome-title" class="jx-map-title">PACIFIQUE</span>
+      <button id="btn-map-biome-next" class="jx-map-biome-arrow" type="button" aria-label="Next world">&#9654;</button>
     </div>
     <div id="levelmap-scroll">
       <div id="levelmap-nodes"></div>
+    </div>
+    <div class="jx-map-chest">
+      <img class="jx-map-chest-icon" src="/assets/chest/chest-blue.png" alt="">
+      <span id="map-biome-stars" class="jx-map-chest-count">0/20</span>
     </div>
   </div>
 
@@ -312,10 +400,18 @@
         <span class="player-shield-icon">&#x1F6E1;</span>
         <span id="player-shield-status">SHIELD</span>
       </button>
+      <button id="btn-aircraft-turbo" class="aircraft-turbo-button hidden" type="button" aria-label="Activate turbo">
+        <span class="aircraft-turbo-icon">&#x26A1;</span>
+        <span id="aircraft-turbo-status">TURBO</span>
+      </button>
       <div id="boss-dialogue" class="boss-dialogue hidden" role="status" aria-live="polite">
-        <span id="boss-dialogue-speaker" class="boss-dialogue-speaker"></span>
-        <span id="boss-dialogue-text" class="boss-dialogue-text"></span>
-        <button id="boss-dialogue-continue" class="boss-dialogue-continue" type="button">CONTINUE</button>
+        <div class="bd-portrait bd-portrait-boss" aria-hidden="true"><i id="boss-dialogue-boss-img"></i></div>
+        <div class="bd-bubble">
+          <span id="boss-dialogue-speaker" class="boss-dialogue-speaker"></span>
+          <span id="boss-dialogue-text" class="boss-dialogue-text"></span>
+          <button id="boss-dialogue-continue" class="boss-dialogue-continue" type="button">CONTINUE</button>
+        </div>
+        <div class="bd-portrait bd-portrait-player" aria-hidden="true"><i id="boss-dialogue-player-img"></i></div>
       </div>
       <div id="tutorial-hud" class="tutorial-hud hidden">
         <div class="tutorial-hud-top">
@@ -346,79 +442,141 @@
     </div>
   </div>
 
-  <!-- HANGAR SCREEN -->
+  <!-- HANGAR SCREEN (Pixel Arcade redesign) -->
   <div id="s-hangar" class="screen hidden">
-    <div class="top-bar">
-      <button id="btn-hangar-back" class="btn-icon">&#8592;</button>
-      <span class="top-bar-title" data-i18n="hangarTitle">HANGAR</span>
-      <span id="hangar-xp" class="xp-badge"><img class="jg-exp-icon" src="/assets/fx/Caisse/JexonGo_EXP_frame_01.png" alt="EXP"> 0</span>
+    <img class="jx-bg" src="/assets/menu/lobby-hangar-bg.webp" alt="">
+    <div class="jx-hud">
+      <div class="jx-hud-main">
+        <span class="jx-chip"><img src="/assets/fx/Caisse/JexonGo_Coin_frame_01.png" alt=""><b id="hangar-coins">0</b></span>
+        <span class="jx-chip"><img src="/assets/fx/Caisse/JexonGo_EXP_frame_01.png" alt="EXP"><b id="hangar-xp">0</b></span>
+      </div>
+      <button class="jx-burger" type="button" aria-label="Menu"><i></i><i></i><i></i></button>
     </div>
-    <div id="hangar-grid"></div>
+    <div class="jx-panel">
+      <div class="jx-tabs">
+        <button class="jx-tab is-active" type="button" data-hangar-tab="planes" data-i18n="jxAircraftTab">AVIONS</button>
+        <button class="jx-tab" type="button" data-hangar-tab="missiles" data-i18n="jxMissileTab">TIR DE MISSILE</button>
+        <button class="jx-tab" type="button" data-hangar-tab="upgrades" data-i18n="jxUpgradeTab">UPGRADE</button>
+      </div>
+      <div id="hangar-body" class="jx-panel-body"></div>
+    </div>
+    <button id="btn-hangar-page-left" class="jx-navbtn jx-navbtn-left" type="button" aria-label="Previous">&#9664;</button>
+    <button id="btn-hangar-page-right" class="jx-navbtn jx-navbtn-right" type="button" aria-label="Next">&#9654;</button>
   </div>
 
   <!-- RESULT SCREEN -->
-  <div id="s-result" class="screen hidden">
-    <div id="result-title">MISSION COMPLETE</div>
-    <div id="result-stars"></div>
-    <div id="result-xp"></div>
-    <div id="result-coins" class="result-coins"></div>
-    <div id="result-correct"></div>
-    <div id="result-summary-grid" class="result-summary-grid"></div>
-    <div id="result-star-detail" class="result-star-detail"></div>
-    <div id="result-credits" class="result-credits"></div>
-    <div id="result-promo-banner" class="result-promo-banner hidden"></div>
-    <div id="result-unlock-banner" class="result-unlock-banner hidden"></div>
-    <button id="btn-result-continue" class="btn btn-primary" data-i18n="continueBtn">CONTINUE</button>
-    <button id="btn-result-retry" class="btn btn-secondary" data-i18n="retry">RETRY</button>
+  <!-- RESULT SCREEN: one gold-framed card (see .rs-* in style.css, filled by
+       showResult in src/screens/result.js). -->
+  <div id="s-result" class="screen hidden rs-screen">
+    <div class="rs-wrap">
+      <div class="rs-card">
+        <div class="rs-head">
+          <span id="rs-level" class="rs-level"></span>
+          <h1 id="rs-title" class="rs-title">MISSION COMPLETE</h1>
+        </div>
+        <div id="rs-stars" class="rs-stars"></div>
+        <div id="rs-rewards" class="rs-rewards"></div>
+        <div id="rs-stats" class="rs-stats"></div>
+        <div id="rs-goals" class="rs-goals"></div>
+        <div id="result-promo-banner" class="rs-banner hidden"></div>
+        <div id="result-unlock-banner" class="rs-banner rs-banner-unlock hidden"></div>
+        <div class="rs-actions">
+          <button id="btn-result-retry" class="rs-btn rs-btn-alt" type="button" data-i18n="retry">RETRY</button>
+          <button id="btn-result-continue" class="rs-btn" type="button" data-i18n="continueBtn">CONTINUE</button>
+        </div>
+        <div id="rs-foot" class="rs-foot"></div>
+      </div>
+    </div>
   </div>
 
   <!-- CHEST SCREEN -->
   <div id="s-chest" class="screen hidden">
-    <div id="chest-title" data-i18n="chestReward">CHEST REWARD</div>
-    <div id="chest-tier-label"></div>
-    <div id="chest-box"><img id="chest-img" src="" alt="chest"></div>
-    <div id="chest-roulette-area" class="chest-roulette-area hidden"></div>
-    <div id="chest-result-area" class="chest-result-area hidden"></div>
-    <div id="chest-rewards" class="hidden"></div>
-    <button id="btn-chest-open" class="btn btn-primary" data-i18n="openChest">OPEN CHEST</button>
-    <button id="btn-chest-continue" class="btn btn-secondary hidden" data-i18n="continueBtn">CONTINUE</button>
+    <i class="chest-corner chest-corner-tl"></i>
+    <i class="chest-corner chest-corner-tr"></i>
+    <i class="chest-corner chest-corner-bl"></i>
+    <i class="chest-corner chest-corner-br"></i>
+    <div class="chest-panel">
+      <div class="chest-panel-head">
+        <h2 id="chest-title" data-i18n="chestReward">CHEST REWARD</h2>
+        <div id="chest-tier-label"></div>
+      </div>
+      <div class="chest-pedestal">
+        <div id="chest-box"><img id="chest-img" src="" alt="chest"></div>
+      </div>
+      <div id="chest-roulette-area" class="chest-roulette-area hidden"></div>
+      <div id="chest-result-area" class="chest-result-area hidden"></div>
+      <div class="chest-panel-actions">
+        <button id="btn-chest-open" class="chest-btn chest-btn-primary" data-i18n="openChest">OPEN CHEST</button>
+        <button id="btn-chest-continue" class="chest-btn chest-btn-secondary hidden" data-i18n="continueBtn">CONTINUE</button>
+      </div>
+    </div>
   </div>
 
-  <!-- STORE SCREEN -->
+  <!-- STORE SCREEN (Pixel Arcade redesign) -->
   <div id="s-shop" class="screen hidden">
-    <div class="shop-app-shell">
-      <div class="shop-status-row">
-        <button id="btn-shop-back" class="shop-round-btn" aria-label="Back">←</button>
+    <img class="jx-bg" src="/assets/hangar/shop-missile-arsenal-bg.webp" alt="">
+    <div class="jx-shade"></div>
+    <div id="shop-arsenal-btns" class="jx-arsenal-btns"></div>
+    <div class="jx-hud">
+      <div class="jx-hud-main">
+        <span class="jx-chip"><img src="/assets/fx/Caisse/JexonGo_Coin_frame_01.png" alt=""><b id="shop-coins-val">0</b></span>
+        <span class="jx-chip"><img src="/assets/fx/Caisse/JexonGo_EXP_frame_01.png" alt="EXP"><b id="shop-xp-val">0</b></span>
       </div>
-
-      <div class="shop-hero">
-        <div>
-          <p class="shop-eyebrow">JEXONGO</p>
-          <h1 class="shop-title" data-i18n="shopTitle">STORE</h1>
-        </div>
-        <div class="shop-wallet-card">
-          <span><img class="jg-coin-icon" src="/assets/fx/Caisse/JexonGo_Coin_frame_01.png" alt="" aria-hidden="true"> <b id="shop-coins-val">0</b></span>
-          <span><img class="jg-exp-icon" src="/assets/fx/Caisse/JexonGo_EXP_frame_01.png" alt="EXP"> <b id="shop-xp-val">0</b></span>
-        </div>
-      </div>
-
-      <div class="shop-search-row">
-        <label class="shop-search-box">
-          <span>⌕</span>
-          <input id="shop-search" type="search" autocomplete="off" data-i18n-placeholder="shopSearch" placeholder="Search store...">
-        </label>
-      </div>
-
-      <div id="shop-content" class="shop-content"></div>
+      <button class="jx-burger" type="button" aria-label="Menu"><i></i><i></i><i></i></button>
     </div>
 
-    <div class="shop-tabbar">
-      <button class="shop-tab shop-tab-active" data-tab="featured" type="button">
-        <span class="shop-tab-icon"><img src="/assets/fx/Missile/jexongo-shop-icon-missile.png" alt="" aria-hidden="true"></span><span class="shop-tab-label" data-i18n="shopTabFeatured">FEATURED</span>
-      </button>
-      <button class="shop-tab" data-tab="rewards" type="button">
-        <span class="shop-tab-icon"><img src="/assets/fx/jexongo-shop-icon-tir.png" alt="" aria-hidden="true"></span><span class="shop-tab-label" data-i18n="shopTabRewards">MISSILES</span>
-      </button>
+    <div class="jx-plate" id="shop-plate" data-i18n="jxShopTitle">MAGASIN</div>
+
+    <button id="btn-shop-page-left" class="jx-navbtn jx-navbtn-left" type="button" aria-label="Previous">&#9664;</button>
+    <button id="btn-shop-page-right" class="jx-navbtn jx-navbtn-right" type="button" aria-label="Next">&#9654;</button>
+
+    <div id="shop-content" class="shop-content"></div>
+
+    <div id="shop-sheet" class="jx-bottomsheet is-collapsed">
+      <button class="jx-sheet-grip" type="button" aria-label="Shot type"><span data-i18n="jxFireTypeSheet">Type de tire</span></button>
+      <div class="jx-sheet-content">
+        <div class="jx-panel-title" data-i18n="jxFireTypeSheet">Type de tire</div>
+        <div id="shop-sheet-body" class="jx-panel-body"></div>
+      </div>
+    </div>
+
+    <button id="btn-shop-back" type="button" hidden aria-hidden="true"></button>
+    <div class="shop-tabbar" hidden>
+      <button class="shop-tab shop-tab-active" data-tab="rewards" type="button"></button>
+      <button class="shop-tab" data-tab="featured" type="button"></button>
+    </div>
+  </div>
+
+  <!-- TRAINING SCREEN (Pixel Arcade redesign) -->
+  <div id="s-training" class="screen hidden">
+    <img class="jx-bg" src="/assets/menu/lobby-hangar-bg.webp" alt="">
+    <div class="jx-shade"></div>
+
+    <div class="jx-hud">
+      <div class="jx-hud-main">
+        <span class="jx-chip"><img src="/assets/fx/Caisse/JexonGo_Coin_frame_01.png" alt=""><b id="training-coins">0</b></span>
+        <span class="jx-chip"><img src="/assets/fx/Caisse/JexonGo_EXP_frame_01.png" alt="EXP"><b id="training-xp">0</b></span>
+      </div>
+      <button class="jx-burger" type="button" aria-label="Menu"><i></i><i></i><i></i></button>
+    </div>
+
+    <div class="jx-plate" data-i18n="jxTraining">ENTRAINEMENT</div>
+
+    <button id="btn-training-page-left" class="jx-navbtn jx-navbtn-left" type="button" aria-label="Previous">&#9664;</button>
+
+    <div class="jx-plane-wrap">
+      <button id="btn-training-plane-prev" class="jx-planecycle" type="button" aria-label="Previous plane">&#9664;</button>
+      <img id="training-selected-plane" src="/assets/hangar/t6.webp" alt="Selected aircraft">
+      <button id="btn-training-plane-next" class="jx-planecycle" type="button" aria-label="Next plane">&#9654;</button>
+    </div>
+
+    <button id="btn-training-practice" class="jx-cta" type="button" data-i18n="jxPractice">PRATIQUE</button>
+
+    <div id="training-sheet" class="jx-bottomsheet is-collapsed">
+      <button class="jx-sheet-grip" type="button" aria-label="Equations"><span data-i18n="jxEquationSheet">équation</span></button>
+      <div class="jx-sheet-content">
+        <div id="training-sheet-body" class="jx-panel-body"></div>
+      </div>
     </div>
   </div>
 
@@ -598,6 +756,27 @@
           <div id="briefing-ops" class="briefing-cond-desc">Addition</div>
         </div>
       </div>
+      <div class="briefing-condition-row">
+        <span id="briefing-weather-icon" class="briefing-cond-icon">☀</span>
+        <div class="briefing-cond-body">
+          <div class="briefing-cond-label" data-i18n="briefingWeather">WEATHER</div>
+          <div id="briefing-weather" class="briefing-cond-desc">Clear skies</div>
+        </div>
+      </div>
+      <div class="briefing-condition-row">
+        <span class="briefing-cond-icon">📍</span>
+        <div class="briefing-cond-body">
+          <div class="briefing-cond-label" data-i18n="briefingLocation">LOCATION</div>
+          <div id="briefing-location" class="briefing-cond-desc">New York City, USA</div>
+        </div>
+      </div>
+      <div class="briefing-condition-row">
+        <span class="briefing-cond-icon">=</span>
+        <div class="briefing-cond-body">
+          <div class="briefing-cond-label" data-i18n="briefingExample">SAMPLE QUESTION</div>
+          <div id="briefing-example" class="briefing-cond-desc">3 + 5 = ?</div>
+        </div>
+      </div>
     </div>
     <div id="briefing-star-criteria" class="briefing-star-criteria"></div>
     <button id="btn-briefing-fly" class="briefing-fly-btn" data-i18n="fly">FLY!</button>
@@ -605,11 +784,24 @@
 
   <!-- GAME OVER SCREEN -->
   <div id="s-gameover" class="screen hidden">
-    <div id="gameover-title">GAME OVER</div>
-    <div id="gameover-score"></div>
-    <button id="btn-continue-game" class="btn btn-primary hidden">CONTINUE</button>
-    <button id="btn-retry" class="btn btn-primary" data-i18n="retry">RETRY</button>
-    <button id="btn-go-map" class="btn btn-secondary" data-i18n="backToMenu">LOBBY</button>
+    <i class="go-corner go-corner-tl"></i>
+    <i class="go-corner go-corner-tr"></i>
+    <i class="go-corner go-corner-bl"></i>
+    <i class="go-corner go-corner-br"></i>
+    <div class="gameover-panel">
+      <div class="gameover-icon-wrap">
+        <div class="gameover-ring gameover-ring-1"></div>
+        <div class="gameover-ring gameover-ring-2"></div>
+        <div class="gameover-icon">⚠</div>
+      </div>
+      <div id="gameover-title">GAME OVER</div>
+      <div id="gameover-score"></div>
+      <div class="gameover-actions">
+        <button id="btn-continue-game" class="gameover-btn gameover-btn-primary hidden">CONTINUE</button>
+        <button id="btn-retry" class="gameover-btn gameover-btn-primary" data-i18n="retry">RETRY</button>
+        <button id="btn-go-map" class="gameover-btn gameover-btn-secondary" data-i18n="backToMenu">LOBBY</button>
+      </div>
+    </div>
   </div>
 
   <!-- REGISTRATION SCREEN -->
@@ -678,108 +870,481 @@
       <div class="privacy-cloud privacy-cloud-a"></div>
       <div class="privacy-cloud privacy-cloud-b"></div>
       <div class="privacy-shell">
-        <button id="btn-privacy-back" class="privacy-back-btn" type="button">← RETOUR A L'ACCUEIL</button>
+        <button id="btn-privacy-back" class="privacy-back-btn" type="button" data-i18n="legalBackHome">← RETOUR A L'ACCUEIL</button>
         <header class="privacy-hero">
           <div class="privacy-logo">JEXON<span>GO</span></div>
           <div class="privacy-kicker">AERIAL MATH COMBAT</div>
-          <h1>Politique de confidentialite / Privacy Policy</h1>
-          <p>Derniere mise a jour : Juin 2026 · Last updated: June 2026</p>
+          <h1 data-i18n="privacyPolicyTitle">Politique de confidentialite / Privacy Policy</h1>
+          <p data-i18n="legalLastUpdated">Last updated: September 13, 2026</p>
         </header>
 
-        <div class="privacy-language-grid">
-          <section class="privacy-language-panel">
-            <h2 class="privacy-language-title">Francais</h2>
-            <div class="privacy-grid">
-              <section class="privacy-card">
-                <span class="privacy-plane">✈</span>
-                <h3>1. Introduction</h3>
-                <p>Bienvenue sur JexonGO. Chez JexonGO, nous accordons une grande importance a la protection de votre vie privee. Cette politique explique quelles informations sont collectees, pourquoi elles sont utilisees et comment elles sont protegees.</p>
-              </section>
-              <section class="privacy-card">
-                <span class="privacy-plane">✈</span>
-                <h3>2. Informations collectees</h3>
-                <p>Lors de la creation d'un compte, nous pouvons collecter : adresse e-mail, nom d'utilisateur, niveau scolaire, progression, XP, pieces, recompenses et statistiques de jeu.</p>
-              </section>
-              <section class="privacy-card">
-                <span class="privacy-plane">✈</span>
-                <h3>3. Utilisation</h3>
-                <p>Vos informations servent a gerer votre compte, sauvegarder votre progression, afficher votre profil et classement, envoyer des e-mails lies au compte, ameliorer JexonGO, corriger les bugs et assurer le support.</p>
-              </section>
-              <section class="privacy-card">
-                <span class="privacy-plane">✈</span>
-                <h3>4. Partage des donnees</h3>
-                <p>JexonGO ne vend jamais vos informations personnelles. Les services necessaires sont Supabase, Vercel et EmailJS.</p>
-              </section>
-              <section class="privacy-card">
-                <span class="privacy-plane">✈</span>
-                <h3>5. Securite</h3>
-                <p>Nous utilisons des mesures raisonnables pour proteger vos donnees. Les mots de passe sont geres de facon securisee par Supabase Authentication.</p>
-              </section>
-              <section class="privacy-card">
-                <span class="privacy-plane">✈</span>
-                <h3>6. Vos droits</h3>
-                <p>Vous pouvez demander l'acces, la correction ou la suppression de votre compte et de vos donnees.</p>
-              </section>
-              <section class="privacy-card">
-                <span class="privacy-plane">✈</span>
-                <h3>7. Contact</h3>
-                <p>Pour toute question concernant votre compte ou vos donnees :</p>
-                <a class="privacy-email" href="mailto:jeanlouisahyee72@gmail.com">jeanlouisahyee72@gmail.com</a>
-              </section>
-              <section class="privacy-card">
-                <span class="privacy-plane">✈</span>
-                <h3>8. Mise a jour</h3>
-                <p>Cette politique peut etre modifiee afin de refleter les evolutions de JexonGO. La date de mise a jour reste affichee en haut de cette page.</p>
-              </section>
-            </div>
-          </section>
+        <div class="privacy-doc">
+          <div class="jg-privacy" data-i18n-lang="en" hidden>
 
-          <section class="privacy-language-panel privacy-language-panel-en">
-            <h2 class="privacy-language-title">English</h2>
-            <div class="privacy-grid">
-              <section class="privacy-card">
-                <span class="privacy-plane">✈</span>
-                <h3>1. Introduction</h3>
-                <p>Welcome to JexonGO. We respect your privacy and are committed to protecting your personal information.</p>
-              </section>
-              <section class="privacy-card">
-                <span class="privacy-plane">✈</span>
-                <h3>2. Information We Collect</h3>
-                <p>When you create an account, we may collect your email address, username, grade level, game progress, XP, coins, achievements and gameplay statistics.</p>
-              </section>
-              <section class="privacy-card">
-                <span class="privacy-plane">✈</span>
-                <h3>3. How We Use It</h3>
-                <p>Your information is used to manage your account, save progress, display profile and leaderboard statistics, send welcome or account emails, improve JexonGO, fix bugs and provide support.</p>
-              </section>
-              <section class="privacy-card">
-                <span class="privacy-plane">✈</span>
-                <h3>4. Data Sharing</h3>
-                <p>JexonGO does not sell your personal information. We only use trusted services required to operate the game, including Supabase, Vercel and EmailJS.</p>
-              </section>
-              <section class="privacy-card">
-                <span class="privacy-plane">✈</span>
-                <h3>5. Data Security</h3>
-                <p>We use reasonable security measures to protect user information. Passwords are securely managed through Supabase Authentication.</p>
-              </section>
-              <section class="privacy-card">
-                <span class="privacy-plane">✈</span>
-                <h3>6. Your Rights</h3>
-                <p>You may request access to your personal information, correction of your information, or deletion of your account and associated data.</p>
-              </section>
-              <section class="privacy-card">
-                <span class="privacy-plane">✈</span>
-                <h3>7. Contact</h3>
-                <p>For privacy questions or support:</p>
-                <a class="privacy-email" href="mailto:jeanlouisahyee72@gmail.com">jeanlouisahyee72@gmail.com</a>
-              </section>
-              <section class="privacy-card">
-                <span class="privacy-plane">✈</span>
-                <h3>8. Updates</h3>
-                <p>This Privacy Policy may be updated as JexonGO evolves. The latest update date will remain visible at the top of this page.</p>
-              </section>
-            </div>
-          </section>
+            <p>This Privacy Notice for JexonGo ("we," "us," or "our") describes how and why we may access, collect, store, use, and/or share ("process") your personal information when you use our services ("Services"), including when you:</p>
+            <ul>
+              <li>Visit our website at <a href="https://jexongo.app" target="_blank">https://jexongo.app</a>, or any website of ours that links to this Privacy Notice</li>
+              <li>Use JexonGo. JexonGo is an educational math-combat flight game where players pilot aircraft, complete math-based missions, and progress through levels while practicing arithmetic skills. Players can sign in with a Google account to save their progress across devices.</li>
+              <li>Engage with us in other related ways, including any marketing or events</li>
+            </ul>
+
+            <p><strong>Questions or concerns?</strong> Reading this Privacy Notice will help you understand your privacy rights and choices. We are responsible for making decisions about how your personal information is processed. If you do not agree with our policies and practices, please do not use our Services. If you still have any questions or concerns, please contact us at <a href="mailto:contact@jexongo.app">contact@jexongo.app</a>.</p>
+
+            <h2 id="toc-summary">SUMMARY OF KEY POINTS</h2>
+            <p><em>This summary provides key points from our Privacy Notice. You can find out more details about any of these topics below.</em></p>
+            <p><strong>What personal information do we process?</strong> When you visit, use, or navigate our Services, we may process personal information depending on how you interact with us, the choices you make, and the features you use. See <a href="#infocollect">WHAT INFORMATION DO WE COLLECT?</a></p>
+            <p><strong>Do we process any sensitive personal information?</strong> Some information may be considered "sensitive" in certain jurisdictions — for example, information relating to a known child. We process such information only when necessary and as permitted by applicable law. See <a href="#sensitiveinfo">sensitive information we process</a>.</p>
+            <p><strong>Do we collect any information from third parties?</strong> We do not collect information about you from third parties.</p>
+            <p><strong>How do we process your information?</strong> We process your information to provide, improve, and administer our Services, communicate with you, for security and fraud prevention, and to comply with law. See <a href="#infouse">how we process your information</a>.</p>
+            <p><strong>In what situations and with which parties do we share personal information?</strong> We may share information with specific third parties in specific situations. See <a href="#whoshare">when and with whom we share your personal information</a>.</p>
+            <p><strong>How do we keep your information safe?</strong> We have organizational and technical processes in place to protect your information, though no method of transmission or storage is 100% secure. See <a href="#infosafe">how we keep your information safe</a>.</p>
+            <p><strong>What are your rights?</strong> Depending on where you are located, you may have certain rights regarding your personal information. See <a href="#privacyrights">your privacy rights</a>.</p>
+            <p><strong>How do you exercise your rights?</strong> The easiest way is by contacting us at <a href="mailto:contact@jexongo.app">contact@jexongo.app</a>. We will consider and act on any request in accordance with applicable data protection laws.</p>
+
+            <h2 id="toc">TABLE OF CONTENTS</h2>
+            <ol>
+              <li><a href="#infocollect">WHAT INFORMATION DO WE COLLECT?</a></li>
+              <li><a href="#infouse">HOW DO WE PROCESS YOUR INFORMATION?</a></li>
+              <li><a href="#legalbases">WHAT LEGAL BASES DO WE RELY ON TO PROCESS YOUR PERSONAL INFORMATION?</a></li>
+              <li><a href="#whoshare">WHEN AND WITH WHOM DO WE SHARE YOUR PERSONAL INFORMATION?</a></li>
+              <li><a href="#sociallogins">HOW DO WE HANDLE YOUR SOCIAL LOGINS?</a></li>
+              <li><a href="#intltransfers">IS YOUR INFORMATION TRANSFERRED INTERNATIONALLY?</a></li>
+              <li><a href="#inforetain">HOW LONG DO WE KEEP YOUR INFORMATION?</a></li>
+              <li><a href="#infosafe">HOW DO WE KEEP YOUR INFORMATION SAFE?</a></li>
+              <li><a href="#infominors">DO WE COLLECT INFORMATION FROM MINORS?</a></li>
+              <li><a href="#privacyrights">WHAT ARE YOUR PRIVACY RIGHTS?</a></li>
+              <li><a href="#DNT">CONTROLS FOR DO-NOT-TRACK FEATURES</a></li>
+              <li><a href="#uslaws">DO UNITED STATES RESIDENTS HAVE SPECIFIC PRIVACY RIGHTS?</a></li>
+              <li><a href="#otherlaws">DO OTHER REGIONS HAVE SPECIFIC PRIVACY RIGHTS?</a></li>
+              <li><a href="#policyupdates">DO WE MAKE UPDATES TO THIS NOTICE?</a></li>
+              <li><a href="#contact">HOW CAN YOU CONTACT US ABOUT THIS NOTICE?</a></li>
+              <li><a href="#request">HOW CAN YOU REVIEW, UPDATE, OR DELETE THE DATA WE COLLECT FROM YOU?</a></li>
+            </ol>
+
+            <h2 id="infocollect">1. WHAT INFORMATION DO WE COLLECT?</h2>
+            <h3 id="personalinfo">Personal information you disclose to us</h3>
+            <p><em><strong>In Short:</strong> We collect personal information that you provide to us.</em></p>
+            <p>We collect personal information that you voluntarily provide to us when you register on the Services, express interest in obtaining information about us or our products, participate in activities on the Services, or otherwise contact us.</p>
+            <p><strong>Personal Information Provided by You.</strong> The personal information we collect may include:</p>
+            <ul>
+              <li>names</li>
+              <li>email addresses</li>
+              <li>passwords</li>
+              <li>contact or authentication data</li>
+              <li>profile photo</li>
+              <li>age</li>
+              <li>grade level</li>
+            </ul>
+            <p id="sensitiveinfo"><strong>Sensitive Information.</strong> When necessary, with consent or as otherwise permitted by applicable law, we process the following category of sensitive information:</p>
+            <ul>
+              <li>student data (limited to self-reported grade level, used only to personalize math content)</li>
+            </ul>
+            <p><strong>Social Media Login Data.</strong> We may provide you with the option to register using your existing Google account details. If you choose to register this way, we will collect certain profile information from Google, as described in <a href="#sociallogins">HOW DO WE HANDLE YOUR SOCIAL LOGINS?</a> below.</p>
+            <p>All personal information that you provide to us must be true, complete, and accurate, and you must notify us of any changes to such personal information.</p>
+
+            <h3>Information automatically collected</h3>
+            <p><em><strong>In Short:</strong> Some information — such as your IP address and/or browser and device characteristics — is collected automatically when you visit our Services.</em></p>
+            <p>We automatically collect certain information when you visit, use, or navigate the Services. This information does not reveal your specific identity but may include device and usage information, such as your IP address, browser and device characteristics, operating system, language preferences, referring URLs, device name, country, location, and information about how and when you use our Services. This information is primarily needed to maintain the security and operation of our Services, and for internal analytics and reporting.</p>
+            <p>The information we collect includes:</p>
+            <ul>
+              <li><em>Log and Usage Data.</em> Service-related, diagnostic, usage, and performance information our servers automatically collect when you access or use our Services, recorded in log files (IP address, device information, browser type and settings, activity in the Services, error reports, hardware settings).</li>
+              <li><em>Device Data.</em> Information about the computer, phone, tablet, or other device you use to access the Services (IP address, device/application identification numbers, browser type, hardware model, ISP/mobile carrier, operating system, system configuration).</li>
+              <li><em>Location Data.</em> Approximate location information (based on your IP address). You can opt out by disabling location settings on your device, though some features may not work as a result.</li>
+            </ul>
+
+            <h3>Google API</h3>
+            <p>Our use of information received from Google APIs adheres to the <a href="https://developers.google.com/terms/api-services-user-data-policy" target="_blank">Google API Services User Data Policy</a>, including the <a href="https://developers.google.com/terms/api-services-user-data-policy#limited-use" target="_blank">Limited Use requirements</a>.</p>
+
+            <h2 id="infouse">2. HOW DO WE PROCESS YOUR INFORMATION?</h2>
+            <p><em><strong>In Short:</strong> We process your information to provide, improve, and administer our Services, communicate with you, for security and fraud prevention, and to comply with law. We may also process your information for other purposes with your consent.</em></p>
+            <p>We process your personal information for a variety of reasons, including:</p>
+            <ul>
+              <li><strong>To facilitate account creation and authentication and otherwise manage user accounts.</strong> So you can create and log in to your account and keep it in working order.</li>
+              <li><strong>To deliver and facilitate delivery of services to the user.</strong></li>
+              <li><strong>To respond to user inquiries/offer support to users.</strong></li>
+              <li><strong>To send administrative information to you</strong>, including details about our products and Services and changes to our terms and policies.</li>
+              <li><strong>To request feedback</strong>, and to contact you about your use of our Services.</li>
+              <li><strong>To protect our Services</strong>, including fraud monitoring and prevention.</li>
+              <li><strong>To identify usage trends</strong>, to better understand how our Services are used so we can improve them.</li>
+              <li><strong>To save or protect an individual's vital interest</strong>, such as to prevent harm.</li>
+            </ul>
+
+            <h2 id="legalbases">3. WHAT LEGAL BASES DO WE RELY ON TO PROCESS YOUR INFORMATION?</h2>
+            <p><em><strong>In Short:</strong> We only process your personal information when we believe it is necessary and we have a valid legal reason to do so under applicable law.</em></p>
+            <p><strong><u>If you are located in the EU or UK, this section applies to you.</u></strong></p>
+            <p>The GDPR and UK GDPR require us to explain the valid legal bases we rely on to process your personal information:</p>
+            <ul>
+              <li><strong>Consent.</strong> You can withdraw your consent at any time — see <a href="#withdrawconsent">withdrawing your consent</a>.</li>
+              <li><strong>Performance of a Contract.</strong> To fulfill our contractual obligations to you, including providing our Services.</li>
+              <li><strong>Legitimate Interests</strong>, including to: analyze how our Services are used so we can improve them, diagnose problems and/or prevent fraudulent activities, and understand how our users use our products so we can improve user experience.</li>
+              <li><strong>Legal Obligations</strong>, such as cooperating with law enforcement or a regulatory agency.</li>
+              <li><strong>Vital Interests</strong>, such as situations involving potential threats to the safety of any person.</li>
+            </ul>
+            <p><strong><em>If you are located in Canada, this section applies to you.</em></strong></p>
+            <p>We may process your information with your express or implied consent, which you can withdraw at any time. In limited cases permitted by law we may process information without consent (for example: for investigations and fraud prevention, in connection with a business transaction, or where required to comply with a subpoena, warrant, or court order).</p>
+
+            <h2 id="whoshare">4. WHEN AND WITH WHOM DO WE SHARE YOUR PERSONAL INFORMATION?</h2>
+            <p><em><strong>In Short:</strong> We may share information in specific situations and with the specific third parties listed below.</em></p>
+            <p><strong>Vendors, Consultants, and Other Third-Party Service Providers.</strong> We may share your data with third-party vendors and service providers who perform services for us or on our behalf, including:</p>
+            <ul>
+              <li><strong>Allow Users to Connect to Their Third-Party Accounts</strong> — Google account</li>
+              <li><strong>Cloud Computing Services</strong> — Vercel</li>
+              <li><strong>User Account Registration and Authentication</strong> — Google OAuth 2.0</li>
+              <li><strong>Web and Mobile Analytics</strong> — Vercel</li>
+              <li><strong>Website Hosting</strong> — Vercel</li>
+              <li><strong>Database &amp; Backend Hosting</strong> — Supabase</li>
+              <li><strong>Email Notifications</strong> — EmailJS</li>
+              <li><strong>Email Notifications</strong> — Resend</li>
+            </ul>
+            <p>We may also need to share your personal information in the following situation:</p>
+            <ul>
+              <li><strong>Business Transfers.</strong> We may share or transfer your information in connection with, or during negotiations of, any merger, sale of company assets, financing, or acquisition of all or a portion of our business to another company.</li>
+            </ul>
+
+            <h2 id="sociallogins">5. HOW DO WE HANDLE YOUR SOCIAL LOGINS?</h2>
+            <p><em><strong>In Short:</strong> If you choose to register or log in using a social media account (such as Google), we may have access to certain information about you.</em></p>
+            <p>Our Services offer you the ability to register and log in using your Google account details. Where you choose to do this, we will receive certain profile information about you from Google — typically your name, email address, and profile picture, as well as other information you choose to make public on that platform.</p>
+            <p>We will use the information we receive only for the purposes described in this Privacy Notice. We do not control, and are not responsible for, other uses of your personal information by Google. We recommend reviewing Google's own privacy notice to understand how they collect, use, and share your personal information.</p>
+
+            <h2 id="intltransfers">6. IS YOUR INFORMATION TRANSFERRED INTERNATIONALLY?</h2>
+            <p><em><strong>In Short:</strong> We may transfer, store, and process your information in countries other than your own.</em></p>
+            <p>Our servers, and those of the third parties with whom we share your personal information, are located in the United States. Regardless of your location, your information may be transferred to, stored, and processed there and in other countries.</p>
+            <p>If you are a resident of the European Economic Area (EEA), United Kingdom (UK), or Switzerland, these countries may not have data protection laws as comprehensive as those in your country. We take measures to protect your personal information in accordance with this Privacy Notice and applicable law, including relying on the European Commission's Standard Contractual Clauses for relevant transfers. Our Standard Contractual Clauses can be provided upon request.</p>
+
+            <h2 id="inforetain">7. HOW LONG DO WE KEEP YOUR INFORMATION?</h2>
+            <p><em><strong>In Short:</strong> We keep your information for as long as necessary to fulfill the purposes outlined in this Privacy Notice, unless otherwise required by law.</em></p>
+            <p>We will only keep your personal information for as long as it is necessary for the purposes set out in this notice, unless a longer retention period is required by law. No purpose in this notice will require us to keep your personal information for longer than the period of time in which you have an account with us.</p>
+            <p>When we have no ongoing legitimate business need to process your personal information, we will either delete or anonymize it, or, if that is not possible, securely store it and isolate it from further processing until deletion is possible.</p>
+
+            <h2 id="infosafe">8. HOW DO WE KEEP YOUR INFORMATION SAFE?</h2>
+            <p><em><strong>In Short:</strong> We aim to protect your personal information through a system of organizational and technical security measures.</em></p>
+            <p>We have implemented appropriate and reasonable technical and organizational security measures designed to protect the security of any personal information we process. However, no electronic transmission or storage technology can be guaranteed 100% secure, so we cannot promise that unauthorized third parties will never be able to defeat our security. You should only access the Services within a secure environment.</p>
+
+            <h2 id="infominors">9. DO WE COLLECT INFORMATION FROM MINORS?</h2>
+            <p><em><strong>In Short:</strong> We do not knowingly collect data from or market to minors beyond what is reasonably necessary to provide the game experience.</em></p>
+            <p>JexonGo is not directed specifically at children under 13, but is a family-friendly game that may be used by minors, including with a parent or guardian's awareness. We do not knowingly collect more personal information from a child than is reasonably necessary to provide the game experience (such as an email address and display name obtained through Google sign-in, and a self-reported grade level used only to personalize math content).</p>
+            <p>If you are a parent or guardian and believe your child has provided us with personal information, you may request that we review, correct, or delete that information at any time. This can be done directly within the app through the account deletion option, or by contacting us using the information in this policy. We will take reasonable steps to verify the request before deleting the associated account and data.</p>
+            <p>We encourage parents and guardians to supervise their children's online activities and to talk to them about safe internet use.</p>
+
+            <h2 id="privacyrights">10. WHAT ARE YOUR PRIVACY RIGHTS?</h2>
+            <p><em><strong>In Short:</strong> Depending on your state of residence in the US or region (such as the EEA, UK, Switzerland, and Canada), you have rights that allow you greater access to and control over your personal information. You may review, change, or terminate your account at any time.</em></p>
+            <p>In some regions (like the EEA, UK, Switzerland, and Canada) you have certain rights under applicable data protection laws, including the right to: request access to and a copy of your personal information; request rectification or erasure; restrict processing; data portability where applicable; and not be subject to certain automated decision-making. You may also have the right to object to processing. You can exercise these rights by contacting us — see <a href="#contact">HOW CAN YOU CONTACT US ABOUT THIS NOTICE?</a> below. We will consider and act upon any request in accordance with applicable data protection laws.</p>
+            <p>If you are located in the UK and are unhappy with how we have handled your personal information, you can complain directly to us at <a href="mailto:contact@jexongo.app">contact@jexongo.app</a>. We will acknowledge your complaint within 30 days, investigate without undue delay, and keep you informed of progress and the outcome. If you are not satisfied with our response, you may refer your complaint to the Information Commissioner's Office (ICO): <a href="http://ico.org.uk/make-a-complaint" target="_blank">ico.org.uk/make-a-complaint</a>, Helpline 0303 123 1113, or by post to Information Commissioner's Office, Wycliffe House, Water Lane, Wilmslow, Cheshire, SK9 5AF.</p>
+            <p>If you are located in the EEA or UK, you also have the right to complain to your <a href="https://ec.europa.eu/justice/data-protection/bodies/authorities/index_en.htm" target="_blank">Member State data protection authority</a> or the <a href="https://ico.org.uk/make-a-complaint/data-protection-complaints/data-protection-complaints/" target="_blank">UK data protection authority</a>. If you are located in Switzerland, you may contact the <a href="https://www.edoeb.admin.ch/edoeb/en/home.html" target="_blank">Federal Data Protection and Information Commissioner</a>.</p>
+            <p id="withdrawconsent"><strong><u>Withdrawing your consent:</u></strong> If we are relying on your consent to process your personal information, you have the right to withdraw it at any time by contacting us — see <a href="#contact">HOW CAN YOU CONTACT US ABOUT THIS NOTICE?</a> below. This will not affect the lawfulness of processing before withdrawal.</p>
+            <h3>Account Information</h3>
+            <p>If you would at any time like to review, change, or terminate your account, you can contact us using the contact information provided in this policy. Upon your request to terminate your account, we will deactivate or delete your account and information from our active databases. However, we may retain some information in our files to prevent fraud, troubleshoot problems, assist with investigations, enforce our legal terms, and/or comply with applicable legal requirements.</p>
+            <p>If you have questions or comments about your privacy rights, you may email us at <a href="mailto:contact@jexongo.app">contact@jexongo.app</a>.</p>
+
+            <h2 id="DNT">11. CONTROLS FOR DO-NOT-TRACK FEATURES</h2>
+            <p>Most web browsers and some mobile operating systems include a Do-Not-Track ("DNT") feature. No uniform technology standard for recognizing and implementing DNT signals has been finalized. We do not currently respond to DNT browser signals or any similar mechanism. If a standard for online tracking is adopted that we must follow in the future, we will inform you in a revised version of this Privacy Notice.</p>
+
+            <h2 id="uslaws">12. DO UNITED STATES RESIDENTS HAVE SPECIFIC PRIVACY RIGHTS?</h2>
+            <p><em><strong>In Short:</strong> If you are a resident of California, Colorado, Connecticut, Delaware, Florida, Indiana, Iowa, Kentucky, Maryland, Minnesota, Montana, Nebraska, New Hampshire, New Jersey, Oregon, Rhode Island, Tennessee, Texas, Utah, or Virginia, you may have rights to access, correct, obtain a copy of, or delete your personal information, and to withdraw consent to our processing of it. These rights may be limited in some circumstances by applicable law.</em></p>
+
+            <h3>Categories of Personal Information We Collect</h3>
+            <table>
+              <thead><tr><th>Category</th><th>Examples</th><th>Collected</th></tr></thead>
+              <tbody>
+                <tr><td>A. Identifiers</td><td>Real name, alias, postal address, unique personal identifier, online identifier, IP address, email address, account name</td><td>YES</td></tr>
+                <tr><td>B. Personal information (California Customer Records)</td><td>Name, contact information, education, employment, financial information</td><td>YES</td></tr>
+                <tr><td>C. Protected classification characteristics</td><td>Gender, age, date of birth, race and ethnicity, and other demographic data</td><td>YES</td></tr>
+                <tr><td>D. Commercial information</td><td>Transaction information, purchase history, financial details, payment information</td><td>NO</td></tr>
+                <tr><td>E. Biometric information</td><td>Fingerprints and voiceprints</td><td>NO</td></tr>
+                <tr><td>F. Internet or similar network activity</td><td>Browsing/search history, online behavior, interactions with our websites/apps</td><td>NO</td></tr>
+                <tr><td>G. Geolocation data</td><td>Device location</td><td>YES</td></tr>
+                <tr><td>H. Audio, electronic, sensory, or similar information</td><td>Images and audio/video/call recordings</td><td>NO</td></tr>
+                <tr><td>I. Professional or employment-related information</td><td>Business contact details, job title, work history</td><td>NO</td></tr>
+                <tr><td>J. Education Information</td><td>Student records and directory information</td><td>NO</td></tr>
+                <tr><td>K. Inferences drawn from collected personal information</td><td>Profile reflecting preferences and characteristics</td><td>NO</td></tr>
+                <tr><td>L. Sensitive personal information</td><td>Personal data from a known child</td><td>YES</td></tr>
+              </tbody>
+            </table>
+            <p>We only collect sensitive personal information as defined by applicable privacy laws, for purposes allowed by law or with your consent. We do not collect or process sensitive personal information for the purpose of inferring characteristics about you.</p>
+            <p>We have not sold or shared any personal information to third parties for a business or commercial purpose in the preceding twelve (12) months. We have disclosed the following categories of personal information to third parties for a business purpose in the preceding twelve (12) months: Category A (Identifiers), Category B, Category C, Category G, and Category L. See <a href="#whoshare">WHEN AND WITH WHOM DO WE SHARE YOUR PERSONAL INFORMATION?</a> for the categories of third parties involved.</p>
+            <p>We retain each category of personal information for as long as you have an account with us.</p>
+
+            <h3>Your Rights</h3>
+            <p>You have rights under certain US state data protection laws, though these are not absolute and we may decline a request as permitted by law:</p>
+            <ul>
+              <li>Right to know whether we are processing your personal data</li>
+              <li>Right to access your personal data</li>
+              <li>Right to correct inaccuracies in your personal data</li>
+              <li>Right to request deletion of your personal data</li>
+              <li>Right to obtain a copy of the personal data you previously shared with us</li>
+              <li>Right to non-discrimination for exercising your rights</li>
+              <li>Right to opt out of processing for targeted advertising, sale, or certain profiling</li>
+            </ul>
+            <p>Depending on your state, you may also have the right to: access the categories of personal data being processed; obtain a list of categories or specific third parties to which we disclosed personal data; obtain a list of third parties to which we sold personal data; review, question, and correct profiling decisions; limit use and disclosure of sensitive personal data; and opt out of certain biometric data collection.</p>
+            <h3>How to Exercise Your Rights</h3>
+            <p>To exercise these rights, contact us at <a href="mailto:contact@jexongo.app">contact@jexongo.app</a>. Under certain US state laws you may designate an authorized agent to make a request on your behalf; we may deny a request from an agent who does not submit proof of valid authorization.</p>
+            <h3>Request Verification</h3>
+            <p>Upon receiving your request, we will need to verify your identity before acting on it. We will only use the personal information provided in your request for that purpose, and may request additional information if we cannot verify your identity from records already on file.</p>
+            <h3>Appeals</h3>
+            <p>Under certain US state data protection laws, if we decline to take action on your request, you may appeal by emailing us at <a href="mailto:contact@jexongo.app">contact@jexongo.app</a>. We will inform you in writing of any action taken or not taken, with reasons. If your appeal is denied, you may submit a complaint to your state attorney general.</p>
+            <h3>California "Shine The Light" Law</h3>
+            <p>California Civil Code Section 1798.83 permits California resident users to request and obtain from us, once a year and free of charge, information about the categories of personal information (if any) we disclosed to third parties for direct marketing purposes and their names and addresses in the preceding calendar year. To make such a request, contact us at <a href="mailto:contact@jexongo.app">contact@jexongo.app</a>.</p>
+
+            <h2 id="otherlaws">13. DO OTHER REGIONS HAVE SPECIFIC PRIVACY RIGHTS?</h2>
+            <p><em><strong>In Short:</strong> You may have additional rights based on the country you reside in.</em></p>
+            <h3>Australia and New Zealand</h3>
+            <p>We collect and process your personal information under the obligations and conditions of Australia's Privacy Act 1988 and New Zealand's Privacy Act 2020. This Privacy Notice satisfies the notice requirements of both Acts. At any time, you have the right to request access to or correction of your personal information — see <a href="#request">HOW CAN YOU REVIEW, UPDATE, OR DELETE THE DATA WE COLLECT FROM YOU?</a>.</p>
+            <p>If you believe we are unlawfully processing your personal information, you may complain about a breach of the Australian Privacy Principles to the <a href="https://www.oaic.gov.au/privacy/privacy-complaints/lodge-a-privacy-complaint-with-us" target="_blank">Office of the Australian Information Commissioner</a>, or about a breach of New Zealand's Privacy Principles to the <a href="https://www.privacy.org.nz/your-rights/making-a-complaint/" target="_blank">Office of New Zealand Privacy Commissioner</a>.</p>
+            <h3>Republic of South Africa</h3>
+            <p>At any time, you have the right to request access to or correction of your personal information — see <a href="#request">HOW CAN YOU REVIEW, UPDATE, OR DELETE THE DATA WE COLLECT FROM YOU?</a>. If you are unsatisfied with how we address a complaint, you may contact:</p>
+            <p><a href="https://inforegulator.org.za/" target="_blank">The Information Regulator (South Africa)</a><br>
+            General enquiries: <a href="mailto:enquiries@inforegulator.org.za">enquiries@inforegulator.org.za</a><br>
+            Complaints (POPIA/PAIA form 5): <a href="mailto:PAIAComplaints@inforegulator.org.za">PAIAComplaints@inforegulator.org.za</a> &amp; <a href="mailto:POPIAComplaints@inforegulator.org.za">POPIAComplaints@inforegulator.org.za</a></p>
+
+            <h2 id="policyupdates">14. DO WE MAKE UPDATES TO THIS NOTICE?</h2>
+            <p><em><strong>In Short:</strong> Yes, we will update this notice as necessary to stay compliant with relevant laws.</em></p>
+            <p>We may update this Privacy Notice from time to time. The updated version will be indicated by an updated "Last updated" date at the top of this Privacy Notice. If we make material changes, we will notify you by prominently posting a notice of such changes before they take effect. We encourage you to review this Privacy Notice periodically.</p>
+
+            <h2 id="contact">15. HOW CAN YOU CONTACT US ABOUT THIS NOTICE?</h2>
+            <p>If you have questions or comments about this notice, you may email us at <a href="mailto:contact@jexongo.app">contact@jexongo.app</a>.</p>
+            <p>
+            JexonGo<br>
+            Email: <a href="mailto:contact@jexongo.app">contact@jexongo.app</a><br>
+            Canada
+            </p>
+
+            <h2 id="request">16. HOW CAN YOU REVIEW, UPDATE, OR DELETE THE DATA WE COLLECT FROM YOU?</h2>
+            <p>Based on the applicable laws of your country or state of residence, you may have the right to request access to the personal information we collect from you, details about how we have processed it, correct inaccuracies, or delete your personal information. You may also have the right to withdraw your consent to our processing of your personal information. These rights may be limited in some circumstances by applicable law. To request to review, update, or delete your personal information, please contact us at <a href="mailto:contact@jexongo.app">contact@jexongo.app</a>. Player accounts can also be deleted directly within JexonGo using the account deletion option in the app.</p>
+
+          </div>
+          <div class="jg-privacy" data-i18n-lang="fr">
+
+            <p>Cet avis de confidentialité pour JexonGo ("nous," "notre," "nos") décrit comment et pourquoi nous pouvons accéder à vos informations personnelles, les collecter, les stocker, les utiliser et/ou les partager ("traiter") lorsque vous utilisez nos services (les "Services"), notamment lorsque vous :</p>
+            <ul>
+              <li>Visitez notre site web à l'adresse <a href="https://jexongo.app" target="_blank">https://jexongo.app</a>, ou tout autre site nous appartenant qui renvoie vers cet avis de confidentialité</li>
+              <li>Utilisez JexonGo. JexonGo est un jeu éducatif de combat aérien mathématique dans lequel les joueurs pilotent des avions, accomplissent des missions basées sur les mathématiques et progressent à travers des niveaux tout en pratiquant leurs compétences en arithmétique. Les joueurs peuvent se connecter avec un compte Google pour sauvegarder leur progression sur plusieurs appareils.</li>
+              <li>Interagissez avec nous d'une autre manière, notamment dans le cadre d'activités marketing ou d'événements</li>
+            </ul>
+
+            <p><strong>Des questions ou préoccupations ?</strong> La lecture de cet avis de confidentialité vous aidera à comprendre vos droits et choix en matière de confidentialité. Nous sommes responsables des décisions relatives au traitement de vos informations personnelles. Si vous n'êtes pas d'accord avec nos politiques et pratiques, veuillez ne pas utiliser nos Services. Si vous avez encore des questions ou des préoccupations, veuillez nous contacter à <a href="mailto:contact@jexongo.app">contact@jexongo.app</a>.</p>
+
+            <h2 id="toc-summary-fr">RÉSUMÉ DES POINTS CLÉS</h2>
+            <p><em>Ce résumé présente les points clés de notre avis de confidentialité. Vous pouvez en savoir plus sur chacun de ces sujets ci-dessous.</em></p>
+            <p><strong>Quelles informations personnelles traitons-nous ?</strong> Lorsque vous visitez, utilisez ou naviguez sur nos Services, nous pouvons traiter des informations personnelles selon la façon dont vous interagissez avec nous, les choix que vous faites et les fonctionnalités que vous utilisez. Voir <a href="#infocollect-fr">QUELLES INFORMATIONS COLLECTONS-NOUS ?</a></p>
+            <p><strong>Traitons-nous des informations personnelles sensibles ?</strong> Certaines informations peuvent être considérées comme "sensibles" dans certaines juridictions — par exemple, des informations relatives à un enfant connu. Nous ne traitons de telles informations que lorsque cela est nécessaire et permis par la loi applicable. Voir <a href="#sensitiveinfo-fr">les informations sensibles que nous traitons</a>.</p>
+            <p><strong>Collectons-nous des informations auprès de tiers ?</strong> Nous ne collectons pas d'informations vous concernant auprès de tiers.</p>
+            <p><strong>Comment traitons-nous vos informations ?</strong> Nous traitons vos informations pour fournir, améliorer et administrer nos Services, communiquer avec vous, assurer la sécurité et prévenir la fraude, et nous conformer à la loi. Voir <a href="#infouse-fr">comment nous traitons vos informations</a>.</p>
+            <p><strong>Dans quelles situations et avec quelles parties partageons-nous des informations personnelles ?</strong> Nous pouvons partager des informations avec des tiers spécifiques dans des situations spécifiques. Voir <a href="#whoshare-fr">quand et avec qui nous partageons vos informations personnelles</a>.</p>
+            <p><strong>Comment assurons-nous la sécurité de vos informations ?</strong> Nous avons mis en place des processus organisationnels et techniques pour protéger vos informations, bien qu'aucune méthode de transmission ou de stockage ne soit sécurisée à 100 %. Voir <a href="#infosafe-fr">comment nous assurons la sécurité de vos informations</a>.</p>
+            <p><strong>Quels sont vos droits ?</strong> Selon l'endroit où vous vous trouvez, vous pouvez disposer de certains droits concernant vos informations personnelles. Voir <a href="#privacyrights-fr">vos droits en matière de confidentialité</a>.</p>
+            <p><strong>Comment exercer vos droits ?</strong> Le moyen le plus simple est de nous contacter à <a href="mailto:contact@jexongo.app">contact@jexongo.app</a>. Nous examinerons et traiterons toute demande conformément aux lois applicables en matière de protection des données.</p>
+
+            <h2 id="toc-fr">TABLE DES MATIÈRES</h2>
+            <ol>
+              <li><a href="#infocollect-fr">QUELLES INFORMATIONS COLLECTONS-NOUS ?</a></li>
+              <li><a href="#infouse-fr">COMMENT TRAITONS-NOUS VOS INFORMATIONS ?</a></li>
+              <li><a href="#legalbases-fr">SUR QUELLES BASES JURIDIQUES NOUS APPUYONS-NOUS ?</a></li>
+              <li><a href="#whoshare-fr">QUAND ET AVEC QUI PARTAGEONS-NOUS VOS INFORMATIONS PERSONNELLES ?</a></li>
+              <li><a href="#sociallogins-fr">COMMENT GÉRONS-NOUS VOS CONNEXIONS VIA LES RÉSEAUX SOCIAUX ?</a></li>
+              <li><a href="#intltransfers-fr">VOS INFORMATIONS SONT-ELLES TRANSFÉRÉES À L'INTERNATIONAL ?</a></li>
+              <li><a href="#inforetain-fr">COMBIEN DE TEMPS CONSERVONS-NOUS VOS INFORMATIONS ?</a></li>
+              <li><a href="#infosafe-fr">COMMENT ASSURONS-NOUS LA SÉCURITÉ DE VOS INFORMATIONS ?</a></li>
+              <li><a href="#infominors-fr">COLLECTONS-NOUS DES INFORMATIONS AUPRÈS DE MINEURS ?</a></li>
+              <li><a href="#privacyrights-fr">QUELS SONT VOS DROITS EN MATIÈRE DE CONFIDENTIALITÉ ?</a></li>
+              <li><a href="#DNT-fr">CONTRÔLES POUR LES FONCTIONNALITÉS DE "NE PAS ME PISTER"</a></li>
+              <li><a href="#uslaws-fr">LES RÉSIDENTS DES ÉTATS-UNIS ONT-ILS DES DROITS SPÉCIFIQUES ?</a></li>
+              <li><a href="#otherlaws-fr">D'AUTRES RÉGIONS ONT-ELLES DES DROITS SPÉCIFIQUES ?</a></li>
+              <li><a href="#policyupdates-fr">APPORTONS-NOUS DES MISES À JOUR À CET AVIS ?</a></li>
+              <li><a href="#contact-fr">COMMENT NOUS CONTACTER ?</a></li>
+              <li><a href="#request-fr">COMMENT EXAMINER, METTRE À JOUR OU SUPPRIMER VOS DONNÉES ?</a></li>
+            </ol>
+
+            <h2 id="infocollect-fr">1. QUELLES INFORMATIONS COLLECTONS-NOUS ?</h2>
+            <h3 id="personalinfo-fr">Informations personnelles que vous nous communiquez</h3>
+            <p><em><strong>En bref :</strong> Nous collectons les informations personnelles que vous nous fournissez.</em></p>
+            <p>Nous collectons les informations personnelles que vous nous fournissez volontairement lorsque vous vous inscrivez aux Services, exprimez de l'intérêt pour obtenir des informations à notre sujet ou au sujet de nos produits, participez à des activités sur les Services, ou nous contactez autrement.</p>
+            <p><strong>Informations personnelles que vous fournissez.</strong> Les informations personnelles que nous collectons peuvent inclure :</p>
+            <ul>
+              <li>noms</li>
+              <li>adresses e-mail</li>
+              <li>mots de passe</li>
+              <li>données de contact ou d'authentification</li>
+              <li>photo de profil</li>
+              <li>âge</li>
+              <li>niveau scolaire</li>
+            </ul>
+            <p id="sensitiveinfo-fr"><strong>Informations sensibles.</strong> Lorsque cela est nécessaire, avec votre consentement ou tel qu'autrement permis par la loi applicable, nous traitons la catégorie d'informations sensibles suivante :</p>
+            <ul>
+              <li>données scolaires (limitées au niveau scolaire auto-déclaré, utilisées uniquement pour personnaliser le contenu mathématique)</li>
+            </ul>
+            <p><strong>Données de connexion via les réseaux sociaux.</strong> Nous pouvons vous offrir la possibilité de vous inscrire en utilisant les informations de votre compte Google existant. Si vous choisissez de vous inscrire de cette manière, nous collecterons certaines informations de profil auprès de Google, comme décrit dans la section <a href="#sociallogins-fr">COMMENT GÉRONS-NOUS VOS CONNEXIONS VIA LES RÉSEAUX SOCIAUX ?</a> ci-dessous.</p>
+            <p>Toutes les informations personnelles que vous nous fournissez doivent être véridiques, complètes et exactes, et vous devez nous informer de tout changement apporté à ces informations personnelles.</p>
+
+            <h3>Informations collectées automatiquement</h3>
+            <p><em><strong>En bref :</strong> Certaines informations — comme votre adresse IP et/ou les caractéristiques de votre navigateur et de votre appareil — sont collectées automatiquement lorsque vous visitez nos Services.</em></p>
+            <p>Nous collectons automatiquement certaines informations lorsque vous visitez, utilisez ou naviguez sur les Services. Ces informations ne révèlent pas votre identité spécifique mais peuvent inclure des informations sur l'appareil et l'utilisation, telles que votre adresse IP, les caractéristiques de votre navigateur et de votre appareil, votre système d'exploitation, vos préférences linguistiques, les URL de provenance, le nom de l'appareil, le pays, la localisation, et des informations sur la façon et le moment où vous utilisez nos Services. Ces informations sont principalement nécessaires pour maintenir la sécurité et le fonctionnement de nos Services, ainsi que pour l'analyse interne et les rapports.</p>
+            <p>Les informations que nous collectons incluent :</p>
+            <ul>
+              <li><em>Données de journal et d'utilisation.</em> Informations relatives au service, de diagnostic, d'utilisation et de performance que nos serveurs collectent automatiquement lorsque vous accédez ou utilisez nos Services, enregistrées dans des fichiers journaux (adresse IP, informations sur l'appareil, type et paramètres du navigateur, activité dans les Services, rapports d'erreurs, paramètres matériels).</li>
+              <li><em>Données de l'appareil.</em> Informations sur l'ordinateur, le téléphone, la tablette ou tout autre appareil que vous utilisez pour accéder aux Services (adresse IP, numéros d'identification de l'appareil/de l'application, type de navigateur, modèle du matériel, FAI/opérateur mobile, système d'exploitation, configuration du système).</li>
+              <li><em>Données de localisation.</em> Informations de localisation approximative (basées sur votre adresse IP). Vous pouvez vous désinscrire en désactivant les paramètres de localisation de votre appareil, bien que certaines fonctionnalités puissent alors ne pas fonctionner correctement.</li>
+            </ul>
+
+            <h3>API Google</h3>
+            <p>Notre utilisation des informations reçues des API Google respecte la <a href="https://developers.google.com/terms/api-services-user-data-policy" target="_blank">politique d'utilisation des données utilisateur des services API Google</a>, y compris les <a href="https://developers.google.com/terms/api-services-user-data-policy#limited-use" target="_blank">exigences d'utilisation limitée</a>.</p>
+
+            <h2 id="infouse-fr">2. COMMENT TRAITONS-NOUS VOS INFORMATIONS ?</h2>
+            <p><em><strong>En bref :</strong> Nous traitons vos informations pour fournir, améliorer et administrer nos Services, communiquer avec vous, assurer la sécurité et prévenir la fraude, et nous conformer à la loi. Nous pouvons également traiter vos informations à d'autres fins avec votre consentement.</em></p>
+            <p>Nous traitons vos informations personnelles pour diverses raisons, notamment :</p>
+            <ul>
+              <li><strong>Pour faciliter la création de compte et l'authentification et gérer autrement les comptes utilisateurs.</strong> Afin que vous puissiez créer et vous connecter à votre compte et le maintenir en bon état de fonctionnement.</li>
+              <li><strong>Pour fournir et faciliter la fourniture de services à l'utilisateur.</strong></li>
+              <li><strong>Pour répondre aux demandes des utilisateurs/offrir un support aux utilisateurs.</strong></li>
+              <li><strong>Pour vous envoyer des informations administratives</strong>, y compris des détails sur nos produits et Services et les changements apportés à nos conditions et politiques.</li>
+              <li><strong>Pour demander des retours</strong>, et vous contacter au sujet de votre utilisation de nos Services.</li>
+              <li><strong>Pour protéger nos Services</strong>, y compris la surveillance et la prévention de la fraude.</li>
+              <li><strong>Pour identifier les tendances d'utilisation</strong>, afin de mieux comprendre comment nos Services sont utilisés pour pouvoir les améliorer.</li>
+              <li><strong>Pour sauvegarder ou protéger l'intérêt vital d'une personne</strong>, par exemple pour prévenir un préjudice.</li>
+            </ul>
+
+            <h2 id="legalbases-fr">3. SUR QUELLES BASES JURIDIQUES NOUS APPUYONS-NOUS ?</h2>
+            <p><em><strong>En bref :</strong> Nous ne traitons vos informations personnelles que lorsque nous estimons que cela est nécessaire et que nous disposons d'un motif juridique valable pour le faire en vertu de la loi applicable.</em></p>
+            <p><strong><u>Si vous êtes situé dans l'UE ou au Royaume-Uni, cette section s'applique à vous.</u></strong></p>
+            <p>Le RGPD et le UK GDPR nous obligent à expliquer les bases juridiques valables sur lesquelles nous nous appuyons pour traiter vos informations personnelles :</p>
+            <ul>
+              <li><strong>Consentement.</strong> Vous pouvez retirer votre consentement à tout moment — voir <a href="#withdrawconsent-fr">le retrait de votre consentement</a>.</li>
+              <li><strong>Exécution d'un contrat.</strong> Pour remplir nos obligations contractuelles envers vous, y compris la fourniture de nos Services.</li>
+              <li><strong>Intérêts légitimes</strong>, notamment pour : analyser comment nos Services sont utilisés afin de les améliorer, diagnostiquer des problèmes et/ou prévenir des activités frauduleuses, et comprendre comment nos utilisateurs utilisent nos produits afin d'améliorer l'expérience utilisateur.</li>
+              <li><strong>Obligations légales</strong>, telles que la coopération avec les forces de l'ordre ou un organisme de réglementation.</li>
+              <li><strong>Intérêts vitaux</strong>, telles que des situations impliquant des menaces potentielles pour la sécurité d'une personne.</li>
+            </ul>
+            <p><strong><em>Si vous êtes situé au Canada, cette section s'applique à vous.</em></strong></p>
+            <p>Nous pouvons traiter vos informations avec votre consentement exprès ou implicite, que vous pouvez retirer à tout moment. Dans les cas limités permis par la loi, nous pouvons traiter des informations sans consentement (par exemple : pour des enquêtes et la prévention de la fraude, dans le cadre d'une transaction commerciale, ou lorsque cela est requis pour se conformer à une assignation, un mandat ou une ordonnance du tribunal).</p>
+
+            <h2 id="whoshare-fr">4. QUAND ET AVEC QUI PARTAGEONS-NOUS VOS INFORMATIONS PERSONNELLES ?</h2>
+            <p><em><strong>En bref :</strong> Nous pouvons partager des informations dans des situations spécifiques et avec les tiers spécifiques énumérés ci-dessous.</em></p>
+            <p><strong>Fournisseurs, consultants et autres prestataires de services tiers.</strong> Nous pouvons partager vos données avec des fournisseurs et prestataires de services tiers qui exécutent des services pour nous ou en notre nom, notamment :</p>
+            <ul>
+              <li><strong>Permettre aux utilisateurs de se connecter à leurs comptes tiers</strong> — compte Google</li>
+              <li><strong>Services d'informatique en nuage</strong> — Vercel</li>
+              <li><strong>Inscription et authentification des comptes utilisateurs</strong> — Google OAuth 2.0</li>
+              <li><strong>Analyses web et mobiles</strong> — Vercel</li>
+              <li><strong>Hébergement du site web</strong> — Vercel</li>
+              <li><strong>Base de données et hébergement backend</strong> — Supabase</li>
+              <li><strong>Notifications par courriel</strong> — EmailJS</li>
+              <li><strong>Notifications par courriel</strong> — Resend</li>
+            </ul>
+            <p>Nous pourrions également avoir besoin de partager vos informations personnelles dans la situation suivante :</p>
+            <ul>
+              <li><strong>Transferts d'entreprise.</strong> Nous pouvons partager ou transférer vos informations dans le cadre, ou lors de négociations, d'une fusion, d'une vente d'actifs de l'entreprise, d'un financement, ou de l'acquisition de tout ou partie de notre entreprise par une autre société.</li>
+            </ul>
+
+            <h2 id="sociallogins-fr">5. COMMENT GÉRONS-NOUS VOS CONNEXIONS VIA LES RÉSEAUX SOCIAUX ?</h2>
+            <p><em><strong>En bref :</strong> Si vous choisissez de vous inscrire ou de vous connecter en utilisant un compte de réseau social (comme Google), nous pouvons avoir accès à certaines informations vous concernant.</em></p>
+            <p>Nos Services vous offrent la possibilité de vous inscrire et de vous connecter en utilisant les informations de votre compte Google. Lorsque vous choisissez de le faire, nous recevrons certaines informations de profil vous concernant de la part de Google — généralement votre nom, votre adresse e-mail et votre photo de profil, ainsi que d'autres informations que vous avez choisi de rendre publiques sur cette plateforme.</p>
+            <p>Nous utiliserons les informations que nous recevons uniquement aux fins décrites dans cet avis de confidentialité. Nous ne contrôlons pas, et ne sommes pas responsables, des autres utilisations de vos informations personnelles par Google. Nous vous recommandons de consulter l'avis de confidentialité de Google pour comprendre comment ils collectent, utilisent et partagent vos informations personnelles.</p>
+
+            <h2 id="intltransfers-fr">6. VOS INFORMATIONS SONT-ELLES TRANSFÉRÉES À L'INTERNATIONAL ?</h2>
+            <p><em><strong>En bref :</strong> Nous pouvons transférer, stocker et traiter vos informations dans des pays autres que le vôtre.</em></p>
+            <p>Nos serveurs, ainsi que ceux des tiers avec lesquels nous partageons vos informations personnelles, sont situés aux États-Unis. Quel que soit votre emplacement, vos informations peuvent être transférées, stockées et traitées là-bas et dans d'autres pays.</p>
+            <p>Si vous résidez dans l'Espace économique européen (EEE), au Royaume-Uni (UK) ou en Suisse, ces pays pourraient ne pas avoir de lois sur la protection des données aussi complètes que celles de votre pays. Nous prenons des mesures pour protéger vos informations personnelles conformément à cet avis de confidentialité et à la loi applicable, y compris en nous appuyant sur les clauses contractuelles types de la Commission européenne pour les transferts pertinents. Nos clauses contractuelles types peuvent être fournies sur demande.</p>
+
+            <h2 id="inforetain-fr">7. COMBIEN DE TEMPS CONSERVONS-NOUS VOS INFORMATIONS ?</h2>
+            <p><em><strong>En bref :</strong> Nous conservons vos informations aussi longtemps que nécessaire pour atteindre les objectifs décrits dans cet avis de confidentialité, sauf si la loi exige autrement.</em></p>
+            <p>Nous ne conserverons vos informations personnelles que le temps nécessaire aux fins énoncées dans cet avis, sauf si une période de conservation plus longue est requise par la loi. Aucune finalité de cet avis ne nous obligera à conserver vos informations personnelles plus longtemps que la période pendant laquelle vous avez un compte chez nous.</p>
+            <p>Lorsque nous n'avons plus de besoin commercial légitime continu de traiter vos informations personnelles, nous les supprimerons ou les anonymiserons, ou, si cela n'est pas possible, nous les stockerons de manière sécurisée et les isolerons de tout traitement ultérieur jusqu'à ce que leur suppression soit possible.</p>
+
+            <h2 id="infosafe-fr">8. COMMENT ASSURONS-NOUS LA SÉCURITÉ DE VOS INFORMATIONS ?</h2>
+            <p><em><strong>En bref :</strong> Nous visons à protéger vos informations personnelles grâce à un système de mesures de sécurité organisationnelles et techniques.</em></p>
+            <p>Nous avons mis en place des mesures de sécurité techniques et organisationnelles appropriées et raisonnables conçues pour protéger la sécurité de toute information personnelle que nous traitons. Cependant, aucune technologie de transmission ou de stockage électronique ne peut être garantie sécurisée à 100 %, nous ne pouvons donc pas promettre que des tiers non autorisés ne parviendront jamais à contourner notre sécurité. Vous ne devriez accéder aux Services que dans un environnement sécurisé.</p>
+
+            <h2 id="infominors-fr">9. COLLECTONS-NOUS DES INFORMATIONS AUPRÈS DE MINEURS ?</h2>
+            <p><em><strong>En bref :</strong> Nous ne collectons pas sciemment de données auprès de mineurs ni ne faisons de marketing auprès d'eux au-delà de ce qui est raisonnablement nécessaire pour offrir l'expérience de jeu.</em></p>
+            <p>JexonGo ne s'adresse pas spécifiquement aux enfants de moins de 13 ans, mais est un jeu familial qui peut être utilisé par des mineurs, notamment avec la connaissance d'un parent ou tuteur. Nous ne collectons pas sciemment plus d'informations personnelles d'un enfant que ce qui est raisonnablement nécessaire pour offrir l'expérience de jeu (comme une adresse e-mail et un nom d'affichage obtenus par la connexion Google, et un niveau scolaire auto-déclaré utilisé uniquement pour personnaliser le contenu mathématique).</p>
+            <p>Si vous êtes un parent ou un tuteur et croyez que votre enfant nous a fourni des informations personnelles, vous pouvez demander que nous examinions, corrigions ou supprimions ces informations à tout moment. Cela peut se faire directement dans l'application via l'option de suppression de compte, ou en nous contactant en utilisant les informations de cette politique. Nous prendrons des mesures raisonnables pour vérifier la demande avant de supprimer le compte et les données associées.</p>
+            <p>Nous encourageons les parents et tuteurs à superviser les activités en ligne de leurs enfants et à leur parler de la sécurité sur Internet.</p>
+
+            <h2 id="privacyrights-fr">10. QUELS SONT VOS DROITS EN MATIÈRE DE CONFIDENTIALITÉ ?</h2>
+            <p><em><strong>En bref :</strong> Selon votre État de résidence aux États-Unis ou votre région (comme l'EEE, le Royaume-Uni, la Suisse et le Canada), vous disposez de droits vous donnant un plus grand accès à vos informations personnelles et un plus grand contrôle sur celles-ci. Vous pouvez examiner, modifier ou résilier votre compte à tout moment.</em></p>
+            <p>Dans certaines régions (comme l'EEE, le Royaume-Uni, la Suisse et le Canada), vous disposez de certains droits en vertu des lois applicables en matière de protection des données, y compris le droit de : demander l'accès à vos informations personnelles et une copie de celles-ci ; demander la rectification ou l'effacement ; restreindre le traitement ; la portabilité des données le cas échéant ; et de ne pas faire l'objet de certaines décisions automatisées. Vous pouvez également avoir le droit de vous opposer au traitement. Vous pouvez exercer ces droits en nous contactant — voir <a href="#contact-fr">COMMENT NOUS CONTACTER ?</a> ci-dessous. Nous examinerons et traiterons toute demande conformément aux lois applicables en matière de protection des données.</p>
+            <p>Si vous êtes situé au Royaume-Uni et n'êtes pas satisfait de la manière dont nous avons traité vos informations personnelles, vous pouvez déposer une plainte directement auprès de nous à <a href="mailto:contact@jexongo.app">contact@jexongo.app</a>. Nous accuserons réception de votre plainte dans les 30 jours, mènerons une enquête sans délai injustifié, et vous tiendrons informé de l'avancement et du résultat. Si vous n'êtes pas satisfait de notre réponse, vous pouvez transmettre votre plainte à l'Information Commissioner's Office (ICO) : <a href="http://ico.org.uk/make-a-complaint" target="_blank">ico.org.uk/make-a-complaint</a>, ligne d'assistance 0303 123 1113, ou par courrier à Information Commissioner's Office, Wycliffe House, Water Lane, Wilmslow, Cheshire, SK9 5AF.</p>
+            <p>Si vous êtes situé dans l'EEE ou au Royaume-Uni, vous avez également le droit de déposer une plainte auprès de votre <a href="https://ec.europa.eu/justice/data-protection/bodies/authorities/index_en.htm" target="_blank">autorité de protection des données de l'État membre</a> ou de l'<a href="https://ico.org.uk/make-a-complaint/data-protection-complaints/data-protection-complaints/" target="_blank">autorité de protection des données du Royaume-Uni</a>. Si vous êtes situé en Suisse, vous pouvez contacter le <a href="https://www.edoeb.admin.ch/edoeb/en/home.html" target="_blank">Préposé fédéral à la protection des données et à la transparence</a>.</p>
+            <p id="withdrawconsent-fr"><strong><u>Retrait de votre consentement :</u></strong> Si nous nous appuyons sur votre consentement pour traiter vos informations personnelles, vous avez le droit de le retirer à tout moment en nous contactant — voir <a href="#contact-fr">COMMENT NOUS CONTACTER ?</a> ci-dessous. Cela n'affectera pas la licéité du traitement effectué avant le retrait.</p>
+            <h3>Informations sur le compte</h3>
+            <p>Si vous souhaitez à tout moment examiner, modifier ou résilier votre compte, vous pouvez nous contacter en utilisant les coordonnées fournies dans cette politique. Suite à votre demande de résiliation de votre compte, nous désactiverons ou supprimerons votre compte et vos informations de nos bases de données actives. Cependant, nous pouvons conserver certaines informations dans nos fichiers pour prévenir la fraude, résoudre des problèmes, participer à des enquêtes, faire respecter nos conditions juridiques et/ou nous conformer aux exigences légales applicables.</p>
+            <p>Si vous avez des questions ou des commentaires concernant vos droits en matière de confidentialité, vous pouvez nous envoyer un courriel à <a href="mailto:contact@jexongo.app">contact@jexongo.app</a>.</p>
+
+            <h2 id="DNT-fr">11. CONTRÔLES POUR LES FONCTIONNALITÉS DE "NE PAS ME PISTER"</h2>
+            <p>La plupart des navigateurs web et certains systèmes d'exploitation mobiles incluent une fonctionnalité "Ne pas me pister" ("DNT"). Aucune norme technologique uniforme pour reconnaître et mettre en œuvre les signaux DNT n'a été finalisée. Nous ne répondons pas actuellement aux signaux DNT des navigateurs ou à tout mécanisme similaire. Si une norme pour le suivi en ligne que nous devons suivre est adoptée à l'avenir, nous vous en informerons dans une version révisée de cet avis de confidentialité.</p>
+
+            <h2 id="uslaws-fr">12. LES RÉSIDENTS DES ÉTATS-UNIS ONT-ILS DES DROITS SPÉCIFIQUES ?</h2>
+            <p><em><strong>En bref :</strong> Si vous résidez en Californie, au Colorado, au Connecticut, au Delaware, en Floride, en Indiana, en Iowa, au Kentucky, dans le Maryland, au Minnesota, au Montana, au Nebraska, au New Hampshire, au New Jersey, en Oregon, à Rhode Island, au Tennessee, au Texas, en Utah ou en Virginie, vous pouvez avoir le droit d'accéder, de corriger, d'obtenir une copie ou de supprimer vos informations personnelles, et de retirer votre consentement à notre traitement de celles-ci. Ces droits peuvent être limités dans certaines circonstances par la loi applicable.</em></p>
+
+            <h3>Catégories d'informations personnelles que nous collectons</h3>
+            <table>
+              <thead><tr><th>Catégorie</th><th>Exemples</th><th>Collecté</th></tr></thead>
+              <tbody>
+                <tr><td>A. Identifiants</td><td>Nom réel, alias, adresse postale, identifiant personnel unique, identifiant en ligne, adresse IP, adresse e-mail, nom de compte</td><td>OUI</td></tr>
+                <tr><td>B. Informations personnelles (California Customer Records)</td><td>Nom, coordonnées, éducation, emploi, informations financières</td><td>OUI</td></tr>
+                <tr><td>C. Caractéristiques de classification protégées</td><td>Genre, âge, date de naissance, race et origine ethnique, et autres données démographiques</td><td>OUI</td></tr>
+                <tr><td>D. Informations commerciales</td><td>Informations de transaction, historique d'achat, détails financiers, informations de paiement</td><td>NON</td></tr>
+                <tr><td>E. Informations biométriques</td><td>Empreintes digitales et empreintes vocales</td><td>NON</td></tr>
+                <tr><td>F. Activité sur Internet ou réseau similaire</td><td>Historique de navigation/recherche, comportement en ligne, interactions avec nos sites web/applications</td><td>NON</td></tr>
+                <tr><td>G. Données de géolocalisation</td><td>Localisation de l'appareil</td><td>OUI</td></tr>
+                <tr><td>H. Informations audio, électroniques, sensorielles ou similaires</td><td>Images et enregistrements audio/vidéo/d'appels</td><td>NON</td></tr>
+                <tr><td>I. Informations professionnelles ou liées à l'emploi</td><td>Coordonnées professionnelles, titre du poste, historique de travail</td><td>NON</td></tr>
+                <tr><td>J. Informations éducatives</td><td>Dossiers scolaires et informations d'annuaire</td><td>NON</td></tr>
+                <tr><td>K. Inférences tirées des informations personnelles collectées</td><td>Profil reflétant les préférences et caractéristiques</td><td>NON</td></tr>
+                <tr><td>L. Informations personnelles sensibles</td><td>Données personnelles d'un enfant connu</td><td>OUI</td></tr>
+              </tbody>
+            </table>
+            <p>Nous ne collectons des informations personnelles sensibles que telles que définies par les lois applicables en matière de confidentialité, à des fins autorisées par la loi ou avec votre consentement. Nous ne collectons ni ne traitons d'informations personnelles sensibles dans le but d'en déduire des caractéristiques vous concernant.</p>
+            <p>Nous n'avons vendu ni partagé aucune information personnelle à des tiers à des fins commerciales au cours des douze (12) derniers mois. Nous avons divulgué les catégories suivantes d'informations personnelles à des tiers à des fins commerciales au cours des douze (12) derniers mois : Catégorie A (Identifiants), Catégorie B, Catégorie C, Catégorie G et Catégorie L. Voir <a href="#whoshare-fr">QUAND ET AVEC QUI PARTAGEONS-NOUS VOS INFORMATIONS PERSONNELLES ?</a> pour les catégories de tiers concernées.</p>
+            <p>Nous conservons chaque catégorie d'informations personnelles aussi longtemps que vous avez un compte chez nous.</p>
+
+            <h3>Vos droits</h3>
+            <p>Vous disposez de droits en vertu de certaines lois d'État américaines sur la protection des données, bien que ceux-ci ne soient pas absolus et que nous puissions refuser une demande dans la mesure permise par la loi :</p>
+            <ul>
+              <li>Droit de savoir si nous traitons vos données personnelles</li>
+              <li>Droit d'accéder à vos données personnelles</li>
+              <li>Droit de corriger les inexactitudes dans vos données personnelles</li>
+              <li>Droit de demander la suppression de vos données personnelles</li>
+              <li>Droit d'obtenir une copie des données personnelles que vous nous avez précédemment communiquées</li>
+              <li>Droit à la non-discrimination pour l'exercice de vos droits</li>
+              <li>Droit de vous opposer au traitement à des fins de publicité ciblée, de vente ou de certains profilages</li>
+            </ul>
+            <p>Selon votre État, vous pouvez également avoir le droit : d'accéder aux catégories de données personnelles traitées ; d'obtenir une liste des catégories ou des tiers spécifiques auxquels nous avons divulgué des données personnelles ; d'obtenir une liste des tiers auxquels nous avons vendu des données personnelles ; d'examiner, de contester et de corriger les décisions de profilage ; de limiter l'utilisation et la divulgation des données personnelles sensibles ; et de vous opposer à certaines collectes de données biométriques.</p>
+            <h3>Comment exercer vos droits</h3>
+            <p>Pour exercer ces droits, contactez-nous à <a href="mailto:contact@jexongo.app">contact@jexongo.app</a>. En vertu de certaines lois d'État américaines, vous pouvez désigner un agent autorisé pour faire une demande en votre nom ; nous pouvons refuser une demande d'un agent qui ne fournit pas de preuve d'autorisation valide.</p>
+            <h3>Vérification de la demande</h3>
+            <p>Dès réception de votre demande, nous devrons vérifier votre identité avant d'y donner suite. Nous n'utiliserons les informations personnelles fournies dans votre demande qu'à cette fin, et pourrons demander des informations supplémentaires si nous ne pouvons pas vérifier votre identité à partir des dossiers déjà en notre possession.</p>
+            <h3>Appels</h3>
+            <p>En vertu de certaines lois d'État américaines sur la protection des données, si nous refusons de donner suite à votre demande, vous pouvez faire appel en nous envoyant un courriel à <a href="mailto:contact@jexongo.app">contact@jexongo.app</a>. Nous vous informerons par écrit de toute mesure prise ou non, avec les motifs. Si votre appel est refusé, vous pouvez déposer une plainte auprès du procureur général de votre État.</p>
+            <h3>Loi californienne "Shine The Light"</h3>
+            <p>L'article 1798.83 du Code civil de Californie permet aux résidents de Californie de demander et d'obtenir de notre part, une fois par an et gratuitement, des informations sur les catégories d'informations personnelles (le cas échéant) que nous avons divulguées à des tiers à des fins de marketing direct, ainsi que leurs noms et adresses, au cours de l'année civile précédente. Pour faire une telle demande, contactez-nous à <a href="mailto:contact@jexongo.app">contact@jexongo.app</a>.</p>
+
+            <h2 id="otherlaws-fr">13. D'AUTRES RÉGIONS ONT-ELLES DES DROITS SPÉCIFIQUES ?</h2>
+            <p><em><strong>En bref :</strong> Vous pouvez avoir des droits supplémentaires selon le pays dans lequel vous résidez.</em></p>
+            <h3>Australie et Nouvelle-Zélande</h3>
+            <p>Nous collectons et traitons vos informations personnelles conformément aux obligations et conditions du Privacy Act 1988 de l'Australie et du Privacy Act 2020 de la Nouvelle-Zélande. Cet avis de confidentialité satisfait aux exigences de notification des deux lois. À tout moment, vous avez le droit de demander l'accès ou la correction de vos informations personnelles — voir <a href="#request-fr">COMMENT EXAMINER, METTRE À JOUR OU SUPPRIMER VOS DONNÉES ?</a>.</p>
+            <p>Si vous pensez que nous traitons illégalement vos informations personnelles, vous pouvez déposer une plainte concernant une violation des principes australiens de confidentialité auprès de l'<a href="https://www.oaic.gov.au/privacy/privacy-complaints/lodge-a-privacy-complaint-with-us" target="_blank">Office of the Australian Information Commissioner</a>, ou concernant une violation des principes de confidentialité néo-zélandais auprès de l'<a href="https://www.privacy.org.nz/your-rights/making-a-complaint/" target="_blank">Office of New Zealand Privacy Commissioner</a>.</p>
+            <h3>République d'Afrique du Sud</h3>
+            <p>À tout moment, vous avez le droit de demander l'accès ou la correction de vos informations personnelles — voir <a href="#request-fr">COMMENT EXAMINER, METTRE À JOUR OU SUPPRIMER VOS DONNÉES ?</a>. Si vous n'êtes pas satisfait de la manière dont nous traitons une plainte, vous pouvez contacter :</p>
+            <p><a href="https://inforegulator.org.za/" target="_blank">The Information Regulator (Afrique du Sud)</a><br>
+            Renseignements généraux : <a href="mailto:enquiries@inforegulator.org.za">enquiries@inforegulator.org.za</a><br>
+            Plaintes (formulaire POPIA/PAIA 5) : <a href="mailto:PAIAComplaints@inforegulator.org.za">PAIAComplaints@inforegulator.org.za</a> &amp; <a href="mailto:POPIAComplaints@inforegulator.org.za">POPIAComplaints@inforegulator.org.za</a></p>
+
+            <h2 id="policyupdates-fr">14. APPORTONS-NOUS DES MISES À JOUR À CET AVIS ?</h2>
+            <p><em><strong>En bref :</strong> Oui, nous mettrons à jour cet avis au besoin pour rester conformes aux lois pertinentes.</em></p>
+            <p>Nous pouvons mettre à jour cet avis de confidentialité de temps à autre. La version mise à jour sera indiquée par une date de "dernière mise à jour" actualisée en haut de cet avis de confidentialité. Si nous apportons des changements importants, nous vous en informerons en publiant bien en évidence un avis de ces changements avant qu'ils ne prennent effet. Nous vous encourageons à consulter périodiquement cet avis de confidentialité.</p>
+
+            <h2 id="contact-fr">15. COMMENT NOUS CONTACTER ?</h2>
+            <p>Si vous avez des questions ou des commentaires concernant cet avis, vous pouvez nous envoyer un courriel à <a href="mailto:contact@jexongo.app">contact@jexongo.app</a>.</p>
+            <p>
+            JexonGo<br>
+            Courriel : <a href="mailto:contact@jexongo.app">contact@jexongo.app</a><br>
+            Canada
+            </p>
+
+            <h2 id="request-fr">16. COMMENT EXAMINER, METTRE À JOUR OU SUPPRIMER VOS DONNÉES ?</h2>
+            <p>Selon les lois applicables de votre pays ou État de résidence, vous pouvez avoir le droit de demander l'accès aux informations personnelles que nous collectons à votre sujet, des détails sur la façon dont nous les avons traitées, de corriger les inexactitudes, ou de supprimer vos informations personnelles. Vous pouvez également avoir le droit de retirer votre consentement à notre traitement de vos informations personnelles. Ces droits peuvent être limités dans certaines circonstances par la loi applicable. Pour demander à examiner, mettre à jour ou supprimer vos informations personnelles, veuillez nous contacter à <a href="mailto:contact@jexongo.app">contact@jexongo.app</a>. Les comptes joueurs peuvent également être supprimés directement dans JexonGo à l'aide de l'option de suppression de compte dans l'application.</p>
+
+          </div>
         </div>
 
         <footer class="privacy-footer">© 2026 JexonGO. Tous droits reserves. All rights reserved.</footer>
@@ -793,108 +1358,299 @@
       <div class="privacy-cloud privacy-cloud-a"></div>
       <div class="privacy-cloud privacy-cloud-b"></div>
       <div class="privacy-shell">
-        <button id="btn-terms-back" class="privacy-back-btn" type="button">← RETOUR A L'ACCUEIL</button>
+        <button id="btn-terms-back" class="privacy-back-btn" type="button" data-i18n="legalBackHome">← RETOUR A L'ACCUEIL</button>
         <header class="privacy-hero">
           <div class="privacy-logo">JEXON<span>GO</span></div>
           <div class="privacy-kicker">AERIAL MATH COMBAT</div>
-          <h1>Conditions d'utilisation / Terms of Use</h1>
-          <p>Derniere mise a jour : Juin 2026 · Last updated: June 2026</p>
+          <h1 data-i18n="termsOfServiceTitle">Conditions d'utilisation / Terms of Use</h1>
+          <p data-i18n="legalLastUpdated">Derniere mise a jour : 13 septembre 2026</p>
         </header>
 
-        <div class="privacy-language-grid">
-          <section class="privacy-language-panel">
-            <h2 class="privacy-language-title">Francais</h2>
-            <div class="privacy-grid">
-              <section class="privacy-card">
-                <span class="privacy-plane">✈</span>
-                <h3>1. Acceptation</h3>
-                <p>En utilisant JexonGO, vous acceptez ces conditions d'utilisation. Si vous n'acceptez pas ces conditions, vous devez arreter d'utiliser le jeu.</p>
-              </section>
-              <section class="privacy-card">
-                <span class="privacy-plane">✈</span>
-                <h3>2. Compte joueur</h3>
-                <p>Vous devez fournir des informations exactes lors de la creation d'un compte. Vous etes responsable de l'utilisation de votre compte et de la protection de votre acces.</p>
-              </section>
-              <section class="privacy-card">
-                <span class="privacy-plane">✈</span>
-                <h3>3. Utilisation du jeu</h3>
-                <p>JexonGO est un jeu educatif. Vous acceptez de jouer de facon respectueuse, sans tricher, abuser du service, attaquer le site ou perturber l'experience des autres joueurs.</p>
-              </section>
-              <section class="privacy-card">
-                <span class="privacy-plane">✈</span>
-                <h3>4. Progression et recompenses</h3>
-                <p>Les XP, pieces, niveaux, statistiques et recompenses sont lies a votre progression dans le jeu. Ils n'ont pas de valeur monetaire reelle et peuvent etre ajustes pour corriger des erreurs ou ameliorer l'equilibre du jeu.</p>
-              </section>
-              <section class="privacy-card">
-                <span class="privacy-plane">✈</span>
-                <h3>5. Contenu et propriete</h3>
-                <p>Le nom JexonGO, le design, les visuels, les sons, les textes et les elements du jeu appartiennent a JexonGO ou a leurs createurs respectifs. Vous ne devez pas copier ou redistribuer le jeu sans autorisation.</p>
-              </section>
-              <section class="privacy-card">
-                <span class="privacy-plane">✈</span>
-                <h3>6. Suspension ou suppression</h3>
-                <p>Un compte peut etre limite, suspendu ou supprime en cas d'abus, de triche, de comportement nuisible ou de violation de ces conditions.</p>
-              </section>
-              <section class="privacy-card">
-                <span class="privacy-plane">✈</span>
-                <h3>7. Limitation</h3>
-                <p>JexonGO est fourni tel quel. Nous faisons de notre mieux pour offrir une experience stable, mais nous ne pouvons pas garantir que le jeu sera toujours disponible sans interruption ou sans erreur.</p>
-              </section>
-              <section class="privacy-card">
-                <span class="privacy-plane">✈</span>
-                <h3>8. Contact</h3>
-                <p>Pour toute question concernant ces conditions :</p>
-                <a class="privacy-email" href="mailto:jeanlouisahyee72@gmail.com">jeanlouisahyee72@gmail.com</a>
-              </section>
-            </div>
-          </section>
+        <div class="privacy-doc">
+          <div class="jg-tos" data-i18n-lang="fr">
 
-          <section class="privacy-language-panel privacy-language-panel-en">
-            <h2 class="privacy-language-title">English</h2>
-            <div class="privacy-grid">
-              <section class="privacy-card">
-                <span class="privacy-plane">✈</span>
-                <h3>1. Acceptance</h3>
-                <p>By using JexonGO, you agree to these Terms of Use. If you do not agree, you should stop using the game.</p>
-              </section>
-              <section class="privacy-card">
-                <span class="privacy-plane">✈</span>
-                <h3>2. Player Account</h3>
-                <p>You must provide accurate information when creating an account. You are responsible for your account use and for protecting your access.</p>
-              </section>
-              <section class="privacy-card">
-                <span class="privacy-plane">✈</span>
-                <h3>3. Game Use</h3>
-                <p>JexonGO is an educational game. You agree to play respectfully and not cheat, abuse the service, attack the site, or disrupt other players.</p>
-              </section>
-              <section class="privacy-card">
-                <span class="privacy-plane">✈</span>
-                <h3>4. Progress and Rewards</h3>
-                <p>XP, coins, levels, statistics and rewards are part of your game progress. They have no real-money value and may be adjusted to fix errors or improve game balance.</p>
-              </section>
-              <section class="privacy-card">
-                <span class="privacy-plane">✈</span>
-                <h3>5. Content and Ownership</h3>
-                <p>The JexonGO name, design, visuals, sounds, text and game elements belong to JexonGO or their respective creators. You may not copy or redistribute the game without permission.</p>
-              </section>
-              <section class="privacy-card">
-                <span class="privacy-plane">✈</span>
-                <h3>6. Suspension or Deletion</h3>
-                <p>An account may be limited, suspended or deleted if there is abuse, cheating, harmful behavior, or a violation of these terms.</p>
-              </section>
-              <section class="privacy-card">
-                <span class="privacy-plane">✈</span>
-                <h3>7. Limitation</h3>
-                <p>JexonGO is provided as is. We do our best to keep the game stable, but we cannot guarantee that it will always be available without interruption or errors.</p>
-              </section>
-              <section class="privacy-card">
-                <span class="privacy-plane">✈</span>
-                <h3>8. Contact</h3>
-                <p>For questions about these terms:</p>
-                <a class="privacy-email" href="mailto:jeanlouisahyee72@gmail.com">jeanlouisahyee72@gmail.com</a>
-              </section>
+            <p>Bienvenue sur JexonGo. Ces conditions d'utilisation ("Conditions") constituent un accord juridiquement contraignant entre vous et JexonGo ("Compagnie", "nous", "notre", "nos"), concernant votre accès et votre utilisation du site web jexongo.app ainsi que de toute autre application connexe (collectivement, les "Services").</p>
+
+            <p>En accédant aux Services, vous confirmez avoir lu, compris et accepté d'être lié par l'ensemble de ces Conditions. Si vous n'acceptez pas ces Conditions, vous devez cesser immédiatement d'utiliser les Services.</p>
+
+            <p>Des mises à jour ou modifications supplémentaires pourront être publiées de temps à autre. Nous vous encourageons à consulter ces Conditions régulièrement pour rester informé.</p>
+
+            <div class="toc">
+            <strong>Table des matières</strong>
+            <ul>
+            <li><a href="#services">1. Nos services</a></li>
+            <li><a href="#ip">2. Droits de propriété intellectuelle</a></li>
+            <li><a href="#userreps">3. Déclarations de l'utilisateur</a></li>
+            <li><a href="#userreg">4. Inscription de l'utilisateur</a></li>
+            <li><a href="#age">5. Âge des utilisateurs</a></li>
+            <li><a href="#prohibited">6. Activités interdites</a></li>
+            <li><a href="#ugc">7. Contributions générées par l'utilisateur</a></li>
+            <li><a href="#license">8. Licence de contribution</a></li>
+            <li><a href="#reviews">9. Avis</a></li>
+            <li><a href="#socialmedia">10. Réseaux sociaux tiers</a></li>
+            <li><a href="#thirdparty">11. Sites et contenus tiers</a></li>
+            <li><a href="#advertisers">12. Annonceurs</a></li>
+            <li><a href="#servicesmanagement">13. Gestion des services</a></li>
+            <li><a href="#term">14. Durée et résiliation</a></li>
+            <li><a href="#modifications">15. Modifications et interruptions</a></li>
+            <li><a href="#law">16. Droit applicable</a></li>
+            <li><a href="#dispute">17. Résolution des litiges</a></li>
+            <li><a href="#corrections">18. Corrections</a></li>
+            <li><a href="#disclaimer">19. Avis de non-responsabilité</a></li>
+            <li><a href="#liability">20. Limitation de responsabilité</a></li>
+            <li><a href="#indemnification">21. Indemnisation</a></li>
+            <li><a href="#userdata">22. Données de l'utilisateur</a></li>
+            <li><a href="#electronic">23. Communications, transactions et signatures électroniques</a></li>
+            <li><a href="#sms">24. Communications marketing et promotionnelles</a></li>
+            <li><a href="#misc">25. Divers</a></li>
+            <li><a href="#contact">26. Nous contacter</a></li>
+            </ul>
             </div>
-          </section>
+
+            <h2 id="services">1. NOS SERVICES</h2>
+            <p>JexonGo est un jeu éducatif de combat aérien à vocation pédagogique, conçu pour aider les jeunes joueurs à pratiquer des notions mathématiques de façon ludique. Les informations fournies lors de l'utilisation des Services ne sont pas destinées à la distribution ou à l'utilisation dans une juridiction ou un pays où une telle distribution ou utilisation serait contraire à la loi ou à la réglementation.</p>
+
+            <h2 id="ip">2. DROITS DE PROPRIÉTÉ INTELLECTUELLE</h2>
+            <p>Nous sommes propriétaires ou titulaires d'une licence sur tous les droits de propriété intellectuelle relatifs à nos Services, incluant le code source, les designs, les graphismes, les mécaniques de jeu, les textes, illustrations et logos (collectivement, le "Contenu"), ainsi que sur les marques de commerce qui y sont associées.</p>
+            <p>Notre Contenu et nos marques sont protégés par les lois applicables sur le droit d'auteur et les marques de commerce au Canada et à l'international. Le Contenu et les marques sont fournis "TELS QUELS" pour votre information et votre usage personnel et non commercial uniquement.</p>
+            <p>Sous réserve de votre respect de ces Conditions, nous vous accordons une licence non exclusive, non transférable et révocable pour accéder aux Services et pour télécharger ou imprimer une copie de toute partie du Contenu à laquelle vous avez correctement accès, uniquement pour votre usage personnel et non commercial.</p>
+            <p>Si vous souhaitez faire un usage du Contenu autre que celui indiqué dans cette section, veuillez adresser votre demande à : <a href="mailto:contact@jexongo.app">contact@jexongo.app</a>.</p>
+
+            <h2 id="userreps">3. DÉCLARATIONS DE L'UTILISATEUR</h2>
+            <p>En utilisant les Services, vous déclarez et garantissez que : (1) toutes les informations d'inscription que vous soumettez seront vraies, exactes, courantes et complètes ; (2) vous maintiendrez l'exactitude de ces informations et les mettrez à jour rapidement si nécessaire ; (3) vous avez la capacité juridique et vous acceptez de respecter ces Conditions ; (4) vous n'utiliserez pas les Services à des fins illégales ou non autorisées ; (5) votre utilisation des Services ne violera aucune loi ou règlement applicable.</p>
+
+            <h2 id="userreg">4. INSCRIPTION DE L'UTILISATEUR</h2>
+            <p>Il peut vous être demandé de vous inscrire pour utiliser certaines fonctionnalités des Services (par exemple, pour sauvegarder votre progression via Google ou par courriel). Vous acceptez de garder votre mot de passe confidentiel et serez responsable de toute utilisation de votre compte. Nous nous réservons le droit de retirer, réclamer ou modifier un nom d'utilisateur si nous jugeons, à notre discrétion, que ce nom d'utilisateur est inapproprié, obscène ou autrement répréhensible.</p>
+
+            <h2 id="age">5. ÂGE DES UTILISATEURS</h2>
+            <p>JexonGo est un jeu familial destiné à un large public, incluant les enfants d'âge scolaire, sous la supervision ou avec la permission d'un parent ou tuteur lorsque requis par la loi applicable. En utilisant les Services, vous garantissez avoir l'âge légal requis dans votre juridiction pour consentir à ces Conditions, ou disposer du consentement d'un parent ou tuteur.</p>
+
+            <h2 id="prohibited">6. ACTIVITÉS INTERDITES</h2>
+            <p>Vous ne pouvez accéder aux Services ou les utiliser qu'aux fins pour lesquelles nous les mettons à disposition. Les Services ne peuvent pas être utilisés dans le cadre d'entreprises commerciales, sauf celles spécifiquement approuvées ou avalisées par nous.</p>
+            <p>En tant qu'utilisateur des Services, vous acceptez de ne pas :</p>
+            <ul>
+            <li>Récupérer systématiquement des données ou tout autre contenu des Services pour créer ou compiler une collection, une base de données ou un répertoire sans notre autorisation écrite ;</li>
+            <li>Tromper, escroquer ou induire en erreur d'autres utilisateurs, notamment en tentant d'obtenir des informations sensibles sur leur compte ;</li>
+            <li>Contourner, désactiver ou perturber de toute autre manière les fonctionnalités liées à la sécurité des Services ;</li>
+            <li>Utiliser un système automatisé, notamment tout robot, script, bot, macro, logiciel de triche, ou tout autre outil permettant de fausser artificiellement votre progression, votre score, ou d'interagir avec les Services de manière non humaine ;</li>
+            <li>Tenter d'exploiter une faille, un bogue ou une vulnérabilité du jeu pour obtenir un avantage injuste ;</li>
+            <li>Désosser, décompiler ou tenter de découvrir le code source d'une partie des Services ;</li>
+            <li>Utiliser les Services d'une manière incompatible avec les lois ou règlements applicables ;</li>
+            <li>Harceler, abuser ou nuire à une autre personne par le biais des Services ;</li>
+            <li>Utiliser les Services pour publiciser ou proposer de vendre des biens ou services sans notre autorisation.</li>
+            </ul>
+
+            <h2 id="ugc">7. CONTRIBUTIONS GÉNÉRÉES PAR L'UTILISATEUR</h2>
+            <p>Les Services peuvent vous inviter à clavarder, contribuer ou participer à des forums, tableaux de bord ou autres fonctionnalités, en soumettant du contenu ou des éléments vers les Services, incluant, sans s'y limiter, du texte, des écrits, du son ou des données personnelles ("Contributions"). Les Contributions peuvent être visibles par d'autres utilisateurs des Services.</p>
+            <p>Lorsque vous créez ou mettez à disposition une Contribution, vous déclarez et garantissez notamment que : vos Contributions ne sont pas fausses, inexactes ou trompeuses ; vos Contributions ne sont pas illégales, obscènes, menaçantes, diffamatoires, invasives de la vie privée d'autrui, harcelantes ou autrement répréhensibles ; vos Contributions ne sont pas utilisées pour harceler ou menacer une autre personne ; vos Contributions ne violent aucune loi applicable.</p>
+
+            <h2 id="license">8. LICENCE DE CONTRIBUTION</h2>
+            <p>En publiant vos Contributions sur les Services, vous nous accordez une licence illimitée, irrévocable, perpétuelle, non exclusive, transférable et libre de redevance pour utiliser, copier, reproduire, adapter, modifier et afficher vos Contributions à des fins d'exploitation des Services, sans compensation à votre égard.</p>
+
+            <h2 id="reviews">9. AVIS</h2>
+            <p>Nous pouvons offrir des espaces vous permettant de laisser des avis ou évaluations. Avant de publier un avis, vous devez respecter les critères suivants : (1) vous devez avoir une expérience directe avec la personne, l'entité ou l'élément faisant l'objet de l'avis ; (2) vos avis ne doivent pas contenir de langage diffamatoire, obscène ou haineux ; (3) vos avis ne doivent pas contenir de discrimination fondée sur la religion, la race, le genre, l'origine nationale, l'âge, l'orientation sexuelle ou le handicap ; (4) vos avis ne doivent pas violer un droit d'un tiers, incluant le droit d'auteur ou la vie privée ; (5) vos avis ne doivent pas être utilisés pour des campagnes commerciales ou une entreprise illégale.</p>
+
+            <h2 id="socialmedia">10. RÉSEAUX SOCIAUX TIERS</h2>
+            <p>Dans le cadre des Services, vous pourriez pouvoir relier votre compte à des comptes tiers, notamment en vous connectant via un fournisseur d'identification tiers tel que Google. En liant un tel compte, vous confirmez et acceptez que : (1) nous puissions accéder, mettre à disposition et stocker le contenu que vous nous avez consenti à partager ; (2) le fonctionnement des liens dépend des politiques et de la disponibilité continue des comptes des tiers concernés.</p>
+
+            <h2 id="thirdparty">11. SITES ET CONTENUS TIERS</h2>
+            <p>Les Services peuvent contenir des liens vers d'autres sites web ("Sites Tiers") ainsi que des articles, photographies, textes ou autre contenu appartenant ou provenant de tiers ("Contenu Tiers"). Ces Sites Tiers et Contenus Tiers ne sont pas examinés, surveillés ou vérifiés quant à leur exactitude par nous, et nous ne sommes pas responsables de tout Site Tiers accédé via les Services ou de tout Contenu Tiers publié sur les Services.</p>
+
+            <h2 id="advertisers">12. ANNONCEURS</h2>
+            <p>Nous n'affichons actuellement aucune publicité tierce sur les Services. Si cela devait changer, cette section serait mise à jour afin de refléter les politiques applicables aux annonceurs.</p>
+
+            <h2 id="servicesmanagement">13. GESTION DES SERVICES</h2>
+            <p>Nous nous réservons le droit, mais pas l'obligation, de : (1) surveiller les Services pour toute violation de ces Conditions ; (2) prendre les mesures juridiques appropriées contre toute personne qui, à notre discrétion, viole la loi ou ces Conditions ; (3) restreindre l'accès aux Services ; (4) retirer des fichiers ou du contenu qui alourdissent excessivement les ressources du système ; (5) gérer les Services de toute autre manière conçue pour protéger nos droits et faciliter le bon fonctionnement des Services.</p>
+
+            <h2 id="term">14. DURÉE ET RÉSILIATION</h2>
+            <p>Ces Conditions demeureront en vigueur pendant votre utilisation des Services. Nous nous réservons le droit, sans préavis ni responsabilité, de refuser l'accès et l'utilisation des Services à toute personne, pour quelque raison que ce soit, y compris pour violation d'une déclaration ou garantie contenue dans les présentes, ou de toute loi ou règlement applicable.</p>
+            <p>Nous pouvons résilier votre compte et/ou supprimer tout contenu ou information que vous avez publié à tout moment, sans préavis, à notre seule discrétion.</p>
+
+            <h2 id="modifications">15. MODIFICATIONS ET INTERRUPTIONS</h2>
+            <p>Nous nous réservons le droit de modifier, changer ou retirer le contenu des Services à tout moment, sans préavis, à notre seule discrétion. Nous ne pouvons pas garantir que les Services seront disponibles en permanence. Nous pouvons connaître des problèmes matériels, logiciels ou autres, ou avoir besoin d'effectuer de l'entretien lié aux Services, entraînant des interruptions, des délais ou des erreurs.</p>
+
+            <h2 id="law">16. DROIT APPLICABLE</h2>
+            <p>Ces Conditions et votre utilisation des Services sont régies et interprétées conformément aux lois de la province de Québec et aux lois fédérales du Canada qui y sont applicables, sans égard aux principes de conflits de lois.</p>
+
+            <h2 id="dispute">17. RÉSOLUTION DES LITIGES</h2>
+            <p>Tout litige découlant de ou en lien avec ces Conditions, incluant leur existence, leur validité, leur interprétation, leur exécution, leur violation ou leur résiliation, sera résolu par voie de litige devant les tribunaux compétents de la province de Québec, Canada. Vous consentez irrévocablement à ce que ces tribunaux aient une compétence exclusive pour trancher tout litige relatif à ces Conditions.</p>
+
+            <h2 id="corrections">18. CORRECTIONS</h2>
+            <p>Il peut y avoir des informations sur les Services qui contiennent des erreurs typographiques, des inexactitudes ou des omissions. Nous nous réservons le droit de corriger toute erreur, inexactitude ou omission, et de modifier ou mettre à jour les informations des Services à tout moment, sans préavis.</p>
+
+            <h2 id="disclaimer">19. AVIS DE NON-RESPONSABILITÉ</h2>
+            <p>LES SERVICES SONT FOURNIS TELS QUELS ET SELON LEUR DISPONIBILITÉ. VOUS ACCEPTEZ QUE VOTRE UTILISATION DES SERVICES SE FASSE À VOTRE SEUL RISQUE. DANS LA MESURE PERMISE PAR LA LOI, NOUS DÉCLINONS TOUTE GARANTIE, EXPRESSE OU IMPLICITE, EN LIEN AVEC LES SERVICES ET VOTRE UTILISATION DE CEUX-CI, INCLUANT, SANS S'Y LIMITER, LES GARANTIES IMPLICITES DE QUALITÉ MARCHANDE, D'ADÉQUATION À UN USAGE PARTICULIER ET DE NON-VIOLATION. NOUS NE GARANTISSONS PAS L'EXACTITUDE OU L'EXHAUSTIVITÉ DU CONTENU DES SERVICES, NI QUE LES SERVICES SERONT ININTERROMPUS OU EXEMPTS D'ERREURS.</p>
+
+            <h2 id="liability">20. LIMITATION DE RESPONSABILITÉ</h2>
+            <p>EN AUCUN CAS NOUS OU NOS ADMINISTRATEURS NE SERONS RESPONSABLES ENVERS VOUS OU UN TIERS POUR DES DOMMAGES DIRECTS, INDIRECTS, ACCESSOIRES, SPÉCIAUX, PUNITIFS OU CONSÉCUTIFS DÉCOULANT DE VOTRE UTILISATION DES SERVICES, MÊME SI NOUS AVONS ÉTÉ INFORMÉS DE LA POSSIBILITÉ DE TELS DOMMAGES. DANS TOUS LES CAS, NOTRE RESPONSABILITÉ SERA LIMITÉE AU MOINDRE DU MONTANT, S'IL EN EST, QUE VOUS NOUS AVEZ PAYÉ AU COURS DES SIX (6) MOIS PRÉCÉDANT L'ÉVÉNEMENT DONNANT LIEU À LA RÉCLAMATION. JexonGo étant actuellement offert gratuitement, ce montant est nul en l'absence de tout paiement effectué par vous.</p>
+
+            <h2 id="indemnification">21. INDEMNISATION</h2>
+            <p>Vous acceptez de nous défendre, de nous indemniser et de nous tenir indemnes de toute perte, dommage, responsabilité, réclamation ou demande, incluant les honoraires d'avocat raisonnables, formulés par un tiers en raison ou découlant de : (1) votre utilisation des Services ; (2) une violation de ces Conditions ; (3) une violation de vos déclarations et garanties énoncées dans les présentes.</p>
+
+            <h2 id="userdata">22. DONNÉES DE L'UTILISATEUR</h2>
+            <p>Nous conserverons certaines données que vous transmettez aux Services dans le but de gérer la performance des Services, ainsi que les données relatives à votre utilisation des Services. Bien que nous effectuions des sauvegardes régulières, vous êtes seul responsable de toutes les données que vous transmettez ou qui concernent une activité que vous avez effectuée à l'aide des Services.</p>
+
+            <h2 id="electronic">23. COMMUNICATIONS, TRANSACTIONS ET SIGNATURES ÉLECTRONIQUES</h2>
+            <p>Visiter les Services, nous envoyer des courriels et remplir des formulaires en ligne constituent des communications électroniques. Vous consentez à recevoir des communications électroniques et vous acceptez que tous les accords, avis, divulgations et autres communications que nous vous fournissons électroniquement satisfont à toute exigence légale voulant qu'une telle communication soit faite par écrit.</p>
+
+            <h2 id="sms">24. COMMUNICATIONS MARKETING ET PROMOTIONNELLES</h2>
+            <p>Nous pouvons vous envoyer, avec votre consentement, des courriels concernant de nouveaux produits, des offres spéciales ou d'autres informations que nous jugeons pertinentes. Si vous ne souhaitez plus recevoir de courriels marketing, vous pouvez vous désinscrire en cliquant sur le lien de désabonnement présent dans le courriel ou en nous contactant à <a href="mailto:contact@jexongo.app">contact@jexongo.app</a>.</p>
+
+            <h2 id="misc">25. DIVERS</h2>
+            <p>Ces Conditions, ainsi que toute politique publiée par nous en lien avec les Services, constituent l'entente complète entre vous et nous. Notre défaut d'exercer ou de faire appliquer un droit ou une disposition de ces Conditions ne constituera pas une renonciation à ce droit ou à cette disposition. Si une disposition de ces Conditions est jugée illégale, nulle ou inexécutable, cette disposition sera néanmoins exécutoire dans toute la mesure permise par la loi applicable, et le reste des Conditions demeurera en vigueur.</p>
+            <p>Nous pouvons vous céder tout ou partie de nos droits et obligations en vertu des présentes à tout moment. Vous ne pouvez pas céder vos droits ou obligations en vertu des présentes sans notre consentement écrit préalable.</p>
+
+            <h2 id="contact">26. NOUS CONTACTER</h2>
+            <p>Afin de résoudre une plainte concernant les Services ou pour recevoir davantage d'informations concernant leur utilisation, veuillez nous contacter à :</p>
+            <p>
+            JexonGo<br>
+            Courriel : <a href="mailto:contact@jexongo.app">contact@jexongo.app</a><br>
+            Canada
+            </p>
+
+          </div>
+          <div class="jg-tos" data-i18n-lang="en" hidden>
+
+            <p>Welcome to JexonGo. These Terms of Service ("Terms") constitute a legally binding agreement between you and JexonGo ("Company," "we," "us," "our"), concerning your access to and use of the jexongo.app website as well as any other related application (collectively, the "Services").</p>
+
+            <p>By accessing the Services, you confirm that you have read, understood, and agreed to be bound by all of these Terms. If you do not agree with these Terms, you must immediately stop using the Services.</p>
+
+            <p>Additional updates or changes may be posted from time to time. We encourage you to review these Terms regularly to stay informed.</p>
+
+            <div class="toc">
+            <strong>Table of Contents</strong>
+            <ul>
+            <li><a href="#services-en">1. Our Services</a></li>
+            <li><a href="#ip-en">2. Intellectual Property Rights</a></li>
+            <li><a href="#userreps-en">3. User Representations</a></li>
+            <li><a href="#userreg-en">4. User Registration</a></li>
+            <li><a href="#age-en">5. User Age</a></li>
+            <li><a href="#prohibited-en">6. Prohibited Activities</a></li>
+            <li><a href="#ugc-en">7. User-Generated Contributions</a></li>
+            <li><a href="#license-en">8. Contribution License</a></li>
+            <li><a href="#reviews-en">9. Reviews</a></li>
+            <li><a href="#socialmedia-en">10. Third-Party Social Media</a></li>
+            <li><a href="#thirdparty-en">11. Third-Party Websites and Content</a></li>
+            <li><a href="#advertisers-en">12. Advertisers</a></li>
+            <li><a href="#servicesmanagement-en">13. Services Management</a></li>
+            <li><a href="#term-en">14. Term and Termination</a></li>
+            <li><a href="#modifications-en">15. Modifications and Interruptions</a></li>
+            <li><a href="#law-en">16. Governing Law</a></li>
+            <li><a href="#dispute-en">17. Dispute Resolution</a></li>
+            <li><a href="#corrections-en">18. Corrections</a></li>
+            <li><a href="#disclaimer-en">19. Disclaimer</a></li>
+            <li><a href="#liability-en">20. Limitation of Liability</a></li>
+            <li><a href="#indemnification-en">21. Indemnification</a></li>
+            <li><a href="#userdata-en">22. User Data</a></li>
+            <li><a href="#electronic-en">23. Electronic Communications, Transactions, and Signatures</a></li>
+            <li><a href="#sms-en">24. Marketing and Promotional Communications</a></li>
+            <li><a href="#misc-en">25. Miscellaneous</a></li>
+            <li><a href="#contact-en">26. Contact Us</a></li>
+            </ul>
+            </div>
+
+            <h2 id="services-en">1. OUR SERVICES</h2>
+            <p>JexonGo is an educational aerial-combat game designed to help young players practice math concepts in a fun way. The information provided when using the Services is not intended for distribution to or use in any jurisdiction or country where such distribution or use would be contrary to law or regulation.</p>
+
+            <h2 id="ip-en">2. INTELLECTUAL PROPERTY RIGHTS</h2>
+            <p>We are the owner or licensee of all intellectual property rights in our Services, including the source code, designs, graphics, game mechanics, text, illustrations, and logos (collectively, the "Content"), as well as the trademarks associated with them.</p>
+            <p>Our Content and trademarks are protected by applicable copyright and trademark laws in Canada and internationally. The Content and trademarks are provided "AS IS" for your information and personal, non-commercial use only.</p>
+            <p>Provided you comply with these Terms, we grant you a non-exclusive, non-transferable, revocable license to access the Services and to download or print a copy of any portion of the Content to which you have properly gained access, solely for your personal, non-commercial use.</p>
+            <p>If you wish to make any use of the Content other than as set out in this section, please address your request to: <a href="mailto:contact@jexongo.app">contact@jexongo.app</a>.</p>
+
+            <h2 id="userreps-en">3. USER REPRESENTATIONS</h2>
+            <p>By using the Services, you represent and warrant that: (1) all registration information you submit will be true, accurate, current, and complete; (2) you will maintain the accuracy of such information and promptly update it as necessary; (3) you have the legal capacity and agree to comply with these Terms; (4) you will not use the Services for any illegal or unauthorized purpose; (5) your use of the Services will not violate any applicable law or regulation.</p>
+
+            <h2 id="userreg-en">4. USER REGISTRATION</h2>
+            <p>You may be required to register in order to use certain features of the Services (for example, to save your progress via Google or by email). You agree to keep your password confidential and will be responsible for all use of your account. We reserve the right to remove, reclaim, or change a username if we determine, in our discretion, that such username is inappropriate, obscene, or otherwise objectionable.</p>
+
+            <h2 id="age-en">5. USER AGE</h2>
+            <p>JexonGo is a family-friendly game intended for a broad audience, including school-age children, under the supervision or with the permission of a parent or guardian where required by applicable law. By using the Services, you represent that you have the legal age required in your jurisdiction to consent to these Terms, or that you have the consent of a parent or guardian.</p>
+
+            <h2 id="prohibited-en">6. PROHIBITED ACTIVITIES</h2>
+            <p>You may access and use the Services only for the purposes for which we make them available. The Services may not be used in connection with any commercial endeavors except those specifically approved or endorsed by us.</p>
+            <p>As a user of the Services, you agree not to:</p>
+            <ul>
+            <li>Systematically retrieve data or other content from the Services to create or compile, directly or indirectly, a collection, compilation, database, or directory without our written permission;</li>
+            <li>Trick, defraud, or mislead other users, particularly in any attempt to learn sensitive account information from them;</li>
+            <li>Circumvent, disable, or otherwise interfere with security-related features of the Services;</li>
+            <li>Use any automated system, including without limitation any robot, script, bot, macro, cheat software, or any other tool that artificially falsifies your progress, your score, or otherwise interacts with the Services in a non-human manner;</li>
+            <li>Attempt to exploit a flaw, bug, or vulnerability in the game to gain an unfair advantage;</li>
+            <li>Disassemble, decompile, or otherwise attempt to discover the source code of any part of the Services;</li>
+            <li>Use the Services in a manner inconsistent with any applicable laws or regulations;</li>
+            <li>Harass, abuse, or harm another person through the Services;</li>
+            <li>Use the Services to advertise or offer to sell goods or services without our authorization.</li>
+            </ul>
+
+            <h2 id="ugc-en">7. USER-GENERATED CONTRIBUTIONS</h2>
+            <p>The Services may invite you to chat, contribute to, or participate in forums, dashboards, or other features, by submitting content or materials to the Services, including, without limitation, text, writings, audio, or personal data ("Contributions"). Contributions may be viewable by other users of the Services.</p>
+            <p>When you create or make available a Contribution, you represent and warrant, among other things, that: your Contributions are not false, inaccurate, or misleading; your Contributions are not unlawful, obscene, threatening, defamatory, invasive of another's privacy, harassing, or otherwise objectionable; your Contributions are not used to harass or threaten another person; your Contributions do not violate any applicable law.</p>
+
+            <h2 id="license-en">8. CONTRIBUTION LICENSE</h2>
+            <p>By posting your Contributions to the Services, you grant us an unlimited, irrevocable, perpetual, non-exclusive, transferable, royalty-free license to use, copy, reproduce, adapt, modify, and display your Contributions for the purpose of operating the Services, without compensation to you.</p>
+
+            <h2 id="reviews-en">9. REVIEWS</h2>
+            <p>We may provide areas allowing you to leave reviews or ratings. Before posting a review, you must meet the following criteria: (1) you must have direct experience with the person, entity, or item being reviewed; (2) your reviews must not contain defamatory, obscene, or hateful language; (3) your reviews must not contain discriminatory content based on religion, race, gender, national origin, age, sexual orientation, or disability; (4) your reviews must not violate any third-party right, including copyright or privacy; (5) your reviews must not be used for any commercial campaign or unlawful enterprise.</p>
+
+            <h2 id="socialmedia-en">10. THIRD-PARTY SOCIAL MEDIA</h2>
+            <p>As part of the Services, you may be able to link your account with third-party accounts, such as by signing in through a third-party identity provider like Google. By linking such an account, you confirm and agree that: (1) we may access, make available, and store any content that you have consented to share with us; (2) the linking functionality depends on the policies and continued availability of the relevant third-party accounts.</p>
+
+            <h2 id="thirdparty-en">11. THIRD-PARTY WEBSITES AND CONTENT</h2>
+            <p>The Services may contain links to other websites ("Third-Party Websites") as well as articles, photographs, text, or other content belonging to or originating from third parties ("Third-Party Content"). Such Third-Party Websites and Third-Party Content are not investigated, monitored, or checked for accuracy by us, and we are not responsible for any Third-Party Website accessed through the Services or any Third-Party Content posted on the Services.</p>
+
+            <h2 id="advertisers-en">12. ADVERTISERS</h2>
+            <p>We do not currently display any third-party advertising on the Services. Should this change, this section will be updated to reflect the applicable advertiser policies.</p>
+
+            <h2 id="servicesmanagement-en">13. SERVICES MANAGEMENT</h2>
+            <p>We reserve the right, but not the obligation, to: (1) monitor the Services for violations of these Terms; (2) take appropriate legal action against anyone who, in our sole discretion, violates the law or these Terms; (3) restrict access to the Services; (4) remove files or content that place an excessive burden on our system resources; (5) otherwise manage the Services in a manner designed to protect our rights and facilitate the proper functioning of the Services.</p>
+
+            <h2 id="term-en">14. TERM AND TERMINATION</h2>
+            <p>These Terms shall remain in full force and effect while you use the Services. We reserve the right to, without notice or liability, deny access to and use of the Services to any person for any reason, including breach of any representation or warranty contained herein, or of any applicable law or regulation.</p>
+            <p>We may terminate your account and/or delete any content or information you have posted at any time, without notice, in our sole discretion.</p>
+
+            <h2 id="modifications-en">15. MODIFICATIONS AND INTERRUPTIONS</h2>
+            <p>We reserve the right to change, modify, or remove the contents of the Services at any time or for any reason, at our sole discretion, without notice. We cannot guarantee the Services will be available at all times. We may experience hardware, software, or other problems, or need to perform maintenance related to the Services, resulting in interruptions, delays, or errors.</p>
+
+            <h2 id="law-en">16. GOVERNING LAW</h2>
+            <p>These Terms and your use of the Services are governed by and construed in accordance with the laws of the Province of Quebec and the federal laws of Canada applicable therein, without regard to conflict-of-law principles.</p>
+
+            <h2 id="dispute-en">17. DISPUTE RESOLUTION</h2>
+            <p>Any dispute arising out of or relating to these Terms, including their existence, validity, interpretation, performance, breach, or termination, shall be resolved through litigation before the competent courts of the Province of Quebec, Canada. You irrevocably consent that those courts shall have exclusive jurisdiction to adjudicate any dispute relating to these Terms.</p>
+
+            <h2 id="corrections-en">18. CORRECTIONS</h2>
+            <p>There may be information on the Services that contains typographical errors, inaccuracies, or omissions. We reserve the right to correct any errors, inaccuracies, or omissions, and to change or update information on the Services at any time, without prior notice.</p>
+
+            <h2 id="disclaimer-en">19. DISCLAIMER</h2>
+            <p>THE SERVICES ARE PROVIDED ON AN AS-IS AND AS-AVAILABLE BASIS. YOU AGREE THAT YOUR USE OF THE SERVICES WILL BE AT YOUR SOLE RISK. TO THE FULLEST EXTENT PERMITTED BY LAW, WE DISCLAIM ALL WARRANTIES, EXPRESS OR IMPLIED, IN CONNECTION WITH THE SERVICES AND YOUR USE THEREOF, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT. WE MAKE NO WARRANTY AS TO THE ACCURACY OR COMPLETENESS OF THE SERVICES' CONTENT, OR THAT THE SERVICES WILL BE UNINTERRUPTED OR ERROR-FREE.</p>
+
+            <h2 id="liability-en">20. LIMITATION OF LIABILITY</h2>
+            <p>IN NO EVENT WILL WE OR OUR DIRECTORS BE LIABLE TO YOU OR ANY THIRD PARTY FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, PUNITIVE, OR CONSEQUENTIAL DAMAGES ARISING FROM YOUR USE OF THE SERVICES, EVEN IF WE HAVE BEEN ADVISED OF THE POSSIBILITY OF SUCH DAMAGES. IN ANY CASE, OUR LIABILITY WILL BE LIMITED TO THE LESSER OF THE AMOUNT, IF ANY, PAID BY YOU TO US DURING THE SIX (6) MONTHS PRIOR TO THE EVENT GIVING RISE TO THE CLAIM. SINCE JEXONGO IS CURRENTLY OFFERED FREE OF CHARGE, THIS AMOUNT IS NIL IN THE ABSENCE OF ANY PAYMENT MADE BY YOU.</p>
+
+            <h2 id="indemnification-en">21. INDEMNIFICATION</h2>
+            <p>You agree to defend, indemnify, and hold us harmless from any loss, damage, liability, claim, or demand, including reasonable attorneys' fees, made by any third party due to or arising out of: (1) your use of the Services; (2) breach of these Terms; (3) any breach of your representations and warranties set forth herein.</p>
+
+            <h2 id="userdata-en">22. USER DATA</h2>
+            <p>We will maintain certain data that you transmit to the Services for the purpose of managing the performance of the Services, as well as data relating to your use of the Services. Although we perform regular backups, you are solely responsible for all data that you transmit or that relates to any activity you have undertaken using the Services.</p>
+
+            <h2 id="electronic-en">23. ELECTRONIC COMMUNICATIONS, TRANSACTIONS, AND SIGNATURES</h2>
+            <p>Visiting the Services, sending us emails, and completing online forms constitute electronic communications. You consent to receive electronic communications, and you agree that all agreements, notices, disclosures, and other communications we provide to you electronically satisfy any legal requirement that such communication be in writing.</p>
+
+            <h2 id="sms-en">24. MARKETING AND PROMOTIONAL COMMUNICATIONS</h2>
+            <p>With your consent, we may send you emails about new products, special offers, or other information we think you may find relevant. If you no longer wish to receive marketing emails, you may opt out by clicking the unsubscribe link in the email or by contacting us at <a href="mailto:contact@jexongo.app">contact@jexongo.app</a>.</p>
+
+            <h2 id="misc-en">25. MISCELLANEOUS</h2>
+            <p>These Terms, along with any policies posted by us in connection with the Services, constitute the entire agreement between you and us. Our failure to exercise or enforce any right or provision of these Terms shall not operate as a waiver of such right or provision. If any provision of these Terms is found to be unlawful, void, or unenforceable, that provision shall nonetheless be enforceable to the fullest extent permitted by applicable law, and the remaining provisions of these Terms shall remain in full force and effect.</p>
+            <p>We may assign any or all of our rights and obligations under these Terms to others at any time. You may not assign your rights or obligations under these Terms without our prior written consent.</p>
+
+            <h2 id="contact-en">26. CONTACT US</h2>
+            <p>In order to resolve a complaint regarding the Services or to receive further information regarding the use of the Services, please contact us at:</p>
+            <p>
+            JexonGo<br>
+            Email: <a href="mailto:contact@jexongo.app">contact@jexongo.app</a><br>
+            Canada
+            </p>
+
+          </div>
         </div>
 
         <footer class="privacy-footer">© 2026 JexonGO. Tous droits reserves. All rights reserved.</footer>
@@ -1073,7 +1829,10 @@
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js').catch(() => {});
+        // Only on the real site (no port in the address). Local test servers
+        // (Vite :5173, Live Server :5501, which doesn't serve /sw.js and
+        // would log a 404) skip it, so they also never serve a cached copy.
+        if (!location.port) navigator.serviceWorker.register('/sw.js').catch(() => {});
       });
     }
   </script>

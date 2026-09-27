@@ -7,19 +7,18 @@ import { G  }        from '../state.js';
 import { SFX }       from '../audio/sound.js';
 import { getRankInfo } from '../data/ranked.js';
 import { save }      from '../utils/storage.js';
-import { t }         from '../i18n.js';
+import { t, getLang } from '../i18n.js';
 import {
   wsConnect, wsSend, wsOn, wsOff, wsDisconnect, wsIsConnected, WS_URL,
 } from '../online/ws-client.js';
+import { drawFrame, getImage, preloadSprite, AIRCRAFT_SPRITE } from '../game/sprites.js';
 
-// ── PLANE IMAGES ─────────────────────────────────────────────────────────────
-function _loadImg(src) {
-  const img = new Image();
-  img.src = src;
-  return img;
-}
-const _IMG_MY  = _loadImg('/assets/planes/my-plane.png');
-const _IMG_OPP = _loadImg('/assets/planes/opp-plane.png');
+// ── PLANE SPRITES ────────────────────────────────────────────────────────────
+// The opponent always shows this fixed model (distinct from whatever the
+// player is flying — swapped to 'ship-f22' on the rare case they match).
+const _OPP_SHIP_KEY_DEFAULT = 'ship-f18';
+let _myShipKey  = 'ship-t6';
+let _oppShipKey = _OPP_SHIP_KEY_DEFAULT;
 
 // ── MODULE STATE ──────────────────────────────────────────────────────────────
 let _nav     = null;
@@ -29,8 +28,6 @@ let _raf     = null;
 let _bgGrad  = null;
 let _bgGradH = 0;
 let _session = 0;       // incremented on every enter/leave to cancel stale cbs
-let _returnTarget = 'ranked';
-let _isTournamentMatch = false;
 
 // Player info
 let _isP1    = true;
@@ -70,15 +67,31 @@ export function initArena(nav) {
 }
 
 // ── ENTRY POINT ───────────────────────────────────────────────────────────────
-export async function enterArena() {
+// opts.mode: 'ranked' (default: public queue, LP), or from the MULTI screen:
+// 'bot' (local AI), 'host' (create a private room, show its code) or
+// 'join' (opts.code: join a friend's room). Multi matches never change LP.
+let _arenaMode = 'ranked';
+let _arenaOpts = {};
+
+function _friendlyMatch() {
+  return _arenaMode !== 'ranked';
+}
+
+export async function enterArena(opts = {}) {
   _session++;
   const sid = _session;
-  _returnTarget = 'ranked';
-  _isTournamentMatch = false;
+  _arenaOpts = opts;
+  _arenaMode = opts.mode || 'ranked';
+  const fr = getLang() === 'fr';
 
   _canvas = $('arena-canvas');
   if (!_canvas) return;
   _ctx = _canvas.getContext('2d', { alpha: false });
+
+  _myShipKey  = AIRCRAFT_SPRITE[G.activeAircraft] || 'ship-t6';
+  _oppShipKey = _myShipKey === _OPP_SHIP_KEY_DEFAULT ? 'ship-f22' : _OPP_SHIP_KEY_DEFAULT;
+  preloadSprite(_myShipKey);
+  preloadSprite(_oppShipKey);
 
   _resetVisuals();
   SFX.playMusic('arena');
@@ -95,49 +108,37 @@ export async function enterArena() {
   _updateNameplates();
   _updateHP();
 
-  // Try live server — fall back to local AI if unavailable
+  if (_arenaMode === 'bot') {
+    _startAiMatch(sid);
+    return;
+  }
+
+  // Try live server — fall back to local AI if unavailable (ranked only: a
+  // friend's match needs the server).
   try {
     await wsConnect(WS_URL);
     if (_session !== sid) return;
     _registerHandlers(sid);
-    wsSend({ type:'join', name:_myName, lp: G.rankedLP || 0 });
-    _showStatus(t('searching'), true);
+    if (_arenaMode === 'host') {
+      wsSend({ type:'create_room', name:_myName, lp: G.rankedLP || 0 });
+      _showStatus(fr ? 'CRÉATION DE LA PARTIE...' : 'CREATING THE GAME...', true);
+    } else if (_arenaMode === 'join') {
+      wsSend({ type:'join_code', code: opts.code || '', name:_myName, lp: G.rankedLP || 0 });
+      _showStatus(fr ? 'CONNEXION À LA PARTIE...' : 'JOINING THE GAME...', true);
+    } else {
+      wsSend({ type:'join', name:_myName, lp: G.rankedLP || 0 });
+      _showStatus(t('searching'), true);
+    }
   } catch (_) {
     if (_session !== sid) return;
+    if (_friendlyMatch()) {
+      _showStatus(fr ? 'SERVEUR INDISPONIBLE. RÉESSAIE PLUS TARD.' : 'SERVER UNAVAILABLE. TRY AGAIN LATER.', false);
+      setTimeout(() => { if (_session === sid) _leaveArena(); }, 3000);
+      return;
+    }
     // ── AI FALLBACK ── server offline → run local match inside arena
     _startAiMatch(sid);
   }
-}
-
-export function enterArenaTournament(matchMsg) {
-  _session++;
-  const sid = _session;
-  _returnTarget = 'tournament';
-  _isTournamentMatch = true;
-
-  _canvas = $('arena-canvas');
-  if (!_canvas) return;
-  _ctx = _canvas.getContext('2d', { alpha: false });
-
-  _resetMatch();
-  SFX.playMusic('arena');
-  _startLoop();
-
-  _hide('arena-question-box');
-  _hide('arena-result');
-  _hideStatus();
-  $('btn-arena-rematch')?.classList.add('hidden');
-  if ($('btn-arena-lobby')) $('btn-arena-lobby').textContent = 'LOBBY';
-
-  _isP1    = matchMsg.isP1;
-  _myName  = (G.playerName || 'PILOT').toUpperCase();
-  _oppName = matchMsg.opponentName || 'ACE';
-  _oppLP   = matchMsg.opponentLP || 0;
-  _updateNameplates();
-  _updateHP();
-  _registerHandlers(sid);
-  _flashMidMsg(`CUP R${matchMsg.round || 1}`, 2600);
-  SFX.streak?.();
 }
 
 // ── LOCAL AI MATCH (no server needed) ────────────────────────────────────────
@@ -294,9 +295,9 @@ function _aiEndMatch(sid) {
   const won  = _myHP > _oppHP || (_myHP === _oppHP && _myScore > _oppScore);
   const draw = !won && _myHP === _oppHP && _myScore === _oppScore;
   const perf = won && _myHP === 3;
-  const lp   = draw ? 0 : won ? (perf ? 40 : 25) : -15;
+  const lp   = _friendlyMatch() ? 0 : draw ? 0 : won ? (perf ? 40 : 25) : -15;
 
-  _applyLPChange(lp, won && !draw);
+  if (!_friendlyMatch()) _applyLPChange(lp, won && !draw);
 
   setTimeout(() => {
     if (_session !== sid) return;
@@ -315,16 +316,30 @@ function _requestRematch() {
   } else {
     _resetMatch();
     _hide('arena-result');
-    enterArena();   // re-enter → tries WS → falls back to AI
+    enterArena(_arenaOpts);   // same mode again (ranked: tries WS → falls back to AI)
   }
 }
 
 // ── WS HANDLER REGISTRATION ───────────────────────────────────────────────────
-const _WS_EVENTS = ['waiting','matched','question','q_result','hp_update',
+const _WS_EVENTS = ['room_created','code_invalid','waiting','matched','question','q_result','hp_update',
                     'game_over','rematch_accept','rematch_pending',
                     'opponent_left','_disconnect'];
 
 function _registerHandlers(sid) {
+  const fr = getLang() === 'fr';
+
+  // Private room created: show the code to give to the friend.
+  wsOn('room_created', ({ code }) => {
+    if (_session !== sid) return;
+    _showStatus(fr ? `CODE : ${code}  —  DONNE-LE À TON AMI` : `CODE: ${code}  —  GIVE IT TO YOUR FRIEND`, true);
+  });
+
+  // Wrong / expired code: back to the MULTI screen.
+  wsOn('code_invalid', () => {
+    if (_session !== sid) return;
+    _showStatus(fr ? 'CODE INVALIDE OU PARTIE INTROUVABLE' : 'INVALID CODE OR GAME NOT FOUND', false);
+    setTimeout(() => { if (_session === sid) _leaveArena(); }, 2600);
+  });
 
   wsOn('waiting', ({ pos }) => {
     if (_session !== sid) return;
@@ -385,7 +400,7 @@ function _registerHandlers(sid) {
     _stopTimer();
     _lockAnswers();
     _hide('arena-question-box');
-    if (!msg.tournament) _applyLPChange(msg.lpChange, msg.won);
+    if (!msg.tournament && !msg.friendly && !_friendlyMatch()) _applyLPChange(msg.lpChange, msg.won);
     setTimeout(() => {
       if (_session !== sid) return;
       _showResult(msg);
@@ -409,9 +424,9 @@ function _registerHandlers(sid) {
     if (_session !== sid) return;
     _stopTimer();
     _lockAnswers();
-    _applyLPChange(25, true);
+    if (!_friendlyMatch()) _applyLPChange(25, true);
     _showResult({
-      won:true, draw:false, isPerfect:false, lpChange:25,
+      won:true, draw:false, isPerfect:false, lpChange:_friendlyMatch() ? 0 : 25,
       yourScore:_myScore, oppScore:_oppScore,
       opponentLeft:true,
     });
@@ -421,11 +436,6 @@ function _registerHandlers(sid) {
     if (_session !== sid) return;
     _showStatus('DISCONNECTED', false);
   });
-}
-
-function _unregisterHandlers() {
-  _WS_EVENTS.forEach(e => wsOff(e, undefined));
-  // wsOff with no fn → noop; we increment _session to disable stale cbs
 }
 
 // ── QUESTION FLOW ─────────────────────────────────────────────────────────────
@@ -516,6 +526,7 @@ function _showResult(msg) {
   const sign = (msg.lpChange >= 0) ? '+' : '';
   $('arena-result-lp').textContent  = msg.tournament
     ? (msg.won ? 'ADVANCING' : 'ELIMINATED')
+    : _friendlyMatch() ? (getLang() === 'fr' ? 'MATCH AMICAL' : 'FRIENDLY MATCH')
     : `${sign}${msg.lpChange} LP`;
   $('arena-result-lp').style.color  = msg.lpChange >= 0 ? '#00e84b' : '#ff2233';
 
@@ -693,12 +704,14 @@ function _frame() {
 
 // ── PNG PLANE ─────────────────────────────────────────────────────────────────
 function _drawPlane(ctx, cx, cy, facingRight, color, u) {
-  const img  = facingRight ? _IMG_MY : _IMG_OPP;
+  const key  = facingRight ? _myShipKey : _oppShipKey;
+  const img  = getImage(key);
   const size = u * 14;
   ctx.save();
   ctx.translate(cx, cy);
-  // Both images face right by default; flip opponent to face left (inward)
-  if (!facingRight) ctx.scale(-1, 1);
+  // Ship art faces "up" (nose north) for normal gameplay; rotate 90° so the
+  // nose points at the opponent (right for me, left for them).
+  ctx.rotate(facingRight ? Math.PI / 2 : -Math.PI / 2);
 
   // Coloured glow tint behind the image
   ctx.shadowColor = color;
@@ -710,10 +723,11 @@ function _drawPlane(ctx, cx, cy, facingRight, color, u) {
     ctx.filter = 'hue-rotate(160deg) saturate(3) brightness(1.4)';
   }
 
-  if (img.complete && img.naturalWidth > 0) {
-    ctx.drawImage(img, -size / 2, -size / 2, size, size);
+  if (img && img.complete && img.naturalWidth > 0) {
+    const frame = Math.floor(_tick / 4) % 12;
+    drawFrame(ctx, key, frame, 0, 0, size, size);
   } else {
-    // Fallback rect while image loads
+    // Fallback rect while the sprite loads
     ctx.fillStyle = color;
     ctx.fillRect(-size / 2, -size / 4, size, size / 2);
   }
@@ -846,9 +860,8 @@ function _leaveArena() {
   _stopTimer();
   SFX.stopMusic();
   wsSend({ type: 'leave' });
-  if (!_isTournamentMatch) wsDisconnect();
-  _isTournamentMatch = false;
-  if (_returnTarget === 'tournament') _nav.toMenu();
+  wsDisconnect();
+  if (_friendlyMatch()) _nav.toMulti();
   else _nav.toRanked();
 }
 

@@ -1,13 +1,14 @@
 import { getWeatherForLevel } from './weather.js';
+import { getLocation } from './locations.js';
 
 export const BIOMES = ['ocean', 'desert', 'city', 'arctic', 'space'];
 
 export const BIOME_META = {
-  ocean:  { label: 'OCEAN',  sky: '#0c1a3a', horizon: '#0d3b6e', accent: '#00d4ff' },
-  desert: { label: 'DESERT', sky: '#2d1505', horizon: '#7c4a1e', accent: '#fbbf24' },
-  city:   { label: 'CITY',   sky: '#0a0e1a', horizon: '#1a1a2e', accent: '#a855f7' },
-  arctic: { label: 'ARCTIC', sky: '#0e1f35', horizon: '#b8d4e8', accent: '#e0f2fe' },
-  space:  { label: 'SPACE',  sky: '#000000', horizon: '#0a0a1e', accent: '#f472b6' },
+  ocean:  { label: 'OCEAN',  labelFr: 'PACIFIQUE', sky: '#0c1a3a', horizon: '#0d3b6e', accent: '#00d4ff' },
+  desert: { label: 'DESERT', labelFr: 'SAHARA',    sky: '#2d1505', horizon: '#7c4a1e', accent: '#fbbf24' },
+  city:   { label: 'USA',    labelFr: 'USA',       sky: '#0a0e1a', horizon: '#1a1a2e', accent: '#a855f7' },
+  arctic: { label: 'ARCTIC', labelFr: 'ARCTIQUE',  sky: '#0e1f35', horizon: '#b8d4e8', accent: '#e0f2fe' },
+  space:  { label: 'SPACE',  labelFr: 'ESPACE',    sky: '#000000', horizon: '#0a0a1e', accent: '#f472b6' },
 };
 
 function biomeForLevel(n) { return BIOMES[Math.min(Math.floor((n - 1) / 10), 4)]; }
@@ -69,23 +70,23 @@ function bossCompanionTypesForLevel(n) {
 // How many companion enemies can be on screen at once (not counting the boss)
 function bossCompanionCountForLevel(n) {
   const m = n / 10;
-  return m; // 1, 2, 3, 4, 5 for lv10→50
+  return 2 + m * 2; // 4, 6, 8, 10, 12 for lv10→50
 }
 
-// Maximum enemies on screen at once — fewer for kids
+// Maximum enemies on screen at once
 function maxEnemiesForLevel(n) {
   if (n % 10 === 0) {
     const milestone = n / 10;
-    return milestone <= 2 ? 1 : milestone <= 4 ? 2 : 3;
+    return 2 + milestone;
   }
-  return Math.min(12, 2 + Math.floor((n - 1) / 4));
+  return Math.min(20, 5 + Math.floor((n - 1) / 3)); // 5 → 20
 }
 
-// Frames between enemy spawns — slower pacing for kids
+// Frames between enemy spawns
 function spawnRateForLevel(n) {
   // Every new level shortens the interval, producing a smooth increase in
   // enemy density instead of large jumps only at biome boundaries.
-  return Math.max(82, Math.round(300 - (n - 1) * 4.45));
+  return Math.max(40, Math.round(150 - (n - 1) * 2.25)); // 150 → 40
 }
 
 // Enemy movement speed — slower start, gentler ramp
@@ -112,16 +113,42 @@ function mapCoinCountForLevel(n) {
   return biomeCoins + (n % 10 === 0 ? 4 : 0);
 }
 
+// A stable (not re-randomized on every render) example equation for the
+// briefing screen, built from the same op pool and number ranges the real
+// in-game questions use, so it's representative of what the player will see.
+function seededRandom(seed) {
+  let x = Math.sin(seed) * 10000;
+  return x - Math.floor(x);
+}
+function rndSeeded(seed, min, max) {
+  return Math.floor(seededRandom(seed) * (max - min + 1)) + min;
+}
+export function equationExampleForLevel(n, ops, cap, multCap) {
+  const op = ops[Math.floor(seededRandom(n * 13.7) * ops.length)];
+  let a, b, answer;
+  switch (op) {
+    case '+': a = rndSeeded(n * 2.1, 1, cap); b = rndSeeded(n * 3.3, 1, cap); answer = a + b; break;
+    case '-': a = rndSeeded(n * 2.1, 2, cap); b = rndSeeded(n * 3.3, 1, a); answer = a - b; break;
+    case '*': { const mc = multCap || 12; a = rndSeeded(n * 2.1, 2, mc); b = rndSeeded(n * 3.3, 2, mc); answer = a * b; break; }
+    default: { const mc = multCap || 12; b = rndSeeded(n * 3.3, 2, mc); answer = rndSeeded(n * 2.1, 1, mc); a = b * answer; }
+  }
+  const sym = op === '*' ? '×' : op === '/' ? '÷' : op;
+  return { text: `${a} ${sym} ${b} = ?`, answer, op };
+}
+
 export function getLevel(n) {
   const biome = biomeForLevel(n);
   const range = mathRangeForLevel(n);
+  const ops = opsForLevel(n);
   return {
     num:               n,
     biome,
     colors:            BIOME_META[biome],
-    ops:               opsForLevel(n),
+    ops,
     mathCap:           range.cap,
     mathMultCap:       range.multCap,
+    location:          getLocation(n),
+    equationExample:   equationExampleForLevel(n, ops, range.cap, range.multCap),
     timeLimit:         timeLimitForLevel(n),
     questionCount:     10,
     enemyTypes:        enemyTypesForLevel(n),
@@ -131,10 +158,12 @@ export function getLevel(n) {
     enemyFireRateMult: enemyFireRateMultForLevel(n),
     mapCoinCount:      mapCoinCountForLevel(n),
     isBossLevel:       n % 10 === 0,
-    isChestLevel:      n % 10 === 0,
+    // 20 chests total across the 50-level campaign: 2 per 5-level block
+    // (…3,5, 8,10, 13,15…), so 4 per 10-level world.
+    isChestLevel:      n % 5 === 0 || n % 5 === 3,
     bossCompanionTypes: n % 10 === 0 ? bossCompanionTypesForLevel(n) : [],
     bossCompanionMax:   n % 10 === 0 ? bossCompanionCountForLevel(n) : 0,
-    weather:           getWeatherForLevel(n),
+    weather:           getWeatherForLevel(n, biome),
   };
 }
 

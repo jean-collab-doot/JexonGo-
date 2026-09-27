@@ -1,9 +1,3 @@
-export function calcXP(correct) {
-  if (correct >= 10) return 200;
-  if (correct >= 6)  return 120;
-  return 50;
-}
-
 // Per-question XP based on answer speed: 10 (slow) → 30 (instant)
 export function calcSpeedXP(timeLeft, timerTotal) {
   if (!timerTotal || timerTotal <= 0) return 10;
@@ -25,15 +19,3 @@ export function calcStars(correct, questionsAnswered, missileHits = 0) {
   return 1;
 }
 
-export function streakBonus(streak) {
-  if (streak >= 5) return 30;
-  if (streak >= 3) return 10;
-  return 0;
-}
-
-export function getTournamentReward(round) {
-  if (round >= 3) return { xp: 500, title: 'Tournament Champion' };
-  if (round === 2) return { xp: 250, title: 'Tournament Finalist' };
-  if (round === 1) return { xp: 120, title: 'Tournament Ace' };
-  return { xp: 50, title: 'Tournament Pilot' };
-}

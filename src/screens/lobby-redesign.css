@@ -1,0 +1,1877 @@
+/* =====================================================================
+   JexonGo — "Pixel Arcade" lobby redesign
+   Loaded AFTER style.css so these rules win. Scoped to the redesigned
+   screens only (#s-menu, #s-shop, #s-training, #s-hangar, #settings-panel,
+   #missions-panel, #badges-overlay, #week-overlay, #feedback-overlay,
+   #plane-info-overlay, #s-levelmap). Old style.css lobby rules that target removed
+   markup simply go dead.
+   ===================================================================== */
+
+:root {
+  --jx-orange:      #F5931E;
+  --jx-orange-deep: #E67612;
+  --jx-orange-dk:   #C85F0C;
+  --jx-yellow:      #FFC21A;
+  --jx-yellow-hi:   #FFD84D;
+  --jx-cyan:        #37C6E8;
+  --jx-panel:       #F2913A;
+  --jx-slot:        #F2913A;
+  --jx-ink:         #7a3a00;
+  --jx-font:        'retropix', 'Press Start 2P', monospace;
+}
+
+/* neutralise the old dark-lobby vignette + padding */
+#s-menu::after,
+#s-menu::before { content: none !important; display: none !important; }
+#s-menu .menu-content {
+  position: absolute; inset: 0; z-index: 2;
+  display: block; padding: 0; overflow: hidden;
+}
+
+/* the [hidden] attribute must always win over leftover old rules */
+#s-shop [hidden], #s-hangar [hidden], #s-training [hidden],
+#settings-panel [hidden], #missions-panel [hidden] { display: none !important; }
+#s-shop .shop-tabbar, #s-shop .shop-app-shell, #s-shop .shop-hero,
+#s-shop .shop-search-row, #s-shop .shop-status-row { display: none !important; }
+#s-shop { background: none !important; }
+
+/* beat the old #s-menu #btn-play id rules (position / z-index / ::before) */
+#s-menu #btn-play.jx-cta {
+  position: absolute; left: 50%; bottom: 128px; z-index: 14;
+  transform: translateX(-50%);
+  width: min(56%, 320px); min-height: 58px;
+  border: 0; margin: 0;
+  background: linear-gradient(180deg, var(--jx-yellow-hi), var(--jx-yellow) 45%, #F0A500);
+  color: #fff;
+}
+#s-menu #btn-play.jx-cta::before { content: none; }
+
+/* ---- shared building blocks -------------------------------------------------- */
+.jx-screen {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column;
+  font-family: var(--jx-font);
+  overflow: hidden;
+}
+.jx-bg {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  object-fit: cover; object-position: center top;
+  z-index: 0; image-rendering: pixelated;
+}
+.jx-shade {           /* faint darken so orange UI reads on any bg */
+  position: absolute; inset: 0; z-index: 1; pointer-events: none;
+  background: linear-gradient(180deg, rgba(0,0,0,.18), rgba(0,0,0,.05) 30%, rgba(0,0,0,.28));
+}
+
+.jx-text {
+  color: #fff;
+  text-shadow: 2px 2px 0 var(--jx-ink);
+  letter-spacing: 1px;
+}
+
+/* ---- HUD (top pill) -------------------------------------------------------- */
+.jx-hud {
+  position: absolute; z-index: 12;
+  top: max(10px, env(safe-area-inset-top)); left: 3.5%; right: 3.5%;
+  display: flex; align-items: center; gap: 10px;
+}
+.jx-hud-main {
+  flex: 1; display: flex; align-items: center; gap: 18px;
+  height: 46px; padding: 0 18px;
+  background: linear-gradient(180deg, #ffab3d, var(--jx-orange) 55%, var(--jx-orange-deep));
+  border-radius: 24px;
+  box-shadow: 0 3px 0 var(--jx-orange-dk), inset 0 2px 0 rgba(255,255,255,.35);
+}
+.jx-chip { display: flex; align-items: center; gap: 8px; }
+.jx-chip img { width: 26px; height: 26px; image-rendering: pixelated; }
+.jx-chip b {
+  font-family: var(--jx-font); font-size: 15px; color: #fff;
+  text-shadow: 2px 2px 0 var(--jx-ink);
+}
+.jx-burger {
+  width: 58px; height: 46px; flex: none;
+  display: grid; place-items: center; gap: 4px; padding: 12px 14px;
+  border: 0; cursor: pointer;
+  background: linear-gradient(180deg, #ffab3d, var(--jx-orange) 55%, var(--jx-orange-deep));
+  border-radius: 18px;
+  box-shadow: 0 3px 0 var(--jx-orange-dk), inset 0 2px 0 rgba(255,255,255,.35);
+}
+.jx-burger i { display: block; width: 100%; height: 4px; background: #ffe6c2; border-radius: 2px; }
+.jx-burger:active { transform: translateY(2px); }
+
+/* ---- carousel arrows ------------------------------------------------------- */
+.jx-navbtn {
+  position: absolute; z-index: 11; top: 42%;
+  width: 60px; height: 60px; padding: 0; border: 0; cursor: pointer;
+  display: grid; place-items: center;
+  font-family: var(--jx-font); font-size: 26px; color: #fff;
+  text-shadow: 2px 2px 0 var(--jx-ink);
+  background: linear-gradient(180deg, #ffab3d, var(--jx-orange) 55%, var(--jx-orange-deep));
+  border-radius: 18px;
+  box-shadow: 0 4px 0 var(--jx-orange-dk), inset 0 2px 0 rgba(255,255,255,.35);
+}
+.jx-navbtn:active { transform: translateY(2px); }
+.jx-navbtn-left  { left: 2%; }
+.jx-navbtn-right { right: 2%; }
+
+/* ---- plane showcase ------------------------------------------------------- */
+.jx-plane-wrap {
+  position: absolute; z-index: 10; left: 50%; top: 46%;
+  /* vw, not % — the lobby's .menu-content scrolls (overflow-y:auto) and its
+     content is tall enough to grow a scrollbar, which narrows its content-box
+     by the scrollbar's width. A %-based width would then resolve against that
+     narrowed box, making every plane render ~5-6% smaller in the lobby than
+     on the (non-scrolling) Training screen for the exact same width formula. */
+  width: calc(100vw - 148px); max-width: 420px;
+  transform: translate(-50%, -50%);
+  display: flex; align-items: center; justify-content: space-between; gap: 4px;
+}
+.jx-plane-wrap img {
+  width: min(58%, 320px); max-height: 46vh; object-fit: contain;
+  image-rendering: pixelated;
+  filter: drop-shadow(0 16px 12px rgba(0,0,0,.45));
+  /* The two fixed-size (flex: none) cycle buttons never shrink, so on a
+     narrow phone a wide showcase width (C-130/F-117 below at 76%) doesn't
+     leave room for both of them + the image. An <img>'s automatic flex
+     min-width defaults to its intrinsic size instead of 0, so instead of
+     shrinking to fit it overflowed the wrap - pushing the whole group
+     off-center (image hugging the left edge, next-button pushed past the
+     wrap's right edge) rather than staying centered like the other planes. */
+  min-width: 0;
+}
+/* C-130 reads small next to the fighters at the shared 58% cap (its art has a
+   wide-but-short silhouette) — give it a bigger showcase box. Same size on
+   the Training showcase so planes read at the same height in both places. */
+#s-menu .jx-plane-wrap img[data-plane="c130"],
+#s-training .jx-plane-wrap img[data-plane="c130"] { width: min(76%, 340px); }
+/* F-117 requested bigger in the lobby specifically; mirrored on Training. */
+#s-menu .jx-plane-wrap img[data-plane="f117"],
+#s-training .jx-plane-wrap img[data-plane="f117"] { width: min(76%, 340px); }
+/* F-35's art has more transparent padding than the F-22's at the same canvas
+   size (silhouette fills ~80% of the frame height vs. ~94% for the F-22), so
+   at the shared 58% width it visibly renders shorter — scale its box up by
+   that ratio (~1.17x) so the two read at the same on-screen height. */
+#s-menu .jx-plane-wrap img[data-plane="f35"],
+#s-training .jx-plane-wrap img[data-plane="f35"] { width: min(68%, 375px); }
+.jx-planecycle {
+  flex: none; width: 44px; height: 44px; border: 3px solid #fff; cursor: pointer;
+  padding: 0; border-radius: 50%;
+  display: grid; place-items: center;
+  font-family: var(--jx-font); font-size: 18px; color: #fff;
+  text-shadow: 1px 1px 0 var(--jx-ink);
+  background: linear-gradient(180deg, #ffab3d, var(--jx-orange) 55%, var(--jx-orange-deep));
+  box-shadow: 0 3px 0 var(--jx-orange-dk), 0 0 10px rgba(0,0,0,.45);
+}
+.jx-planecycle:active { transform: scale(.9); }
+
+/* ---- day / play-time tab ------------------------------------------------- */
+/* Just the minutes-played gauge now (the day-name label up top was removed) -
+   a small standalone pill inset from the screen edge. */
+.jx-daytab[hidden] { display: none; }
+.jx-daytab {
+  position: absolute; z-index: 9; left: 8px; top: 52%;
+  width: 40px; min-height: 190px;
+  display: flex; flex-direction: column;
+  border-radius: 18px; overflow: hidden;
+  border: 3px solid var(--jx-orange-dk);
+  box-shadow: 3px 3px 0 rgba(0,0,0,.35), inset 0 0 0 1px rgba(255,255,255,.18);
+  cursor: pointer;
+}
+.jx-daytab-bot {
+  position: relative; flex: 1;
+  background: linear-gradient(180deg, #5a3410, #341c07 70%, #221204);
+  display: grid; place-items: center; overflow: hidden;
+}
+/* Empty (0%) when no minutes are logged today, rising to full (100%) at
+   the daily goal - this cyan fill IS the measurement, so it must actually
+   read as empty at zero instead of the track just always looking "full". */
+.jx-daytab-fill {
+  position: absolute; left: 0; right: 0; bottom: 0; height: 0%;
+  background: linear-gradient(180deg, #1a92ab, var(--jx-cyan) 70%, #1a92ab);
+  box-shadow: 0 0 10px rgba(55,198,232,.6);
+  transition: height .5s ease;
+}
+.jx-daytab-bot span {
+  position: relative; z-index: 1;
+  writing-mode: vertical-rl; transform: rotate(180deg);
+  font-family: var(--jx-font); font-size: 12px; color: #fff;
+  text-shadow: 2px 2px 0 #0f6472, 0 0 4px rgba(0,0,0,.4); letter-spacing: 2px;
+}
+
+/* ---- week tracker popup (#week-overlay, opened by tapping the day tab) --- */
+/* Dark orange "readout" card - a header (title/goal + today's-minutes
+   badge), a Lundi→Dimanche row of gauge pills (each fills with yellow
+   from the bottom as that day's minutes approach the daily goal, with
+   its minute count and day name printed below it), then the month
+   challenge strip. Same layout as the reference art, recolored to the
+   game's yellow/orange palette (no cyan/navy). */
+#week-overlay .jx-drawer {
+  padding: 24px 22px 26px;
+  background:
+    repeating-linear-gradient(180deg, rgba(0,0,0,.12) 0 2px, transparent 2px 4px),
+    radial-gradient(120% 90% at 50% -10%, #6a3f14, transparent 60%),
+    linear-gradient(180deg, #4a2708, #2a1504 60%, #1c0e02);
+  border: 5px solid var(--jx-orange-dk);
+  box-shadow: 0 20px 50px rgba(0,0,0,.5), inset 0 0 0 3px rgba(255,255,255,.08);
+}
+#btn-week-close { margin: -6px -4px 14px auto; }
+.jx-week-head {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: 10px; margin: 0 0 18px;
+}
+.jx-week-title {
+  margin: 0 0 5px; font-family: var(--jx-font); font-size: 17px; color: var(--jx-yellow-hi);
+  text-shadow: 2px 2px 0 rgba(0,0,0,.5); text-align: left; letter-spacing: .5px;
+}
+.jx-week-subtitle {
+  font-family: var(--jx-font); font-size: 10px; color: rgba(255,222,179,.8);
+  line-height: 1.4;
+}
+.jx-week-badge {
+  position: relative; flex: none; width: 54px; height: 54px; border-radius: 50%;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  background: radial-gradient(circle at 35% 30%, #6e4014, #2a1504 75%);
+  border: 3px solid var(--jx-yellow-hi);
+  box-shadow: 0 0 14px rgba(255,194,26,.55), inset 0 2px 3px rgba(255,255,255,.15), inset 0 -3px 6px rgba(0,0,0,.4);
+}
+.jx-week-badge-value {
+  font-family: var(--jx-font); font-size: 13px; color: #fff;
+  text-shadow: 1px 1px 0 rgba(0,0,0,.5);
+}
+.jx-week-badge-unit {
+  font-family: var(--jx-font); font-size: 7px; color: var(--jx-yellow-hi);
+  letter-spacing: .5px; margin-top: 2px;
+}
+.jx-week-row {
+  display: flex; justify-content: center; gap: 8px; flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+.jx-week-day {
+  display: flex; flex-direction: column; align-items: center; gap: 5px;
+}
+.jx-week-pill {
+  position: relative;
+  width: 30px; height: 96px;
+  border-radius: 15px; overflow: hidden;
+  border: 2px solid var(--jx-orange-dk);
+  background:
+    repeating-linear-gradient(180deg, rgba(255,255,255,.05) 0 2px, transparent 2px 4px),
+    linear-gradient(180deg, #5a3410, #341c07 70%, #221204);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.1), 2px 2px 0 rgba(0,0,0,.35);
+}
+/* Glassy sheen down the left third, purely decorative - sits above the
+   fill's own gradient/glow but below nothing (pills have no other content
+   on top of it), so it reads as a highlight on the tube's curved surface. */
+.jx-week-pill::before {
+  content: ''; position: absolute; top: 2px; bottom: 2px; left: 3px; width: 6px;
+  border-radius: 6px; background: linear-gradient(180deg, rgba(255,255,255,.28), rgba(255,255,255,0) 55%);
+  pointer-events: none;
+}
+.jx-week-pill.is-today {
+  border-color: var(--jx-orange-dk);
+  box-shadow: 0 0 12px rgba(26, 228, 255, 0.75), inset 0 0 0 1px rgba(255,255,255,.2);
+}
+.jx-week-pill-fill {
+  position: absolute; left: 0; right: 0; bottom: 0; height: 0%;
+  background: linear-gradient(180deg, #5fd4ff, #1e90ff 70%, #0b5ed7);
+  box-shadow: 0 -2px 8px rgba(30,144,255,.55);
+  transition: height .5s ease;
+}
+.jx-week-day-value {
+  font-family: var(--jx-font); font-size: 10px; color: #fff;
+  text-shadow: 1px 1px 0 rgba(0,0,0,.5);
+}
+.jx-week-day-label {
+  font-family: var(--jx-font); font-size: 8px; color: rgba(255,222,179,.75);
+  letter-spacing: .5px;
+}
+.jx-week-pill.is-today ~ .jx-week-day-label {
+  color: var(--jx-yellow-hi);
+}
+.jx-week-divider {
+  height: 2px; margin: 0 0 18px;
+  background: linear-gradient(90deg, transparent, rgba(255,194,26,.5) 20%, rgba(255,194,26,.5) 80%, transparent);
+}
+.jx-week-goal-title {
+  font-family: var(--jx-font); font-size: 13px; color: var(--jx-yellow-hi);
+  text-shadow: 1px 1px 0 rgba(0,0,0,.5); margin-bottom: 6px; letter-spacing: .5px;
+}
+.jx-week-goal-config {
+  font-family: var(--jx-font); font-size: 10px; color: rgba(255,222,179,.8);
+  margin-bottom: 12px;
+}
+.jx-week-goal-bar {
+  position: relative;
+  height: 16px; border-radius: 8px; overflow: hidden;
+  background: linear-gradient(180deg, #341c07, #221204);
+  border: 2px solid var(--jx-orange-dk);
+  box-shadow: inset 0 2px 4px rgba(0,0,0,.4);
+}
+.jx-week-goal-fill {
+  position: relative; height: 100%; width: 0%;
+  background: linear-gradient(90deg, #F0A500, var(--jx-yellow-hi));
+  box-shadow: 0 0 10px rgba(255,194,26,.6);
+  transition: width .5s ease;
+}
+/* Bright marker riding the leading edge of the fill, like a progress "dot". */
+.jx-week-goal-fill::after {
+  content: ''; position: absolute; top: 50%; right: 1px;
+  width: 8px; height: 8px; border-radius: 50%;
+  transform: translate(50%, -50%);
+  background: #fff;
+  box-shadow: 0 0 6px rgba(255,255,255,.9), 0 0 10px rgba(255,194,26,.8);
+}
+.jx-week-goal-label {
+  font-family: var(--jx-font); font-size: 10px; color: rgba(255,222,179,.8);
+  margin-top: 10px;
+}
+
+/* ---- big CTA button ------------------------------------------------------ */
+.jx-cta {
+  position: absolute; z-index: 14; left: 50%; bottom: 128px;
+  transform: translateX(-50%);
+  width: min(56%, 320px); min-height: 58px;
+  border: 0; cursor: pointer;
+  font-family: var(--jx-font); font-size: clamp(16px, 4.4vw, 24px);
+  color: #fff; text-shadow: 3px 3px 0 var(--jx-ink);
+  background: linear-gradient(180deg, var(--jx-yellow-hi), var(--jx-yellow) 45%, #F0A500);
+  border-radius: 20px;
+  box-shadow: 0 6px 0 #A56A00, 0 0 30px rgba(255,200,40,.55), inset 0 3px 0 rgba(255,255,255,.5);
+}
+.jx-cta:active { transform: translateX(-50%) translateY(3px); box-shadow: 0 3px 0 #A56A00, 0 0 22px rgba(255,200,40,.5); }
+
+/* ---- pull-up bottom sheet (Hangar / Type de tire / équation) --------------- */
+.jx-bottomsheet {
+  position: absolute; z-index: 30; left: 0; right: 0;
+  top: 60px; bottom: 0;
+  display: flex; flex-direction: column;
+  transition: transform .3s cubic-bezier(.25,.85,.3,1);
+  will-change: transform;
+  /* Was on .jx-sheet-grip itself, which put its own drop shadow's blur right
+     across the grip/content boundary — a soft dark seam splitting them into
+     two visibly separate pieces instead of one panel. Moved here so it only
+     shadows the OUTSIDE top edge of the whole sheet. */
+  box-shadow: 0 -5px 14px rgba(0,0,0,.25);
+}
+.jx-bottomsheet.is-collapsed { pointer-events: none; }
+.jx-bottomsheet.is-collapsed .jx-sheet-grip { pointer-events: auto; }
+.jx-sheet-grip { touch-action: none; }
+/* PEEK (must match bottomsheet.js's PEEK constant): only this much of the
+   sheet stays visible when collapsed - just enough to show the section name
+   (HANGAR / Type de tire / équation) on a compact strip of the yellow
+   content below/around the small tab. */
+.jx-bottomsheet.is-collapsed { transform: translateY(calc(100% - 56px)); }
+.jx-bottomsheet.is-open      { transform: translateY(0); }
+.jx-bottomsheet.is-dragging  { transition: none; }
+/* The tabs/title/body inside .jx-sheet-content must never peek through while
+   collapsed (whatever PEEK is tall enough to reveal a decent strip of plain
+   yellow will also reach far enough down to catch the AVIONS/TIR DE MISSILE
+   tab row or panel title) - hide them and only show the sheet's own plain
+   background+border+radius until it's actually opened. */
+.jx-bottomsheet.is-collapsed .jx-sheet-content > * { visibility: hidden; }
+.jx-sheet-grip {
+  position: absolute; z-index: 2; left: 0; right: 0; top: 0;
+  width: 100%; height: 56px; border: 0; cursor: grab;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--jx-font); font-size: 11px; letter-spacing: 1px; color: #fff; text-shadow: 2px 2px 0 var(--jx-ink);
+  background: linear-gradient(180deg, var(--jx-orange), var(--jx-orange-deep));
+  border-radius: 26px 26px 0 0;
+  box-shadow: inset 0 3px 0 rgba(255,255,255,.3);
+}
+.jx-sheet-grip:active { cursor: grabbing; }
+/* All 3 pull-up drawers (lobby's hangar, shop's "Type de tire", training's
+   "équation"): the collapsed strip shows its own section name (the <span>
+   in each grip button) - tap or drag it to open. Once open, shrink the
+   grip down to a thin sliver so it no longer sits on top of the content
+   underneath (tabs/title/list); it's still there as a drag-down handle to
+   close, so hide its label and background at that point. */
+#lobby-sheet.is-open .jx-sheet-grip,
+#shop-sheet.is-open .jx-sheet-grip,
+#training-sheet.is-open .jx-sheet-grip {
+  background: none; box-shadow: none; border-radius: 0;
+}
+#lobby-sheet.is-open .jx-sheet-grip span,
+#shop-sheet.is-open .jx-sheet-grip span,
+#training-sheet.is-open .jx-sheet-grip span {
+  display: none;
+}
+#lobby-sheet.is-open .jx-sheet-grip,
+#shop-sheet.is-open .jx-sheet-grip,
+#training-sheet.is-open .jx-sheet-grip { height: 18px; }
+.jx-sheet-content {
+  flex: 1; min-height: 0; overflow: hidden;
+  background: var(--jx-yellow);
+  border: 9px solid var(--jx-orange);
+  border-radius: 26px 26px 0 0;
+  display: flex; flex-direction: column;
+}
+
+/* ---- "!" pending-reward badge on the left carousel arrow (opens Missions) --- */
+.jx-navbtn .missions-badge { position: absolute; top: -6px; right: -6px; }
+
+/* ---- riveted metal title plate (CSS fake) --------------------------------- */
+.jx-plate {
+  --plate-tx: -50%; /* overridden to 0 where the plate isn't absolute+left:50% (see .jx-scroll below) */
+  position: absolute; z-index: 8; left: 50%; top: 72px;
+  transform: translateX(var(--plate-tx));
+  width: min(78%, 380px); min-height: 84px;
+  display: grid; place-items: center;
+  padding: 14px 22px;
+  font-family: var(--jx-font); font-size: clamp(16px, 5vw, 26px);
+  color: #f3e4c8; text-shadow: 2px 2px 0 #1c1206, 0 0 6px #000;
+  letter-spacing: 2px; text-align: center;
+  background:
+    repeating-linear-gradient(0deg, rgba(255,255,255,.03) 0 2px, rgba(0,0,0,.06) 2px 4px),
+    linear-gradient(180deg, #6a5844, #4a3b2c 45%, #2f2418);
+  border: 4px solid #3b2c1d;
+  border-radius: 14px;
+  box-shadow: inset 0 0 0 3px #7c6247, inset 0 0 26px #000a, 0 6px 0 rgba(0,0,0,.35);
+}
+/* Two ropes hanging the plate from a point above it - each pseudo-element is
+   a rivet (radial-gradient dot) at its base plus a twisted-rope texture
+   running up from there, angled inward so both ropes converge toward the
+   swing's pivot (transform-origin, just above center) for a believable
+   hung-sign look. They're part of .jx-plate itself so they swing as one
+   rigid body with it instead of needing independent rope physics. */
+.jx-plate::before, .jx-plate::after {
+  content: ''; position: absolute; top: -30px; width: 5px; height: 38px;
+  border-radius: 2px;
+  background:
+    radial-gradient(circle at 50% 94%, #c9b18d 0 3px, #6b5033 4px, transparent 5px),
+    repeating-linear-gradient(180deg, #a3865f 0 3px, #6f5738 3px 6px);
+  box-shadow: 0 0 0 1px rgba(0,0,0,.35);
+}
+.jx-plate::before { left: 16px; transform-origin: bottom center; transform: rotate(16deg); }
+.jx-plate::after  { right: 16px; transform-origin: bottom center; transform: rotate(-16deg); }
+
+/* Damped pendulum swing, replayed (via JS re-toggling this class) every time
+   the page holding this plate becomes visible - see showScreen() in
+   src/utils/dom.js and openMissionsPanel() in src/screens/menu.js. */
+.jx-plate.jx-swing {
+  transform-origin: 50% -6px;
+  animation: jxPlateSwing 1.15s cubic-bezier(.25,.1,.25,1) both;
+}
+@keyframes jxPlateSwing {
+  0%   { transform: translateX(var(--plate-tx)) rotate(0deg); }
+  8%   { transform: translateX(var(--plate-tx)) rotate(-16deg); }
+  20%  { transform: translateX(var(--plate-tx)) rotate(12deg); }
+  32%  { transform: translateX(var(--plate-tx)) rotate(-8deg); }
+  44%  { transform: translateX(var(--plate-tx)) rotate(6deg); }
+  56%  { transform: translateX(var(--plate-tx)) rotate(-4deg); }
+  68%  { transform: translateX(var(--plate-tx)) rotate(2.5deg); }
+  80%  { transform: translateX(var(--plate-tx)) rotate(-1.5deg); }
+  90%  { transform: translateX(var(--plate-tx)) rotate(.8deg); }
+  100% { transform: translateX(-50%) rotate(0deg); }
+}
+
+/* ======================================================================
+   SHOP  (#s-shop)
+   ====================================================================== */
+#s-shop.screen { display: flex; padding: 0; gap: 0; }
+/* Missile picker: the arsenal art (all 4 missiles already sitting in their
+   bays) IS the #s-shop background now (index.html .jx-bg) — "center center"
+   keeps the 2x2 bay grid, which sits around the art's own vertical middle,
+   inside frame on wide/short viewports (the shared .jx-bg default of
+   "center top" would risk cropping the bottom row off on those). Buy/select
+   buttons are placed in real pixels by positionArsenalButtons() in shop.js,
+   which redoes the browser's own cover-fit math — a plain CSS % position
+   would drift off the art the moment the cover crop changes. */
+#s-shop .jx-bg { object-position: center center; }
+.jx-arsenal-btns { position: absolute; inset: 0; z-index: 6; pointer-events: none; }
+#s-shop .jx-arsenal-btn {
+  position: absolute; transform: translate(-50%, 0); pointer-events: auto;
+  min-width: 84px; padding: 6px 14px; text-align: center;
+  font-family: var(--jx-font); font-size: 13px; color: #fff;
+  text-shadow: 2px 2px 0 var(--jx-ink);
+  background: linear-gradient(180deg, var(--jx-yellow-hi), var(--jx-yellow) 50%, #F0A500);
+  border-radius: 14px; border: 0; cursor: pointer;
+  box-shadow: 0 4px 0 #A56A00, 0 0 14px rgba(255,200,40,.45), inset 0 2px 0 rgba(255,255,255,.5);
+}
+#s-shop .jx-arsenal-btn[data-owned="1"] { filter: grayscale(.4) brightness(.9); }
+#s-shop .jx-arsenal-btn[data-active="1"] {
+  box-shadow: 0 4px 0 #A56A00, 0 0 18px var(--jx-yellow), inset 0 2px 0 rgba(255,255,255,.6);
+  outline: 2px solid var(--jx-yellow); outline-offset: 1px;
+}
+#s-hangar .jx-slot-thumb {
+  background-size: 400% 300% !important;
+  background-position: 0% 0% !important;
+}
+#s-shop .jx-shop-note {
+  position: absolute; left: 0; right: 0; bottom: 108px; text-align: center;
+  font-family: var(--jx-font); font-size: 9px; color: #fff; text-shadow: 2px 2px 0 var(--jx-ink);
+  z-index: 6;
+}
+#s-shop .shop-content { position: absolute; inset: 170px 0 108px; z-index: 6; overflow-y: auto; }
+/* It covers the arsenal and comes after the missile buttons in the DOM, so
+   let clicks through its empty area to the buy/select buttons. */
+#s-shop .shop-content { pointer-events: none; }
+#s-shop .shop-content > * { pointer-events: auto; }
+#s-shop .jx-shop-cell small {
+  font-family: var(--jx-font); font-size: 8px; line-height: 1.4; color: #fff;
+  text-shadow: 2px 2px 0 var(--jx-ink); text-align: center;
+}
+#s-shop .jx-plan-count {
+  font-family: var(--jx-font); font-size: 22px; color: #ffe6c2; text-shadow: 2px 2px 0 var(--jx-ink);
+}
+
+/* ======================================================================
+   HANGAR PANEL (used by #s-hangar AND the lobby / shop / training sheets)
+   ====================================================================== */
+#s-hangar.screen { display: block; padding: 0; gap: 0; }
+#s-hangar .jx-bg { height: 150px; object-position: center 40%; }
+#s-hangar .jx-panel {
+  position: absolute; left: 3%; right: 3%; top: 120px; bottom: 8px;
+  background: var(--jx-yellow);
+  border: 9px solid var(--jx-orange);
+  border-radius: 30px;
+  box-shadow: 0 8px 0 rgba(0,0,0,.25);
+  display: flex; flex-direction: column; overflow: hidden;
+}
+#s-hangar .jx-navbtn { top: auto; bottom: 20px; }
+
+/* Segmented "slide" toggle: one rounded track holding both options, with a
+   pill that slides behind whichever one is active — replaces the old look of
+   two separate raised tabs (uneven heights made them read as two clashing
+   bumps sitting on top of the panel instead of one control). */
+.jx-tabs {
+  position: relative; display: flex; gap: 4px;
+  margin: 14px 14px 0; padding: 5px;
+  background: rgba(0,0,0,.2);
+  border-radius: 20px;
+  box-shadow: inset 0 2px 5px rgba(0,0,0,.3);
+}
+.jx-tabs::before {
+  content: ''; position: absolute; z-index: 0; top: 5px; bottom: 5px; left: 5px;
+  /* Three equal tabs: 10px of outer padding + 2 × 4px gaps. */
+  width: calc((100% - 18px) / 3);
+  background: linear-gradient(180deg, var(--jx-yellow-hi), var(--jx-yellow) 55%, #F0A500);
+  border-radius: 16px;
+  box-shadow: 0 3px 0 #A56A00, inset 0 2px 0 rgba(255,255,255,.5);
+  transition: transform .25s cubic-bezier(.25,.85,.3,1);
+}
+.jx-tabs:has(.jx-tab:nth-child(2).is-active)::before { transform: translateX(calc(100% + 4px)); }
+.jx-tabs:has(.jx-tab:nth-child(3).is-active)::before { transform: translateX(calc(200% + 8px)); }
+.jx-tab {
+  position: relative; z-index: 1;
+  flex: 1; border: 0; cursor: pointer;
+  padding: 10px 4px;
+  font-family: var(--jx-font); font-size: 11px; line-height: 1.25;
+  color: #fff; text-shadow: 2px 2px 0 var(--jx-ink);
+  background: transparent;
+  border-radius: 16px;
+  opacity: .7;
+  transition: opacity .2s ease, color .2s ease, text-shadow .2s ease;
+}
+.jx-tab.is-active { opacity: 1; color: var(--jx-ink); text-shadow: none; }
+.jx-panel-title {
+  text-align: center; padding: 8px 0 4px;
+  font-family: var(--jx-font); font-size: 15px; color: #fff; text-shadow: 2px 2px 0 var(--jx-ink);
+}
+.jx-panel-body {
+  flex: 1; overflow-y: auto; padding: 12px 16px 20px;
+  -webkit-overflow-scrolling: touch;
+}
+.jx-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.jx-list { display: flex; flex-direction: column; gap: 14px; }
+.jx-slot {
+  background: var(--jx-slot);
+  border: 0; border-radius: 22px; cursor: pointer;
+  box-shadow: inset 0 0 0 3px rgba(0,0,0,.08), 0 4px 0 rgba(0,0,0,.15);
+  padding: 12px; color: #fff; text-align: center;
+  font-family: var(--jx-font); font-size: 9px; line-height: 1.5;
+  text-shadow: 2px 2px 0 var(--jx-ink);
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+}
+.jx-grid .jx-slot { min-height: 150px; position: relative; }
+.jx-list  .jx-slot { min-height: 92px; }
+
+/* ⓘ button on each hangar plane card - opens #plane-info-overlay with a
+   short real-world description, without hijacking the card's own
+   select/unlock click (that handler calls e.stopPropagation()). */
+.jx-slot-info-btn {
+  position: absolute; top: 6px; right: 6px; z-index: 2;
+  width: 22px; height: 22px; padding: 0; border: 0; cursor: pointer;
+  border-radius: 50%; display: grid; place-items: center;
+  font-size: 13px; line-height: 1; color: #fff;
+  background: rgba(0,0,0,.35);
+  box-shadow: 0 0 0 1px rgba(255,255,255,.4);
+}
+.jx-slot-info-btn:active { transform: scale(.9); }
+
+
+/* Training drawer's operations picker reuses the Practice selector's own
+   `.practice-subtitle`/`.practice-ops-grid`/`.practice-all-btn` classes
+   (style.css) as-is - just need its subtitle readable against the drawer's
+   yellow background instead of style.css's original dark panel. */
+#training-sheet-body .practice-subtitle { color: var(--jx-ink); text-shadow: 1px 1px 0 rgba(255,255,255,.35); }
+#training-sheet-body .practice-all-btn { display: block; margin: 4px auto 0; }
+/* The training drawer spans the full app width (unlike the old #practice-select
+   modal, which was capped at 440px) - on wide/tablet/landscape screens that
+   stretched the 2-col ops grid so wide each button squashed down to a thin
+   flat bar. Cap the grid's own width and give each button a real minimum
+   height so the +/-/×/÷ cards stay proportioned instead of looking squished. */
+#training-sheet-body .practice-ops-grid {
+  max-width: 420px;
+  margin: 0 auto;
+}
+#training-sheet-body .practice-op-btn {
+  min-height: 96px;
+}
+
+/* shot-plan card: the "plane shooting" demo fills the whole card,
+   name pinned to the top, price pinned to the bottom */
+.jx-list .jx-slot-shot {
+  position: relative; display: block; padding: 0;
+  min-height: 270px; height: 44vh; max-height: 340px; overflow: hidden;
+  background: #0b2c3d;
+}
+.jx-slot-shot .shop-plan-mini-canvas {
+  position: absolute; inset: 0; width: 100%; height: 100%; display: block;
+}
+.jx-slot-shot-name,
+.jx-slot-shot-price {
+  position: absolute; left: 0; right: 0;
+  padding: 9px 12px; text-align: center;
+  font-family: var(--jx-font); color: #fff;
+  text-shadow: 2px 2px 0 var(--jx-ink);
+}
+.jx-slot-shot-name  { top: 0; font-size: 12px; line-height: 1.4; padding: 14px 14px 18px;
+  background: linear-gradient(180deg, rgba(0,0,0,.65), rgba(0,0,0,0)); }
+.jx-slot-shot-price { bottom: 0; font-size: 15px; color: var(--jx-yellow-hi); padding: 16px 14px;
+  background: linear-gradient(0deg, rgba(0,0,0,.7), rgba(0,0,0,0)); }
+.jx-slot-shot-price .jg-coin-icon { width: 1.1em; height: 1.1em; margin-left: 4px; vertical-align: -0.2em; }
+.jx-slot-shot.is-locked { filter: none; }        /* keep the demo vivid */
+.jx-slot img,
+.jx-slot .jx-slot-thumb {
+  width: 78%; max-height: 84px; object-fit: contain; image-rendering: pixelated;
+}
+.jx-slot .jx-slot-thumb { background-repeat: no-repeat; background-position: 0% 0%; height: 60px; background-size: 400% 300%; }
+.jx-slot.is-active { box-shadow: inset 0 0 0 4px var(--jx-yellow-hi), 0 0 18px rgba(255,216,77,.7); }
+.jx-slot.is-locked { filter: grayscale(.55) brightness(.8); }
+.jx-slot em { font-style: normal; color: var(--jx-yellow-hi); }
+
+/* missile-skin card (hangar "TIR DE MISSILE" tab): thumbnail beside the
+   name/status instead of stacked above it, so the card is much shorter. */
+.jx-list .jx-slot-missile {
+  flex-direction: row; align-items: center; justify-content: flex-start;
+  min-height: 0; padding: 8px 16px; gap: 14px; text-align: left;
+}
+.jx-list .jx-slot-missile .jx-slot-thumb { width: 48px; height: 48px; max-height: none; flex: none; }
+.jx-slot-missile-copy { display: flex; flex-direction: column; gap: 4px; }
+
+/* plane card (hangar "AVIONS" tab): same row layout as the missile-skin
+   card above, but wider so a short real-world description fits next to
+   the aircraft artwork instead of getting cropped in a 2-column grid. */
+.jx-list .jx-slot-plane {
+  flex-direction: row; align-items: center; justify-content: flex-start;
+  min-height: 0; padding: 10px 16px; gap: 14px; text-align: left;
+}
+.jx-list .jx-slot-plane img { width: 84px; max-height: 64px; flex: none; }
+.jx-slot-plane-copy { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.jx-slot-plane-copy p {
+  margin: 2px 0 0; font-size: 7px; line-height: 1.6; font-weight: normal;
+  color: #ffe6c2; text-shadow: 1px 1px 0 var(--jx-ink); letter-spacing: .2px;
+}
+
+/* ======================================================================
+   SETTINGS DRAWER (#settings-panel)
+   ====================================================================== */
+#settings-panel.sett-backdrop { background: rgba(0,0,0,.5); backdrop-filter: blur(2px); align-items: stretch; justify-content: flex-end; }
+#settings-panel .jx-drawer {
+  width: min(78%, 340px); height: 100%;
+  background: var(--jx-yellow);
+  border-left: 14px solid var(--jx-orange);
+  border-radius: 40px 0 0 40px;
+  padding: 26px 22px 30px;
+  transform: rotate(-4deg) translateX(6%);
+  transform-origin: top right;
+  overflow-y: auto;
+  box-shadow: -12px 0 40px rgba(0,0,0,.4);
+  animation: jx-drawer-in .22s ease-out;
+  touch-action: pan-y;
+}
+#settings-panel .jx-drawer.is-swiping { animation: none; transition: none; }
+#settings-panel .jx-drawer.is-closing { animation: none; transition: transform .2s ease-in; transform: rotate(-4deg) translateX(100%); }
+@keyframes jx-drawer-in { from { transform: rotate(-4deg) translateX(100%); } to { transform: rotate(-4deg) translateX(6%); } }
+#settings-panel .jx-drawer h2 {
+  font-family: var(--jx-font); font-size: 24px; color: #fff;
+  text-shadow: 3px 3px 0 var(--jx-ink); text-align: center; margin: 4px 0 20px;
+}
+#settings-panel .jx-pill {
+  display: block; width: 100%; margin: 0 0 16px;
+  border: 0; cursor: pointer; text-align: center;
+  padding: 16px 14px;
+  font-family: var(--jx-font); font-size: 13px; line-height: 1.4;
+  color: #fff; text-shadow: 2px 2px 0 var(--jx-ink);
+  background: rgba(214,120,40,.85);
+  border-radius: 22px;
+  box-shadow: 0 4px 0 rgba(0,0,0,.15);
+}
+#settings-panel .jx-pill:active { transform: translateY(2px); }
+#settings-panel .jx-pill small { display: block; font-size: 9px; opacity: .85; margin-top: 4px; }
+/* The Google sign-in button carries style.css's old `.login-btn` class from
+   the retired full-screen login layout, which still sets
+   `position: absolute; left: 24px; bottom: 38px; width: 220px` - meant to
+   place it on that old screen, not as a pill in this drawer's normal list
+   flow. Left in place, that stray absolute positioning pokes the button's
+   square corner out past this drawer's rounded edge, showing the dark
+   backdrop behind it as a grey wedge in one corner. Put it back in flow. */
+#settings-panel .jx-pill.login-btn {
+  position: static;
+  width: 100%;
+}
+#settings-panel .jx-sub { display: none; padding: 4px 4px 14px; }
+#settings-panel .jx-sub.is-open { display: block; }
+#settings-panel .jx-sub .sett-row { margin-bottom: 10px; }
+#settings-panel .jx-sub .sett-label,
+#settings-panel .jx-sub .sett-vol-val { color: var(--jx-ink); }
+
+/* ======================================================================
+   BADGES (#badges-overlay) — opened from the RÉGLAGE drawer's BADGES pill;
+   its .jx-drawer is used as a centered modal card here (inline style sets
+   transform:none, rounded-all-corners) rather than the settings drawer's
+   rotated slide-in, so it needs its own background instead of inheriting
+   #settings-panel's - previously had none at all, showing only the dark
+   backdrop through it.
+   ====================================================================== */
+#badges-overlay .jx-drawer {
+  background: linear-gradient(180deg, var(--jx-yellow-hi), var(--jx-yellow) 60%, #F0A500);
+  border: 9px solid var(--jx-orange);
+  box-shadow: 0 20px 50px rgba(0,0,0,.5), inset 0 0 0 3px rgba(255,255,255,.25);
+  /* the inline height:auto + max-height:88vh means .hangar-badges' own
+     height:100% has nothing real to resolve against, so IT can't be the
+     thing that scrolls - give the drawer itself the scroll instead, or
+     badges past the max-height are simply unreachable. */
+  overflow-y: auto;
+}
+/* .hangar-badge-card's own background (from style.css) is a translucent
+   dark navy meant to sit on the Hangar screen's dark background - on this
+   orange card it blends into a muddy olive that doesn't read as
+   intentional. Swap it for a plain dark overlay, which reads as "a shaded
+   card" against any background color instead of fighting the orange. */
+#badges-overlay .hangar-badge-card {
+  background: linear-gradient(180deg, rgba(20,14,4,.55), rgba(20,14,4,.72));
+  border-color: rgba(255,255,255,.4);
+}
+#badges-overlay .hangar-badge-card.unlocked {
+  border-color: var(--jx-yellow-hi);
+  box-shadow: 0 0 18px rgba(255,216,77,.5);
+}
+#badges-overlay .hangar-badges-head,
+#badges-overlay .hangar-badges-head * {
+  font-family: var(--jx-font);
+  color: #fff;
+  text-shadow: 2px 2px 0 var(--jx-ink);
+}
+/* #btn-badges-close is a bare `.jx-pill` (that class only has real styling
+   scoped to #settings-panel) plus an inline margin - outside that scope it
+   fell back to the browser's default button chrome, which on this glyph
+   rendered as a stark black-circle-with-white-X blob instead of a pixel-art
+   button. Style it as the same round orange icon-button used for the
+   burger/nav-arrow/plane-cycle controls elsewhere, pinned to the corner
+   like a normal modal close button. */
+#btn-badges-close {
+  display: flex; align-items: center; justify-content: center;
+  width: 40px; height: 40px; margin: 0 0 14px auto; padding: 0;
+  border: 0; cursor: pointer;
+  font-family: var(--jx-font); font-size: 16px; color: #fff; text-shadow: 2px 2px 0 var(--jx-ink);
+  background: linear-gradient(180deg, #ffab3d, var(--jx-orange) 55%, var(--jx-orange-deep));
+  /* style.css has a global `button { border-radius: var(--game-btn-radius)
+     !important; }` - beating it needs !important too, so this ID rule's
+     own higher specificity can win the tie-break instead of a fixed 14px. */
+  border-radius: 50% !important;
+  box-shadow: 0 3px 0 var(--jx-orange-dk), inset 0 2px 0 rgba(255,255,255,.35);
+}
+#btn-badges-close:active { transform: translateY(2px); }
+
+/* Same fix as #btn-badges-close above, applied to the week tracker popup. */
+#btn-week-close {
+  display: flex; align-items: center; justify-content: center;
+  width: 40px; height: 40px; margin: 0 0 14px auto; padding: 0;
+  border: 0; cursor: pointer;
+  font-family: var(--jx-font); font-size: 16px; color: #fff; text-shadow: 2px 2px 0 var(--jx-ink);
+  background: linear-gradient(180deg, #ffab3d, var(--jx-orange) 55%, var(--jx-orange-deep));
+  border-radius: 50% !important;
+  box-shadow: 0 3px 0 var(--jx-orange-dk), inset 0 2px 0 rgba(255,255,255,.35);
+}
+#btn-week-close:active { transform: translateY(2px); }
+
+
+/* ======================================================================
+   FEEDBACK (#feedback-overlay) — daily rating popup. Still had the old
+   dark-navy/gold card from before the pixel-arcade redesign; restyled to
+   the same orange-border/yellow-fill card used by Badges, in the game's
+   pixel font instead of the generic 'Press Start 2P' + flat colors.
+   ====================================================================== */
+#feedback-overlay .feedback-panel {
+  background: linear-gradient(180deg, var(--jx-yellow-hi), var(--jx-yellow) 60%, #F0A500);
+  border: 9px solid var(--jx-orange);
+  border-radius: 24px;
+  box-shadow: 0 20px 50px rgba(0,0,0,.5), inset 0 0 0 3px rgba(255,255,255,.25);
+  font-family: var(--jx-font);
+}
+#feedback-overlay .feedback-header {
+  font-size: 14px; color: #fff; text-shadow: 2px 2px 0 var(--jx-ink);
+  letter-spacing: 1px; line-height: 1.6;
+}
+#feedback-overlay .feedback-sub {
+  font-size: 9px; color: var(--jx-ink); letter-spacing: 2px;
+}
+#feedback-overlay .fb-star {
+  color: rgba(122,58,0,.35);
+  text-shadow: 1px 1px 0 rgba(255,255,255,.25);
+}
+#feedback-overlay .fb-star:hover,
+#feedback-overlay .fb-star.fb-star-on {
+  color: #fff; text-shadow: 2px 2px 0 var(--jx-ink), 0 0 12px rgba(255,255,255,.7);
+}
+#feedback-overlay .feedback-textarea {
+  background: rgba(0,0,0,.16);
+  border: 3px solid var(--jx-orange);
+  border-radius: 12px;
+  color: #fff; text-shadow: 1px 1px 0 var(--jx-ink);
+  font-family: var(--jx-font);
+}
+#feedback-overlay .feedback-textarea::placeholder { color: rgba(122,58,0,.55); }
+#feedback-overlay .feedback-textarea:focus { border-color: #fff; }
+#feedback-overlay .feedback-error { color: #a5140a; }
+#feedback-overlay #btn-feedback-submit {
+  display: block; width: 100%; margin: 0; border: 0; cursor: pointer;
+  padding: 14px; font-family: var(--jx-font); font-size: 13px;
+  color: #fff; text-shadow: 2px 2px 0 var(--jx-ink);
+  background: linear-gradient(180deg, #ffab3d, var(--jx-orange) 55%, var(--jx-orange-deep));
+  /* style.css's global `.btn, ... { border-radius: var(--game-btn-radius)
+     !important; }` beats plain specificity - match it with !important too. */
+  border-radius: 22px !important;
+  box-shadow: 0 4px 0 var(--jx-orange-dk), inset 0 2px 0 rgba(255,255,255,.35);
+}
+#feedback-overlay #btn-feedback-submit:active { transform: translateY(2px); box-shadow: 0 2px 0 var(--jx-orange-dk); }
+#feedback-overlay .feedback-skip-btn {
+  font-family: var(--jx-font); font-size: 9px; color: var(--jx-ink); letter-spacing: 1px;
+}
+#feedback-overlay .feedback-skip-btn:hover { color: #fff; }
+#feedback-overlay .feedback-thanks {
+  font-family: var(--jx-font); color: #fff; text-shadow: 2px 2px 0 var(--jx-ink);
+  border: 3px solid rgba(255,255,255,.5); background: rgba(255,255,255,.12); border-radius: 12px;
+}
+
+/* ======================================================================
+   MISSIONS (#missions-panel) — full-page war-room background; tap the
+   tablet on the desk to pop the mission list up over it.
+   ====================================================================== */
+#missions-panel.sett-backdrop { background: #000; }
+#missions-panel .jx-bg { object-position: center center; }
+/* Hidden (not removed) while the tablet popup is open - openMissionsScroll()/
+   closeMissionsScroll() in menu.js toggle this so the room's own "leave"
+   arrow doesn't poke out past the tablet popup's edges. */
+#missions-panel #btn-missions-close.is-hidden { display: none; }
+
+/* Glowing hotspot sitting over the tablet screen in the art. Positioned in
+   real px by positionMissionTablet() in menu.js (same cover-fit math as the
+   shop's missile buttons — a plain CSS % would drift off the tablet the
+   moment the background's crop changes on a different screen shape). */
+#missions-panel .jx-mission-tablet {
+  position: absolute; z-index: 4; transform: translate(-50%, -50%);
+  width: 110px; height: 84px; border-radius: 10px;
+  border: 0; padding: 0; cursor: pointer; background: transparent;
+  animation: jxTabletPulse 1.8s ease-in-out infinite;
+}
+@keyframes jxTabletPulse {
+  0%, 100% { box-shadow: 0 0 0 3px rgba(140,220,220,.35), 0 0 22px rgba(140,220,220,.35); }
+  50%      { box-shadow: 0 0 0 3px rgba(140,220,220,.8), 0 0 34px rgba(140,220,220,.65); }
+}
+
+/* Hover/focus tooltip bubble above the tablet hotspot — desktop mouse-over
+   affordance only (touch devices open the panel directly via tap). */
+.jx-mission-tablet-tip {
+  position: absolute; left: 50%; bottom: 100%;
+  transform: translate(-50%, -10px);
+  white-space: nowrap; pointer-events: none;
+  font-family: var(--jx-font); font-size: 11px; letter-spacing: 1px;
+  color: #eafffe; background: #0b3a48;
+  border: 2px solid rgba(140,220,220,.8);
+  border-radius: 6px; padding: 5px 10px;
+  opacity: 0; transition: opacity .15s ease, transform .15s ease;
+}
+.jx-mission-tablet-tip::after {
+  content: ''; position: absolute; top: 100%; left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: rgba(140,220,220,.8);
+}
+#missions-panel .jx-mission-tablet:hover .jx-mission-tablet-tip,
+#missions-panel .jx-mission-tablet:focus-visible .jx-mission-tablet-tip {
+  opacity: 1; transform: translate(-50%, -14px);
+}
+
+.jx-mission-scroll-backdrop {
+  position: absolute; inset: 0; z-index: 8;
+  background: rgba(0,0,0,.6);
+  display: grid; place-items: center;
+  opacity: 0; pointer-events: none;
+  transition: opacity .2s ease;
+}
+.jx-mission-scroll-backdrop.is-open { opacity: 1; pointer-events: auto; }
+.jx-mission-scroll-backdrop .jx-scroll {
+  transform: scale(.82); opacity: 0;
+  transition: transform .3s cubic-bezier(.34,1.56,.64,1), opacity .2s ease;
+}
+.jx-mission-scroll-backdrop.is-open .jx-scroll {
+  transform: scale(1); opacity: 1;
+}
+
+#missions-panel .jx-mission-scroll-x {
+  position: absolute; z-index: 6; right: -6px; top: -14px;
+  width: 30px; height: 30px; border-radius: 50%; border: 0; cursor: pointer;
+  background: rgba(0,0,0,.7); color: #fff; font-size: 18px; line-height: 1;
+  display: grid; place-items: center;
+  box-shadow: 0 0 0 2px rgba(140,220,220,.6);
+}
+
+/* The mission list now renders as if it were showing on the tablet's own
+   screen: the PNG is a pure visual frame (bezel + glowing screen border),
+   and .jx-scroll-screen is absolutely positioned to land exactly inside
+   that screen's black rectangle (measured from the source art: the cyan
+   border sits at ~7-12% insets on a 612x397 canvas). */
+#missions-panel .jx-scroll {
+  position: relative;
+  width: min(94%, 620px);
+  aspect-ratio: 612 / 397;
+}
+#missions-panel .jx-scroll-tablet-frame {
+  position: absolute; inset: 0; z-index: 1;
+  width: 100%; height: 100%;
+  image-rendering: pixelated; pointer-events: none;
+}
+#missions-panel .jx-scroll-screen {
+  position: absolute; z-index: 2;
+  top: 12%; bottom: 17.5%; left: 8.2%; right: 8.4%;
+  overflow-y: auto; padding: 2px 8px;
+}
+#missions-panel .jx-scroll-title {
+  font-family: var(--jx-font); font-size: 14px; letter-spacing: 2px;
+  color: #baf6f6; text-align: center; text-shadow: 0 0 8px rgba(140,220,220,.8);
+  margin: 2px 0 8px;
+}
+#missions-panel .jx-mission {
+  position: relative; z-index: 2; text-align: center; margin: 0 0 26px;
+  font-family: var(--jx-font); color: #fff;
+}
+#missions-panel .jx-mission-label { font-size: 13px; line-height: 1.5; text-shadow: 2px 2px 0 var(--jx-ink); }
+/* MULTI / PRATIQUE badge in front of team and practice missions. */
+#missions-panel .jx-mission-tag {
+  display: inline-block; margin-right: 6px; padding: 2px 6px; border-radius: 6px;
+  font-size: 9px; line-height: 1.4; vertical-align: 2px; text-shadow: none; color: #fff;
+  box-shadow: inset 0 -2px 0 rgba(0,0,0,.25);
+}
+#missions-panel .jx-mission-tag.is-coop { background: #6a3fe0; }
+#missions-panel .jx-mission-tag.is-practice { background: #16a34a; }
+#missions-panel .jx-mission-rewards {
+  display: flex; align-items: center; justify-content: center; gap: 22px; margin-top: 10px;
+  font-size: 14px; text-shadow: 2px 2px 0 var(--jx-ink);
+}
+#missions-panel .jx-mission-rewards img { width: 26px; height: 26px; vertical-align: middle; image-rendering: pixelated; }
+#missions-panel .jx-mission button {
+  margin-top: 10px; border: 0; cursor: pointer;
+  font-family: var(--jx-font); font-size: 10px; color: #fff; text-shadow: 1px 1px 0 var(--jx-ink);
+  padding: 8px 16px; border-radius: 12px;
+  background: linear-gradient(180deg, var(--jx-yellow-hi), #F0A500);
+  box-shadow: 0 3px 0 #A56A00;
+}
+#missions-panel .jx-mission button:disabled { filter: grayscale(.6) brightness(.85); cursor: default; }
+#missions-panel .missions-timer {
+  position: relative; z-index: 2; text-align: center; color: #fff;
+  text-shadow: 2px 2px 0 var(--jx-ink);
+  font-family: var(--jx-font); font-size: 9px; margin: 10px 0 18px;
+}
+#missions-panel .missions-list {
+  position: relative; z-index: 2;
+  max-height: 56vh; overflow-y: auto; padding: 0 2px;
+  display: block; background: none; border: 0;
+}
+#missions-panel .jx-mission.is-claimed { opacity: .55; }
+
+/* ======================================================================
+   Small screens
+   ====================================================================== */
+@media (max-width: 400px) {
+  .jx-hud-main { gap: 12px; padding: 0 12px; height: 42px; }
+  .jx-chip img { width: 22px; height: 22px; }
+  .jx-chip b { font-size: 13px; }
+  .jx-burger { width: 50px; height: 42px; }
+  .jx-navbtn { width: 52px; height: 52px; font-size: 22px; }
+  .jx-cta { bottom: 118px; min-height: 52px; }
+  .jx-plate { font-size: 20px; top: 66px; }
+}
+@media (min-width: 820px) {
+  .jx-hud { left: 12%; right: 12%; }
+  .jx-plane-wrap img { max-height: 40vh; }
+  #s-hangar .jx-panel { left: 50%; right: auto; transform: translateX(-50%); width: min(460px, 92vw); }
+  #missions-panel .jx-scroll { width: 460px; }
+}
+
+/* ======================================================================
+   Phone: lobby + training plane showcase. The cycle arrows are flex
+   siblings of the img in .jx-plane-wrap, and they're flex:none (rigid) -
+   on a narrow phone the img was already being flex-shrunk down to
+   whatever sliver was left after those two rigid circles, so simply
+   raising its % did nothing (it just got clamped back down). Taking the
+   arrows out of the flex flow and overlaying them absolutely over the
+   image area lets the plane's size and the arrows' position be tuned
+   independently. Same treatment on both #s-menu and #s-training so all
+   4 cycle buttons (lobby prev/next, training prev/next) match.
+   ====================================================================== */
+html.touch-phone #s-menu .jx-plane-wrap,
+html.touch-phone #s-training .jx-plane-wrap {
+  display: block; width: calc(100% - 24px); text-align: center;
+}
+html.touch-phone #s-menu .jx-plane-wrap img,
+html.touch-phone #s-training .jx-plane-wrap img {
+  display: block; margin: 0 auto;
+  width: min(62%, 300px); max-height: 46vh;
+}
+html.touch-phone #s-menu .jx-plane-wrap img[data-plane="c130"],
+html.touch-phone #s-menu .jx-plane-wrap img[data-plane="f117"],
+html.touch-phone #s-training .jx-plane-wrap img[data-plane="c130"],
+html.touch-phone #s-training .jx-plane-wrap img[data-plane="f117"] { width: min(74%, 320px); }
+html.touch-phone #s-menu .jx-plane-wrap img[data-plane="f35"],
+html.touch-phone #s-training .jx-plane-wrap img[data-plane="f35"]  { width: min(68%, 340px); }
+html.touch-phone #s-menu .jx-plane-wrap .jx-planecycle,
+html.touch-phone #s-training .jx-plane-wrap .jx-planecycle {
+  position: absolute; top: 50%; transform: translateY(-50%); z-index: 2;
+  width: 38px; height: 38px; font-size: 15px;
+}
+html.touch-phone #s-menu #btn-lobby-plane-prev,
+html.touch-phone #s-training #btn-training-plane-prev { left: 70px; }
+html.touch-phone #s-menu #btn-lobby-plane-next,
+html.touch-phone #s-training #btn-training-plane-next { right: 70px; }
+
+/* ======================================================================
+   LEVEL MAP (#s-levelmap) — one page per biome (10 levels each) instead of
+   one long 50-level scroll, with a title bar + </> arrows to switch world
+   (PACIFIQUE/SAHARA/USA/ARCTIQUE/ESPACE - see BIOME_META in
+   src/data/levels.js). The level nodes/connectors/player-marker themselves
+   keep their existing style.css art (already decent, sprite-based); this
+   only reskins the surrounding chrome to the pixel-arcade look and adds the
+   pagination + chest/star-count widget the old continuous scroll had none of.
+   ====================================================================== */
+#s-levelmap .jx-hud {
+  /* The shared .jx-hud is `position:absolute` for screens that layer HUD
+     over a full-bleed background image. This screen's content
+     (#levelmap-scroll) is laid out in normal flex flow instead, so the HUD
+     needs to sit IN that flow too, or the title bar below it would render
+     underneath it instead of below it. */
+  position: static;
+  margin: max(14px, env(safe-area-inset-top)) var(--frame, 3.5%) 10px;
+  width: auto;
+}
+#s-levelmap .jx-hud-main { justify-content: flex-end; }
+.jx-map-back {
+  /* Same round orange icon-button as .jx-burger/.jx-navbtn elsewhere, but its
+     own class instead of literally `.jx-burger` - settings.js wires EVERY
+     `.jx-burger` to open the settings drawer, which fired alongside this
+     button's own "back to lobby" handler and popped both at once. */
+  width: 46px; height: 46px; flex: none;
+  display: grid; place-items: center;
+  border: 0; cursor: pointer;
+  background: linear-gradient(180deg, #ffab3d, var(--jx-orange) 55%, var(--jx-orange-deep));
+  border-radius: 18px !important; /* beats style.css's global `button { border-radius: var(--game-btn-radius) !important }` */
+  box-shadow: 0 3px 0 var(--jx-orange-dk), inset 0 2px 0 rgba(255,255,255,.35);
+  font-family: var(--jx-font); font-size: 20px; color: #fff; text-shadow: 2px 2px 0 var(--jx-ink);
+}
+.jx-map-back:active { transform: translateY(2px); }
+
+.jx-map-titlebar {
+  --cap: clamp(60px, 9vw, 110px);
+  flex: none; align-self: stretch;
+  position: relative; z-index: 5;
+  display: flex; align-items: center; justify-content: space-between;
+  margin: 0; padding: 0; height: clamp(46px, 6vw, 62px);
+  background: linear-gradient(180deg, #3a4640, #27312d 60%, #1f2824);
+  border-bottom: 2px solid rgba(160,205,60,.75);
+  box-shadow: inset 0 2px 0 rgba(255,255,255,.14), inset 0 -1px 0 #0e1310;
+}
+.jx-map-titlebar::before,
+.jx-map-titlebar::after {
+  content: ''; position: absolute; top: 0; bottom: 0; width: var(--cap);
+  background: linear-gradient(180deg, #2b3631, #141a17);
+  pointer-events: none;
+}
+.jx-map-titlebar::before { left: 0; clip-path: polygon(0 0, 100% 0, 78% 100%, 0 100%); }
+.jx-map-titlebar::after { right: 0; clip-path: polygon(0 0, 100% 0, 100% 100%, 22% 100%); }
+.jx-map-title {
+  position: relative; z-index: 1;
+  flex: 1; text-align: center;
+  font-family: var(--jx-font); font-size: clamp(15px, 2.2vw, 24px); letter-spacing: 3px;
+  color: #dfe8b0; text-shadow: 0 0 8px rgba(160,210,60,.35), 2px 2px 0 #0e1310;
+}
+.jx-map-biome-arrow {
+  flex: none; position: relative; z-index: 1; width: var(--cap); height: 100%;
+  border: 0 !important; cursor: pointer;
+  background: none !important; box-shadow: none !important;
+  font-size: 0 !important; color: transparent;
+}
+.jx-map-biome-arrow::before {
+  content: ''; position: absolute; left: 50%; top: 50%;
+  width: 13px; height: 13px;
+  border-left: 5px solid #e6962c; border-bottom: 5px solid #e6962c;
+  transform: translate(-30%, -50%) rotate(45deg);
+  filter: drop-shadow(-1px 2px 0 #7a4308);
+}
+#btn-map-biome-next::before { transform: translate(-70%, -50%) rotate(-135deg); }
+.jx-map-biome-arrow:active { transform: translateY(2px); }
+
+/* A shared style.css rule pads every "old-theme" screen (#s-briefing,
+   #s-shop, #s-levelmap, ...) for safe-area insets, since those screens have
+   no HUD of their own to carry that inset. This screen now has its own
+   jx-hud/titlebar, which already margin themselves in by 3.5% - so that
+   shared padding just shrank #levelmap-nodes's box, leaving an unwanted
+   strip of #s-levelmap's own dark backdrop down the side once the (now
+   full-bleed elsewhere) ocean/desert/etc tile stopped quite reaching the
+   edge. Zero it out here and let the background run edge to edge instead. */
+#s-levelmap { padding: 0 !important; }
+
+/* Radar-style territory panel: no bitmap map any more. The land, borders and
+   dotted route are an SVG built in levelmap-territories.js; level nodes are
+   absolutely positioned by percentage on top of it. The long !important /
+   3-id selectors are needed to beat the legacy zig-zag column rules in
+   style.css (which still target #levelmap-nodes on phone/touch). */
+html #s-levelmap {
+  --frame: clamp(12px, 2.6vw, 44px);
+  background:
+    repeating-linear-gradient(0deg, rgba(255,255,255,.03) 0 2px, transparent 2px 4px),
+    linear-gradient(90deg, #141a17, #2e3a35 3.5%, #29342f 50%, #2e3a35 96.5%, #141a17) !important;
+}
+html #s-levelmap::before {
+  content: ''; position: absolute; inset: 0; z-index: 30; pointer-events: none;
+  border-radius: 26px 26px 0 0;
+  box-shadow: inset 0 3px 0 #0e1310, inset 0 5px 0 #56645c, inset 0 8px 0 #1c2420;
+}
+html #s-levelmap::after {
+  content: ''; position: absolute; left: 0; right: 0; top: 7px; height: 6px; z-index: 31; pointer-events: none;
+  background:
+    repeating-linear-gradient(90deg, #0d1210 0 12px, transparent 12px 17px) 24% 0 / 14% 100% no-repeat,
+    repeating-linear-gradient(90deg, #0d1210 0 12px, transparent 12px 17px) 76% 0 / 14% 100% no-repeat;
+}
+#s-levelmap #levelmap-scroll {
+  display: flex !important;
+  flex-direction: column;
+  flex: 1 1 0 !important;
+  margin: 0 0 var(--frame) !important;
+  padding: 0 !important;
+  overflow-x: hidden;
+  overflow-y: auto;
+  background: none !important;
+  /* Old CRT television: rounded tube corners inside a thick dark bezel. */
+  border: 3px solid #050803 !important;
+  border-radius: clamp(26px, 6.5vw, 76px) / clamp(26px, 5vw, 60px) !important;
+  box-shadow:
+    0 0 0 2px #56645c,
+    0 0 0 5px #0d1210,
+    0 0 0 6px #3b4741,
+    0 0 0 9px #161d1a,
+    inset 0 0 0 2px rgba(150,200,60,.22) !important;
+}
+#s-levelmap #levelmap-scroll #levelmap-nodes {
+  --tn: clamp(34px, min(17cqw, 10.5cqh), 104px);
+  container-type: size;
+  position: relative !important;
+  display: block !important;
+  flex: 1 0 0 !important;
+  width: 100% !important;
+  max-width: none !important;
+  min-height: 520px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: hidden;
+  background:
+    linear-gradient(180deg, rgba(150,210,50,.32), transparent 7%),
+    radial-gradient(ellipse at 50% 50%, transparent 58%, rgba(0,0,0,.42)),
+    radial-gradient(ellipse at 50% 46%, rgba(96,140,32,.42), transparent 72%),
+    linear-gradient(180deg, #223d0c, #182b09) !important;
+}
+#levelmap-nodes::before,
+#levelmap-nodes::after {
+  content: ''; position: absolute; top: 0; bottom: 0; width: 9px; z-index: 1; pointer-events: none;
+  background: repeating-linear-gradient(to bottom, rgba(170,215,80,.4) 0 1px, transparent 1px 6px);
+}
+#levelmap-nodes::before { left: 0; }
+#levelmap-nodes::after { right: 0; transform: scaleX(-1); }
+
+.tmap-board {
+  position: absolute; left: 0; top: 0; width: 100%; height: 100%;
+}
+.tmap-svg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.tmap-svg path { vector-effect: non-scaling-stroke; }
+.tmap-glass {
+  position: absolute; inset: 0; z-index: 6; pointer-events: none;
+  background:
+    radial-gradient(ellipse 62% 30% at 26% 7%, rgba(255,255,255,.11), transparent 72%),
+    radial-gradient(ellipse at 50% 50%, transparent 52%, rgba(0,0,0,.62) 100%),
+    repeating-linear-gradient(0deg, rgba(0,0,0,.2) 0 1px, transparent 1px 3px);
+  box-shadow: inset 0 0 0 2px rgba(0,0,0,.65), inset 0 0 34px 8px rgba(0,0,0,.6);
+}
+.tmap-canvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.tmap-route > * { fill: none; stroke-linecap: round; stroke-width: 3.5; stroke-dasharray: 0.1 9; }
+.tmap-route > .reached { stroke: #8bff62; filter: drop-shadow(0 0 3px rgba(139,255,98,.75)); }
+.tmap-route > .ahead { stroke: rgba(190,230,110,.32); stroke-width: 3; }
+
+#s-levelmap #levelmap-nodes .tmap-node {
+  position: absolute; z-index: 3;
+  width: var(--tn); height: calc(var(--tn) * 1.015);
+  transform: translate(-50%, -50%);
+  margin: 0; padding: 0; border: 0 !important; background: none !important; box-shadow: none !important;
+  cursor: pointer;
+}
+#s-levelmap #levelmap-nodes .tmap-node.locked { cursor: default; opacity: .8; }
+#s-levelmap #levelmap-nodes .tmap-node-boss { width: calc(var(--tn) * 1.22); height: calc(var(--tn) * 1.24); }
+#s-levelmap #levelmap-nodes .tmap-node .map-node-art {
+  position: absolute; inset: 0; width: 100%; height: 100%; animation: none;
+}
+#s-levelmap #levelmap-nodes .tmap-node.available .map-node-art { animation: map-current-pulse 1.8s ease-in-out infinite; }
+#s-levelmap #levelmap-nodes .tmap-node .node-stars {
+  position: absolute !important; top: auto !important; bottom: 88%; left: 50%;
+  font-size: calc(var(--tn) * .26) !important; gap: calc(var(--tn) * .08);
+}
+#s-levelmap #levelmap-nodes .tmap-node .node-stars span:nth-child(2) { transform: translateY(-38%); }
+
+.jx-map-chest {
+  position: absolute; left: calc(var(--frame, 0px) + 12px); bottom: calc(var(--frame, 0px) + 12px); z-index: 15;
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  pointer-events: none;
+}
+.jx-map-chest-icon {
+  width: 64px; height: 64px; object-fit: contain; image-rendering: pixelated;
+  filter: drop-shadow(0 4px 6px rgba(0,0,0,.5));
+}
+.jx-map-chest-count {
+  font-family: var(--jx-font); font-size: 12px; color: #fff; text-shadow: 2px 2px 0 var(--jx-ink);
+  background: rgba(0,0,0,.4); padding: 3px 10px; border-radius: 10px;
+}
+
+
+/* ======================================================================
+   PLANE INFO (#plane-info-overlay) — "INFORMATION" sheet opened from the ⓘ
+   button on each hangar plane card. Dark riveted-metal panel, title bars,
+   green radar screen with ◀ ▶ to browse every aircraft.
+   ====================================================================== */
+#plane-info-overlay { padding: 12px; box-sizing: border-box; }
+.pi-card, .pi-card * { box-sizing: border-box; }
+.pi-card {
+  --pi-metal: #2b302e; --pi-metal-dk: #1a1e1d; --pi-edge: #0c0f0e;
+  --pi-bar: #151b1f; --pi-green: #7fae3a; --pi-green-dk: #4f7420;
+  --pi-gold: #ffc94a;
+  position: relative;
+  display: flex; flex-direction: column; gap: 10px;
+  width: min(100%, 420px); max-height: min(92vh, 92dvh);
+  padding: 12px 12px 14px;
+  font-family: var(--jx-font); color: #fff;
+  background:
+    repeating-linear-gradient(180deg, rgba(255,255,255,.025) 0 2px, transparent 2px 4px),
+    linear-gradient(180deg, var(--pi-metal), var(--pi-metal-dk));
+  border: 4px solid var(--pi-edge);
+  border-radius: 18px;
+  box-shadow: 0 20px 50px rgba(0,0,0,.6), inset 0 0 0 2px #3e4542, inset 0 0 0 6px rgba(0,0,0,.25);
+  animation: sett-pop .15s ease-out;
+}
+.pi-head { position: relative; display: flex; justify-content: center; align-items: center; }
+.pi-title {
+  margin: 0; padding: 8px 28px; min-width: 60%; text-align: center;
+  font-size: clamp(16px, 5vw, 22px); letter-spacing: 1px; font-weight: normal;
+  background: var(--pi-bar); border: 3px solid #3a403d; border-radius: 10px;
+  box-shadow: inset 0 0 0 2px #000;
+}
+.pi-close {
+  position: absolute; right: 0; top: 50%; transform: translateY(-50%);
+  width: 40px; height: 40px; padding: 0; cursor: pointer;
+  display: grid; place-items: center;
+  font-family: var(--jx-font); font-size: 20px; color: #ddd;
+  background: linear-gradient(180deg, #b3322a, #7c1a15);
+  border: 3px solid #2a0907; border-radius: 10px !important;
+  box-shadow: 0 3px 0 #000, inset 0 2px 0 rgba(255,255,255,.25);
+}
+.pi-close:active { transform: translateY(calc(-50% + 2px)); }
+.pi-stars {
+  align-self: center; display: flex; gap: 4px; padding: 5px 14px;
+  background: var(--pi-bar); border: 2px solid #3a403d; border-radius: 999px;
+  font-size: 18px; line-height: 1;
+}
+.pi-stars span { color: #0a0a0a; text-shadow: 0 0 1px #555; }
+.pi-stars span.on { color: var(--pi-gold); text-shadow: 0 0 6px rgba(255,201,74,.6), 1px 1px 0 #7a3a00; }
+
+.pi-stage { display: flex; align-items: center; gap: 6px; }
+.pi-arrow {
+  flex: 0 0 auto; width: 30px; height: 44px; padding: 0; border: 0; cursor: pointer;
+  background: none; font-size: 26px; color: #ffa21a;
+  text-shadow: 2px 2px 0 #6b3500;
+}
+.pi-arrow:active { transform: scale(.88); }
+.pi-screen {
+  position: relative; flex: 1; min-width: 0; aspect-ratio: 4 / 3; min-height: 0;
+  overflow: hidden;
+  background: #2f4a14;
+  border: 5px solid #111; border-radius: 16px;
+  box-shadow: inset 0 0 0 2px #3e4542, inset 0 0 30px rgba(0,0,0,.45);
+}
+/* The portrait + green backdrop are painted together, barrel-warped, onto
+   this canvas by plane-info-fisheye.js — see openPlaneInfo() in hangar.js. */
+.pi-img {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  z-index: 1;
+}
+/* Thick black scanlines plus a corner vignette sell the old-CRT tube look
+   on top of the fisheye-warped picture underneath. */
+.pi-scanlines {
+  position: absolute; inset: 0; z-index: 2; pointer-events: none;
+  background:
+    radial-gradient(ellipse at 50% 45%, transparent 55%, rgba(0,0,0,.55) 100%),
+    repeating-linear-gradient(180deg, rgba(0,0,0,.55) 0 2px, transparent 2px 4px);
+  mix-blend-mode: multiply;
+}
+.pi-corner {
+  position: absolute; z-index: 3; padding: 5px 10px; font-size: 10px; line-height: 1.2;
+  background: rgba(10,14,16,.88); color: #fff; white-space: nowrap;
+}
+.pi-corner:empty { display: none; }
+.pi-corner-tl { top: 0; left: 0; border-radius: 0 0 12px 0; color: var(--pi-gold); }
+.pi-corner-bl { bottom: 0; left: 0; border-radius: 0 12px 0 0; }
+.pi-corner-br { bottom: 0; right: 0; border-radius: 12px 0 0 0; color: #b6f07a; }
+
+.pi-scroll {
+  display: flex; flex-direction: column; gap: 8px;
+  min-height: 0; overflow-y: auto; overscroll-behavior: contain;
+  scrollbar-width: thin; scrollbar-color: #4a514e transparent;
+  padding: 2px;
+}
+.pi-bar {
+  margin: 0; padding: 7px 10px; text-align: center; font-weight: normal;
+  font-size: clamp(12px, 3.6vw, 15px); letter-spacing: 1px;
+  background: linear-gradient(180deg, #1c2328, var(--pi-bar));
+  border: 3px solid #3a403d; border-radius: 8px;
+  box-shadow: inset 0 0 0 2px #000;
+}
+.pi-name { color: var(--pi-gold); font-size: clamp(14px, 4.4vw, 19px); }
+.pi-text {
+  margin: 0; padding: 8px 10px; text-align: center;
+  font-size: 11px; line-height: 1.7; color: #eef3ea;
+  background: rgba(0,0,0,.22); border-radius: 8px;
+}
+.pi-ability {
+  display: flex; align-items: center; gap: 12px; padding: 8px 10px;
+  background: rgba(0,0,0,.22); border-radius: 8px;
+}
+.pi-ability-icon {
+  flex: 0 0 auto; width: 46px; height: 46px; display: grid; place-items: center;
+  font-size: 22px; color: #fff;
+  background: radial-gradient(circle at 40% 35%, #5a615e, #1a1e1d);
+  border: 3px solid #0c0f0e; border-radius: 12px;
+  box-shadow: inset 0 0 0 2px #4a514e;
+}
+.pi-ability strong { display: block; font-weight: normal; font-size: 12px; color: #7cf7ff; margin-bottom: 4px; }
+.pi-ability p { margin: 0; font-size: 10px; line-height: 1.6; color: #dfe6dc; }
+.pi-specs {
+  margin: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 6px;
+}
+.pi-specs div {
+  padding: 6px 8px; background: rgba(0,0,0,.22); border-radius: 8px;
+  border: 2px solid #1c2120;
+}
+.pi-specs dt { font-size: 8px; color: #9aa59f; margin-bottom: 4px; }
+.pi-specs dd { margin: 0; font-size: 11px; color: #fff; overflow-wrap: anywhere; }
+
+.pi-actions { display: flex; justify-content: center; }
+.pi-btn {
+  min-width: 60%; padding: 12px 18px; cursor: pointer;
+  font-family: var(--jx-font); font-size: clamp(13px, 4vw, 17px); color: #fff;
+  text-shadow: 2px 2px 0 #1d2e0a;
+  background: linear-gradient(180deg, #9cc94f, var(--pi-green) 55%, var(--pi-green-dk));
+  border: 3px solid #1b2a0a; border-radius: 10px !important;
+  box-shadow: 0 4px 0 #0e1605, inset 0 2px 0 rgba(255,255,255,.3);
+}
+.pi-btn:active:not(:disabled) { transform: translateY(2px); box-shadow: 0 2px 0 #0e1605; }
+.pi-btn:disabled {
+  cursor: default; color: #e8e8e8; text-shadow: 2px 2px 0 #222;
+  background: linear-gradient(180deg, #9a9d9b, #6f7371 55%, #515553);
+  border-color: #222; box-shadow: 0 4px 0 #111, inset 0 2px 0 rgba(255,255,255,.2);
+}
+.pi-btn.is-equipped:disabled {
+  background: linear-gradient(180deg, #ffd84d, #f5a91e 55%, #c86f0c);
+  border-color: #5a2d00; text-shadow: 2px 2px 0 #7a3a00; color: #fff;
+}
+@media (max-height: 640px) {
+  .pi-screen { aspect-ratio: 16 / 9; }
+  .pi-card { gap: 7px; }
+}
+
+/* hangar "UPGRADE" tab: per-aircraft upgrades, laid out like the INFORMATION
+   sheet (.pi-card) but embedded in the panel instead of a popup. */
+.jx-panel-body.upg-body { padding: 10px 10px 18px; }
+.pi-card.upg-card {
+  width: 100%; max-width: 460px; max-height: none; margin: 0 auto;
+  animation: none;
+}
+.upg-scroll { display: flex; flex-direction: column; gap: 8px; padding: 2px; }
+.upg-row { gap: 10px; }
+.upg-row.is-equipped { box-shadow: inset 0 0 0 2px var(--pi-gold); }
+.upg-copy { flex: 1; min-width: 0; }
+.upg-copy strong { display: block; font-weight: normal; font-size: 11px; color: #7cf7ff; margin-bottom: 4px; }
+.upg-copy p { margin: 0; font-size: 9px; line-height: 1.6; color: #dfe6dc; }
+.upg-locked { color: var(--pi-gold); }
+.upg-icon { font-size: 22px; }
+.upg-icon-lives { color: #ff5b6e; }
+.upg-icon-shots { color: #53dcff; }
+.upg-icon-homing { color: #7dff9b; }
+.upg-icon-xp { color: #ffd84a; }
+.upg-pips { display: flex; gap: 4px; margin-top: 6px; }
+.upg-pips i {
+  width: 16px; height: 7px; border-radius: 3px; background: rgba(0,0,0,.45);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.2);
+}
+.upg-pips i.on { background: var(--pi-gold); box-shadow: 0 0 6px rgba(255,201,74,.7); }
+.upg-buy {
+  flex: none; min-width: 78px; padding: 8px 8px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; gap: 4px;
+  font-family: var(--jx-font); font-size: 9px; color: #fff; text-shadow: 1px 1px 0 #7a3a00;
+  background: linear-gradient(180deg, #ffd84d, #f5a91e 55%, #c86f0c);
+  border: 3px solid #5a2d00; border-radius: 8px !important;
+  box-shadow: 0 3px 0 #2a1500, inset 0 2px 0 rgba(255,255,255,.3);
+}
+.upg-buy:active:not(:disabled) { transform: translateY(2px); box-shadow: 0 1px 0 #2a1500; }
+.upg-buy:disabled {
+  cursor: default; text-shadow: 1px 1px 0 #222;
+  background: linear-gradient(180deg, #9a9d9b, #6f7371 55%, #515553);
+  border-color: #222; box-shadow: 0 3px 0 #111;
+}
+.upg-buy.is-max:disabled {
+  background: linear-gradient(180deg, #9cc94f, var(--pi-green) 55%, var(--pi-green-dk));
+  border-color: #1b2a0a; text-shadow: 1px 1px 0 #1d2e0a;
+}
+/* weapon icons drawn in CSS so they match the in-game shots */
+.upg-weapon { position: relative; }
+.upg-weapon::before { content: ''; position: absolute; }
+/* Real in-game rocket: first frame of the 4×3 sheet (128×416 cells). */
+.upg-weapon-missile::before {
+  width: 13px; height: 42px;
+  background: url('/assets/fx/Missile/rocket-straight.png') 0 0 / 400% 300% no-repeat;
+  image-rendering: pixelated;
+}
+/* Round machine-gun bullets, same colours as in game. */
+.upg-weapon-machinegun::before {
+  width: 8px; height: 8px; border-radius: 50%; background: #fff6a8;
+  box-shadow: 0 0 6px #ffb000, -10px 10px 0 #fff6a8, 10px 10px 0 #fff6a8, 0 -11px 0 #fff6a8;
+}
+/* Orange laser beam, same colours as in game. */
+.upg-weapon-laser::before {
+  width: 5px; height: 30px; border-radius: 3px; background: #fff1d6;
+  box-shadow: 0 0 8px 2px #ff8a1f;
+}
+/* Phone / narrow: the left block dissolves into the single column and the
+   EQUIP button drops to the very bottom, like the INFORMATION sheet. */
+.upg-left { display: contents; }
+.upg-card .pi-actions { order: 10; }
+
+/* Computer: use the whole panel width — plane on the left, upgrades on the
+   right. */
+@media (min-width: 900px) and (hover: hover) and (pointer: fine) {
+  .jx-panel-body.upg-body { padding: 16px 24px 24px; }
+  .pi-card.upg-card {
+    max-width: 1280px;
+    display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+    gap: 16px 26px; align-items: start;
+    padding: 18px 22px 22px;
+  }
+  .upg-card .pi-head { grid-column: 1 / -1; }
+  .upg-card .pi-title { min-width: 40%; }
+  .upg-left { display: flex; flex-direction: column; gap: 12px; position: sticky; top: 0; }
+  .upg-card .pi-actions { order: 0; margin-top: 4px; }
+  .upg-card .pi-btn { min-width: 70%; }
+  .upg-card .pi-bar { font-size: 16px; }
+  .upg-card .pi-name { font-size: 20px; }
+  .upg-scroll { gap: 10px; }
+  .upg-row { padding: 12px 14px; gap: 16px; }
+  .upg-row .pi-ability-icon { width: 58px; height: 58px; font-size: 28px; }
+  .upg-weapon-missile::before { width: 16px; height: 52px; }
+  .upg-copy strong { font-size: 14px; }
+  .upg-copy p { font-size: 11px; }
+  .upg-pips i { width: 22px; height: 9px; }
+  .upg-buy { min-width: 120px; padding: 11px 12px; font-size: 12px; }
+}
+/* Real game heart art (assets/fx/Iteam/heart-full.png) in the UPGRADE tab. */
+.upg-heart { width: 70%; height: 70%; object-fit: contain; image-rendering: pixelated; filter: drop-shadow(0 2px 0 rgba(0,0,0,.35)); }
+.upg-heart-mini { width: 1.2em; height: 1.2em; object-fit: contain; image-rendering: pixelated; vertical-align: -0.25em; }
+/* "Tir plus rapide" icon: the in-game T-6 (first frame of its 5×2 sheet)
+   launching the real rocket (first frame of its 4×3 sheet) over and over. */
+.upg-shot-demo { position: relative; display: block; width: 100%; height: 100%; overflow: hidden; }
+.upg-shot-plane {
+  position: absolute; left: 50%; bottom: 2%; width: 74%; aspect-ratio: 1; transform: translateX(-50%);
+  background: url('/assets/ships/player/t6-animation.webp') 0 0 / 500% 200% no-repeat;
+  image-rendering: pixelated;
+}
+.upg-shot-missile {
+  position: absolute; left: 50%; bottom: 44%; width: 11%; aspect-ratio: 128 / 416; margin-left: -5.5%;
+  background: url('/assets/fx/Missile/rocket-straight.png') 0 0 / 400% 300% no-repeat;
+  image-rendering: pixelated; opacity: 0;
+  animation: upgShotFire 1.1s cubic-bezier(.4,0,.8,.6) infinite;
+}
+@keyframes upgShotFire {
+  0%   { opacity: 0; transform: translateY(0); }
+  12%  { opacity: 1; }
+  80%  { opacity: 1; }
+  100% { opacity: 0; transform: translateY(-190%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .upg-shot-missile { animation: none; opacity: 1; transform: translateY(-60%); }
+}
+.upg-shot-plane { width: 118%; bottom: -14%; }
+.upg-shot-missile { width: 15%; margin-left: -7.5%; bottom: 46%; }
+/* Smaller T-6 + missile in the "Tir plus rapide" icon. */
+.upg-shot-plane { width: 88%; bottom: -4%; }
+.upg-shot-missile { width: 11%; margin-left: -5.5%; bottom: 44%; }
+/* "Missile guidé" icon: animated SVG (see HOMING_DEMO_ICON in hangar.js). */
+.upg-homing-demo { display: block; width: 100%; height: 100%; overflow: hidden; image-rendering: pixelated; }
+/* Real EXP art in the UPGRADE tab's XP bonus row. */
+.upg-exp { width: 78%; height: 78%; object-fit: contain; image-rendering: pixelated; filter: drop-shadow(0 0 4px rgba(34,211,238,.55)); }
+/* Missile weapon icon, truly centered: crop the sheet to the visible rocket of
+   frame 0 (x 19-109, y 16-327 of its 128x416 cell) and center that box. */
+.upg-weapon-missile::before {
+  left: 50%; top: 50%; transform: translate(-50%, -50%);
+  width: 13px; height: 45px;
+  background-size: 568.9% 401.3%;
+  background-position: 4.5% 1.71%;
+}
+@media (min-width: 900px) and (hover: hover) and (pointer: fine) {
+  .upg-weapon-missile::before { width: 16px; height: 55px; }
+}
+/* Slightly smaller centered missile icon (same 90:311 proportions). */
+.upg-weapon-missile::before { width: 10px; height: 35px; }
+@media (min-width: 900px) and (hover: hover) and (pointer: fine) {
+  .upg-weapon-missile::before { width: 13px; height: 45px; }
+}
+
+/* ── UPGRADE: airdrop chance / duration rows ─────────────────────────────── */
+.upg-drop-img { width: 80%; height: 80%; object-fit: contain; image-rendering: pixelated; }
+.upg-drop-xray { transform: rotate(-90deg); }
+.upg-drop-bullets { position: relative; width: 100%; height: 100%; display: block; }
+.upg-drop-bullets i { position: absolute; width: 18%; aspect-ratio: 1; border-radius: 50%; background: #fff6a8; box-shadow: 0 0 6px #ffb000; }
+.upg-drop-bullets i:nth-child(1) { left: 41%; top: 22%; }
+.upg-drop-bullets i:nth-child(2) { left: 22%; top: 56%; }
+.upg-drop-bullets i:nth-child(3) { left: 60%; top: 56%; }
+.upg-drop-shield { width: 64%; aspect-ratio: 1; border-radius: 50%; border: 3px solid #7dd3fc; background: radial-gradient(circle at 32% 30%, rgba(255,255,255,.75) 0 12%, rgba(56,189,248,.35) 13% 100%); box-shadow: 0 0 10px #38bdf8, inset 0 0 8px rgba(56,189,248,.6); }
+.upg-drop-b2 { width: 92%; aspect-ratio: 1; background: url('/assets/ships/player/b2-animation.webp') 0 0 / 500% 200% no-repeat; image-rendering: pixelated; }
+.upg-clock { position: relative; width: 62%; aspect-ratio: 1; border-radius: 50%; border: 3px solid #ffd84a; box-shadow: 0 0 8px rgba(255,216,74,.5); }
+.upg-clock::before, .upg-clock::after { content: ''; position: absolute; left: 50%; bottom: 50%; width: 3px; border-radius: 2px; background: #ffd84a; transform-origin: 50% 100%; margin-left: -1.5px; }
+.upg-clock::before { height: 36%; }
+.upg-clock::after { height: 28%; transform: rotate(90deg); }
+
+/* ---- MULTI button in the lobby / hangar (multiplayer.js) ------------------ */
+.jx-multi-btn {
+  /* Top-left: under the coins bar on phones, in the free corner beside it on wider screens. */
+  position: absolute; z-index: 14; left: 12px; top: 62px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  width: 64px; min-height: 54px; padding: 4px;
+  border: 0; border-radius: 16px; cursor: pointer;
+  font-family: var(--jx-font); font-size: 9px; color: #fff;
+  text-shadow: 2px 2px 0 var(--jx-ink);
+  background: linear-gradient(180deg, #ffb347, #ff8a00 55%, #e06a00);
+  box-shadow: 0 5px 0 #9a4a00, 0 0 18px rgba(255,140,0,.55), inset 0 3px 0 rgba(255,255,255,.45);
+}
+@media (min-width: 700px) {
+  .jx-multi-btn { top: 8px; left: 14px; }
+}
+.jx-multi-btn:active { transform: translateY(3px); box-shadow: 0 2px 0 #9a4a00; }
+.jx-multi-ico { position: relative; width: 58px; height: 32px; }
+/* T-6 and F/A-18 flying together (co-op). */
+.jx-multi-ico img {
+  position: absolute; width: 44px; height: 44px; object-fit: contain;
+  image-rendering: pixelated; filter: drop-shadow(1px 2px 0 rgba(0,0,0,.45));
+}
+.jx-multi-t6 { left: -8px; top: -2px; }
+.jx-multi-f18 { right: -8px; top: -8px; }
+
+/* ---- MULTI mode: the lobby (#s-menu.is-multi) with Player 2 beside you ---- */
+.mp-tag {
+  font-family: var(--jx-font); font-size: clamp(9px, 2.6vw, 12px);
+  color: #fff; text-shadow: 2px 2px 0 var(--jx-ink); white-space: nowrap;
+}
+.mp-tag-you { color: #ffd84d; }
+.mp-lobby-p2, .mp-lobby-you { display: none; }
+#s-menu.is-multi .jx-plane-wrap { left: 42%; top: 56%; }
+#s-menu.is-multi .mp-lobby-you {
+  display: block; position: absolute; left: 50%; top: 0; transform: translate(-50%, -60%);
+}
+#s-menu.is-multi .mp-lobby-p2 {
+  display: flex; flex-direction: column; align-items: center;
+  position: absolute; z-index: 10; left: 58%; top: 36%; transform: translate(-50%, -50%);
+  width: min(calc((100vw - 148px) * .5), 210px);
+  pointer-events: none;
+}
+.mp-lobby-p2 img { width: 100%; image-rendering: pixelated; filter: drop-shadow(0 16px 12px rgba(0,0,0,.45)); }
+.mp-lobby-p2 img.is-locked { filter: grayscale(1) brightness(.6) drop-shadow(0 16px 12px rgba(0,0,0,.45)); }
+/* SOLO button: just the player's plane. */
+#s-menu.is-multi .jx-multi-f18 { display: none; }
+#s-menu.is-multi .jx-multi-t6 { left: 50%; transform: translateX(-50%); }
+/* Phones: the formation stacks more vertically (narrow screen). */
+@media (max-width: 600px) {
+  #s-menu.is-multi .jx-plane-wrap { left: 42%; top: 58%; }
+  #s-menu.is-multi .mp-lobby-p2 { left: 64%; top: 36%; }
+}
+/* BOT tab of the HANGAR sheet: only in MULTI mode. */
+#lobby-sheet .jx-tab-bot { display: none; }
+#s-menu.is-multi #lobby-sheet .jx-tab-bot { display: block; }
+/* Four tabs in MULTI mode: the yellow highlight is a quarter wide. */
+#s-menu.is-multi #lobby-sheet .jx-tabs::before { width: calc((100% - 22px) / 4); }
+#s-menu.is-multi #lobby-sheet .jx-tabs:has(.jx-tab:nth-child(4).is-active)::before { transform: translateX(calc(300% + 12px)); }
+/* BOT tab (UPGRADE-style): ability glyph and the EXP coin in the buy button. */
+.upg-icon-ability { font-size: 26px; color: #ffd84d; display: grid; place-items: center; }
+.upg-exp-mini { width: 18px; height: 18px; vertical-align: middle; image-rendering: pixelated; }
+.mp-botpanel {
+  display: grid; gap: 10px; padding: 12px 14px 16px; align-content: start;
+  width: 100%; max-width: 560px; margin: 0 auto; box-sizing: border-box;
+}
+.mp-botpanel .mp-botplane { flex-wrap: wrap; }
+.mp-botpanel .mp-botpic {
+  flex: 1; min-width: 0; display: grid; justify-items: center; gap: 6px;
+}
+.mp-botpanel .mp-botpic img {
+  width: min(52vw, 220px); height: min(36vw, 150px); object-fit: contain;
+  image-rendering: pixelated; filter: drop-shadow(0 10px 8px rgba(0,0,0,.35));
+}
+.mp-botpanel .mp-botpic img.is-locked { filter: grayscale(1) brightness(.6) drop-shadow(0 10px 8px rgba(0,0,0,.35)); }
+.mp-botpanel .mp-botname { font-size: 11px; color: #fff; text-shadow: 2px 2px 0 var(--jx-ink); }
+.mp-botpanel .mp-botstate { color: #d9ffe4; text-shadow: 1px 1px 0 var(--jx-ink); }
+.mp-botpanel .mp-sub { color: #fff3cf; }
+
+/* Choices sheet */
+.mp-sheet {
+  position: absolute; inset: 0; z-index: 40;
+  display: grid; place-items: center; padding: 16px;
+  background: rgba(10, 16, 30, .55);
+  animation: mpFade .2s ease-out both;
+}
+.mp-sheet.hidden { display: none; }
+.mp-card {
+  width: min(100%, 380px);
+  display: grid; gap: 12px; padding: 18px 16px;
+  background: #fffaf0; border: 4px solid #ff9d00; border-radius: 20px;
+  box-shadow: 0 0 0 4px rgba(255,255,255,.6), 0 14px 30px rgba(0,0,0,.35);
+  animation: mpPop .35s cubic-bezier(.2,1.4,.4,1) both;
+  font-family: var(--jx-font);
+}
+.mp-title { text-align: center; font-size: clamp(14px, 4.4vw, 18px); color: #ff8a00; }
+.mp-choice {
+  display: flex; align-items: center; gap: 12px; text-align: left;
+  padding: 12px; border: 3px solid #ffe7a3; border-radius: 14px; cursor: pointer;
+  font-family: inherit; color: #fff; text-shadow: 2px 2px 0 rgba(150,70,0,.5);
+  background: linear-gradient(180deg, #ffcf1f, #ffb700);
+  box-shadow: 0 4px 0 #c07800, 0 0 14px rgba(255,140,0,.4);
+}
+.mp-choice:active { transform: translateY(3px); box-shadow: 0 1px 0 #c07800; }
+.mp-choice b { display: block; font-size: clamp(10px, 3vw, 13px); font-weight: normal; }
+.mp-choice small { display: block; margin-top: 5px; font-size: 7px; color: #6b3a00; text-shadow: none; line-height: 1.5; }
+/* Choice icons: game planes, no emoji. */
+.mp-ico { position: relative; flex: none; width: 48px; height: 48px; display: grid; place-items: center; }
+.mp-ico img { width: 72px; height: 72px; object-fit: contain; image-rendering: pixelated; filter: drop-shadow(1px 2px 0 rgba(0,0,0,.35)); }
+.mp-ico:not(.mp-ico-duo) img { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -54%); }
+.mp-ico-tag {
+  position: absolute; bottom: -2px; left: 50%; transform: translateX(-50%);
+  padding: 2px 4px; border-radius: 6px; font-style: normal; font-size: 7px; line-height: 1;
+  color: #fff; background: #1f3b73; box-shadow: 0 2px 0 #0d1f45;
+}
+.mp-ico-duo img { position: absolute; width: 56px; height: 56px; }
+.mp-ico-duo img:first-child { left: -14px; top: -2px; }
+.mp-ico-duo img:last-child { right: -14px; top: -10px; }
+.mp-ico-plus { border-radius: 12px; background: #1f3b73; box-shadow: 0 3px 0 #0d1f45; }
+.mp-ico-plus::before, .mp-ico-plus::after {
+  content: ''; position: absolute; left: 50%; top: 50%; background: #ffd84d; border-radius: 2px;
+  transform: translate(-50%, -50%);
+}
+.mp-ico-plus::before { width: 22px; height: 6px; }
+.mp-ico-plus::after { width: 6px; height: 22px; }
+.mp-join { display: grid; gap: 6px; padding: 10px; border: 2px dashed #ffb700; border-radius: 14px; }
+.mp-join label { font-size: 9px; color: #7a3d00; }
+.mp-join-row { display: flex; gap: 8px; }
+.mp-code {
+  flex: 1; min-width: 0; padding: 10px 8px;
+  font-family: inherit; font-size: 15px; letter-spacing: 3px; text-align: center; text-transform: uppercase;
+  color: #1f3b73; background: #fff; border: 3px solid #ffd766; border-radius: 10px; outline: none;
+}
+.mp-code:focus { border-color: #ff9d00; }
+.mp-go {
+  font-family: inherit; font-size: 9px; color: #fff; padding: 0 12px; cursor: pointer;
+  border: 0; border-radius: 10px; background: #2563eb; box-shadow: 0 4px 0 #1e3a8a;
+}
+.mp-go:disabled { background: #94a3b8; box-shadow: 0 4px 0 #64748b; cursor: default; }
+.mp-hint { font-size: 7px; color: #a0651b; }
+.mp-cancel { font-family: inherit; font-size: 9px; color: #a0651b; background: none; border: 0; cursor: pointer; text-decoration: underline; }
+@keyframes mpFade { from { opacity: 0; } }
+@keyframes mpPop { from { opacity: 0; transform: scale(.85); } }
+/* Co-op waiting / code / error states (multiplayer.js). */
+.mp-sub { text-align: center; font-size: 8px; line-height: 1.6; color: #7a3d00; }
+.mp-bigcode {
+  justify-self: center; padding: 10px 18px;
+  font-size: clamp(22px, 7vw, 30px); letter-spacing: 6px; color: #1f3b73;
+  background: #fff; border: 3px dashed #ff9d00; border-radius: 12px;
+  user-select: all; -webkit-user-select: all;
+}
+.mp-wait { display: flex; align-items: center; justify-content: center; gap: 10px; font-size: 8px; line-height: 1.6; color: #5a3200; text-align: center; }
+.mp-dots { display: inline-flex; gap: 4px; }
+.mp-dots i { width: 7px; height: 7px; border-radius: 50%; background: #ff9d00; animation: mpDot 1s ease-in-out infinite; }
+.mp-dots i:nth-child(2) { animation-delay: .15s; }
+.mp-dots i:nth-child(3) { animation-delay: .3s; }
+.mp-error { text-align: center; font-size: 9px; line-height: 1.6; color: #b91c1c; }
+.mp-choice-small { justify-content: center; }
+/* TON BOT: plane choice + FIRE POWER / LIVES upgrades. */
+.mp-botplane { display: flex; align-items: center; justify-content: center; gap: 6px; }
+.mp-botplane .mp-botname { flex: 1; min-width: 0; }
+.mp-ability {
+  display: grid; gap: 4px; padding: 8px 10px; text-align: center;
+  border-radius: 12px; background: #1f3b73; color: #fff;
+}
+.mp-ability b { font-size: 9px; font-weight: normal; color: #ffd84d; }
+.mp-ability span { font-size: 7px; line-height: 1.5; color: #dbe7ff; }
+
+.mp-cycle {
+  width: 40px; height: 40px; flex: none; border: 0; border-radius: 12px; cursor: pointer;
+  font-size: 14px; color: #fff; background: linear-gradient(180deg, #ffb347, #ff8a00 55%, #e06a00);
+  box-shadow: 0 4px 0 #9a4a00;
+}
+.mp-cycle:active { transform: translateY(3px); box-shadow: 0 1px 0 #9a4a00; }
+.mp-botname { text-align: center; font-size: 10px; color: #1f3b73; }
+.mp-botstate { min-height: 12px; text-align: center; font-size: 8px; color: #1f8a3a; }
+.mp-botbuy { display: flex; align-items: center; justify-content: center; gap: 10px; }
+.mp-oldprice {
+  display: flex; align-items: center; gap: 3px; font-size: 9px; color: #a0703a;
+  text-decoration: line-through; text-decoration-thickness: 2px;
+}
+.mp-oldprice img { width: 14px; height: 14px; }
+.mp-upg {
+  display: flex; align-items: center; gap: 10px; padding: 10px;
+  border-radius: 14px; background: #fff3cf; border: 2px solid #ffd766;
+}
+.mp-upg-info { flex: 1; min-width: 0; display: grid; gap: 6px; }
+.mp-upg-info b { font-size: 9px; font-weight: normal; color: #7a3d00; }
+.mp-pips { display: flex; gap: 4px; }
+.mp-pips i { flex: 1; max-width: 26px; height: 10px; border-radius: 4px; background: rgba(122,61,0,.18); }
+.mp-pips i.on { background: linear-gradient(180deg, #ffd84d, #ff8a00); box-shadow: inset 0 -2px 0 rgba(0,0,0,.15); }
+.mp-pips-hp i.on { background: linear-gradient(180deg, #ff7a7a, #e0282e); }
+.mp-buy {
+  flex: none; display: flex; align-items: center; gap: 4px; min-width: 84px; justify-content: center;
+  padding: 8px 10px; border: 0; border-radius: 12px; cursor: pointer;
+  font-family: inherit; font-size: 10px; color: #fff; text-shadow: 1px 1px 0 #0d1f45;
+  background: linear-gradient(180deg, #4d7fe0, #1f3b73); box-shadow: 0 4px 0 #0d1f45;
+}
+.mp-buy img { width: 16px; height: 16px; image-rendering: pixelated; }
+.mp-buy:disabled { cursor: default; opacity: .5; }
+.mp-buy:not(:disabled):active { transform: translateY(3px); box-shadow: 0 1px 0 #0d1f45; }
+
+@keyframes mpDot { 50% { transform: translateY(-5px); opacity: .5; } }
+
+/* ---- TOP 20 MONDIAL (leaderboard.js) -------------------------------------- */
+/* Button under MULTI (same orange look), with a little podium icon. */
+.jx-top20-btn { top: 124px; }
+@media (min-width: 700px) { .jx-top20-btn { top: 72px; left: 14px; } }
+/* Gold trophy (inline SVG in index.html). */
+.jx-top20-ico {
+  width: 38px; height: 34px; overflow: visible;
+  filter: drop-shadow(1px 2px 0 rgba(0,0,0,.45)) drop-shadow(0 0 6px rgba(255,230,120,.7));
+}
+.jx-top20-btn {
+  background: linear-gradient(180deg, #8f6bff, #6a3fe0 55%, #4b25b8);
+  box-shadow: 0 5px 0 #2e1478, 0 0 18px rgba(140,100,255,.55), inset 0 3px 0 rgba(255,255,255,.4);
+}
+.jx-top20-btn:active { box-shadow: 0 2px 0 #2e1478; }
+
+.top20-panel {
+  position: absolute; z-index: 35; left: 6px; right: 6px; top: 62px; bottom: 0;
+  padding: 10px; border-radius: 30px 30px 0 0;
+  background: linear-gradient(180deg, #ffab3d, var(--jx-orange) 40%, var(--jx-orange-deep));
+  box-shadow: 0 -5px 14px rgba(0,0,0,.25), inset 0 3px 0 rgba(255,255,255,.35);
+}
+.top20-panel.hidden { display: none; }
+.top20-close {
+  position: absolute; z-index: 2; top: 16px; right: 18px;
+  width: 38px; height: 38px; border: 0; border-radius: 50%; cursor: pointer;
+  font-family: var(--jx-font); font-size: 14px; color: #fff; text-shadow: 1px 1px 0 var(--jx-ink);
+  background: rgba(0,0,0,.18);
+}
+.top20-body {
+  height: 100%; overflow-y: auto; -webkit-overflow-scrolling: touch;
+  border-radius: 22px; padding: 0 12px 24px;
+  background: linear-gradient(180deg, var(--jx-yellow-hi), var(--jx-yellow) 45%, #F0A500);
+  box-shadow: inset 0 3px 0 rgba(255,255,255,.5), inset 0 -3px 0 rgba(0,0,0,.08);
+  font-family: 'Press Start 2P', var(--jx-font), monospace; color: #fff;
+}
+.top20-head { display: grid; justify-items: center; gap: 8px; padding: 22px 0 18px; text-align: center; }
+.top20-head small { font-size: 10px; text-shadow: 2px 2px 0 rgba(122,58,0,.35); }
+.top20-head strong { font-size: clamp(14px, 4.4vw, 22px); font-weight: normal; text-shadow: 2px 2px 0 rgba(122,58,0,.35); }
+/* Podium: 2 (silver) left, 1 (gold) center and tallest, 3 (bronze) right. */
+.top20-podium {
+  display: grid; grid-template-columns: 1fr 1.1fr 1fr; align-items: end;
+  max-width: 520px; margin: 0 auto; height: clamp(190px, 34vh, 280px);
+}
+.top20-podium-col {
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  height: 100%; padding: 16px 4px 0; min-width: 0;
+  border-radius: 22px 22px 0 0; text-align: center;
+  box-shadow: inset 0 3px 0 rgba(255,255,255,.35), 0 -2px 8px rgba(0,0,0,.12);
+}
+.top20-place-1 { background: linear-gradient(180deg, #ffe066, #ffd23a); position: relative; z-index: 1; }
+.top20-place-2 { background: linear-gradient(180deg, #d4d4d4, #b9b9b9); height: 76%; margin-right: -10px; }
+.top20-place-3 { background: linear-gradient(180deg, #d88a45, #c2702f); height: 64%; margin-left: -10px; }
+.top20-podium-num { font-size: clamp(22px, 7vw, 36px); font-weight: normal; text-shadow: 2px 2px 0 rgba(0,0,0,.18); }
+.top20-podium-name {
+  max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-size: clamp(7px, 2.2vw, 11px); text-shadow: 1px 1px 0 rgba(0,0,0,.25);
+}
+.top20-podium-xp { font-size: clamp(7px, 2vw, 10px); color: rgba(255,255,255,.9); text-shadow: 1px 1px 0 rgba(0,0,0,.2); }
+.top20-list { display: grid; gap: 14px; max-width: 620px; margin: 18px auto 0; }
+.top20-row {
+  display: flex; align-items: center; gap: 12px; min-height: 58px; padding: 0 20px;
+  border-radius: 999px; font-size: clamp(9px, 2.8vw, 13px);
+  background: linear-gradient(180deg, #ffab3d, var(--jx-orange) 55%, var(--jx-orange-deep));
+  box-shadow: 0 5px 0 var(--jx-orange-dk), inset 0 3px 0 rgba(255,255,255,.35);
+  text-shadow: 2px 2px 0 rgba(122,58,0,.4);
+}
+.top20-row.is-me { background: linear-gradient(180deg, #5b8ef0, #2f5fc4 55%, #1f3b73); box-shadow: 0 5px 0 #0d1f45, inset 0 3px 0 rgba(255,255,255,.35); }
+.top20-rank { min-width: 2.4em; text-align: center; color: #ffe8a0; }
+.top20-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.top20-xp { display: flex; align-items: center; gap: 6px; font-size: .85em; }
+.top20-xp img { width: 18px; height: 18px; image-rendering: pixelated; }
+.top20-note { margin: 16px auto 0; max-width: 520px; text-align: center; font-size: 9px; line-height: 1.7; color: #7a3a00; text-shadow: none; }
+/* EXP TOTAL / MULTIJOUEUR boards. */
+.top20-tabs {
+  display: flex; gap: 6px; max-width: 420px; margin: 0 auto 16px; padding: 5px;
+  border-radius: 20px; background: rgba(122,58,0,.18);
+}
+.top20-tab {
+  flex: 1; padding: 10px 4px; border: 0; border-radius: 16px; cursor: pointer;
+  font-family: inherit; font-size: clamp(8px, 2.4vw, 11px); color: #fff;
+  text-shadow: 1px 1px 0 rgba(122,58,0,.45); background: transparent; opacity: .75;
+}
+.top20-tab.is-active {
+  opacity: 1; background: linear-gradient(180deg, #ffab3d, var(--jx-orange) 55%, var(--jx-orange-deep));
+  box-shadow: 0 3px 0 var(--jx-orange-dk), inset 0 2px 0 rgba(255,255,255,.35);
+}
+.top20-podium-col.is-me .top20-podium-name { color: #1f3b73; text-shadow: none; }
+
+/* ---- Lobby: a plane not owned yet (menu.js renderLobbyPlane) ---- */
+#menu-selected-plane.is-locked { filter: grayscale(1) brightness(.72) contrast(.9); opacity: .9; }
+.jx-plane-buy {
+  position: absolute; left: 50%; top: 100%; transform: translateX(-50%);
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  margin-top: 6px; padding: 8px 16px; min-width: 150px;
+  border: 0; border-radius: 14px; cursor: pointer;
+  font-family: var(--jx-font); color: #fff; text-shadow: 2px 2px 0 var(--jx-ink);
+  background: linear-gradient(180deg, #ffb347, #ff8a00 55%, #e06a00);
+  box-shadow: 0 5px 0 #9a4a00, inset 0 3px 0 rgba(255,255,255,.45);
+  white-space: nowrap;
+}
+.jx-plane-buy.hidden { display: none; }
+.jx-plane-buy span { font-size: 9px; opacity: .9; }
+.jx-plane-buy b { font-size: 13px; }
+.jx-plane-buy:active { transform: translateX(-50%) translateY(3px); box-shadow: 0 2px 0 #9a4a00; }
+/* Not affordable yet (or level too low): grey, still tappable to say why. */
+.jx-plane-buy.is-disabled {
+  background: linear-gradient(180deg, #9aa3ad, #6b7480);
+  box-shadow: 0 5px 0 #454c55, inset 0 3px 0 rgba(255,255,255,.3);
+}

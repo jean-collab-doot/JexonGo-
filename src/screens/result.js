@@ -1,5 +1,5 @@
 import { $ } from '../utils/dom.js';
-import { G, autoSave, clampCoins } from '../state.js';
+import { G, autoSave, clampCoins, MAX_GAME_COINS, maxGameXp, xpUpgradeMultiplier, addLifetimeXp } from '../state.js';
 import { save, load } from '../utils/storage.js';
 import { SFX } from '../audio/sound.js';
 import { calcStars } from '../systems/xp.js';
@@ -10,29 +10,68 @@ import { getPilotGrade, getNextGrade } from '../data/pilots.js';
 import { t, getLang } from '../i18n.js';
 import { AIRCRAFT } from '../data/aircraft.js';
 import { coinIcon, expIcon } from '../utils/icons.js';
-import { badgeXpMultiplier, unlockEligibleBadges } from '../data/badges.js';
+import { badgeXpMultiplier, badgeCoinBonus, unlockEligibleBadges } from '../data/badges.js';
 
 let _prevHighestLevel = 0;
 
+// New-badge reveal: the screen fades in, the badge rises smoothly into place
+// and lights up (soft flash, shockwave, confetti in the badge's rarity color),
+// then its name, goal and reward slide in one by one. The badge stays still
+// (no drag, no scroll). Timings live in style.css (.bdg-reveal);
+// BADGE_IMPACT_MS matches the moment the badge lights up.
+const BADGE_IMPACT_MS = 1050;
+const BADGE_CONFETTI = 30;
+
 function showBadgeUnlockCelebrations(badges) {
   const queue = [...(badges || [])];
+  const fr = getLang() === 'fr';
   const showNext = () => {
     const badge = queue.shift();
     if (!badge) return;
-    const overlay = document.createElement('div');
     const rarity = badge.rarity.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-    overlay.className = `badge-unlock-overlay badge-rarity-${rarity}`;
-    overlay.innerHTML = `<div class="badge-unlock-rays"></div><div class="badge-unlock-card" role="dialog" aria-modal="true"><span class="badge-unlock-kicker">${getLang()==='fr'?'NOUVEAU BADGE':'NEW BADGE'}</span><img class="badge-unlock-image" src="${badge.image}" alt="${badge.name}"><em>${badge.rarity}</em><h2>${badge.name}</h2><p>${badge.goal}</p><strong>${badge.reward}</strong><button type="button">${getLang()==='fr'?'CONTINUER':'CONTINUE'}</button></div>`;
+    const confetti = Array.from({ length: BADGE_CONFETTI }, (_, i) => {
+      const angle = (i / BADGE_CONFETTI) * Math.PI * 2 + Math.random() * 0.4;
+      const dist = 120 + Math.random() * 170;
+      const dx = Math.round(Math.cos(angle) * dist);
+      const dy = Math.round(Math.sin(angle) * dist * 0.75 - 40);
+      const size = 5 + Math.round(Math.random() * 6);
+      const alt = i % 3 === 0 ? ' bdg-confetti-alt' : '';
+      return `<span class="bdg-confetti${alt}" style="--dx:${dx}px;--dy:${dy}px;--fall:${160 + Math.round(Math.random() * 140)}px;--rot:${Math.round(Math.random() * 720 - 360)}deg;--s:${size}px;--d:${(Math.random() * 0.12).toFixed(2)}s"></span>`;
+    }).join('');
+    const overlay = document.createElement('div');
+    overlay.className = `bdg-reveal bdg-rarity-${rarity}`;
+    overlay.innerHTML = `
+      <div class="bdg-beam"></div>
+      <div class="bdg-rays"></div>
+      <div class="bdg-flash"></div>
+      <div class="bdg-stage" role="dialog" aria-modal="true" aria-label="${fr ? 'Nouveau badge' : 'New badge'} : ${badge.name}">
+        <div class="bdg-ribbon"><span>${fr ? 'NOUVEAU BADGE' : 'NEW BADGE'}</span></div>
+        <div class="bdg-medal">
+          <span class="bdg-ring"></span><span class="bdg-ring bdg-ring-2"></span>
+          ${confetti}
+          <div class="bdg-drop"><img class="bdg-img" src="${badge.image}" alt="${badge.name}" draggable="false"><span class="bdg-shine"></span></div>
+        </div>
+        <em class="bdg-rarity">${badge.rarity}</em>
+        <h2 class="bdg-name">${badge.name}</h2>
+        <p class="bdg-goal">${badge.goal}</p>
+        <strong class="bdg-reward">${badge.reward}</strong>
+        <button type="button" class="bdg-continue">${fr ? 'CONTINUER' : 'CONTINUE'}</button>
+      </div>`;
+    // Keep everything still on phones: no page drag / pinch / image drag.
+    overlay.addEventListener('touchmove', e => e.preventDefault(), { passive: false });
+    overlay.addEventListener('dragstart', e => e.preventDefault());
     document.body.appendChild(overlay);
     document.documentElement.classList.add('badge-unlock-open');
     requestAnimationFrame(() => overlay.classList.add('show'));
-    overlay.querySelector('button').onclick = () => {
+    const impact = setTimeout(() => SFX.promoted?.(), BADGE_IMPACT_MS);
+    overlay.querySelector('.bdg-continue').onclick = () => {
+      clearTimeout(impact);
       overlay.classList.add('closing');
       setTimeout(() => {
         overlay.remove();
         document.documentElement.classList.remove('badge-unlock-open');
         showNext();
-      }, 320);
+      }, 360);
     };
   };
   showNext();
@@ -56,6 +95,23 @@ export function initResult(nav) {
   $('btn-result-retry').onclick = () => nav.toGame(G.currentLevel, G.practiceMode);
 }
 
+// Numbers in the result card count up from 0 once the card has appeared.
+function animateResultCounters(root) {
+  const els = [...root.querySelectorAll('[data-count]')];
+  const startAt = performance.now() + 650;
+  const duration = 900;
+  const step = now => {
+    const k = Math.max(0, Math.min(1, (now - startAt) / duration));
+    const ease = 1 - Math.pow(1 - k, 3);
+    for (const el of els) {
+      const value = Math.round(Number(el.dataset.count || 0) * ease);
+      el.textContent = el.dataset.plain ? value.toLocaleString() : `+${value.toLocaleString()}`;
+    }
+    if (k < 1 && !root.classList.contains('hidden')) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
+
 export function showResult(won) {
   if (!won) return;
 
@@ -65,12 +121,17 @@ export function showResult(won) {
   const answered  = G.questionsAnswered || 0;
   const hits      = G.missileHitsReceived || 0;
   const isBoss    = G.currentLevel % 10 === 0;
+  const isChestMilestone = G.currentLevel % 5 === 0 || G.currentLevel % 5 === 3;
   const isConnected = !!G.playerRegistered;
   const guestGamesPlayed = Number(load('guestGamesPlayed', 0)) || 0;
   const shouldAskGuestConnect = !isConnected && !G.practiceMode && guestGamesPlayed >= 5;
   const canEarnRewards = !G.practiceMode;
 
-  const xp    = Math.round((G.sessionXP || 0) * badgeXpMultiplier());
+  // The end-of-level bonus only fills what is left under the per-game caps
+  // (MAX_GAME_COINS / maxGameXp()), after what was picked up during play. The
+  // hangar XP upgrade raises both the bonus and the cap.
+  const collectedXpSoFar = G.practiceMode ? 0 : Math.max(0, G.airdropSessionXP || 0);
+  const xp    = Math.min(Math.round((G.sessionXP || 0) * badgeXpMultiplier() * xpUpgradeMultiplier()), Math.max(0, maxGameXp() - collectedXpSoFar));
   const stars = calcStars(correct, answered, hits);
   const accuracy = answered > 0 ? Math.round((correct / answered) * 100) : 0;
   const finalScore = (correct * 100) + (stars * 250) + Math.max(0, xp) + Math.max(0, G.streak || 0) * 25 - hits * 100;
@@ -78,8 +139,11 @@ export function showResult(won) {
   // Coins earned: scale by stars and level
   const COINS_PER_STAR = [0, 15, 35, 60];
   const levelBonus     = Math.floor(G.currentLevel / 5) * 5;
-  const coinsEarned    = canEarnRewards ? (COINS_PER_STAR[stars] || 0) + levelBonus : 0;
   const collectedCoins = G.practiceMode ? 0 : Math.max(0, G.airdropSessionCoins || 0);
+  const coinsEarned    = canEarnRewards
+    ? Math.min((COINS_PER_STAR[stars] || 0) + levelBonus, Math.max(0, MAX_GAME_COINS - collectedCoins))
+      + badgeCoinBonus()
+    : 0;
   const collectedXp = G.practiceMode ? 0 : Math.max(0, G.airdropSessionXP || 0);
   const totalCoinsGained = coinsEarned + collectedCoins;
   const totalXpGained = xp + collectedXp;
@@ -91,6 +155,7 @@ export function showResult(won) {
     save('totalCorrectAnswers', G.totalCorrectAnswers);
     G.xp            += xp;
     G.totalXpEarned  = (G.totalXpEarned || 0) + xp;
+    addLifetimeXp(xp);
     G.coins          = clampCoins((G.coins || 0) + coinsEarned);
     G.levelStars[G.currentLevel] = Math.max(G.levelStars[G.currentLevel] || 0, stars);
 
@@ -103,9 +168,9 @@ export function showResult(won) {
     save('totalXpEarned', G.totalXpEarned);
     save('coins', G.coins);
     saveProgress(G.currentLevel, stars, G.xp);
-    // Boss levels always drop a chest; non-boss levels have a 25% random chance
-    const randomChest = !isBoss && Math.random() < 0.25;
-    window._currentLevelCfg = { isChestLevel: isBoss || randomChest };
+    // 20 chests across the 50-level campaign: 2 per 5-level block
+    // (…3,5, 8,10, 13,15…), boss levels included.
+    window._currentLevelCfg = { isChestLevel: isChestMilestone };
 
     // Track per-level clean completion for SR-71 progress cubes
     if (G.currentLevel >= 1 && G.currentLevel <= 30) {
@@ -118,99 +183,70 @@ export function showResult(won) {
     }
     autoSave();
     const averageResponseTime = (G.sessionResponseCount || 0) > 0 ? (G.sessionResponseTimeTotal || 0) / G.sessionResponseCount : Infinity;
-    const startingLives = 3 + (G.activeBadge === 'steady_recruit' ? 1 : 0) + (AIRCRAFT[G.activeAircraft]?.ability?.extraLives || 0);
-    const newlyUnlockedBadges = unlockEligibleBadges({ won: true, isBoss, accuracy, averageResponseTime, livesLost: Math.max(0, startingLives - (G.lives || 0)) });
+    const startingLives = 3 + (G.activeBadge === 'steady_recruit' ? 1 : 0) + (AIRCRAFT[G.activeAircraft]?.ability?.extraLives || 0)
+      + Math.max(0, Math.min(3, G.planeUpgrades?.[G.activeAircraft]?.lives | 0)); // hangar UPGRADE (same as resetLevel)
+    const livesLost = Math.max(0, startingLives - (G.lives || 0));
+    // "Sans-Faute" badge: levels finished without losing a life (2 needed).
+    if (livesLost === 0) {
+      G.flawlessLevels = (G.flawlessLevels || 0) + 1;
+      save('flawlessLevels', G.flawlessLevels);
+    }
+    const newlyUnlockedBadges = unlockEligibleBadges({ won: true, isBoss, accuracy, averageResponseTime, livesLost });
     if (newlyUnlockedBadges.length) {
-      const badge = newlyUnlockedBadges[0];
-      window._currentLevelCfg.badgeReward = badge;
       setTimeout(() => showBadgeUnlockCelebrations(newlyUnlockedBadges), 500);
     }
   } else if (!G.practiceMode) {
     window._currentLevelCfg = { isChestLevel: false };
   }
 
-  $('result-title').textContent = G.practiceMode ? t('practiceComplete') : t('missionComplete');
-  $('result-stars').innerHTML =
-    [...Array(3)].map((_, i) =>
-      `<span style="color:${i < stars ? '#fbbf24' : '#334155'};font-size:44px">★</span>`
-    ).join('');
+  const fr = getLang() === 'fr';
+  $('rs-title').textContent = G.practiceMode ? t('practiceComplete') : t('missionComplete');
+  $('rs-level').textContent = G.practiceMode
+    ? (fr ? 'ENTRAÎNEMENT' : 'PRACTICE')
+    : `${fr ? 'NIVEAU' : 'LEVEL'} ${G.currentLevel}`;
+  $('rs-stars').innerHTML = [0, 1, 2].map(i =>
+    `<span class="rs-star ${i < stars ? 'is-on' : ''}" style="--i:${i}">★</span>`).join('');
 
-  // Star achievement details
+  // Star goals
   const pct      = answered > 0 ? correct / answered : 0;
   const got2Star = pct >= 0.7;
   const got3Star = pct >= 1 && hits === 0;
-  const detailEl = $('result-star-detail');
-  if (detailEl) {
-    const pctLabel = Math.round(pct * 100);
-    detailEl.innerHTML = `
-      <span class="${got2Star ? 'rsd-good' : 'rsd-miss'}">
-        ${got2Star ? '✓' : '✗'} 70%+ correct (${pctLabel}%)
-      </span>
-      <span class="${hits === 0 ? 'rsd-good' : 'rsd-miss'}">
-        ${hits === 0 ? '✓' : '✗'} Never hit by missiles
-      </span>
-    `;
+  const goal = (ok, text) => `<div class="rs-goal ${ok ? 'is-ok' : 'is-miss'}"><i>${ok ? '✓' : '✗'}</i><span>${text}</span></div>`;
+  $('rs-goals').innerHTML =
+    goal(got2Star, fr ? `70 %+ de bonnes réponses (${Math.round(pct * 100)} %)` : `70%+ correct answers (${Math.round(pct * 100)}%)`)
+    + goal(got3Star, fr ? '100 % de bonnes réponses sans être touché' : '100% correct without being hit');
+
+  // Rewards: coins + EXP tiles (counting up), plus a chest tile on chest levels.
+  const rewardLockLabel = fr ? 'CONNECTE-TOI POUR GAGNER' : 'SIGN IN TO EARN';
+  const guestTrialLabel = fr ? `ESSAI INVITÉ ${Math.min(guestGamesPlayed, 5)}/5` : `GUEST TRIAL ${Math.min(guestGamesPlayed, 5)}/5`;
+  const rewardsEl = $('rs-rewards');
+  if (G.practiceMode) {
+    rewardsEl.innerHTML = `<div class="rs-reward-note">${t('noXpPractice')}</div>`;
+  } else if (!canEarnRewards) {
+    rewardsEl.innerHTML = `<div class="rs-reward-note">${shouldAskGuestConnect ? rewardLockLabel : guestTrialLabel}</div>`;
+  } else {
+    rewardsEl.innerHTML = `
+      <div class="rs-reward rs-reward-coins">${coinIcon('jg-coin-icon-large')}<b data-count="${totalCoinsGained}">+0</b><small>${fr ? 'PIÈCES' : 'COINS'}</small></div>
+      <div class="rs-reward rs-reward-xp">${expIcon()}<b data-count="${totalXpGained}">+0</b><small>EXP</small></div>
+      ${window._currentLevelCfg?.isChestLevel
+        ? `<div class="rs-reward rs-reward-chest"><img src="/assets/chest/chest-purple.png" alt=""><b>${fr ? 'COFFRE' : 'CHEST'}</b><small>${fr ? 'À OUVRIR' : 'TO OPEN'}</small></div>`
+        : ''}`;
   }
 
-  const rewardLockLabel = getLang() === 'fr' ? 'CONNECTE-TOI POUR GAGNER' : 'SIGN IN TO EARN';
-  const guestTrialLabel = getLang() === 'fr' ? `ESSAI INVITE ${Math.min(guestGamesPlayed, 5)}/5` : `GUEST TRIAL ${Math.min(guestGamesPlayed, 5)}/5`;
-  $('result-xp').innerHTML = G.practiceMode
-    ? t('noXpPractice')
-    : canEarnRewards
-      ? `${expIcon()} + ${totalXpGained}`
-      : shouldAskGuestConnect
-        ? `${expIcon()} ${rewardLockLabel}`
-        : guestTrialLabel;
-  const coinsEl = $('result-coins');
-  if (coinsEl) coinsEl.innerHTML = !G.practiceMode ? `${coinIcon()} + ${totalCoinsGained}` : '';
+  // Stats
   const total = isBoss ? answered : 10;
-  $('result-correct').textContent = `${correct} / ${total} ${t('correct')}`;
-  const summaryGrid = $('result-summary-grid');
-  if (summaryGrid) {
-    const rewardLabel = G.practiceMode
-      ? (getLang() === 'fr' ? 'ENTRAÎNEMENT' : 'PRACTICE')
-      : !canEarnRewards && shouldAskGuestConnect
-        ? rewardLockLabel
-        : !canEarnRewards
-          ? guestTrialLabel
-      : window._currentLevelCfg?.badgeReward
-        ? `<img class="result-badge-mini" src="${window._currentLevelCfg.badgeReward.image}" alt=""> ${window._currentLevelCfg.badgeReward.name}`
-      : window._currentLevelCfg?.isChestLevel
-        ? (getLang() === 'fr' ? 'COFFRE' : 'CHEST')
-        : (totalCoinsGained > 0 ? `${coinIcon('jg-coin-icon-small')} ${totalCoinsGained}` : '--');
-    summaryGrid.innerHTML = [
-      [getLang() === 'fr' ? 'SCORE' : 'SCORE', finalScore.toLocaleString()],
-      [getLang() === 'fr' ? 'PIECES' : 'COINS', G.practiceMode ? '0' : `+${totalCoinsGained}`],
-      [expIcon(), G.practiceMode ? '0' : `+${totalXpGained}`],
-      [getLang() === 'fr' ? 'PRECISION' : 'ACCURACY', `${accuracy}%`],
-      [getLang() === 'fr' ? 'TOUCHES' : 'HITS', String(hits)],
-      [getLang() === 'fr' ? 'RECOMPENSE' : 'REWARD', rewardLabel],
-    ].map(([label, value]) => `
-      <div class="result-stat">
-        <span>${label}</span>
-        <strong>${value}</strong>
-      </div>
-    `).join('');
-  }
+  $('rs-stats').innerHTML = [
+    ['SCORE', `<span data-count="${finalScore}" data-plain="1">0</span>`],
+    [fr ? 'RÉPONSES' : 'ANSWERS', `${correct}/${total}`],
+    [fr ? 'PRÉCISION' : 'ACCURACY', `${accuracy}%`],
+    [fr ? 'TOUCHÉ' : 'HITS', String(hits)],
+  ].map(([label, value]) => `<div class="rs-stat"><small>${label}</small><b>${value}</b></div>`).join('');
 
-  const creditsEl = $('result-credits');
-  if (creditsEl) {
-    const fr = getLang() === 'fr';
-    const aircraft = AIRCRAFT[G.activeAircraft] || AIRCRAFT.t6;
-    const playerName = (G.playerName && G.playerName !== 'PILOT') ? G.playerName : (fr ? 'PILOTE JEXONGO' : 'JEXONGO PILOT');
-    const missionLabel = G.practiceMode
-      ? (fr ? 'ENTRAINEMENT' : 'PRACTICE')
-      : `${fr ? 'NIVEAU' : 'LEVEL'} ${G.currentLevel}`;
-    creditsEl.innerHTML = `
-      <div class="result-credits-title">${fr ? 'CREDITS DE MISSION' : 'MISSION CREDITS'}</div>
-      <div class="result-credits-roll">
-        <div><span>${fr ? 'MISSION' : 'MISSION'}</span><strong>${missionLabel}</strong></div>
-        <div><span>${fr ? 'PILOTE' : 'PLAYER'}</span><strong>${playerName}</strong></div>
-        <div><span>${fr ? 'AVION' : 'AIRCRAFT'}</span><strong>${aircraft.name || 'T-6 Texan II'}</strong></div>
-        <div><span>${fr ? 'MERCI' : 'THANKS'}</span><strong>${fr ? "D'AVOIR JOUE" : 'FOR PLAYING'}</strong></div>
-      </div>
-    `;
-  }
+  const aircraft = AIRCRAFT[G.activeAircraft] || AIRCRAFT.t6;
+  const playerName = (G.playerName && G.playerName !== 'PILOT') ? G.playerName : (fr ? 'PILOTE JEXONGO' : 'JEXONGO PILOT');
+  $('rs-foot').textContent = `${playerName} · ${aircraft.name || 'T-6 Texan II'}`;
+
+  animateResultCounters($('s-result'));
 
   // SR-71 unlock: first-time completion of 30 levels with zero wrong answers
   const unlockBanner = $('result-unlock-banner');

@@ -17,7 +17,11 @@ const SUPABASE_REF = (() => {
 
 export async function getSupabaseClient() {
   if (!_supabaseClientPromise) {
+    // Vite resolves the package; a plain static server (Live Server) can't,
+    // so fall back to the same library from the CDN.
+    const cdn = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
     _supabaseClientPromise = import('@supabase/supabase-js')
+      .catch(() => import(/* @vite-ignore */ cdn))
       .then(({ createClient }) => createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
         auth: {
           persistSession: true,
