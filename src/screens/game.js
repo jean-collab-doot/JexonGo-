@@ -1253,6 +1253,33 @@ let _revealTimer  = null;
 let _answerCelebrationTimer = null;
 let _skipHandler  = null;
 let _correctionWaiting = false;
+// Picture of the playfield taken when the correction opens. A resize clears
+// the canvas while the loop is frozen, so it is redrawn from this copy
+// instead of leaving a black screen behind the correction.
+let _correctionSnapshot = null;
+
+function takeCorrectionSnapshot() {
+  if (!canvas || !canvas.width || !canvas.height) { _correctionSnapshot = null; return; }
+  const copy = document.createElement('canvas');
+  copy.width = canvas.width;
+  copy.height = canvas.height;
+  copy.getContext('2d').drawImage(canvas, 0, 0);
+  _correctionSnapshot = copy;
+}
+
+function drawCorrectionSnapshot() {
+  const snap = _correctionSnapshot;
+  if (!snap || !ctx || !canvas.width || !canvas.height) return;
+  // Cover the whole canvas, keeping the picture's proportions.
+  const scale = Math.max(canvas.width / snap.width, canvas.height / snap.height);
+  const w = snap.width * scale;
+  const h = snap.height * scale;
+  ctx.save();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.globalAlpha = 1;
+  ctx.drawImage(snap, (canvas.width - w) / 2, (canvas.height - h) / 2, w, h);
+  ctx.restore();
+}
 let _smoothResumeAfterCorrection = false;
 let _resumeSlowStart = 0;
 let _resumeSlowDuration = 0;
@@ -1831,6 +1858,15 @@ function _canRunSid(sid = _activeSessionId) {
 
 function _queueFrame(sid = _activeSessionId) {
   if (!_canRunSid(sid)) return;
+  // The game stays frozen while the wrong-answer correction is shown, even
+  // if a resize or tab switch tries to restart the loop. nextQuestion()
+  // restarts it once the player presses CONTINUE.
+  if (_correctionWaiting) {
+    cancelAnimationFrame(G.animFrame);
+    G.animFrame = null;
+    drawCorrectionSnapshot();
+    return;
+  }
   G.animFrame = requestAnimationFrame(ts => {
     if (!_canRunSid(sid)) {
       G.animFrame = null;
@@ -4035,7 +4071,9 @@ function airdropShieldActive() {
 // The player cannot be hurt (enemy shots fizzle, enemy planes pass through):
 //  - while a question is waiting for an answer, so a hit can never skip or
 //    change the current question;
-//  - for 3 s after answering it (right, wrong or time out).
+//  - for 3 s after answering it (right, wrong or time out);
+//  - while the wrong-answer correction is shown, then 3 s more from the tap
+//    on CONTINUE (the 3 s start when the game starts moving again).
 const ANSWER_IMMUNE_MS = 3000;
 let _answerImmuneUntil = 0;
 
@@ -4044,7 +4082,8 @@ function answeringQuestion() {
 }
 
 function playerImmune(now = performance.now()) {
-  return answeringQuestion() || now < _answerImmuneUntil;
+  // Nothing can hurt the player while the wrong-answer correction is shown.
+  return _correctionWaiting || answeringQuestion() || now < _answerImmuneUntil;
 }
 
 function onEnemyMissileHit() {
@@ -4696,7 +4735,10 @@ function revealCorrectAnswer(picked = null) {
   overlay.classList.add('dimmed', 'correction-dimmed');
   cancelAnimationFrame(G.animFrame);
   G.animFrame = null;
+  takeCorrectionSnapshot();
 }
+
+const CORRECTION_FADE_MS = 260;
 
 function waitForCorrectionContinue(onContinue, sid) {
   const btn = $('btn-correction-continue');
@@ -4708,6 +4750,9 @@ function waitForCorrectionContinue(onContinue, sid) {
     e.stopPropagation();
     if (!_correctionWaiting || _sessionId !== sid) return;
     _correctionWaiting = false;
+    // Immune for the fade below, then the full 3 s once the game resumes.
+    _answerImmuneUntil = performance.now() + CORRECTION_FADE_MS + ANSWER_IMMUNE_MS;
+    _correctionSnapshot = null;
     _smoothResumeAfterCorrection = true;
     btn.disabled = true;
     btn.onclick = null;
@@ -4737,7 +4782,7 @@ function waitForCorrectionContinue(onContinue, sid) {
       }
       _revealTimer = null;
       onContinue();
-    }, 260);
+    }, CORRECTION_FADE_MS);
   };
 }
 
@@ -5111,6 +5156,7 @@ export function initGame(levelNum, onComplete) {
   G.question = null;
   _transitioning = false;
   _correctionWaiting = false;
+  _correctionSnapshot = null;
   clearTimeout(_revealTimer);
   _revealTimer = null;
   stopShootingWindow();
