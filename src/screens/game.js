@@ -40,8 +40,8 @@ import { setSpriteCanvasWidth } from '../game/aircraft-draw.js';
 import { wsOn, wsSend, wsDisconnect } from '../online/ws-client.js';
 
 const ENEMY_MOVEMENT_SPEED_SCALE = 0.82;
-// Phones and tablets: enemy planes fly 25% faster (they looked slow there).
-const TOUCH_ENEMY_SPEED_MULT = 1.25;
+// Phones and tablets: enemy planes fly 60% faster (they looked slow there).
+const TOUCH_ENEMY_SPEED_MULT = 1.6;
 const ENEMY_SPAWN_INTERVAL_SCALE = 0.9;
 // Frames between shots (60 fps): F-15 = 5 s, F-5 ('fast') = 5 s,
 // Eurofighter ('turner') = 3 s.
