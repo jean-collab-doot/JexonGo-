@@ -654,7 +654,7 @@ document.addEventListener('click', e => {
     document.getElementById('audio-splash')?.classList.add('hidden');
   }
   // The takeoff button (level briefing) plays its own sound instead.
-  if (btn.id !== 'btn-audio-start' && btn.id !== 'btn-briefing-fly' && !btn.classList.contains('np-play')
+  if (btn.id !== 'btn-audio-start' && btn.id !== 'btn-briefing-fly'
     && !_pressDragged) SFX.click();
   if (!_trackedFirstInteraction) {
     _trackedFirstInteraction = true;
@@ -874,16 +874,17 @@ function showDailyRewardOnPageLoad() {
   if (view) showDailyReward(view.reward, view.streak, null, view.claimed, view.nextAt);
 }
 
-// New players (onboarding never done) get the yellow T-6 intro first; its
-// JOUER button (a user gesture, so audio can start) leads into the
-// onboarding questions, then the first level.
-// Local test only: http://localhost:5173/?intro always plays it.
+// The yellow T-6 intro opens JexonGo every time. New players (onboarding
+// never done) go on into the onboarding questions, then the first level;
+// everyone else sees it fade into the lobby. No button to tap: audio starts
+// on the player's first touch (sound.js resumes it on pointerdown).
+// Local test only: http://localhost:5173/?intro plays the new-player version.
 const forceNewPlayerIntro = import.meta.env?.DEV && new URLSearchParams(location.search).has('intro');
 const knownAccount = G.playerRegistered && G.playerGrade;   // returning account on a new device
 if (forceNewPlayerIntro || (!knownAccount && !(G.hasSeenOnboarding || load('hasSeenOnboarding', false)))) {
   startNewPlayerAnimation();
 } else {
-  setTimeout(showDailyRewardOnPageLoad, 900);
+  playNewPlayerIntro(() => setTimeout(showDailyRewardOnPageLoad, 600), { leave: true });
 }
 // Local test only: http://localhost:5173/?coop=bot starts level 1 with a bot
 // teammate (same as MULTI -> WITH A BOT).
@@ -900,8 +901,7 @@ if (import.meta.env?.DEV && new URLSearchParams(location.search).has('connect'))
   setTimeout(openConnectPrompt, 600);
 }
 
-// The intro is on screen (or not needed): let the page show normally again.
-document.querySelector('#np-intro.np-static')?.remove();   // not a new player
+// The intro has taken over the page: let the rest show normally again.
 document.documentElement.classList.remove('np-boot');
 
 function _forceSignOutBlocked() {

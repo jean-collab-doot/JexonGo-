@@ -10,9 +10,8 @@
       try {
         var get = function (k) { var v = localStorage.getItem('jexongo_' + k); return v === null ? null : JSON.parse(v); };
         var known = get('playerRegistered') && get('playerGrade');
-        if (new URLSearchParams(location.search).has('intro') || (!known && get('hasSeenOnboarding') !== true)) {
-          document.documentElement.classList.add('np-boot');
-        }
+        // The yellow T-6 intro opens JexonGo every time (main.js).
+        document.documentElement.classList.add('np-boot');
       } catch (e) {}
     })();
   </script>
@@ -70,7 +69,7 @@
   <link rel="stylesheet" href="src/screens/lobby-redesign.css">
 </head>
 <body>
-  <!-- New-player intro (src/screens/new-player-intro.js takes it over). It is
+  <!-- Opening intro (src/screens/new-player-intro.js takes it over). It is
        in the page itself so the T-6 flies in while the game is still loading;
        the plane hovers in the middle until the game is ready. -->
   <div id="np-intro" class="np-intro np-static" aria-hidden="true">
@@ -83,7 +82,6 @@
     <div class="np-wash"></div>
     <div class="np-title">
       <div class="np-logo">JEXON<span>GO</span></div>
-      <button class="np-play" type="button">JOUER</button>
     </div>
   </div>
   <!-- AUDIO SPLASH (tap-to-start, guarantees audio unlock) -->
