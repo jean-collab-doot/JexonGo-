@@ -40,6 +40,8 @@ import { setSpriteCanvasWidth } from '../game/aircraft-draw.js';
 import { wsOn, wsSend, wsDisconnect } from '../online/ws-client.js';
 
 const ENEMY_MOVEMENT_SPEED_SCALE = 0.82;
+// Phones and tablets: enemy planes fly 25% faster (they looked slow there).
+const TOUCH_ENEMY_SPEED_MULT = 1.25;
 const ENEMY_SPAWN_INTERVAL_SCALE = 0.9;
 // Frames between shots (60 fps): F-15 = 5 s, F-5 ('fast') = 5 s,
 // Eurofighter ('turner') = 3 s.
@@ -2066,8 +2068,10 @@ function frame(ts = 0) {
   }
   const prevFrameTs = _lastFrameTs || ts;
   const frameMs = prevFrameTs ? Math.max(8, Math.min(42, ts - prevFrameTs)) : 16.7;
+  // Phones: a frame that took longer moves the game further (up to 2x, i.e.
+  // full speed down to 30 fps), so a busy phone no longer slows the game down.
   const targetStep = isTouchMobile()
-    ? Math.max(0.95, Math.min(1.32, frameMs / 16.7))
+    ? Math.max(0.95, Math.min(2, frameMs / 16.7))
     : Math.max(0.85, Math.min(1.2, frameMs / 16.7));
   const questionFocusTarget = isQuestionAwaitingAnswer() ? 1 : 0;
   const focusEaseMs = questionFocusTarget ? 420 : 520;
@@ -2264,7 +2268,8 @@ function frame(ts = 0) {
     }
 
     for (const e of spawned) {
-      e.speed       *= levelCfg.enemySpeedMult * ENEMY_MOVEMENT_SPEED_SCALE * (_guidedRun ? GUIDED_ENEMY_SPEED : 1);
+      e.speed       *= levelCfg.enemySpeedMult * ENEMY_MOVEMENT_SPEED_SCALE * (_guidedRun ? GUIDED_ENEMY_SPEED : 1)
+        * (isTouchMobile() ? TOUCH_ENEMY_SPEED_MULT : 1);
       // Same cadence on phone, tablet and computer.
       e.fireRate     = Math.max(30, Math.floor(e.fireRate * levelCfg.enemyFireRateMult));
       e.fireCooldown = 45 + Math.floor(Math.random() * 45);
