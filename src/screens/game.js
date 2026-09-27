@@ -5336,6 +5336,7 @@ export function initGame(levelNum, onComplete) {
     SFX.stopMusic();
     SFX.weatherStop();
     SFX.engineStop();
+    SFX.airdropPlaneStop();
     $('gameover-title').textContent = getLang() === 'fr' ? 'PARTIE ARRETEE' : 'GAME STOPPED';
     $('gameover-score').textContent = getLang() === 'fr'
       ? 'Choisis continuer, recommencer ou retourner au lobby.'
@@ -5604,6 +5605,7 @@ export function initGame(levelNum, onComplete) {
     _sessionId++;
     SFX.weatherStop();
     SFX.engineStop();
+    SFX.airdropPlaneStop();
     stopCoop();
     // Kept for RETRY: the teammate comes back (full hearts) in the new run.
     G.lastCoopSession = G.coopSession || null;

@@ -15976,3 +15976,34 @@ html.np-boot .np-intro.np-static { display: block; }
 
 /* Game icons (src/utils/icons.js uiIcon): sized like the text around them. */
 .ui-icon { display: inline-block; width: 1em; height: 1em; vertical-align: -0.14em; flex: none; }
+
+/* Phone briefing: the screen was locked to the viewport (overflow hidden), so
+   flexbox squeezed the mission card down to its title and hid the level
+   description; the last star goal sat under the TAKE OFF button. Blocks now
+   keep their full height, the screen scrolls, and the button stays pinned. */
+html.touch-phone #s-briefing {
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  -webkit-overflow-scrolling: touch;
+}
+html.touch-phone #s-briefing > * {
+  flex-shrink: 0 !important;
+}
+@media (max-height: 760px) {
+  html.touch-phone .briefing-pilot-row { margin-top: 4px !important; padding: 6px 10px !important; }
+  html.touch-phone .briefing-card { margin-top: 6px !important; margin-bottom: 8px !important; padding: 10px 12px !important; }
+  html.touch-phone .briefing-conditions { gap: 6px !important; margin-top: 4px !important; }
+  html.touch-phone .briefing-condition-row { min-height: 0 !important; padding: 6px 8px !important; }
+}
+@media (max-height: 760px) {
+  html.touch-phone .briefing-cond-icon { width: 28px !important; height: 28px !important; font-size: 13px !important; }
+  html.touch-phone .briefing-condition-row { padding: 5px 8px !important; }
+  html.touch-phone .briefing-star-criteria { gap: 4px !important; margin-bottom: 6px !important; }
+  html.touch-phone .bsc-row { padding: 5px 10px !important; }
+  html.touch-phone .bsc-star { font-size: 13px !important; }
+}
+html.touch-phone .briefing-mission-title {
+  font-size: clamp(9px, 2.9vw, 12px) !important;
+  letter-spacing: 1.5px !important;
+  line-height: 1.5 !important;
+}

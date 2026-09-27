@@ -112,15 +112,15 @@ export function showBriefing(levelNum) {
     const existing = G.levelStars[levelNum] || 0;
     starCritEl.innerHTML = `
       <div class="bsc-row">
-        <span class="bsc-star ${existing >= 1 ? 'bsc-earned' : ''}">&#9733;</span>
+        <span class="bsc-star ${existing >= 1 ? 'bsc-earned' : ''}">${uiIcon('star')}</span>
         <span class="bsc-desc">${t('briefingStarComplete')}</span>
       </div>
       <div class="bsc-row">
-        <span class="bsc-star ${existing >= 2 ? 'bsc-earned' : ''}">&#9733;</span>
+        <span class="bsc-star ${existing >= 2 ? 'bsc-earned' : ''}">${uiIcon('star')}</span>
         <span class="bsc-desc">${t('briefingStarAccuracy')}</span>
       </div>
       <div class="bsc-row">
-        <span class="bsc-star ${existing >= 3 ? 'bsc-earned' : ''}">&#9733;</span>
+        <span class="bsc-star ${existing >= 3 ? 'bsc-earned' : ''}">${uiIcon('star')}</span>
         <span class="bsc-desc">${t('briefingStarPerfect')}</span>
       </div>
     `;

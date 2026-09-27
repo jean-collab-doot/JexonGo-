@@ -123,6 +123,7 @@ function applyReward(reward) {
 }
 
 export function initAirdrop(enabled, cw, ch) {
+  SFX.airdropPlaneStop?.();
   const arrivalDelay = AIRDROP_DELAY_MIN_FRAMES
     + Math.random() * (AIRDROP_DELAY_MAX_FRAMES - AIRDROP_DELAY_MIN_FRAMES);
   drop = {
@@ -164,18 +165,24 @@ export function updateAirdrop(step, cw, ch, magnetRadius = 0) {
     const visibleHalfHeight = drop.planeTimer >= PLANE_ANIM_END
       ? planeSize * EXIT_PLANE_HEIGHT_SCALE / 2
       : planeSize / 2;
-    if (drop.planeTimer >= PLANE_ANIM_END && visiblePlaneY + visibleHalfHeight < 0) drop.planeActive = false;
+    // Engine sound follows the plane: loudest mid-screen, silent once gone.
+    const halfSpan = ch / 2 + visibleHalfHeight;
+    SFX.airdropPlaneLevel?.(0.35 + 0.65 * Math.max(0, 1 - Math.abs(visiblePlaneY - ch / 2) / halfSpan));
+    if (drop.planeTimer >= PLANE_ANIM_END && visiblePlaneY + visibleHalfHeight < 0) {
+      drop.planeActive = false;
+      SFX.airdropPlaneStop?.();
+    }
   }
   if (drop.state === AIRDROP_STATE.DONE || drop.state === AIRDROP_STATE.REWARD) return;
   drop.groundY = ch * 0.62;
   if (drop.state === AIRDROP_STATE.IDLE) {
     drop.delay -= step;
-    // The recording has a gradual engine lead-in, so start it well before
-    // the carrier reaches the visible playfield.
-    if (!drop.planeSoundStarted && drop.delay <= 240) {
+    // The engines are heard just before the carrier appears from below.
+    if (!drop.planeSoundStarted && drop.delay <= 30) {
       drop.planeSoundStarted = true;
       SFX.airdropPlane?.();
     }
+    if (drop.planeSoundStarted) SFX.airdropPlaneLevel?.(0.35 * (1 - Math.max(0, drop.delay) / 30));
     if (drop.delay <= 0) {
       drop.state = AIRDROP_STATE.DROP;
       drop.timer = 0;

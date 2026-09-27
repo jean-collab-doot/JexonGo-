@@ -76,6 +76,7 @@ function _after(ms, fn) {
 
 function _stopAllSFX() {
   _nukeFlight = null;
+  _adPlane = null;
   _timers.forEach(clearTimeout);
   _timers.length = 0;
   _sources.forEach(s => { try { s.stop(); } catch (_) {} });
@@ -733,6 +734,85 @@ function _engineStop() {
   } catch (_) {}
 }
 
+// ── A400M AIRDROP CARRIER ────────────────────────────────────────────────────
+let _adPlane = null;
+const AD_PLANE_VOL = 0.26;
+
+function _adPlaneStop() {
+  const p = _adPlane;
+  _adPlane = null;
+  if (!p) return;
+  try {
+    const now = p.ctx.currentTime;
+    p.out.gain.cancelScheduledValues(now);
+    p.out.gain.setTargetAtTime(0.0001, now, 0.12);
+    p.nodes.forEach(n => { try { n.stop(now + 0.7); } catch (_) {} });
+  } catch (_) {}
+}
+
+function _adPlaneStart() {
+  _adPlaneStop();
+  if (_sfxVol === 0) return;
+  try {
+    const ctx = _ac();
+    const now = ctx.currentTime;
+    const out = ctx.createGain();
+    out.gain.setValueAtTime(0.0001, now);
+    out.connect(ctx.destination);
+    const lp = ctx.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.value = 900;
+    lp.Q.value = 0.8;
+    lp.connect(out);
+    const chop = ctx.createGain();     // propeller beat
+    chop.gain.value = 0.6;
+    chop.connect(lp);
+    const nodes = [];
+    // Four engines, a little out of tune: 110 Hz and its octave.
+    [-14, -5, 6, 15].forEach((d, i) => {
+      const o = ctx.createOscillator();
+      o.type = 'sawtooth';
+      o.frequency.value = i % 2 ? 220 : 110;
+      o.detune.value = d;
+      o.connect(chop);
+      o.start(now);
+      nodes.push(o);
+    });
+    const lfo = ctx.createOscillator();
+    const amt = ctx.createGain();
+    lfo.frequency.value = 22;
+    amt.gain.value = 0.35;
+    lfo.connect(amt); amt.connect(chop.gain);
+    lfo.start(now);
+    nodes.push(lfo);
+    // Air rush, the part phone speakers carry best.
+    const rush = ctx.createBufferSource();
+    rush.buffer = _noiseBuffer(ctx);
+    rush.loop = true;
+    const bp = ctx.createBiquadFilter();
+    bp.type = 'bandpass';
+    bp.frequency.value = 1100;
+    bp.Q.value = 0.9;
+    const rushGain = ctx.createGain();
+    rushGain.gain.value = 0.35;
+    rush.connect(bp); bp.connect(rushGain); rushGain.connect(out);
+    rush.start(now);
+    nodes.push(rush);
+    nodes.forEach(n => _sources.push(n));
+    _adPlane = { ctx, out, lp, nodes };
+  } catch (_) {}
+}
+
+// v: 0 (far / off screen) → 1 (plane in the middle of the screen).
+function _adPlaneLevel(v) {
+  const p = _adPlane;
+  if (!p) return;
+  const k = Math.max(0, Math.min(1, v));
+  const now = p.ctx.currentTime;
+  p.out.gain.setTargetAtTime(Math.max(0.0001, k * AD_PLANE_VOL * _sfxVol), now, 0.06);
+  p.lp.frequency.setTargetAtTime(700 + k * 1600, now, 0.08);
+}
+
 function _engineStart(aircraftId) {
   _engineStop();
   if (_sfxVol === 0 || !_audioRunning()) return;
@@ -1057,62 +1137,30 @@ export const SFX = {
   },
 
   // ── Airdrop ──
-  // The A400M carrier (four turboprops) flies over: fades in, peaks while
-  // it crosses the screen, fades away. game timing: airdrop.js.
-  airdropPlane() {
-    if (_sfxVol === 0) return;
-    try {
-      const ctx = _ac();
-      const now = ctx.currentTime;
-      const out = ctx.createGain();
-      out.gain.setValueAtTime(0.0001, now);
-      out.gain.exponentialRampToValueAtTime(0.09 * _sfxVol, now + 3.5);
-      out.gain.setValueAtTime(0.09 * _sfxVol, now + 5);
-      out.gain.exponentialRampToValueAtTime(0.0001, now + 8);
-      out.connect(ctx.destination);
-      const lp = ctx.createBiquadFilter();
-      lp.type = 'lowpass';
-      lp.frequency.setValueAtTime(350, now);
-      lp.frequency.linearRampToValueAtTime(900, now + 4.2);   // closer: brighter
-      lp.frequency.linearRampToValueAtTime(300, now + 8);
-      lp.connect(out);
-      const chop = ctx.createGain();
-      chop.gain.value = 0.5;
-      chop.connect(lp);
-      [-12, -4, 5, 13].forEach(d => {                           // four engines
-        const o = ctx.createOscillator();
-        o.type = 'sawtooth';
-        o.frequency.setValueAtTime(62, now);
-        o.frequency.linearRampToValueAtTime(66, now + 4.2);     // Doppler
-        o.frequency.linearRampToValueAtTime(57, now + 8);
-        o.detune.value = d;
-        o.connect(chop);
-        o.start(now); o.stop(now + 8.1);
-        _sources.push(o);
-      });
-      const lfo = ctx.createOscillator();
-      const amt = ctx.createGain();
-      lfo.frequency.value = 19;
-      amt.gain.value = 0.3;
-      lfo.connect(amt); amt.connect(chop.gain);
-      lfo.start(now); lfo.stop(now + 8.1);
-    } catch (_) {}
-  },
-  // The crate leaves the plane and its parachute opens.
+  // The A400M carrier (four turboprops): a loop that airdrop.js drives every
+  // frame from the plane's position on screen (airdropPlaneLevel), so the
+  // sound is loudest exactly while the plane crosses and stops when it leaves.
+  // Propeller buzz in the mid range so phone speakers play it too.
+  airdropPlane()        { _adPlaneStart(); },
+  airdropPlaneLevel(v)  { _adPlaneLevel(v); },
+  airdropPlaneStop()    { _adPlaneStop(); },
+  // The crate leaves the plane: latch clack, then the parachute snaps open.
   airdropRelease() {
-    _hit(110, 0.25, 0.15);
-    _after(250, () => {
-      _sweep(250, 90, 0.4, 0.35, 0.8);                          // canopy "fwump"
-      _after(120, () => _sweep(1200, 600, 0.6, 0.1, 3));        // fabric flutter
+    _tone(_ac(), 1500, 'square', 0.04, 0.16);                   // latch
+    _after(40, () => _tone(_ac(), 700, 'triangle', 0.1, 0.3, 1100));
+    _after(140, () => {
+      _sweep(2400, 500, 0.35, 0.55, 1.2);                       // canopy snap
+      _after(160, () => _sweep(1600, 900, 0.7, 0.22, 3));       // fabric flutter
     });
   },
-  // The crate is shot or rammed open.
+  // The crate is shot or rammed open: a crunch, wood splinters, a sparkle.
   airdropBreak() {
-    _hit(180, 0.4, 0.12);
-    _sweep(3000, 700, 0.25, 0.3, 1.5);                          // wood splinters
-    _after(90, () => _hit(260, 0.25, 0.08));
-    _after(220, () => [1047, 1568, 2093].forEach((f, i) =>
-      _after(i * 55, () => _tone(_ac(), f, 'sine', 0.25, 0.12))));
+    _playBuf(SOUND.explosion, 0.55, () => _sweep(1800, 300, 0.3, 0.5, 1));
+    _tone(_ac(), 320, 'triangle', 0.14, 0.4, 620);              // wooden thunk
+    _sweep(4200, 1200, 0.3, 0.5, 1.6);                          // splinters
+    _after(80, () => _sweep(3000, 900, 0.22, 0.35, 2));
+    _after(240, () => [1047, 1568, 2093].forEach((f, i) =>
+      _after(i * 55, () => _tone(_ac(), f, 'sine', 0.25, 0.18))));
   },
   // The reward is picked up.
   airdropPickup() {
