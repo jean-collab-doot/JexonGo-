@@ -5351,6 +5351,7 @@ export function initGame(levelNum, onComplete) {
   _timedXpElapsedMs = 0;
   G.airdropSessionCoins = 0;
   G.airdropSessionXP = 0;
+  updateGameCurrencyHUD();   // show 0 now, not last game's total during the countdown
   G.airdropXrayUntil = 0;
   G.airdropNukePending = false;
   G.airdropSupportPending = false;
