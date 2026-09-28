@@ -145,8 +145,8 @@ export const AIRCRAFT = {
       icon: 'bolt',
       name: { en: 'TURBO + HACK', fr: 'TURBO + PIRATAGE' },
       description: {
-        en: 'Activatable speed boost. Every 3 correct answers, 3 enemy planes switch sides and fire at their teammates for 10 s, then explode',
-        fr: 'Boost de vitesse activable. Toutes les 3 bonnes réponses, 3 avions ennemis changent de camp et tirent sur leurs coéquipiers pendant 10 s, puis explosent',
+        en: 'Activatable speed boost for 10 s. Every 3 correct answers, 3 enemy planes switch sides and fire their own weapons at their teammates for 10 s, then explode',
+        fr: 'Boost de vitesse activable pendant 10 s. Toutes les 3 bonnes réponses, 3 avions ennemis changent de camp et tirent avec leurs propres armes sur leurs coéquipiers pendant 10 s, puis explosent',
       },
       turbo: true,
       skill: 'turbo',

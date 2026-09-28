@@ -101,7 +101,7 @@ function activatePlayerShield() {
 //   F-16 ESQUIVE  — enemy missiles swerve around the aircraft
 //   B-2 FURTIF    — invisible: enemies stop firing and nothing can hit it
 const AIRCRAFT_SKILLS = {
-  turbo:   { durationMs: 4000,  cooldownMs: 14000, icon: 'bolt', label: { fr: 'TURBO',   en: 'TURBO' } },
+  turbo:   { durationMs: 10000, cooldownMs: 14000, icon: 'bolt', label: { fr: 'TURBO',   en: 'TURBO' } },
   evade:   { durationMs: 10000, cooldownMs: 30000, icon: 'rotate', label: { fr: 'ESQUIVE', en: 'EVADE' } },
   stealth: { durationMs: 10000, cooldownMs: 30000, icon: 'stealth', label: { fr: 'FURTIF',  en: 'STEALTH' } },
 };
@@ -217,7 +217,81 @@ function maybeLaunchB2Nuke() {
 const TURNCOAT_COUNT = 3;
 const TURNCOAT_MS = 10000;
 const TURNCOAT_TURN_MS = 700;
-const TURNCOAT_SHOT_FRAMES = 34;
+
+// Each switched plane keeps its own weapon, now aimed at the enemies:
+//   F-15 / Eurofighter / others: red missiles     F-15 (homing): homing missile
+//   F-5: blue laser dots     F-14: red laser volleys (3 s on / 3 s off)
+//   Apache: machine-gun bursts     kamikaze F-5: rams the nearest enemy
+// (Faster than when they were enemies, so they help in their 10 seconds.)
+function turncoatWeapon(e) {
+  if (e.turncoatKamikaze) return 'ram';
+  if (e.type === 'interceptor') return 'laser';
+  if (e.pathType === 'apache-ambush') return 'gun';
+  if (e.homingShooter) return 'homing';
+  if (e.type === 'fast') return 'dots';
+  return 'missile';
+}
+
+function fireTurncoatWeapon(e, target) {
+  const muzzleY = e.y - getEnemyDrawSize(e) * 0.3;
+  const mobile = isTouchMobile();
+  const push = (speed, type, color, { homing = false, spread = 0 } = {}) => {
+    const shot = createMissile(e.x + spread * 0.3, muzzleY, target.x + spread, target.y, speed * MISSILE_SPEED_SCALE, null, color, 1, homing);
+    shot.fromPlayer = true;
+    shot.type = type;
+    if (homing) shot.allyHoming = true;
+    G.missiles.push(shot);
+    return shot;
+  };
+  switch (turncoatWeapon(e)) {
+    case 'laser':
+      e.turncoatCycle = ((e.turncoatCycle || 0) + 12) % 360;
+      if (e.turncoatCycle >= 180) return 12;          // resting half of the cycle
+      push(mobile ? 8.8 : 7.4, 'enemy-laser', '#ff2020');
+      SFX.missile('laser');
+      return 12;
+    case 'gun':
+      if (!e.turncoatBurst) e.turncoatBurst = 7;
+      push(8.5, 'enemy-machine-gun', '#ffd34d', { spread: (Math.random() - 0.5) * 26 });
+      SFX.missile('gun');
+      e.turncoatBurst--;
+      return e.turncoatBurst > 0 ? 5 : 60;
+    case 'homing':
+      push(mobile ? 6 : 5, 'enemy-homing', '#ff3b30', { homing: true });
+      SFX.missile('missile');
+      return 70;
+    case 'dots':
+      push((mobile ? 9.8 : 8.4) * 1.2, 'enemy-blue-dot', '#38bdf8');
+      SFX.missile('laser');
+      return 26;
+    default: {
+      const shot = push(mobile ? 9.8 : 8.4, 'ally-missile', '#ef4444');
+      shot.enemyStyle = true;
+      SFX.missile('missile');
+      return 40;
+    }
+  }
+}
+
+// Kamikaze F-5 on our side: charges the nearest enemy and blows up with it.
+function updateTurncoatRam(e) {
+  const target = (e.ramTarget?.active && !e.ramTarget.turncoat) ? e.ramTarget : nearestEnemyTo(e.x, e.y);
+  e.ramTarget = target;
+  if (!target) return false;
+  const dx = target.x - e.x, dy = target.y - e.y;
+  const d = Math.hypot(dx, dy) || 1;
+  e.ramSpeed = Math.min(canvas.height * 0.016, (e.ramSpeed || 2) + 0.25 * _frameStep);
+  e.x += (dx / d) * e.ramSpeed * _frameStep;
+  e.y += (dy / d) * e.ramSpeed * _frameStep;
+  e.headingAngle = Math.atan2(dy, dx) - Math.PI / 2;
+  const reach = (getEnemyDrawSize(e) + getEnemyDrawSize(target)) * 0.3;
+  if (d < reach) {
+    onMissileHit(target, { damage: 3, type: 'default' });
+    spawnMissileExplosion(G.particles, e.x, e.y, 'default', 18);
+    e.active = false;
+  }
+  return true;
+}
 
 function maybeTurnEnemies() {
   const every = AIRCRAFT[G.activeAircraft]?.ability?.turncoatEveryCorrect;
@@ -239,6 +313,7 @@ function maybeTurnEnemies() {
     e.turncoatSlot = freeSlots[i] ?? i;
     e.turncoatFromAngle = Number.isFinite(e.headingAngle) ? e.headingAngle : 0;
     e.homingLockT = null;
+    e.turncoatKamikaze = !!e.kamikaze;   // its weapon is itself: it rams an enemy
     e.kamikaze = false;
     e.vx = 0;
     e.bankVis = 0;
@@ -274,6 +349,13 @@ function updateAndDrawTurncoat(e, frameMs) {
     e.active = false;
     return;
   }
+  const turnT = Math.min(1, e.turncoatAge / TURNCOAT_TURN_MS);
+  // Kamikaze: once turned, it charges instead of holding a slot in the V.
+  if (e.turncoatKamikaze && turnT >= 1 && !paused && updateTurncoatRam(e)) {
+    if (!e.active) return;
+    drawTurncoat(e);
+    return;
+  }
   // Fly to its slot in the V (ease), turn around to face the enemies.
   const slot = turncoatSlotPos(e.turncoatSlot);
   const k = Math.min(1, 0.06 * _frameStep);
@@ -282,7 +364,6 @@ function updateAndDrawTurncoat(e, frameMs) {
   e.y += (slot.y - e.y) * k;
   e.vx = 0;
   e.bankVis = 0;
-  const turnT = Math.min(1, e.turncoatAge / TURNCOAT_TURN_MS);
   const eased = turnT * turnT * (3 - 2 * turnT);
   const bank = Math.max(-0.35, Math.min(0.35, (e.x - prevX) * 0.05));
   e.headingAngle = e.turncoatFromAngle + (Math.PI - e.turncoatFromAngle) * eased + bank;
@@ -293,28 +374,21 @@ function updateAndDrawTurncoat(e, frameMs) {
     e.animFrame = 0;
     e.interpolateFrames = false;
   }
-  if (e.animFrames) e.animFrame = ((e.animFrame || 0) + (e.animRate || 0) * _frameStep) % e.animFrames;
-  if (e.shakeTick > 0) e.shakeTick -= _frameStep;
-
-  // Fire at the nearest real enemy (after the turn, not during equations).
-  if (!paused && turnT >= 1) {
+  // Fire its own weapon at the nearest real enemy (after the turn, not
+  // during equations).
+  if (!paused && turnT >= 1 && !e.turncoatKamikaze) {
     e.turncoatShotCd -= _frameStep;
     if (e.turncoatShotCd <= 0) {
       const target = nearestEnemyTo(e.x, e.y);
-      if (target) {
-        e.turncoatShotCd = TURNCOAT_SHOT_FRAMES;
-        const speed = (isTouchMobile() ? 9.8 : 8.4) * MISSILE_SPEED_SCALE;
-        const shot = createMissile(e.x, e.y - getEnemyDrawSize(e) * 0.3, target.x, target.y, speed, null, '#7CFC00', 1, false);
-        shot.fromPlayer = true;
-        shot.type = 'default';
-        G.missiles.push(shot);
-        SFX.shot('missile');
-      } else {
-        e.turncoatShotCd = 12;
-      }
+      e.turncoatShotCd = target ? fireTurncoatWeapon(e, target) : 12;
     }
   }
+  drawTurncoat(e);
+}
 
+function drawTurncoat(e) {
+  if (e.animFrames) e.animFrame = ((e.animFrame || 0) + (e.animRate || 0) * _frameStep) % e.animFrames;
+  if (e.shakeTick > 0) e.shakeTick -= _frameStep;
   // Green ring: this plane is on our side; the ring empties with its time.
   const size = getEnemyDrawSize(e);
   const left = Math.max(0, e.turncoatLeftMs / TURNCOAT_MS);
@@ -2951,7 +3025,9 @@ function frame(ts = 0) {
       }
     }
     return hitAirdrop(missile);
-  }, _frameStep, (activeAircraftAbility().homing || homingUpgradeOwned() || coopBotAbility()?.homing) ? nearestEnemyAheadOf : null);
+  }, _frameStep, (activeAircraftAbility().homing || homingUpgradeOwned() || coopBotAbility()?.homing)
+    ? m => (m.allyHoming ? nearestEnemyTo(m.x, m.y) : nearestEnemyAheadOf(m))
+    : m => (m.allyHoming ? nearestEnemyTo(m.x, m.y) : null));
   drawMissiles(ctx, G.missiles, false);
 
   for (let i = G.enemyMissiles.length - 1; i >= 0; i--) {

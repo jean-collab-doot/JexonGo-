@@ -10,7 +10,12 @@ function _load(path) {
   if (_images.has(path)) return Promise.resolve(_images.get(path));
   return new Promise((resolve, reject) => {
     const img   = new Image();
-    img.onload  = () => { _images.set(path, img); resolve(img); };
+    // Decode before use so the first drawImage of a big sheet (boss turret
+    // art) does not freeze the game while the browser decodes it.
+    img.onload  = () => {
+      const done = () => { _images.set(path, img); resolve(img); };
+      if (img.decode) img.decode().then(done, done); else done();
+    };
     img.onerror = () => reject(new Error(`Sprite not found: ${path}`));
     img.src     = path;
   });
@@ -75,14 +80,14 @@ export const SPRITE_DEFS = {
   'enemy-turner-bank': { path: '/assets/enemies/planes/enemy-turner-bank.png', frames: 10, frameCols: 5, frameRows: 2 },
   'enemy-boss-new':  { path: '/assets/enemies/planes/enemy-boss-normalized.png',  frames: 12, frameCols: 4, frameRows: 3 },
   'boss-a330': { path: '/assets/enemies/Boss/A330%20MRTT/A330_MRTT.webp', frames: 1 },
-  'boss-b52': { path: '/assets/enemies/Boss/B52/B52_Tourelle_Avant_4_Animations/b52-turret-center-right-24.webp', frames: 24, frameCols: 4, frameRows: 6 },
-  'boss-b52-left': { path: '/assets/enemies/Boss/B52/B52_Tourelle_Avant_4_Animations/b52-turret-center-left-24.webp', frames: 24, frameCols: 4, frameRows: 6 },
-  'boss-b52-left-return': { path: '/assets/enemies/Boss/B52/B52_Tourelle_Avant_4_Animations/b52-turret-left-center-24.webp', frames: 24, frameCols: 4, frameRows: 6 },
-  'boss-b52-right-return': { path: '/assets/enemies/Boss/B52/B52_Tourelle_Avant_4_Animations/b52-turret-right-center-24.webp', frames: 24, frameCols: 4, frameRows: 6 },
-  'boss-kawasaki-c2': { path: '/assets/enemies/Boss/Kawasaki_C2/kawasaki-c2-center-right-24.webp', frames: 24, frameCols: 4, frameRows: 6 },
-  'boss-kawasaki-c2-left': { path: '/assets/enemies/Boss/Kawasaki_C2/kawasaki-c2-center-left-24.webp', frames: 24, frameCols: 4, frameRows: 6 },
-  'boss-kawasaki-c2-left-return': { path: '/assets/enemies/Boss/Kawasaki_C2/kawasaki-c2-left-center-24.webp', frames: 24, frameCols: 4, frameRows: 6 },
-  'boss-kawasaki-c2-right-return': { path: '/assets/enemies/Boss/Kawasaki_C2/kawasaki-c2-right-center-24.webp', frames: 24, frameCols: 4, frameRows: 6 },
+  'boss-b52': { path: '/assets/enemies/Boss/B52/B52_Tourelle_Avant_4_Animations/b52-turret-center-right-24-512.webp', frames: 24, frameCols: 4, frameRows: 6 },
+  'boss-b52-left': { path: '/assets/enemies/Boss/B52/B52_Tourelle_Avant_4_Animations/b52-turret-center-left-24-512.webp', frames: 24, frameCols: 4, frameRows: 6 },
+  'boss-b52-left-return': { path: '/assets/enemies/Boss/B52/B52_Tourelle_Avant_4_Animations/b52-turret-left-center-24-512.webp', frames: 24, frameCols: 4, frameRows: 6 },
+  'boss-b52-right-return': { path: '/assets/enemies/Boss/B52/B52_Tourelle_Avant_4_Animations/b52-turret-right-center-24-512.webp', frames: 24, frameCols: 4, frameRows: 6 },
+  'boss-kawasaki-c2': { path: '/assets/enemies/Boss/Kawasaki_C2/kawasaki-c2-center-right-24-512.webp', frames: 24, frameCols: 4, frameRows: 6 },
+  'boss-kawasaki-c2-left': { path: '/assets/enemies/Boss/Kawasaki_C2/kawasaki-c2-center-left-24-512.webp', frames: 24, frameCols: 4, frameRows: 6 },
+  'boss-kawasaki-c2-left-return': { path: '/assets/enemies/Boss/Kawasaki_C2/kawasaki-c2-left-center-24-512.webp', frames: 24, frameCols: 4, frameRows: 6 },
+  'boss-kawasaki-c2-right-return': { path: '/assets/enemies/Boss/Kawasaki_C2/kawasaki-c2-right-center-24-512.webp', frames: 24, frameCols: 4, frameRows: 6 },
   'boss-c5-galaxy': { path: '/assets/enemies/Boss/C5_Galaxy/Lockheed_C5_Galaxy_Antarctic_Machine_Gun.webp', frames: 1 },
   // STS: 10-frame engine-thrust loop (from "New enemy boss/12 plans droit",
   // magenta removed). No turret art, so both keys share the same sheet.
@@ -277,6 +282,14 @@ export function preloadShips(activeAircraft = 't6') {
     });
 }
 
+const BOSS_SPRITES_BY_LEVEL = {
+  10: ['boss-a330'],
+  20: ['boss-b52', 'boss-b52-left', 'boss-b52-left-return', 'boss-b52-right-return'],
+  30: ['boss-kawasaki-c2', 'boss-kawasaki-c2-left', 'boss-kawasaki-c2-left-return', 'boss-kawasaki-c2-right-return'],
+  40: ['boss-c5-galaxy'],
+  50: ['boss-space-shuttle', 'boss-space-shuttle-left'],
+};
+
 /** Preload every sprite required for a biome. Missing files are warned, never thrown. */
 export async function preloadBiome(biome, options = {}) {
   const activeShip = AIRCRAFT_SPRITE[options.aircraftId] ?? 'ship-t6';
@@ -286,7 +299,9 @@ export async function preloadBiome(biome, options = {}) {
     ...(enemyTypes.includes('interceptor') ? ['enemy-f14-normal'] : []),
     ...(enemyTypes.includes('fast') ? ['enemy-fast-bank'] : []),
     ...(enemyTypes.includes('turner') ? ['enemy-turner-bank'] : []),
-    ...(enemyTypes.includes('boss') ? ['boss-a330', 'boss-b52', 'boss-b52-left', 'boss-b52-left-return', 'boss-b52-right-return', 'boss-kawasaki-c2', 'boss-kawasaki-c2-left', 'boss-kawasaki-c2-left-return', 'boss-kawasaki-c2-right-return', 'boss-c5-galaxy', 'boss-space-shuttle', 'boss-space-shuttle-left'] : []),
+    // Only this level's boss (its turret sheets are big: loading all of
+    // them on every boss level wasted a lot of memory).
+    ...(enemyTypes.includes('boss') ? (BOSS_SPRITES_BY_LEVEL[options.levelNum] || Object.values(BOSS_SPRITES_BY_LEVEL).flat()) : []),
   ];
   // The active aircraft's roll-turn sheets (if it has any) must be loaded
   // before the level starts — otherwise the very first turn triggers a
@@ -310,7 +325,8 @@ export async function preloadBiome(biome, options = {}) {
         bgKey,
       ])]
     : [...new Set([
-        ...(BIOME_SPRITES[biome] ?? Object.keys(SPRITE_DEFS)).map(k => k === genericBgKey ? bgKey : k),
+        ...(BIOME_SPRITES[biome] ?? Object.keys(SPRITE_DEFS)).map(k => k === genericBgKey ? bgKey : k)
+          .filter(k => !k.startsWith('boss-') || chainedEnemyKeys.includes(k)),
         ...turnKeys,
       ])];
   await Promise.all(

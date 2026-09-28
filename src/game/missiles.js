@@ -180,7 +180,7 @@ export function drawMissiles(ctx, missiles, isEnemy = false) {
     const isLaser = m.type === 'xray' || m.type === 'enemy-laser';
     const spriteKey = m.type === 'enemy-laser'
       ? 'airdrop-xray'
-      : isEnemy
+      : isEnemy || m.enemyStyle   // (enemyStyle: a switched SR-71 ally's missile)
         ? 'bolt'
         : (PLAYER_MISSILE_SPRITES[m.type] || PLAYER_MISSILE_SPRITES[G.activeMissileType] || 'bolt');
     const travelAngle = Math.atan2(m.vy, m.vx);
