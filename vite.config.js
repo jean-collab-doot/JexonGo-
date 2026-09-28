@@ -31,6 +31,11 @@ const copyGameAssets = {
 
 export default {
   base: './',
+  // Vercel preview deployments (not production) unlock every level and
+  // aircraft for testing on a phone: src/utils/test-mode.js.
+  define: {
+    __PREVIEW_TEST__: JSON.stringify(process.env.VERCEL_ENV === 'preview'),
+  },
   plugins: [copyGameAssets],
   server: {
     watch: {

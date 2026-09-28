@@ -1,12 +1,14 @@
 import { load, save } from './utils/storage.js';
 import { AIRCRAFT } from './data/aircraft.js';
+import { TEST_UNLOCK } from './utils/test-mode.js';
 
 // Test values (every aircraft, max coins and EXP) only on the local dev
 // server (`npm run dev`, import.meta.env.DEV). Players of the published game
 // start from zero with the T-6.
 const DEV_TEST = !!import.meta.env?.DEV;
 
-const DEFAULT_UNLOCKED_AIRCRAFT = DEV_TEST
+// Every aircraft on the dev server and the Vercel preview (utils/test-mode.js).
+const DEFAULT_UNLOCKED_AIRCRAFT = TEST_UNLOCK
   ? ['t6', 'pc21', 'c130', 'a10', 'f16', 'f18', 'f22', 'f35', 'b2', 'sr71', 'f117']
   : ['t6'];
 

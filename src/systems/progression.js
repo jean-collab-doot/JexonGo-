@@ -1,9 +1,10 @@
 import { save, load } from '../utils/storage.js';
+import { TEST_UNLOCK } from '../utils/test-mode.js';
 
 // Set to false to restore normal progressive unlocking (complete a level to
 // open the next one). While true, every level shows as available regardless
 // of stars/highestLevel — pilot grade, XP, coins etc. are untouched.
-const UNLOCK_ALL_LEVELS = !!import.meta.env?.DEV;   // local dev server only: every level open for testing
+const UNLOCK_ALL_LEVELS = TEST_UNLOCK;   // dev server and Vercel preview only (utils/test-mode.js)
 
 export function saveProgress(levelNum, stars, xp) {
   const ls = load('levelStars', {});
