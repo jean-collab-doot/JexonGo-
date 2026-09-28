@@ -162,6 +162,36 @@ export function drawMissiles(ctx, missiles, isEnemy = false) {
       ctx.restore();
       continue;
     }
+    if (m.type === 'enemy-homing') {
+      // Homing F-15 missile: red-nosed missile with a blinking light and a
+      // short smoke trail, so it reads differently from a straight shot.
+      const angle = Math.atan2(m.vy, m.vx);
+      ctx.save();
+      ctx.translate(m.x, m.y);
+      ctx.rotate(angle);
+      ctx.fillStyle = 'rgba(200,200,200,0.35)';
+      ctx.beginPath();
+      ctx.ellipse(-16 * scale, 0, 12 * scale, 3.2 * scale, 0, 0, Math.PI * 2);
+      ctx.fill();
+      drawGlow(ctx, '#ff3b30', -8 * scale, 0, 14 * scale, 10 * scale);
+      ctx.fillStyle = '#e5e7eb';
+      ctx.fillRect(-9 * scale, -2.6 * scale, 16 * scale, 5.2 * scale);
+      ctx.fillStyle = '#ef4444';
+      ctx.beginPath();
+      ctx.moveTo(7 * scale, -2.6 * scale);
+      ctx.lineTo(12 * scale, 0);
+      ctx.lineTo(7 * scale, 2.6 * scale);
+      ctx.fill();
+      ctx.fillRect(-9 * scale, -4.5 * scale, 4 * scale, 9 * scale);
+      if (Math.floor(performance.now() / 120) % 2 === 0) {
+        ctx.fillStyle = '#fff';
+        ctx.beginPath();
+        ctx.arc(4 * scale, 0, 1.6 * scale, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+      continue;
+    }
     const isLaser = m.type === 'xray' || m.type === 'enemy-laser';
     const spriteKey = m.type === 'enemy-laser'
       ? 'airdrop-xray'

@@ -1375,25 +1375,36 @@ function spawnF14Line(count) {
   return planes;
 }
 
+// Blinking red target ring that tightens while an enemy locks on (kamikaze
+// F-5 before its charge, homing F-15 before it fires).
+function drawLockRing(e, timer, total) {
+  const size = getEnemyDrawSize(e);
+  const on = Math.floor(timer / 7) % 2 === 0;
+  const r = size * (0.78 - 0.18 * Math.min(1, timer / total));
+  ctx.save();
+  ctx.strokeStyle = on ? 'rgba(255,48,48,0.95)' : 'rgba(255,48,48,0.4)';
+  ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  ctx.arc(e.x, e.y, r, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.beginPath();
+  for (const a of [0, Math.PI / 2, Math.PI, Math.PI * 1.5]) {
+    ctx.moveTo(e.x + Math.cos(a) * r * 0.75, e.y + Math.sin(a) * r * 0.75);
+    ctx.lineTo(e.x + Math.cos(a) * r * 1.3, e.y + Math.sin(a) * r * 1.3);
+  }
+  ctx.stroke();
+  ctx.restore();
+}
+
 // Kamikaze F-5 warning: a blinking red target ring while it locks on, then a
 // red speed streak behind it during the charge. Plain strokes, no shadowBlur.
 function drawKamikazeMark(e) {
   const size = getEnemyDrawSize(e);
   ctx.save();
   if (e.kamikazePhase === 'lock') {
-    const on = Math.floor(e.kamikazeTimer / 7) % 2 === 0;
-    const r = size * (0.78 - 0.18 * Math.min(1, e.kamikazeTimer / KAMIKAZE_LOCK_FRAMES));
-    ctx.strokeStyle = on ? 'rgba(255,48,48,0.95)' : 'rgba(255,48,48,0.4)';
-    ctx.lineWidth = 2.5;
-    ctx.beginPath();
-    ctx.arc(e.x, e.y, r, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.beginPath();
-    for (const a of [0, Math.PI / 2, Math.PI, Math.PI * 1.5]) {
-      ctx.moveTo(e.x + Math.cos(a) * r * 0.75, e.y + Math.sin(a) * r * 0.75);
-      ctx.lineTo(e.x + Math.cos(a) * r * 1.3, e.y + Math.sin(a) * r * 1.3);
-    }
-    ctx.stroke();
+    ctx.restore();
+    drawLockRing(e, e.kamikazeTimer, KAMIKAZE_LOCK_FRAMES);
+    return;
   } else {
     const len = size * 1.4;
     const bx = Math.sin(e.headingAngle) * len;
@@ -1410,6 +1421,31 @@ function drawKamikazeMark(e) {
     ctx.stroke();
   }
   ctx.restore();
+}
+
+// ── HOMING F-15 ──────────────────────────────────────────────────────────────
+// Some F-15s lock on (red ring, ~0.8 s) then fire a missile that follows the
+// player, like the kamikaze F-5: it turns slowly, stops steering over the
+// last third of the screen (a sidestep makes it miss), and gives up after
+// ~3.5 s or while the F-117 is stealthed.
+const HOMING_F15_CHANCE = 0.35;
+const HOMING_LOCK_FRAMES = 48;
+const HOMING_TURN = 0.022;          // max heading change per frame (rad)
+const HOMING_MAX_AGE = 210;         // frames of guidance
+
+function steerHomingMissile(m) {
+  m.age = (m.age || 0) + _frameStep;
+  if (_stealthActive || m.age > HOMING_MAX_AGE) return;
+  const p = G.player;
+  if (m.y >= p.y - canvas.height * 0.32) return;   // committed to its line
+  const heading = Math.atan2(m.vy, m.vx);
+  let diff = Math.atan2(p.y - m.y, p.x - m.x) - heading;
+  diff = Math.atan2(Math.sin(diff), Math.cos(diff));
+  const turn = HOMING_TURN * _frameStep;
+  const next = heading + Math.max(-turn, Math.min(turn, diff));
+  const speed = Math.hypot(m.vx, m.vy);
+  m.vx = Math.cos(next) * speed;
+  m.vy = Math.sin(next) * speed;
 }
 
 function pruneEnemies(limitY = Infinity) {
@@ -2301,7 +2337,11 @@ function frame(ts = 0) {
       }
     } else if (activeCount < normalCap) {
       // Independent enemies: F-15 straight runs and randomly turning Mirages.
-      spawned.push(spawnEnemy(canvas.width, type));
+      const e = spawnEnemy(canvas.width, type);
+      // Some F-15s carry a homing missile (see HOMING F-15 below). Not in the
+      // new-player practice, which only uses plain F-15s.
+      if (type === 'basic' && !_guidedRun && Math.random() < HOMING_F15_CHANCE) e.homingShooter = true;
+      spawned.push(e);
     }
 
     for (const e of spawned) {
@@ -2542,6 +2582,32 @@ function frame(ts = 0) {
         }
       } else if (e.kamikaze) {
         // Kamikaze F-5: no weapon, the plane itself is the threat.
+      } else if (e.homingShooter) {
+        // Homing F-15: locks on (red ring + beeps), then fires one missile
+        // that follows the player - dodgeable, like the kamikaze F-5.
+        e.fireCooldown -= _frameStep;
+        if (e.homingLockT != null) {
+          e.homingLockT += _frameStep;
+          if (e.homingLockT >= HOMING_LOCK_FRAMES) {
+            e.homingLockT = null;
+            if (inFireZone && !_stealthActive) {
+              const muzzleY = e.y + getEnemyDrawSize(e) * 0.30;
+              const aim = enemyAimTarget(e);
+              const speed = (isTouchMobile() ? 3.2 : 2.3) * MISSILE_SPEED_SCALE;
+              const em = createMissile(e.x, muzzleY, aim.x, aim.y, speed, e.id, '#ff3b30');
+              em.type = 'enemy-homing';
+              em.age = 0;
+              G.enemyMissiles.push(em);
+              SFX.missile('missile');
+            }
+          }
+        } else if (e.fireCooldown <= 0 && inFireZone && !_stealthActive) {
+          e.fireCooldown = e.fireRate;
+          e.homingLockT = 0;
+          SFX.kamikazeLock?.();
+        } else if (e.fireCooldown <= 0) {
+          e.fireCooldown = 18;
+        }
       } else {
         e.fireCooldown -= _frameStep;
       if (e.fireCooldown <= 0 && inFireZone && !_stealthActive) {
@@ -2572,6 +2638,7 @@ function frame(ts = 0) {
     e.x += ox;
     const bankAngle = (e.vx || 0) * 0.13;
     if (e.kamikaze && e.kamikazePhase !== 'enter') drawKamikazeMark(e);
+    if (e.homingLockT != null) drawLockRing(e, e.homingLockT, HOMING_LOCK_FRAMES);
     drawEnemySprite(ctx, e, bankAngle);
     if (e.a330Boss && e.antiMissileActive) {
       const radius = e.antiMissileRadius || getEnemyDrawSize(e) * 0.78;
@@ -2700,9 +2767,10 @@ function frame(ts = 0) {
       onEnemyMissileHit();
       break;
     }
-    if (m.y > canvas.height + 40 || m.x < -60 || m.x > canvas.width + 60) {
+    if (m.y > canvas.height + 40 || m.y < -80 || m.x < -60 || m.x > canvas.width + 60) {
       G.enemyMissiles.splice(i, 1); continue;
     }
+    if (m.type === 'enemy-homing') steerHomingMissile(m);
     m.x += m.vx * _frameStep;
     m.y += m.vy * _frameStep;
     m.boltFrame = 0;
