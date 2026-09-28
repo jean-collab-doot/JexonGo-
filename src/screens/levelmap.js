@@ -98,7 +98,7 @@ function _showBiome(idx, dir) {
   oldLayer.append(...content()); // moved out of the container, so the re-render below keeps them
 
   _activeBiomeIdx = nextIdx;
-  _renderBiomePage();
+  _renderBiomePage(undefined, { autoScroll: false });
 
   const newLayer = _swipeLayer();
   container.insertBefore(newLayer, container.firstChild);
@@ -125,6 +125,7 @@ function _showBiome(idx, dir) {
     oldLayer.remove();
     newLayer.replaceWith(...newLayer.childNodes);
     _swiping = false;
+    _scrollToPlayerNode(false);
   }, BIOME_SWIPE_MS + 60);
 }
 
@@ -191,7 +192,24 @@ export function renderLevelMap() {
   _renderBiomePage(playerLevel);
 }
 
-function _renderBiomePage(playerLevel) {
+// Brings the player's level (or an open one) into view: vertical scroll of the
+// map only. scrollIntoView also scrolled the map sideways while a world was
+// sliding in (the new page starts off to the side), which made the slide jerk
+// - so it is not used during a swipe, and _showBiome calls this at the end.
+function _scrollToPlayerNode(smooth) {
+  const container = $('levelmap-nodes');
+  const scroller = $('levelmap-scroll');
+  const target = container.querySelector('.tmap-node-player')
+    ?? container.querySelector('.tmap-node.available');
+  if (!scroller) return;
+  if (!target) { scroller.scrollTo({ top: 0 }); return; }
+  const t = target.getBoundingClientRect();
+  const v = scroller.getBoundingClientRect();
+  const top = scroller.scrollTop + (t.top - v.top) - (v.height - t.height) / 2;
+  scroller.scrollTo({ top: Math.max(0, top), behavior: smooth ? 'smooth' : 'auto' });
+}
+
+function _renderBiomePage(playerLevel, { autoScroll = true } = {}) {
   const biome = BIOMES[_activeBiomeIdx];
   const container = $('levelmap-nodes');
   container.innerHTML = '';
@@ -258,10 +276,5 @@ function _renderBiomePage(playerLevel) {
     (node.num % 5 === 0 || node.num % 5 === 3) && node.state === 'completed').length;
   $('map-biome-stars').textContent = `${chestsEarned}/20`;
 
-  requestAnimationFrame(() => {
-    const target = container.querySelector('.tmap-node-player')
-      ?? container.querySelector('.tmap-node.available');
-    if (target) target.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    else $('levelmap-scroll').scrollTo({ top: 0 });
-  });
+  if (autoScroll) requestAnimationFrame(() => _scrollToPlayerNode(true));
 }
