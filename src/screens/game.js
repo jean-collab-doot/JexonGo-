@@ -1616,6 +1616,7 @@ function _gameCheatHeld(keys) {
   return keys.every(k => _gameCT.has(k) && now - _gameCT.get(k) < 600);
 }
 function onKeyDown(e) {
+  if (typedAnswerKey(e)) return;
   const k = normaliseKey(e.key);
   if (!k) return;
   if (k in keys) { keys[k] = true; pointerTarget = null; e.preventDefault(); }
@@ -4367,15 +4368,21 @@ function nextQuestion() {
       ? newQuestion(extraOps, G.practiceMode ? (G.practiceNumberMax || rawCap) : extraTopicCap(rawCap), rawMCap)
       : newQuestion(mathCfg.ops, mathCfg.cap, mathCfg.mCap);
     $('question-text').textContent = G.question.text;
+    G.question.typed = typedQuestionAllowed() && Math.random() < TYPED_QUESTION_SHARE;
     const btns = $('answer-buttons');
     btns.innerHTML = '';
-    G.question.choices.forEach(c => {
-      const btn = document.createElement('button');
-      btn.className = 'answer-btn';
-      btn.textContent = c;
-      btn.addEventListener('click', () => handleAnswer(c, btn));
-      btns.appendChild(btn);
-    });
+    btns.classList.toggle('typed-answer', G.question.typed);
+    if (G.question.typed) {
+      renderTypedAnswer(btns);
+    } else {
+      G.question.choices.forEach(c => {
+        const btn = document.createElement('button');
+        btn.className = 'answer-btn';
+        btn.textContent = c;
+        btn.addEventListener('click', () => handleAnswer(c, btn));
+        btns.appendChild(btn);
+      });
+    }
 
     // If the aircraft used the panel's space, fly it clear before revealing
     // the equation. This prevents any part of the plane entering the panel.
@@ -4446,8 +4453,9 @@ function startTimer(resetTime = true) {
       + (G.activeBadge === 'lightning_reflex' ? 5 : 0)
       + (AIRCRAFT[G.activeAircraft]?.ability?.extraAnswerTime || 0)
       + (coopBotAbility()?.extraAnswerTime || 0);
+  const typedBonus = G.question?.typed ? TYPED_QUESTION_EXTRA_S : 0;
   if (resetTime) {
-    G.timeLeft  = Math.max(3, adjustedBaseTime);
+    G.timeLeft  = Math.max(3, adjustedBaseTime + typedBonus);
     _timerTotal = G.timeLeft;
   }
   const currentPct = resetTime ? 100 : Math.max(0, G.timeLeft / _timerTotal) * 100;
@@ -4479,6 +4487,78 @@ function _runTimer() {
   }, timerDelay);
 }
 
+// ── TYPED ANSWERS ────────────────────────────────────────────────────────────
+// Some questions are answered by writing the number instead of picking one of
+// four buttons: a display plus a compact keypad (1-9, 0, erase, OK) under the
+// question, and the computer keyboard (digits, Backspace, Enter) works too.
+// They get a few more seconds. Not in the beginner practice or the training.
+const TYPED_QUESTION_SHARE = 0.3;
+const TYPED_QUESTION_EXTRA_S = 4;
+let _typedValue = '';
+
+function typedQuestionAllowed() {
+  return !_guidedRun && !isTutorialActive();
+}
+
+function renderTypedAnswer(btns) {
+  _typedValue = '';
+  const fr = getLang() === 'fr';
+  const display = document.createElement('div');
+  display.className = 'typed-display';
+  display.setAttribute('aria-live', 'polite');
+  btns.appendChild(display);
+  const keypad = document.createElement('div');
+  keypad.className = 'typed-keypad';
+  ['1', '2', '3', '4', '5', 'del', '6', '7', '8', '9', '0', 'ok'].forEach(key => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = `answer-btn typed-key${key === 'ok' ? ' typed-ok' : key === 'del' ? ' typed-del' : ''}`;
+    btn.dataset.key = key;
+    btn.textContent = key === 'ok' ? 'OK' : key === 'del' ? '⌫' : key;
+    if (key === 'del') btn.setAttribute('aria-label', fr ? 'Effacer' : 'Erase');
+    btn.addEventListener('click', () => typedPress(key));
+    keypad.appendChild(btn);
+  });
+  btns.appendChild(keypad);
+  updateTypedDisplay();
+}
+
+function updateTypedDisplay() {
+  const display = document.querySelector('#answer-buttons .typed-display');
+  if (display) {
+    display.textContent = _typedValue || (getLang() === 'fr' ? 'ÉCRIS TA RÉPONSE' : 'TYPE YOUR ANSWER');
+    display.classList.toggle('is-empty', !_typedValue);
+  }
+  const ok = document.querySelector('#answer-buttons .typed-ok');
+  if (ok && !G.answerLocked) ok.disabled = !_typedValue;
+}
+
+function typedPress(key) {
+  if (G.answerLocked || !G.question?.typed) return;
+  if (key === 'ok') {
+    if (!_typedValue) return;
+    handleAnswer(Number(_typedValue), document.querySelector('#answer-buttons .typed-ok'));
+    return;
+  }
+  if (key === 'del') _typedValue = _typedValue.slice(0, -1);
+  else if (_typedValue.length < String(G.question.answer).length + 2) _typedValue = (_typedValue + key).replace(/^0+(?=\d)/, '');
+  SFX.click?.();
+  updateTypedDisplay();
+}
+
+// Computer keyboard on a typed question. Returns true when the key was used.
+function typedAnswerKey(e) {
+  if (!G.question?.typed || G.answerLocked || e.target?.closest?.('input, textarea, select')) return false;
+  const key = /^[0-9]$/.test(e.key) ? e.key
+    : e.key === 'Backspace' ? 'del'
+    : e.key === 'Enter' ? 'ok'
+    : null;
+  if (!key) return false;
+  e.preventDefault();
+  typedPress(key);
+  return true;
+}
+
 // ── ANSWER HANDLING ──────────────────────────────────────────────────────────
 function handleAnswer(choice, btn) {
   if (G.answerLocked) return;
@@ -4496,6 +4576,7 @@ function handleAnswer(choice, btn) {
   G.sessionResponseTimeTotal = (G.sessionResponseTimeTotal || 0) + Math.max(0, _timerTotal - G.timeLeft);
   G.sessionResponseCount = (G.sessionResponseCount || 0) + 1;
   btn.classList.add(correct ? 'correct' : 'wrong');
+  document.querySelector('#answer-buttons .typed-display')?.classList.add(correct ? 'correct' : 'wrong');
 
   if (correct) {
     SFX.correct();
@@ -4763,9 +4844,18 @@ function revealCorrectAnswer(picked = null) {
     qbox.style.visibility = '';
   }
   const correct = String(G.question.answer).trim();
-  document.querySelectorAll('.answer-btn').forEach(b => {
+  // Typed question: the display shows the right number (not a keypad digit).
+  if (G.question.typed) {
+    const display = document.querySelector('#answer-buttons .typed-display');
+    if (display) {
+      display.textContent = correct;
+      display.classList.remove('is-empty', 'wrong');
+      display.classList.add('correct');
+    }
+  }
+  document.querySelectorAll(G.question.typed ? '.typed-ok' : '.answer-btn').forEach(b => {
     b.disabled = false;
-    if (b.textContent.trim() === correct) {
+    if (!G.question.typed && b.textContent.trim() === correct) {
       b.classList.remove('wrong');
       b.classList.add('correct');
     }
@@ -4867,7 +4957,11 @@ function handleTimeout() {
   G.streak = 0;
   updateStreakHUD();
   SFX.wrong();
-  document.querySelectorAll('.answer-btn').forEach(b => { b.classList.add('wrong'); b.disabled = true; });
+  document.querySelectorAll('.answer-btn').forEach(b => {
+    if (!G.question?.typed) b.classList.add('wrong');
+    b.disabled = true;
+  });
+  document.querySelector('#answer-buttons .typed-display')?.classList.add('wrong');
   const sid = _sessionId;
   revealCorrectAnswer(null);
   waitForCorrectionContinue(() => loseLife(), sid);

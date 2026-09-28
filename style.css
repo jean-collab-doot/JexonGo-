@@ -15941,3 +15941,38 @@ html.touch-phone .briefing-mission-title {
   -webkit-mask-image: radial-gradient(circle, #000 69%, transparent 70%);
   mask-image: radial-gradient(circle, #000 69%, transparent 70%);
 }
+
+/* Typed answers (game.js TYPED ANSWERS): a display and a 6 x 2 keypad in
+   place of the 2 x 2 answer buttons. */
+#answer-buttons.typed-answer { grid-template-columns: 1fr; gap: 8px; }
+.typed-display {
+  min-height: 46px;
+  display: grid; place-items: center;
+  padding: 8px 12px;
+  border: 2px solid var(--accent);
+  background: rgba(8,8,16,0.88);
+  color: #fff;
+  font-family: 'Press Start 2P', monospace;
+  font-size: clamp(16px, 4.4vw, 24px);
+  letter-spacing: 3px;
+  box-shadow: 3px 3px 0 rgba(0,0,0,0.6), inset 0 0 12px rgba(255,140,0,0.18);
+}
+.typed-display.is-empty { color: var(--dim, #64748b); font-size: clamp(9px, 2.4vw, 12px); letter-spacing: 1px; }
+.typed-keypad { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; }
+#answer-buttons .typed-key { min-height: 44px; padding: 8px 2px; font-size: clamp(13px, 3.6vw, 17px); }
+#answer-buttons .typed-ok { color: #00e84b; border-color: rgba(0,232,75,0.6); }
+#answer-buttons .typed-del { color: #fca5a5; }
+.typed-display.correct { border-color: var(--green); color: var(--green); background: rgba(0,232,75,0.15); }
+.typed-display.wrong { border-color: var(--red); color: var(--red); background: rgba(255,34,51,0.15); }
+/* Phones/tablets force a 2-column answer grid (with !important): a typed
+   question stacks the display above a full-width keypad instead. */
+#answer-buttons.typed-answer {
+  display: flex !important;
+  flex-direction: column !important;
+  grid-template-columns: none !important;
+  gap: 8px !important;
+}
+#answer-buttons.typed-answer .typed-display,
+#answer-buttons.typed-answer .typed-keypad { width: 100%; box-sizing: border-box; }
+.typed-display { line-height: 1.4; text-align: center; }
+#answer-buttons .typed-key { min-width: 0 !important; min-height: 44px !important; padding: 8px 2px !important; }
