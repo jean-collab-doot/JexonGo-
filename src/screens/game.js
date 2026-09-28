@@ -1546,7 +1546,8 @@ function advanceAfterCorrectAnswer(sid) {
 }
 
 // Every 5 good answers: same dynamic banner as the level START (letters drop
-// in, light sweep, speed streaks, zoom-out) with the "5 GOOD ANSWERS" line.
+// in, light sweep, speed streaks, zoom-out) with the "5 / 10 / 15... GOOD
+// ANSWERS" line. The answer that ends the level gets MISSION COMPLETE instead.
 function showAnswerCelebration() {
   clearAnswerCelebration();
   const host = $('tutorial-countdown')?.parentElement;
@@ -1566,7 +1567,7 @@ function showAnswerCelebration() {
     <div class="lsb-streaks">${streaks}</div>
     <div class="lsb-stack">
       <div class="lsb-word lsb-word-long" style="--n:${message.length}">${letters}</div>
-      <div class="lsb-sub">${fr ? '5 BONNES RÉPONSES !' : '5 GOOD ANSWERS!'}</div>
+      <div class="lsb-sub">${G.correctAnswers} ${fr ? 'BONNES RÉPONSES !' : 'GOOD ANSWERS!'}</div>
     </div>`;
   host.appendChild(banner);
   SFX.streakBanner(message.length);
@@ -4517,7 +4518,9 @@ function handleAnswer(choice, btn) {
     // Coins are earned only by answering correctly. A missed, timed-out, or
     // incorrect question never releases a collectible coin.
     releaseCorrectAnswerCoins();
-    if (G.correctAnswers > 0 && G.correctAnswers % 5 === 0) showAnswerCelebration();
+    const endsLevel = !isTutorialActive() && !levelCfg.isBossLevel
+      && G.questionsAnswered + 1 >= levelCfg.questionCount;
+    if (G.correctAnswers > 0 && G.correctAnswers % 5 === 0 && !endsLevel) showAnswerCelebration();
     maybeLaunchB2Nuke();
     coopMaybeNuke();
     G.questionsAnswered++;
@@ -5098,10 +5101,13 @@ function endLevel(won) {
   if (timer) timer.style.visibility = 'hidden';
   timer?.classList.add('timer-finished');
 
+  // MISSION COMPLETE banner first (the plane keeps hovering), then the plane
+  // pulls back and boosts off the top of the screen.
+  showMissionCompleteBanner();
   const retreatDuration = 620;
   const boostDuration = 780;
   _finishPlaneAnim = {
-    start: performance.now(),
+    start: performance.now() + MISSION_COMPLETE_BANNER_MS,
     fromX: G.player.x,
     fromY: G.player.y,
     retreatY: Math.min(canvas.height + 20, G.player.y + Math.max(48, canvas.height * 0.12)),
@@ -5113,8 +5119,40 @@ function endLevel(won) {
   const sid = _activeSessionId;
   if (!G.animFrame) _queueFrame(sid);
   setTimeout(() => {
+    if (_isActiveSid(sid) && _levelEnding) SFX.missionBoost?.();
+  }, MISSION_COMPLETE_BANNER_MS + retreatDuration - 120);
+  setTimeout(() => {
     if (_isActiveSid(sid) && _levelEnding) finishLevel(true);
-  }, retreatDuration + boostDuration + 80);
+  }, MISSION_COMPLETE_BANNER_MS + retreatDuration + boostDuration + 80);
+}
+
+// End of a won level: a MISSION COMPLETE banner in the style of the START one
+// (letters drop in, light sweep, speed streaks, zoom-out) with the number of
+// good answers under it, and its own fanfare.
+const MISSION_COMPLETE_BANNER_MS = 1900;
+function showMissionCompleteBanner() {
+  const host = $('tutorial-countdown')?.parentElement;
+  if (!host) return;
+  clearAnswerCelebration();
+  const fr = getLang() === 'fr';
+  const word = fr ? 'MISSION ACCOMPLIE' : 'MISSION COMPLETE';
+  const letters = [...word]
+    .map((ch, i) => `<span style="--i:${i}">${ch === ' ' ? '&nbsp;' : ch}</span>`).join('');
+  const streaks = Array.from({ length: 8 }, (_, i) => `<i style="--s:${i}"></i>`).join('');
+  const total = levelCfg?.isBossLevel ? 0 : (levelCfg?.questionCount || 0);
+  const count = total ? `${G.correctAnswers}/${total}` : `${G.correctAnswers}`;
+  const banner = document.createElement('div');
+  banner.className = 'level-start-banner streak-banner mission-complete-banner';
+  banner.setAttribute('aria-hidden', 'true');
+  banner.innerHTML = `
+    <div class="lsb-streaks">${streaks}</div>
+    <div class="lsb-stack">
+      <div class="lsb-word lsb-word-long" style="--n:${word.length}">${letters}</div>
+      <div class="lsb-sub">${count} ${fr ? 'BONNES RÉPONSES !' : 'GOOD ANSWERS!'}</div>
+    </div>`;
+  host.appendChild(banner);
+  SFX.missionComplete?.(word.length);
+  setTimeout(() => banner.remove(), MISSION_COMPLETE_BANNER_MS + 200);
 }
 
 // ── PUBLIC API ───────────────────────────────────────────────────────────────

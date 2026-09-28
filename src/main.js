@@ -199,46 +199,40 @@ const nav = {
       G.beginnerPracticeDone = false;
       _skipConnectPromptAfterRun = false;
       if (beginnerPracticeDone && !G.playerRegistered) {
-        showMissionCompleteTransition(() => {
-          renderMenu();
-          showScreen('s-menu');
-          trackVirtualPage('/lobby', { source: 'beginner-practice' });
-          SFX.playMusic('menu');
-          openConnectPrompt();
-        });
+        renderMenu();
+        showScreen('s-menu');
+        trackVirtualPage('/lobby', { source: 'beginner-practice' });
+        SFX.playMusic('menu');
+        openConnectPrompt();
         return;
       }
       if (won && G.postTutorialConnectPrompt && !G.playerRegistered && guestTrialUsed()) {
-        showMissionCompleteTransition(() => {
-          renderMenu();
-          showScreen('s-menu');
-          trackVirtualPage('/lobby', { source: 'guest-limit' });
-          SFX.playMusic('menu');
-          const level = G.tutorialPlan?.startLevel || G.currentLevel || 1;
-          _showLoginToast(deviceIntroLang() === 'fr'
-            ? `La connexion est importante. Connecte-toi avec ton compte JexonGo pour continuer au niveau ${level}.`
-            : `Connection is important. Sign in with your JexonGo account to continue at level ${level}.`, 5200);
-        });
+        renderMenu();
+        showScreen('s-menu');
+        trackVirtualPage('/lobby', { source: 'guest-limit' });
+        SFX.playMusic('menu');
+        const level = G.tutorialPlan?.startLevel || G.currentLevel || 1;
+        _showLoginToast(deviceIntroLang() === 'fr'
+          ? `La connexion est importante. Connecte-toi avec ton compte JexonGo pour continuer au niveau ${level}.`
+          : `Connection is important. Sign in with your JexonGo account to continue at level ${level}.`, 5200);
         return;
       }
       if (won) {
-        showMissionCompleteTransition(() => {
-          showResult(true);
-          showScreen('s-result');
-          trackVirtualPage('/result', { level: G.currentLevel || levelNum, won: true });
-          trackAnalytics('Game Finished', {
-            level: G.currentLevel || levelNum,
-            won: true,
-            mode: G.practiceMode ? 'practice' : 'level',
-          });
-          SFX.stopMusic();
-          // The first daily gift appears only after the complete tutorial has
-          // ended. checkDailyLogin also enforces registration and one claim/day.
-          const daily = checkDailyLogin();
-          if (daily.isNewDay) {
-            setTimeout(() => showDailyReward(daily.reward, daily.streak), 700);
-          }
+        showResult(true);
+        showScreen('s-result');
+        trackVirtualPage('/result', { level: G.currentLevel || levelNum, won: true });
+        trackAnalytics('Game Finished', {
+          level: G.currentLevel || levelNum,
+          won: true,
+          mode: G.practiceMode ? 'practice' : 'level',
         });
+        SFX.stopMusic();
+        // The first daily gift appears only after the complete tutorial has
+        // ended. checkDailyLogin also enforces registration and one claim/day.
+        const daily = checkDailyLogin();
+        if (daily.isNewDay) {
+          setTimeout(() => showDailyReward(daily.reward, daily.streak), 700);
+        }
       } else {
         showGameover();
         showScreen('s-gameover');
@@ -331,25 +325,6 @@ const nav = {
     trackVirtualPage('/pilot-setup');
   },
 };
-
-function showMissionCompleteTransition(onDone) {
-  document.querySelector('.mission-complete-transition')?.remove();
-  const overlay = document.createElement('div');
-  overlay.className = 'mission-complete-transition mct-win';
-  overlay.innerHTML = `
-    <div class="mct-panel">
-      <span class="mct-kicker">MISSION</span>
-      <strong>COMPLETE</strong>
-    </div>
-  `;
-  document.body.appendChild(overlay);
-  requestAnimationFrame(() => overlay.classList.add('mct-show'));
-  setTimeout(() => overlay.classList.add('mct-leave'), 900);
-  setTimeout(() => {
-    overlay.remove();
-    onDone?.();
-  }, 1220);
-}
 
 // Called by the first-level visual introduction. The countdown waits until the
 // welcome gift is claimed, so the reward is clearly shown after the intro.

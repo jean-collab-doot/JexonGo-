@@ -2119,67 +2119,6 @@ html.touch-mobile .menu-offline-banner {
 .result-coins { font-size: 11px; font-family: 'Press Start 2P', monospace; color: #fbbf24; text-shadow: 0 0 8px #fbbf2488; min-height: 18px; }
 #result-correct { font-size: 9px; font-family: 'Press Start 2P', monospace; color: var(--dim); margin-bottom: 12px; line-height: 1.8; }
 
-.mission-complete-transition {
-  position: fixed;
-  inset: 0;
-  z-index: 160000;
-  display: grid;
-  place-items: center;
-  opacity: 0;
-  background:
-    linear-gradient(rgba(255,255,255,0.035) 50%, rgba(0,0,0,0.14) 50%),
-    radial-gradient(circle at 50% 50%, rgba(0,232,255,0.22), transparent 44%),
-    rgba(2, 6, 23, 0.78);
-  background-size: 100% 4px, 100% 100%, 100% 100%;
-  transition: opacity 0.28s ease;
-  pointer-events: none;
-}
-
-.mission-complete-transition.mct-show {
-  opacity: 1;
-}
-
-.mission-complete-transition.mct-leave {
-  opacity: 0;
-}
-
-.mct-panel {
-  min-width: min(640px, 82vw);
-  padding: 26px 30px;
-  border: 3px solid #00d4ff;
-  background:
-    linear-gradient(rgba(255,255,255,0.065) 50%, rgba(0,0,0,0.18) 50%),
-    linear-gradient(180deg, rgba(6,20,44,0.98), rgba(1,7,18,0.98));
-  background-size: 100% 4px, 100% 100%;
-  box-shadow:
-    8px 8px 0 rgba(0,0,0,0.7),
-    0 0 32px rgba(0,212,255,0.32),
-    inset 0 0 24px rgba(0,212,255,0.12);
-  text-align: center;
-  transform: translateY(18px) scale(0.96);
-  animation: missionCompletePanelIn 0.62s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-.mct-kicker,
-.mct-panel strong {
-  display: block;
-  font-family: 'Press Start 2P', monospace;
-}
-
-.mct-kicker {
-  margin-bottom: 14px;
-  color: #7dd3fc;
-  font-size: clamp(8px, 1.4vw, 13px);
-  letter-spacing: 4px;
-}
-
-.mct-panel strong {
-  color: #b7ffcb;
-  font-size: clamp(20px, 5vw, 48px);
-  line-height: 1.25;
-  text-shadow: 0 0 18px rgba(0,232,75,0.72), 4px 4px 0 rgba(0,0,0,0.82);
-}
-
 #s-result:not(.hidden) > * {
   animation: resultSceneIn 0.48s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
@@ -2189,10 +2128,6 @@ html.touch-mobile .menu-offline-banner {
 #s-result:not(.hidden) > *:nth-child(4) { animation-delay: 0.14s; }
 #s-result:not(.hidden) > *:nth-child(n+5) { animation-delay: 0.18s; }
 
-@keyframes missionCompletePanelIn {
-  0% { opacity: 0; transform: translateY(22px) scale(0.94); }
-  100% { opacity: 1; transform: translateY(0) scale(1); }
-}
 
 @keyframes resultSceneIn {
   0% { opacity: 0; transform: translateY(16px) scale(0.985); }

@@ -1259,6 +1259,25 @@ export const SFX = {
       _after(i * 45, () => _tone(_ac(), f, 'sine', 0.22, 0.09))));
     _after(1120, () => _sweep(3500, 300, 0.5, 0.3));
   },
+  // MISSION COMPLETE banner: the START knocks and whoosh, then a victory
+  // fanfare (rising arpeggio and a held chord) as the word shines.
+  missionComplete(letters = 16) {
+    const step = Math.min(60, 500 / letters);
+    for (let i = 0; i < letters; i++) {
+      _after(i * step + 150, () => _hit(420 + (i % 8) * 55, 0.2, 0.08));
+    }
+    _after(250, () => _sweep(500, 4500, 0.55, 0.32));
+    [523, 659, 784, 1047].forEach((f, i) =>
+      _after(700 + i * 110, () => _tone(_ac(), f, 'square', 0.16, 0.14)));
+    _after(1150, () => [523, 659, 784].forEach(f => _tone(_ac(), f, 'triangle', 0.7, 0.12)));
+    _after(1150, () => [1568, 2093, 2637].forEach((f, i) =>
+      _after(i * 45, () => _tone(_ac(), f, 'sine', 0.22, 0.08))));
+  },
+  // The plane boosts off the top of the screen at the end of a won level.
+  missionBoost() {
+    _sweep(300, 4200, 0.8, 0.4, 0.9);
+    _tone(_ac(), 1400, 'sawtooth', 0.7, 0.05, 180);
+  },
   // Kamikaze F-5 locking on (two sharp beeps), then its dive (falling whoosh).
   kamikazeLock() {
     _tone(_ac(), 1320, 'square', 0.07, 0.07);
