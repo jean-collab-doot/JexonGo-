@@ -54,9 +54,10 @@ let _playerShieldUntil = 0;
 let _playerShieldReadyAt = 0;
 let _playerShieldButtonHandler = null;
 let _lastShieldHudSecond = -1;
+let _shieldPausedAt = 0;   // paused during an equation (see syncAbilityPause)
 
 function playerShieldActive(now = performance.now()) {
-  return (G.activeBadge === 'good_student' && now < _playerShieldUntil)
+  return (G.activeBadge === 'good_student' && now < _playerShieldUntil && !_shieldPausedAt)
     || now < (G.airdropShieldUntil || 0);   // airdrop "champ de protection"
 }
 
@@ -67,12 +68,14 @@ function updatePlayerShieldButton(now = performance.now(), force = false) {
   const available = G.activeBadge === 'good_student' && !isTutorialActive();
   button.classList.toggle('hidden', !available);
   if (!available) return;
-  const activeMs = Math.max(0, _playerShieldUntil - now);
-  const cooldownMs = Math.max(0, _playerShieldReadyAt - now);
+  const at = _shieldPausedAt || now;
+  const activeMs = Math.max(0, _playerShieldUntil - at);
+  const cooldownMs = Math.max(0, _playerShieldReadyAt - at);
   const displaySecond = Math.ceil((activeMs || cooldownMs) / 1000);
   if (!force && displaySecond === _lastShieldHudSecond) return;
   _lastShieldHudSecond = displaySecond;
   button.classList.toggle('active', activeMs > 0);
+  button.classList.toggle('paused', activeMs > 0 && Boolean(_shieldPausedAt));
   button.classList.toggle('cooldown', activeMs <= 0 && cooldownMs > 0);
   button.disabled = cooldownMs > 0;
   label.textContent = activeMs > 0 ? `${Math.ceil(activeMs / 1000)}s` : cooldownMs > 0 ? `${Math.ceil(cooldownMs / 1000)}s` : 'SHIELD';
@@ -81,6 +84,7 @@ function updatePlayerShieldButton(now = performance.now(), force = false) {
 function activatePlayerShield() {
   const now = performance.now();
   if (G.activeBadge !== 'good_student' || now < _playerShieldReadyAt) return;
+  _shieldPausedAt = 0;
   _playerShieldUntil = now + PLAYER_SHIELD_DURATION_MS;
   // The 30-second recharge begins after the 10-second shield effect ends.
   // Previously both timers started together, so the HUD showed only 20 seconds.
@@ -107,6 +111,10 @@ let _turboUntil = 0;
 let _turboReadyAt = 0;
 let _turboButtonHandler = null;
 let _lastTurboHudSecond = -1;
+// A running skill pauses while an equation waits for its answer (and during
+// the correction): its effect stops and its seconds stop counting, then it
+// picks up where it was. 0 = not paused.
+let _skillPausedAt = 0;
 
 function aircraftSkill() {
   const id = AIRCRAFT[G.activeAircraft]?.ability?.skill;
@@ -114,7 +122,38 @@ function aircraftSkill() {
 }
 
 function aircraftSkillActive(skillId, now = performance.now()) {
-  return aircraftSkill()?.id === skillId && now < _turboUntil;
+  return aircraftSkill()?.id === skillId && now < _turboUntil && !_skillPausedAt;
+}
+
+// Called every frame: starts or ends the pause of the aircraft skill and of
+// the "good_student" badge shield. On resume each one's end (and its cooldown
+// after it) moves later by the time spent on the equation.
+function syncAbilityPause(paused, now = performance.now()) {
+  if (paused) {
+    if (!_skillPausedAt && now < _turboUntil) {
+      _skillPausedAt = now;
+      _lastTurboHudSecond = -1;
+    }
+    if (!_shieldPausedAt && now < _playerShieldUntil) {
+      _shieldPausedAt = now;
+      _lastShieldHudSecond = -1;
+    }
+    return;
+  }
+  if (_skillPausedAt) {
+    const pausedMs = now - _skillPausedAt;
+    _turboUntil += pausedMs;
+    _turboReadyAt += pausedMs;
+    _skillPausedAt = 0;
+    _lastTurboHudSecond = -1;
+  }
+  if (_shieldPausedAt) {
+    const pausedMs = now - _shieldPausedAt;
+    _playerShieldUntil += pausedMs;
+    _playerShieldReadyAt += pausedMs;
+    _shieldPausedAt = 0;
+    _lastShieldHudSecond = -1;
+  }
 }
 
 function aircraftTurboActive(now = performance.now()) {
@@ -129,14 +168,17 @@ function updateAircraftTurboButton(now = performance.now(), force = false) {
   const available = Boolean(skill) && !isTutorialActive();
   button.classList.toggle('hidden', !available);
   if (!available) return;
-  const activeMs = Math.max(0, _turboUntil - now);
-  const cooldownMs = Math.max(0, _turboReadyAt - now);
+  // Paused: the seconds shown stay where they were when the equation came up.
+  const at = _skillPausedAt || now;
+  const activeMs = Math.max(0, _turboUntil - at);
+  const cooldownMs = Math.max(0, _turboReadyAt - at);
   const displaySecond = Math.ceil((activeMs || cooldownMs) / 1000);
   if (!force && displaySecond === _lastTurboHudSecond) return;
   _lastTurboHudSecond = displaySecond;
   const icon = button.querySelector('.aircraft-turbo-icon');
   if (icon) icon.innerHTML = uiIcon(skill.icon);
   button.classList.toggle('active', activeMs > 0);
+  button.classList.toggle('paused', activeMs > 0 && Boolean(_skillPausedAt));
   button.classList.toggle('cooldown', activeMs <= 0 && cooldownMs > 0);
   button.disabled = cooldownMs > 0;
   label.textContent = activeMs > 0 ? `${Math.ceil(activeMs / 1000)}s`
@@ -148,6 +190,7 @@ function activateAircraftTurbo() {
   const now = performance.now();
   const skill = aircraftSkill();
   if (!skill || now < _turboReadyAt) return;
+  _skillPausedAt = 0;
   _turboUntil = now + skill.durationMs;
   _turboReadyAt = _turboUntil + skill.cooldownMs;
   if (skill.id === 'stealth') {
@@ -527,10 +570,19 @@ function guidedBreakActive(now = performance.now()) {
   return _guidedRun && now < _guidedBreakUntil;
 }
 
+// True when the answer just given was question 5: the break starts right away
+// (no 10-second shooting window first).
+function guidedBreakDue() {
+  return _guidedRun && G.questionsAnswered === GUIDED_FREE_QUESTIONS && !_guidedBreakDone;
+}
+
 function startGuidedBreak() {
   const sid = _sessionId;
   _guidedBreakDone = true;
   _guidedBreakUntil = performance.now() + GUIDED_BREAK_MS;
+  stopShootingWindow();
+  clearTimeout(_revealTimer);
+  _revealTimer = null;
   // No question during the break (hide any leftover one).
   G.answerLocked = true;
   if (G.timerInterval) { clearInterval(G.timerInterval); G.timerInterval = null; }
@@ -546,13 +598,42 @@ function startGuidedBreak() {
     spawnHitSpark(G.particles, enemy.x, enemy.y);
     enemy.active = false;
   }
-  showTutorialNotice(tutorialCopy().guidedBreak, true, GUIDED_BREAK_MS - 300);
+  showGuidedLivesBanner();
+  // Then the 3-2-1 countdown with the plane staying where it is (no climb-in).
   setTimeout(() => {
     if (_sessionId !== sid) return;
     _guidedBreakUntil = 0;
     _skipPracticeBannerOnce = true;
-    showStartCountdown(nextQuestion);
+    showStartCountdown(nextQuestion, { keepPlane: true });
   }, GUIDED_BREAK_MS);
+}
+
+// Switch to timer + 3 lives, announced like the START banner (letters drop in,
+// light sweep, speed streaks, zoom-out), held during the break.
+const GUIDED_LIVES_BANNER_MS = 3800;
+function showGuidedLivesBanner() {
+  const host = $('tutorial-countdown')?.parentElement;
+  if (!host) return;
+  clearAnswerCelebration();
+  host.querySelector('.guided-lives-banner')?.remove();
+  const fr = getLang() === 'fr';
+  const word = fr ? '3 VIES' : '3 LIVES';
+  const letters = [...word]
+    .map((ch, i) => `<span style="--i:${i}">${ch === ' ' ? '&nbsp;' : ch}</span>`).join('');
+  const streaks = Array.from({ length: 8 }, (_, i) => `<i style="--s:${i}"></i>`).join('');
+  const banner = document.createElement('div');
+  banner.className = 'level-start-banner streak-banner guided-lives-banner';
+  banner.setAttribute('aria-hidden', 'true');
+  banner.innerHTML = `
+    <div class="lsb-streaks">${streaks}</div>
+    <div class="lsb-stack">
+      <div class="lsb-sub glb-kicker">${fr ? 'BRAVO ! 5 QUESTIONS FAITES' : 'WELL DONE! 5 QUESTIONS DONE'}</div>
+      <div class="lsb-word lsb-word-long" style="--n:${word.length}">${letters}</div>
+      <div class="lsb-sub">${fr ? 'TIMER ACTIVÉ · ATTENTION AUX ERREURS !' : 'TIMER ON · WATCH YOUR MISTAKES!'}</div>
+    </div>`;
+  host.appendChild(banner);
+  SFX.startBanner(word.length);
+  setTimeout(() => banner.remove(), GUIDED_LIVES_BANNER_MS + 500);
 }
 
 // All 3 lives lost: back to question 0 (free again), new countdown.
@@ -775,7 +856,9 @@ function showPracticeBanner(done) {
   }, PRACTICE_BANNER_MS);
 }
 
-function showStartCountdown(done) {
+// keepPlane: the aircraft stays where it is during the countdown instead of
+// climbing in from the bottom (beginner practice, after the 5-second break).
+function showStartCountdown(done, { keepPlane = false } = {}) {
   window.dispatchEvent(new Event('jexongo:countdown'));   // e.g. hides the briefing
   _cutsceneActive = true;
   _stopGameLoop();
@@ -791,12 +874,12 @@ function showStartCountdown(done) {
     start: performance.now(),
     duration: 2600,
     fromX: targetX,
-    fromY: canvas.height + getPlayerSize() * 0.9,
+    fromY: keepPlane ? targetY : canvas.height + getPlayerSize() * 0.9,
     toX: targetX,
     toY: targetY,
   };
   startCountdownDraw(_sessionId);
-  SFX.engineStart(G.activeAircraft);   // the plane climbs in during the countdown
+  if (!keepPlane) SFX.engineStart(G.activeAircraft);   // the plane climbs in during the countdown
   const el = $('tutorial-countdown');
   const copy = isTutorialActive()
     ? tutorialCopy()
@@ -2149,6 +2232,7 @@ function frame(ts = 0) {
     ? Math.max(0.95, Math.min(2, frameMs / 16.7))
     : Math.max(0.85, Math.min(1.2, frameMs / 16.7));
   const questionFocusTarget = isQuestionAwaitingAnswer() ? 1 : 0;
+  syncAbilityPause(Boolean(questionFocusTarget) || _correctionWaiting);
   const focusEaseMs = questionFocusTarget ? 420 : 520;
   const focusEase = 1 - Math.exp(-frameMs / focusEaseMs);
   _questionFocusBlend += (questionFocusTarget - _questionFocusBlend) * focusEase;
@@ -2794,7 +2878,8 @@ function frame(ts = 0) {
   if (_invincible > 0) _invincible--;
   // B-2 FURTIF ends with the button's real-time countdown, not a frame count
   // (frames run faster on 120 Hz screens and stop during questions).
-  if (_stealthActive && !aircraftSkillActive('stealth', ts || performance.now())) _stealthActive = false;
+  // It also switches off while the skill is paused and back on after.
+  if (aircraftSkill()?.id === 'stealth') _stealthActive = aircraftSkillActive('stealth', ts || performance.now());
   const prevX = G.player.x;
   updatePlayerMovement();
   const _moveDelta = G.player.x - prevX;
@@ -4287,14 +4372,14 @@ function nextQuestion() {
     endLevel(true);
     return;
   }
-  if (_guidedRun && G.questionsAnswered === GUIDED_FREE_QUESTIONS && !_guidedBreakDone) {
+  if (guidedBreakDue()) {
     startGuidedBreak();
     return;
   }
+  // (The switch was announced by the 3 LIVES banner during the break.)
   if (_guidedRun && G.questionsAnswered === GUIDED_FREE_QUESTIONS) {
     _guidedLives = GUIDED_LIVES;
     updateLivesHUD();
-    showTutorialNotice(tutorialCopy().livesNow);
   }
   _transitioning = true;
   G.answerLocked = false;
@@ -4601,7 +4686,8 @@ function handleAnswer(choice, btn) {
     releaseCorrectAnswerCoins();
     const endsLevel = !isTutorialActive() && !levelCfg.isBossLevel
       && G.questionsAnswered + 1 >= levelCfg.questionCount;
-    if (G.correctAnswers > 0 && G.correctAnswers % 5 === 0 && !endsLevel) showAnswerCelebration();
+    const startsGuidedBreak = _guidedRun && G.questionsAnswered + 1 === GUIDED_FREE_QUESTIONS && !_guidedBreakDone;
+    if (G.correctAnswers > 0 && G.correctAnswers % 5 === 0 && !endsLevel && !startsGuidedBreak) showAnswerCelebration();
     maybeLaunchB2Nuke();
     coopMaybeNuke();
     G.questionsAnswered++;
@@ -4647,7 +4733,9 @@ function handleAnswer(choice, btn) {
         if (_sessionId === sid) qbox.style.visibility = 'hidden';
       }, 620);
     }
-    _revealTimer = setTimeout(() => advanceAfterCorrectAnswer(sid), GOOD_ANSWER_SHOOTING_WINDOW_MS);
+    // Beginner practice, question 5: the break starts at once.
+    if (guidedBreakDue()) startGuidedBreak();
+    else _revealTimer = setTimeout(() => advanceAfterCorrectAnswer(sid), GOOD_ANSWER_SHOOTING_WINDOW_MS);
   }
 
   if (!correct) {
@@ -4978,6 +5066,9 @@ function _loadFrames(base, count) {
 }
 
 function loseLife({ resumeDelayMs = 900, fromEnemyHit = false } = {}) {
+  // A wrong answer is charged once CONTINUE is pressed: the equation is over,
+  // so a shield paused by it counts again.
+  if (!fromEnemyHit) syncAbilityPause(false);
   if (_guidedRun) {
     // questionsAnswered already counts this question: > 5 = questions 6-10.
     if (G.questionsAnswered > GUIDED_FREE_QUESTIONS) {
@@ -4992,6 +5083,8 @@ function loseLife({ resumeDelayMs = 900, fromEnemyHit = false } = {}) {
     shakeFrames = 6;
     G.streak = 0;
     updateStreakHUD();
+    // Question 5 wrong: the break starts as soon as CONTINUE is pressed.
+    if (guidedBreakDue()) { startGuidedBreak(); return; }
     const sid = _sessionId;
     setTimeout(() => { if (_sessionId === sid) nextQuestion(); }, 650);
     return;
@@ -5382,9 +5475,11 @@ export function initGame(levelNum, onComplete) {
   _answerImmuneUntil = 0;
   _playerShieldUntil = 0;
   _playerShieldReadyAt = 0;
+  _shieldPausedAt = 0;
   _lastShieldHudSecond = -1;
   _turboUntil = 0;
   _turboReadyAt = 0;
+  _skillPausedAt = 0;
   _lastTurboHudSecond = -1;
   _nextRegenAt = performance.now() + PC21_REGEN_INTERVAL_MS;
   _bankTilt      = 0;
