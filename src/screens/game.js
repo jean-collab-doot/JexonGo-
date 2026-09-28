@@ -209,6 +209,142 @@ function maybeLaunchB2Nuke() {
   launchNuke({ spareBosses: true });
 }
 
+// SR-71 HACK: every 3 correct answers, the 3 enemy planes closest to the
+// player (never a boss) switch sides. They turn around (same sprite and
+// animation frames), fly into a V just ahead of the player, fire at their
+// former teammates for 10 s, then explode. Like the other abilities, their
+// 10 s and their fire stop while an equation waits for its answer.
+const TURNCOAT_COUNT = 3;
+const TURNCOAT_MS = 10000;
+const TURNCOAT_TURN_MS = 700;
+const TURNCOAT_SHOT_FRAMES = 34;
+
+function maybeTurnEnemies() {
+  const every = AIRCRAFT[G.activeAircraft]?.ability?.turncoatEveryCorrect;
+  if (!every || isTutorialActive() || !G.correctAnswers || G.correctAnswers % every !== 0) return;
+  const candidates = G.enemies
+    .filter(e => e.active && !e.turncoat && e.type !== 'boss' && !e.holdEntry
+      && e.y > 0 && e.y < canvas.height && e.x > 0 && e.x < canvas.width)
+    .sort((a, b) => ((a.x - G.player.x) ** 2 + (a.y - G.player.y) ** 2)
+      - ((b.x - G.player.x) ** 2 + (b.y - G.player.y) ** 2))
+    .slice(0, TURNCOAT_COUNT);
+  if (!candidates.length) return;
+  const taken = new Set(G.enemies.filter(e => e.active && e.turncoat).map(e => e.turncoatSlot));
+  const freeSlots = [0, 1, 2, 3, 4].filter(slot => !taken.has(slot));
+  candidates.forEach((e, i) => {
+    e.turncoat = true;
+    e.turncoatLeftMs = TURNCOAT_MS;
+    e.turncoatAge = 0;
+    e.turncoatShotCd = 20 + i * 10;
+    e.turncoatSlot = freeSlots[i] ?? i;
+    e.turncoatFromAngle = Number.isFinite(e.headingAngle) ? e.headingAngle : 0;
+    e.homingLockT = null;
+    e.kamikaze = false;
+    e.vx = 0;
+    e.bankVis = 0;
+    spawnHitSpark(G.particles, e.x, e.y);
+  });
+  // Their shots already in the air no longer threaten the player.
+  const turned = new Set(candidates.map(e => e.id));
+  G.enemyMissiles = G.enemyMissiles.filter(m => !turned.has(m.enemyId));
+  SFX.turncoat?.();
+}
+
+// Slot in the V ahead of the player: 0 = tip, then left / right, wider.
+function turncoatSlotPos(slot) {
+  const size = getPlayerSize();
+  const rank = Math.ceil(slot / 2);
+  const side = slot === 0 ? 0 : (slot % 2 ? -1 : 1);
+  const x = G.player.x + side * rank * size * 1.45;
+  const y = G.player.y - size * 2.7 + rank * size * 0.55;
+  return {
+    x: Math.max(size * 0.6, Math.min(canvas.width - size * 0.6, x)),
+    y: Math.max(size * 0.8, y),
+  };
+}
+
+function updateAndDrawTurncoat(e, frameMs) {
+  const paused = isQuestionAwaitingAnswer() || _correctionWaiting || _cutsceneActive;
+  e.turncoatAge += frameMs;
+  if (!paused) e.turncoatLeftMs -= frameMs;
+  if (e.turncoatLeftMs <= 0) {
+    // Time is up: the plane blows up (no coin, it was on our side).
+    spawnMissileExplosion(G.particles, e.x, e.y, 'default', 18);
+    SFX.explode();
+    e.active = false;
+    return;
+  }
+  // Fly to its slot in the V (ease), turn around to face the enemies.
+  const slot = turncoatSlotPos(e.turncoatSlot);
+  const k = Math.min(1, 0.06 * _frameStep);
+  const prevX = e.x;
+  e.x += (slot.x - e.x) * k;
+  e.y += (slot.y - e.y) * k;
+  e.vx = 0;
+  e.bankVis = 0;
+  const turnT = Math.min(1, e.turncoatAge / TURNCOAT_TURN_MS);
+  const eased = turnT * turnT * (3 - 2 * turnT);
+  const bank = Math.max(-0.35, Math.min(0.35, (e.x - prevX) * 0.05));
+  e.headingAngle = e.turncoatFromAngle + (Math.PI - e.turncoatFromAngle) * eased + bank;
+  // Same animation frames as before (the path code no longer runs for it).
+  if (e.pathType === 'interceptor' && !e.entryAnimationComplete) {
+    e.entryAnimationComplete = true;
+    e.spriteKey = e.normalSpriteKey || e.spriteKey;
+    e.animFrame = 0;
+    e.interpolateFrames = false;
+  }
+  if (e.animFrames) e.animFrame = ((e.animFrame || 0) + (e.animRate || 0) * _frameStep) % e.animFrames;
+  if (e.shakeTick > 0) e.shakeTick -= _frameStep;
+
+  // Fire at the nearest real enemy (after the turn, not during equations).
+  if (!paused && turnT >= 1) {
+    e.turncoatShotCd -= _frameStep;
+    if (e.turncoatShotCd <= 0) {
+      const target = nearestEnemyTo(e.x, e.y);
+      if (target) {
+        e.turncoatShotCd = TURNCOAT_SHOT_FRAMES;
+        const speed = (isTouchMobile() ? 9.8 : 8.4) * MISSILE_SPEED_SCALE;
+        const shot = createMissile(e.x, e.y - getEnemyDrawSize(e) * 0.3, target.x, target.y, speed, null, '#7CFC00', 1, false);
+        shot.fromPlayer = true;
+        shot.type = 'default';
+        G.missiles.push(shot);
+        SFX.shot('missile');
+      } else {
+        e.turncoatShotCd = 12;
+      }
+    }
+  }
+
+  // Green ring: this plane is on our side; the ring empties with its time.
+  const size = getEnemyDrawSize(e);
+  const left = Math.max(0, e.turncoatLeftMs / TURNCOAT_MS);
+  ctx.save();
+  ctx.strokeStyle = 'rgba(124,252,0,0.35)';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.arc(e.x, e.y, size * 0.5, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.strokeStyle = '#7CFC00';
+  ctx.shadowColor = '#7CFC00';
+  ctx.shadowBlur = 8;
+  ctx.beginPath();
+  ctx.arc(e.x, e.y, size * 0.5, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * left);
+  ctx.stroke();
+  ctx.restore();
+  drawEnemySprite(ctx, e, 0);
+  if (e.turncoatAge < 1800) {
+    ctx.save();
+    ctx.globalAlpha = Math.min(1, (1800 - e.turncoatAge) / 400);
+    ctx.textAlign = 'center';
+    ctx.font = `bold ${isTouchMobile() ? 8 : 10}px 'Press Start 2P', monospace`;
+    ctx.fillStyle = '#7CFC00';
+    ctx.shadowColor = '#000';
+    ctx.shadowBlur = 5;
+    ctx.fillText(getLang() === 'fr' ? 'ALLIÉ' : 'ALLY', e.x, e.y - size * 0.7);
+    ctx.restore();
+  }
+}
+
 // PC-21 REGEN: recovers one life every interval, up to the level's starting
 // life count.
 const PC21_REGEN_INTERVAL_MS = 18000;
@@ -252,7 +388,7 @@ function burstActiveNow(now = performance.now()) {
 function nearestEnemyAheadOf(missile) {
   let best = null, bestD = Infinity;
   for (const e of G.enemies) {
-    if (!e.active || e.y > missile.y + 20) continue;
+    if (!e.active || e.turncoat || e.y > missile.y + 20) continue;
     const dx = e.x - missile.x, dy = e.y - missile.y;
     const d = dx * dx + dy * dy;
     if (d < bestD) { bestD = d; best = e; }
@@ -1392,7 +1528,7 @@ const _gameCT   = new Map(); // cheat key timestamps
 function activeRegularEnemyCount() {
   let count = 0;
   for (const e of G.enemies) {
-    if (e.active && e.type !== 'boss') count++;
+    if (e.active && !e.turncoat && e.type !== 'boss') count++;
   }
   return count;
 }
@@ -2452,7 +2588,7 @@ function frame(ts = 0) {
 
   // Level-based missile guidance strength and homing probability
   // ── Enemies ────────────────────────────────────────────────────────────
-  updateEnemies(G.enemies, canvas.width, canvas.height, _frameStep,
+  updateEnemies(G.enemies.filter(e => !e.turncoat), canvas.width, canvas.height, _frameStep,
     activeAircraftAbility().jam ? enemySpeedMultFor : null,
     _stealthActive || G.lives <= 0 ? null : G.player);
   // Draw regular enemies first and bosses last. Keep G.enemies untouched so
@@ -2463,6 +2599,7 @@ function frame(ts = 0) {
   ];
   for (const e of layeredEnemies) {
     if (!e.active) continue;
+    if (e.turncoat) { updateAndDrawTurncoat(e, frameMs); continue; }
 
     if (e.type === 'boss') {
       if (e.holdEntry) continue;   // not on screen yet (START / BOSS ALERT)
@@ -2775,7 +2912,7 @@ function frame(ts = 0) {
   updatePlayerAutoFire(ts || performance.now());
   updateMissiles(G.missiles, missile => {
     for (const enemy of G.enemies) {
-      if (!enemy.active) continue;
+      if (!enemy.active || enemy.turncoat) continue;
       const enemyDrawSize = getEnemyDrawSize(enemy);
       if (enemy.a330Boss && enemy.antiMissileActive) {
         const shieldRadius = enemy.antiMissileRadius || enemyDrawSize * 0.78;
@@ -3160,7 +3297,7 @@ function frame(ts = 0) {
 function nearestEnemy() {
   let best = null, bestDist = Infinity;
   for (const e of G.enemies) {
-    if (!e.active) continue;
+    if (!e.active || e.turncoat) continue;
     const dx = e.x - G.player.x, dy = e.y - G.player.y;
     const d  = dx * dx + dy * dy;
     if (d < bestDist) { bestDist = d; best = e; }
@@ -3317,7 +3454,7 @@ function updateAndDrawAirSupport(now) {
     s.nextShot = now + AIR_SUPPORT_SHOT_MS;
     let target = null, best = Infinity;
     for (const e of G.enemies) {
-      if (!e.active) continue;
+      if (!e.active || e.turncoat) continue;
       const d = (e.x - s.x) ** 2 + (e.y - s.y) ** 2;
       if (d < best) { best = d; target = e; }
     }
@@ -3632,7 +3769,7 @@ export function leaveCoopLink() {
 function nearestEnemyTo(x, y) {
   let target = null, best = Infinity;
   for (const e of G.enemies) {
-    if (!e.active || e.holdEntry) continue;
+    if (!e.active || e.holdEntry || e.turncoat) continue;
     const d = (e.x - x) ** 2 + (e.y - y) ** 2;
     if (d < best) { best = d; target = e; }
   }
@@ -3678,7 +3815,7 @@ function updateCoopBot(now, size) {
   if (now >= _coop.nextThink || (_coop.targetEnemy && !_coop.targetEnemy.active)) {
     _coop.nextThink = now + skill.thinkMs * (0.8 + Math.random() * 0.4);
     // Hunt one of the 3 closest enemies (not always the same as the player).
-    const enemies = G.enemies.filter(e => e.active && !e.holdEntry)
+    const enemies = G.enemies.filter(e => e.active && !e.holdEntry && !e.turncoat)
       .sort((a, b) => Math.abs(a.x - _coop.x) - Math.abs(b.x - _coop.x));
     _coop.targetEnemy = enemies.length ? enemies[Math.floor(Math.random() * Math.min(3, enemies.length))] : null;
     _coop.tx = _coop.targetEnemy
@@ -3810,7 +3947,7 @@ function fireAirdropXray() {
 function fireAirdropMachineGun() {
   let target = null, best = Infinity;
   for (const e of G.enemies) {
-    if (!e.active) continue;
+    if (!e.active || e.turncoat) continue;
     const d = (e.x - G.player.x) ** 2 + (e.y - G.player.y) ** 2;
     if (d < best) { best = d; target = e; }
   }
@@ -4689,6 +4826,7 @@ function handleAnswer(choice, btn) {
     const startsGuidedBreak = _guidedRun && G.questionsAnswered + 1 === GUIDED_FREE_QUESTIONS && !_guidedBreakDone;
     if (G.correctAnswers > 0 && G.correctAnswers % 5 === 0 && !endsLevel && !startsGuidedBreak) showAnswerCelebration();
     maybeLaunchB2Nuke();
+    maybeTurnEnemies();
     coopMaybeNuke();
     G.questionsAnswered++;
     recordTutorialAnswer(G.question.op, true);

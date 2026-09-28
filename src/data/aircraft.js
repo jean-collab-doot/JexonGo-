@@ -143,10 +143,14 @@ export const AIRCRAFT = {
     gradeRequired: 36, gradeLabel: 'COLONEL',
     ability: {
       icon: 'bolt',
-      name: { en: 'TURBO', fr: 'TURBO' },
-      description: { en: 'Activatable speed boost', fr: 'Boost de vitesse activable' },
+      name: { en: 'TURBO + HACK', fr: 'TURBO + PIRATAGE' },
+      description: {
+        en: 'Activatable speed boost. Every 3 correct answers, 3 enemy planes switch sides and fire at their teammates for 10 s, then explode',
+        fr: 'Boost de vitesse activable. Toutes les 3 bonnes réponses, 3 avions ennemis changent de camp et tirent sur leurs coéquipiers pendant 10 s, puis explosent',
+      },
       turbo: true,
       skill: 'turbo',
+      turncoatEveryCorrect: 3,
     },
     description: {
       en: 'Legendary Mach 3+ spy plane, still the fastest jet ever built.',

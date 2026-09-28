@@ -284,7 +284,10 @@ export function loadSave() {
     G.activeAircraft = 't6';
     save('activeAircraft', G.activeAircraft);
   }
-  if (G.unlockedBadges.includes('boss_hunter') && !G.unlockedAircraft.includes('f117')) {
+  // The F-117 stays the player's for good once earned, whether the "Chasseur
+  // de Boss" badge is equipped or not.
+  if ((G.unlockedBadges.includes('boss_hunter') || G.acquiredAircraft.includes('f117'))
+    && !G.unlockedAircraft.includes('f117')) {
     G.unlockedAircraft.push('f117');
     save('unlockedAircraft', G.unlockedAircraft);
   }

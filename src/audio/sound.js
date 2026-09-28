@@ -1278,6 +1278,11 @@ export const SFX = {
     _sweep(300, 4200, 0.8, 0.4, 0.9);
     _tone(_ac(), 1400, 'sawtooth', 0.7, 0.05, 180);
   },
+  // SR-71: enemy planes switch sides (radio hack chirps, then a rising tone).
+  turncoat() {
+    [880, 1320, 990, 1480].forEach((f, i) => _after(i * 70, () => _tone(_ac(), f, 'square', 0.06, 0.06)));
+    _after(300, () => _tone(_ac(), 420, 'triangle', 0.4, 0.12, 1260));
+  },
   // Kamikaze F-5 locking on (two sharp beeps), then its dive (falling whoosh).
   kamikazeLock() {
     _tone(_ac(), 1320, 'square', 0.07, 0.07);

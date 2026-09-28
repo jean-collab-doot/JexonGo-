@@ -70,11 +70,73 @@ function showBadgeUnlockCelebrations(badges) {
       setTimeout(() => {
         overlay.remove();
         document.documentElement.classList.remove('badge-unlock-open');
-        showNext();
+        // A badge that gives a plane (Chasseur de Boss -> F-117): show it next.
+        if (badge.unlocksAircraft && AIRCRAFT[badge.unlocksAircraft]) {
+          showAircraftUnlockReveal(badge, showNext);
+        } else {
+          showNext();
+        }
       }, 360);
     };
   };
   showNext();
+}
+
+// Plane given by a badge: the badge flies into a black "???" silhouette,
+// which flashes and lights up as the real plane, then its name and ability
+// slide in. Same stage as the badge reveal (.bdg-reveal + .bdg-plane-reveal).
+function showAircraftUnlockReveal(badge, onDone) {
+  const id = badge.unlocksAircraft;
+  const plane = AIRCRAFT[id];
+  const fr = getLang() === 'fr';
+  const lang = fr ? 'fr' : 'en';
+  const owned = G.unlockedAircraft.includes(id);
+  const overlay = document.createElement('div');
+  overlay.className = 'bdg-reveal bdg-rarity-epique bdg-plane-reveal';
+  overlay.innerHTML = `
+    <div class="bdg-beam"></div>
+    <div class="bdg-rays"></div>
+    <div class="bdg-flash"></div>
+    <div class="bdg-stage" role="dialog" aria-modal="true" aria-label="${fr ? 'Avion secret débloqué' : 'Secret plane unlocked'} : ${plane.name}">
+      <div class="bdg-ribbon"><span>${fr ? 'AVION SECRET DÉBLOQUÉ' : 'SECRET PLANE UNLOCKED'}</span></div>
+      <div class="bpr-stage">
+        <img class="bpr-plane" src="/assets/hangar/${id}.webp" alt="${plane.name}" draggable="false">
+        <span class="bpr-mystery" aria-hidden="true">???</span>
+        <img class="bpr-badge" src="${badge.image}" alt="" draggable="false">
+        <span class="bdg-ring"></span><span class="bdg-ring bdg-ring-2"></span>
+      </div>
+      <em class="bdg-rarity">${fr ? `GRÂCE AU BADGE ${badge.name.toUpperCase()}` : `THANKS TO THE ${badge.name.toUpperCase()} BADGE`}</em>
+      <h2 class="bdg-name">${plane.name}</h2>
+      <p class="bdg-goal">${uiIcon(plane.ability?.icon)} ${plane.ability?.name?.[lang] || ''} : ${plane.ability?.description?.[lang] || ''}</p>
+      <strong class="bdg-reward">${fr ? 'DANS TON HANGAR, POUR TOUJOURS' : 'IN YOUR HANGAR, FOR GOOD'}</strong>
+      <div class="bpr-actions">
+        ${owned && G.activeAircraft !== id ? `<button type="button" class="bdg-continue bpr-equip">${fr ? 'ÉQUIPER' : 'EQUIP'}</button>` : ''}
+        <button type="button" class="bdg-continue bpr-close">${fr ? 'CONTINUER' : 'CONTINUE'}</button>
+      </div>
+    </div>`;
+  overlay.addEventListener('touchmove', e => e.preventDefault(), { passive: false });
+  overlay.addEventListener('dragstart', e => e.preventDefault());
+  document.body.appendChild(overlay);
+  document.documentElement.classList.add('badge-unlock-open');
+  requestAnimationFrame(() => overlay.classList.add('show'));
+  const impact = setTimeout(() => SFX.promoted?.(), BADGE_IMPACT_MS);
+  const close = () => {
+    clearTimeout(impact);
+    overlay.classList.add('closing');
+    setTimeout(() => {
+      overlay.remove();
+      document.documentElement.classList.remove('badge-unlock-open');
+      onDone?.();
+    }, 360);
+  };
+  overlay.querySelector('.bpr-close').onclick = close;
+  const equip = overlay.querySelector('.bpr-equip');
+  if (equip) equip.onclick = () => {
+    G.activeAircraft = id;
+    save('activeAircraft', id);
+    SFX.click?.();
+    close();
+  };
 }
 
 // Preview hook used by the Hangar. It never unlocks a badge or grants rewards.

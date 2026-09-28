@@ -15983,3 +15983,23 @@ html.touch-phone .briefing-mission-title {
 #answer-buttons.typed-answer .typed-keypad { width: 100%; box-sizing: border-box; }
 .typed-display { line-height: 1.4; text-align: center; }
 #answer-buttons .typed-key { min-width: 0 !important; min-height: 44px !important; padding: 8px 2px !important; }
+
+/* Plane given by a badge (result.js showAircraftUnlockReveal): the badge
+   flies into a black "???" silhouette that flashes into the real plane. */
+.bpr-stage{position:relative;width:clamp(170px,48vmin,300px);aspect-ratio:1.35;margin:14px 0 10px;display:grid;place-items:center}
+.bpr-plane{width:100%;height:100%;object-fit:contain;filter:brightness(0) drop-shadow(0 0 10px rgba(199,92,255,.55));opacity:0;pointer-events:none;-webkit-user-drag:none}
+.show .bpr-plane{animation:bprIn .5s ease-out .1s both,bprLight .7s ease-out 1.05s forwards,bdgFloat 2.4s ease-in-out 1.9s infinite}
+.bpr-mystery{position:absolute;font:clamp(22px,7vmin,40px) 'Press Start 2P',monospace;color:#f0c8ff;text-shadow:0 0 14px #c75cff,3px 3px 0 #000;opacity:0}
+.show .bpr-mystery{animation:bprMystery 1s ease-out .1s both}
+.bpr-badge{position:absolute;left:50%;top:50%;width:34%;margin:-17% 0 0 -17%;filter:drop-shadow(0 0 12px #c75cff);opacity:0;pointer-events:none}
+.show .bpr-badge{animation:bprBadge .85s cubic-bezier(.55,0,.75,.4) .3s both}
+.bpr-stage .bdg-ring{inset:8%}
+.bpr-actions{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+.bpr-equip{background:linear-gradient(180deg,#d9ffb8,#7cfc00);border-color:#d9ffb8}
+.bdg-plane-reveal .bdg-goal .ui-icon,.bdg-plane-reveal .bdg-goal svg{width:14px;height:14px;vertical-align:-2px}
+@keyframes bprIn{from{opacity:0;transform:scale(.7)}to{opacity:1;transform:none}}
+@keyframes bprLight{0%{filter:brightness(0) drop-shadow(0 0 10px rgba(199,92,255,.55))}35%{filter:brightness(3) drop-shadow(0 0 30px #f0c8ff)}100%{opacity:1;filter:drop-shadow(0 0 16px rgba(199,92,255,.7))}}
+@keyframes bprMystery{0%{opacity:0;transform:scale(1.6)}25%{opacity:1;transform:none}80%{opacity:1}100%{opacity:0;transform:scale(.6)}}
+@keyframes bprBadge{0%{opacity:0;transform:translate(-170%,-10%) scale(1.3) rotate(-25deg)}20%{opacity:1}85%{opacity:1;transform:translate(0,0) scale(.7) rotate(0)}100%{opacity:0;transform:translate(0,0) scale(.2)}}
+@media (prefers-reduced-motion:reduce){.show .bpr-plane{animation:bdgFadeIn .4s both;filter:none}.show .bpr-badge,.show .bpr-mystery{animation:none}}
+@media (max-width:700px),(max-height:560px){.bpr-stage{width:clamp(150px,44dvmin,230px);margin:10px 0 6px}}
