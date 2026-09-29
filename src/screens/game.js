@@ -5559,8 +5559,13 @@ function showMissionCompleteBanner() {
   const letters = [...word]
     .map((ch, i) => `<span style="--i:${i}">${ch === ' ' ? '&nbsp;' : ch}</span>`).join('');
   const streaks = Array.from({ length: 8 }, (_, i) => `<i style="--s:${i}"></i>`).join('');
-  const total = levelCfg?.isBossLevel ? 0 : (levelCfg?.questionCount || 0);
-  const count = total ? `${G.correctAnswers}/${total}` : `${G.correctAnswers}`;
+  // Boss level: only that the boss is down, not how many questions it took.
+  const bossInfo = levelCfg?.isBossLevel ? BOSS_ALERT_INFO[levelCfg.num] : null;
+  const bossName = bossInfo ? ((!fr && bossInfo.nameEn) || bossInfo.name) : '';
+  const total = levelCfg?.questionCount || 0;
+  const sub = levelCfg?.isBossLevel
+    ? (fr ? `BOSS ${bossName} VAINCU !` : `BOSS ${bossName} DEFEATED!`).replace('  ', ' ')
+    : `${total ? `${G.correctAnswers}/${total}` : G.correctAnswers} ${fr ? 'BONNES RÉPONSES !' : 'GOOD ANSWERS!'}`;
   const banner = document.createElement('div');
   banner.className = 'level-start-banner streak-banner mission-complete-banner';
   banner.setAttribute('aria-hidden', 'true');
@@ -5568,7 +5573,7 @@ function showMissionCompleteBanner() {
     <div class="lsb-streaks">${streaks}</div>
     <div class="lsb-stack">
       <div class="lsb-word lsb-word-long" style="--n:${word.length}">${letters}</div>
-      <div class="lsb-sub">${count} ${fr ? 'BONNES RÉPONSES !' : 'GOOD ANSWERS!'}</div>
+      <div class="lsb-sub">${sub}</div>
     </div>`;
   host.appendChild(banner);
   SFX.missionComplete?.(word.length);
