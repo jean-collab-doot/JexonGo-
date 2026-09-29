@@ -326,7 +326,7 @@ export function getMonthlyConfigChallenge(lang = 'en') {
   const ops = isFr ? configuredOpsLabelFr() : configuredOpsLabel();
   const length = G.onboardingLevelLength || 'normal';
   return {
-    // Accents dropped on purpose - the pixel font (retropix) is missing
+    // Accents dropped on purpose - the old pixel font was missing
     // several accented glyphs and falls back to a mismatched system font
     // mid-word for just that character otherwise.
     title: isFr ? 'DEFI DU MOIS' : 'MONTH CHALLENGE',

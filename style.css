@@ -75,12 +75,16 @@
   #s-menu .login-google { display:none; } #s-menu .menu-legal-links { display:none; }
 }
 
+/* Pixelify Sans (SIL Open Font License, see assets/fonts/PixelifySans-OFL.txt).
+   size-adjust keeps text about as wide as the old retropix font, so layouts
+   that were sized for it still fit. */
 @font-face {
-  font-family: 'retropix';
-  src: url('./retropix.otf') format('opentype');
-  font-weight: 400;
+  font-family: 'Pixelify Sans';
+  src: url('./assets/fonts/PixelifySans.ttf') format('truetype');
+  font-weight: 400 700;
   font-style: normal;
   font-display: swap;
+  size-adjust: 90%;
 }
 
 :root {
@@ -1434,7 +1438,7 @@ html.touch-mobile .menu-offline-banner {
 }
 
 .ob-bubble p {
-  font-family: 'retropix', monospace;
+  font-family: 'Pixelify Sans', monospace;
   font-size: 16px; line-height: 1.5;
   color: #111; margin: 0;
 }
@@ -1465,7 +1469,7 @@ html.touch-mobile .menu-offline-banner {
 }
 
 .ob-btn-label {
-  font-family: 'retropix', monospace;
+  font-family: 'Pixelify Sans', monospace;
   font-size: 20px; color: #111; font-weight: 700;
 }
 .ob-btn-sub {
@@ -1478,7 +1482,7 @@ html.touch-mobile .menu-offline-banner {
   border: none; border-radius: 6px;
   box-shadow: 4px 4px 0 rgba(0,0,0,0.35);
   padding: 12px 24px;
-  font-family: 'retropix', monospace; font-size: 16px;
+  font-family: 'Pixelify Sans', monospace; font-size: 16px;
   color: #111; cursor: pointer;
 }
 .ob-continuer:disabled { opacity: 0.4; cursor: default; }
@@ -7593,7 +7597,7 @@ html.touch-tablet .menu-top-left {
   width: 100%;
   margin-bottom: 14px;
   color: #7dd3fc;
-  font-family: 'Press Start 2P', 'retropix', monospace;
+  font-family: 'Press Start 2P', 'Pixelify Sans', monospace;
   font-size: 8px;
   line-height: 1.4;
   text-shadow: 0 0 8px rgba(0,232,255,0.65);
@@ -7626,7 +7630,7 @@ html.touch-tablet .menu-top-left {
   text-shadow: 0 0 10px rgba(0,232,255,0.7);
 }
 .ob-logo {
-  font-family: 'Press Start 2P', 'retropix', monospace;
+  font-family: 'Press Start 2P', 'Pixelify Sans', monospace;
   font-size: clamp(38px, 14vw, 52px);
   color: #fbbf24;
   text-shadow: 4px 4px 0 #7c2d12, 0 0 22px rgba(251,191,36,0.6);
@@ -7699,7 +7703,7 @@ html.touch-tablet .menu-top-left {
   border-right-color: white;
 }
 .ob-bubble p {
-  font-family: 'Press Start 2P', 'retropix', monospace;
+  font-family: 'Press Start 2P', 'Pixelify Sans', monospace;
   font-size: 11px;
   line-height: 1.5;
   color: #020617;
@@ -7828,7 +7832,7 @@ html.touch-tablet .menu-top-left {
   animation: obAnswerPop 0.36s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 .ob-btn-label {
-  font-family: 'Press Start 2P', 'retropix', monospace;
+  font-family: 'Press Start 2P', 'Pixelify Sans', monospace;
   font-size: clamp(11px, 3.6vw, 16px);
   line-height: 1.35;
   color: #07111f;
@@ -7855,7 +7859,7 @@ html.touch-tablet .menu-top-left {
   border-radius: 6px;
   box-shadow: 4px 4px 0 rgba(0,0,0,0.35);
   padding: 12px 24px;
-  font-family: 'Press Start 2P', 'retropix', monospace;
+  font-family: 'Press Start 2P', 'Pixelify Sans', monospace;
   font-size: 10px;
   color: #07111f;
   cursor: pointer;
@@ -8127,7 +8131,7 @@ html.touch-tablet .menu-top-left {
   align-items: center;
   justify-content: center;
   text-align: center;
-  font-family: 'Press Start 2P', 'retropix', monospace;
+  font-family: 'Press Start 2P', 'Pixelify Sans', monospace;
   font-size: 9px;
   line-height: 1.35;
   color: #111;
@@ -8165,7 +8169,7 @@ html.touch-tablet .menu-top-left {
   animation: briefSectionIn 0.34s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 .brief-title {
-  font-family: 'Press Start 2P', 'retropix', monospace;
+  font-family: 'Press Start 2P', 'Pixelify Sans', monospace;
   font-size: 16px;
   color: #c8a84b;
   letter-spacing: 3px;
@@ -8652,7 +8656,7 @@ html.touch-tablet .menu-top-left {
   border: none;
   border-radius: 8px;
   color: #1a0a00;
-  font-family: 'Press Start 2P', 'retropix', monospace;
+  font-family: 'Press Start 2P', 'Pixelify Sans', monospace;
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 2px;
@@ -8672,7 +8676,7 @@ html.touch-tablet .menu-top-left {
   border: 2px solid #c8a84b;
   border-radius: 8px;
   color: #ffe28a;
-  font-family: 'Press Start 2P', 'retropix', monospace;
+  font-family: 'Press Start 2P', 'Pixelify Sans', monospace;
   font-size: 10px;
   letter-spacing: 1px;
   padding: 12px 18px;

@@ -23,9 +23,6 @@ const copyGameAssets = {
     if (existsSync('assets/email.min.js')) {
       cpSync('assets/email.min.js', 'dist/assets/email.min.js');
     }
-    if (existsSync('retropix.otf')) {
-      cpSync('retropix.otf', 'dist/retropix.otf');
-    }
   },
 };
 

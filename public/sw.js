@@ -4,7 +4,7 @@
 //   FETCH    — cache-first for all assets; network-first for HTML/JS
 //   ACTIVATE — delete old caches so stale files never linger
 
-const CACHE_VERSION = 'jexongo-v100';
+const CACHE_VERSION = 'jexongo-v101';
 
 // Critical assets cached immediately on first visit
 const PRECACHE = [
@@ -13,7 +13,7 @@ const PRECACHE = [
   '/style.css',
   '/assets/fonts/PressStart2P-Regular.ttf',
   '/assets/planes/14-intro-cutout.png',
-  '/retropix.otf',
+  '/assets/fonts/PixelifySans.ttf',
   // Backgrounds
   '/assets/Maps/JexonGo_Map_Ocean/JexonGo_ocean_High_Altitude_1024x8192_seamless.webp',
   '/assets/Maps/JexonGo_Map_Desert/JexonGo_desert_High_Altitude_1024x8192.webp',
