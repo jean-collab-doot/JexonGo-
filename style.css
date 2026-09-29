@@ -16022,8 +16022,7 @@ html.touch-phone .briefing-mission-title {
 
 /* New badge not looked at yet (badges.js refreshBadgeAlerts): "!" on the
    menu buttons, BADGES in the settings drawer and the badge's card. */
-.jx-burger, #btn-jx-badges, .hangar-badge-card, .jx-hud-main .jx-chip { position: relative; }
-.jx-chip .badge-alert { top: -8px; right: -10px; }
+.jx-burger, #btn-jx-badges, .hangar-badge-card { position: relative; }
 /* The drawer's pills run off the right edge of the screen: the "!" sits
    right after the word BADGES instead of in the (hidden) corner. */
 #btn-jx-badges .badge-alert { position: relative; top: auto; right: auto; display: inline-flex; margin-left: 10px; vertical-align: middle; width: 22px; height: 22px; font-size: 10px; }
