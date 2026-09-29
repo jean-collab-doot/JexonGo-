@@ -13,6 +13,7 @@ import { getLang } from '../i18n.js';
 import { wsConnect, wsSend, wsOn, wsDisconnect, WS_URL } from '../online/ws-client.js';
 import { highestUnlockedLevel } from '../systems/progression.js';
 import { TOTAL_LEVELS } from '../data/levels.js';
+import { publicPilotName } from '../utils/pilot-name.js';
 import { AIRCRAFT, AIRCRAFT_ORDER } from '../data/aircraft.js';
 import { save } from '../utils/storage.js';
 import { paintPlaneInfoFisheye } from './plane-info-fisheye.js';
@@ -462,14 +463,14 @@ async function createGame(level) {
   _waiting = true;
   showWaiting(fr() ? 'CRÉATION...' : 'CREATING...', fr() ? 'Connexion au serveur' : 'Connecting to the server');
   if (!(await connect()) || !_waiting) return;
-  wsSend({ type: 'coop_create', name: G.playerName || 'PILOT', aircraft: G.activeAircraft, level: _hostLevel });
+  wsSend({ type: 'coop_create', name: publicPilotName(G.playerName, 14), aircraft: G.activeAircraft, level: _hostLevel });
 }
 
 async function joinGame(code) {
   _waiting = true;
   showWaiting(fr() ? 'CONNEXION...' : 'JOINING...', fr() ? 'Recherche de la partie' : 'Looking for the game');
   if (!(await connect()) || !_waiting) return;
-  wsSend({ type: 'coop_join', code, name: G.playerName || 'PILOT', aircraft: G.activeAircraft, maxLevel: maxUnlockedLevel() });
+  wsSend({ type: 'coop_join', code, name: publicPilotName(G.playerName, 14), aircraft: G.activeAircraft, maxLevel: maxUnlockedLevel() });
 }
 
 function cancelWaiting() {

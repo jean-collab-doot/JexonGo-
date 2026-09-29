@@ -10,6 +10,7 @@ import crypto from 'crypto';
 import { fileURLToPath } from 'url';
 import emailHandler from './api/email.js';
 import saveHandler from './api/save.js';
+import { publicPilotName } from './src/utils/pilot-name.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 8080;
@@ -602,7 +603,7 @@ wss.on('connection', ws => {
 
         queue.push({
           ws,
-          name: String(msg.name || 'PILOT').toUpperCase().slice(0, 14),
+          name: publicPilotName(msg.name, 14),
           lp:   Math.max(0, Number(msg.lp) || 0),
         });
         send(ws, { type:'waiting', pos: queue.length });
@@ -618,7 +619,7 @@ wss.on('connection', ws => {
         const code = _newRoomCode();
         privateRooms.set(code, {
           ws,
-          name: String(msg.name || 'PILOT').toUpperCase().slice(0, 14),
+          name: publicPilotName(msg.name, 14),
           lp:   Math.max(0, Number(msg.lp) || 0),
         });
         send(ws, { type:'room_created', code });
@@ -639,7 +640,7 @@ wss.on('connection', ws => {
         if (qi !== -1) queue.splice(qi, 1);
         _createRoom(host, {
           ws,
-          name: String(msg.name || 'PILOT').toUpperCase().slice(0, 14),
+          name: publicPilotName(msg.name, 14),
           lp:   Math.max(0, Number(msg.lp) || 0),
         }, { private: true });
         break;
@@ -651,7 +652,7 @@ wss.on('connection', ws => {
         const code = _newCoopCode();
         coopRooms.set(code, {
           ws,
-          name: String(msg.name || 'PILOT').toUpperCase().slice(0, 14),
+          name: publicPilotName(msg.name, 14),
           aircraft: String(msg.aircraft || 't6').slice(0, 12),
           level: Math.max(1, Math.min(50, Number(msg.level) || 1)),
         });
@@ -674,12 +675,12 @@ wss.on('connection', ws => {
           send(ws, { type:'coop_locked', level: host.level, hostName: host.name });
           // The host learns why nobody arrived (and can pick a lower level).
           send(host.ws, { type:'coop_join_refused', level: host.level, maxLevel: joinerMax,
-            name: String(msg.name || 'PILOT').toUpperCase().slice(0, 14) });
+            name: publicPilotName(msg.name, 14) });
           break;
         }
         coopRooms.delete(code);
         _leaveCoop(ws);
-        const name = String(msg.name || 'PILOT').toUpperCase().slice(0, 14);
+        const name = publicPilotName(msg.name, 14);
         const aircraft = String(msg.aircraft || 't6').slice(0, 12);
         host.ws._coopPartner = ws;
         ws._coopPartner = host.ws;
@@ -714,7 +715,7 @@ wss.on('connection', ws => {
 
         const player = {
           ws,
-          name: String(msg.name || 'PILOT').toUpperCase().slice(0, 14),
+          name: publicPilotName(msg.name, 14),
           lp: Math.max(0, Number(msg.lp) || 0),
           bot: false,
         };

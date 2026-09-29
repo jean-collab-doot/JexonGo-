@@ -4,6 +4,7 @@
 // players have a row; guests never appear.
 import { G } from '../state.js';
 import { getSupabaseClient, getSupabaseSession } from './supabase-client.js';
+import { publicPilotName } from '../utils/pilot-name.js';
 
 const MIN_GAP_MS = 5000;
 let _lastPushAt = 0;
@@ -22,7 +23,7 @@ async function push() {
     if (!supabase || !userId) return;
     const row = {
       user_id: userId,
-      name: String(G.playerName || 'PILOTE').trim().slice(0, 16) || 'PILOTE',
+      name: publicPilotName(G.playerName, 16),
       xp: Math.max(0, Math.floor(G.lifetimeXpEarned || 0)),
       multi_xp: Math.max(0, Math.floor(G.multiXpEarned || 0)),
       updated_at: new Date().toISOString(),

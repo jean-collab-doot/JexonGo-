@@ -33,6 +33,7 @@ import { signInWithGoogleIdToken, signUpWithEmail, signOutSupabase } from './sys
 import { claimSessionOrBlock, sessionBlockedMessage } from './systems/session-guard.js';
 import { applyDeviceClasses } from './utils/device.js';
 import { isLevelUnlocked } from './systems/progression.js';
+import { isPilotNameAllowed } from './utils/pilot-name.js';
 
 const ANALYTICS_OPT_OUT_KEY = 'jexongoAnalyticsOptOut';
 let _analyticsTrack = null;
@@ -454,7 +455,10 @@ window._onGoogleCredential = async function(response) {
   try {
     const raw     = response.credential.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
     const payload = JSON.parse(atob(raw));
-    const name    = (payload.name  || 'PILOT').toUpperCase().slice(0, 20);
+    // First name only: the full Google name may be a child's real full name
+    // and the pilot name is shown to other players.
+    const googleFirstName = payload.given_name || String(payload.name || '').trim().split(/\s+/)[0];
+    const name    = (googleFirstName || 'PILOT').toUpperCase().slice(0, 20);
     const email   = (payload.email || '').toLowerCase();
     const photo   = payload.picture || '';
 
@@ -665,6 +669,15 @@ function initRegistration() {
     showScreen('s-menu');
   });
 
+  // Under 13, a parent or guardian must agree before the account is created.
+  const PARENT_CONSENT_AGE = 13;
+  document.getElementById('reg-age')?.addEventListener('change', e => {
+    const age = parseInt(e.target.value, 10);
+    const needsParent = !!age && age < PARENT_CONSENT_AGE;
+    document.getElementById('reg-parent-row')?.classList.toggle('hidden', !needsParent);
+    if (!needsParent) document.getElementById('reg-parent').checked = false;
+  });
+
   document.getElementById('btn-reg-submit').addEventListener('click', async () => {
     const name  = (document.getElementById('reg-name').value  || '').trim().toUpperCase();
     const email = (document.getElementById('reg-email').value || '').trim().toLowerCase();
@@ -674,9 +687,11 @@ function initRegistration() {
     const grade = parseInt(document.getElementById('reg-grade').value, 10);
     const tos   = document.getElementById('reg-tos').checked;
     const privacy = document.getElementById('reg-privacy').checked;
+    const parentOk = !!document.getElementById('reg-parent')?.checked;
     const err   = document.getElementById('reg-error');
 
     if (!name)                          { err.textContent = t('regErrName');     return; }
+    if (!isPilotNameAllowed(name))      { err.textContent = t('regErrNameBad');  return; }
     if (!email || !email.includes('@')) { err.textContent = t('regErrEmail');    return; }
     if (pw.length < 6)                  { err.textContent = t('regErrPassword'); return; }
     if (pw !== pwConfirm)               { err.textContent = t('regErrPasswordMatch'); return; }
@@ -684,6 +699,7 @@ function initRegistration() {
     if (!grade)                         { err.textContent = t('regErrGrade');    return; }
     if (!tos)                           { err.textContent = t('regErrTos');      return; }
     if (!privacy)                       { err.textContent = t('regErrPrivacy');  return; }
+    if (age < PARENT_CONSENT_AGE && !parentOk) { err.textContent = t('regErrParent'); return; }
 
     err.textContent       = '';
     try {
@@ -691,6 +707,8 @@ function initRegistration() {
         player_name: name,
         player_grade: grade,
         player_age: age,
+        // Record when a parent agreed for an under-13 account.
+        ...(age < PARENT_CONSENT_AGE ? { parent_consent_at: new Date().toISOString() } : {}),
       });
       if (!auth?.session) {
         err.textContent = getLang() === 'fr'

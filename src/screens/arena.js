@@ -13,6 +13,7 @@ import {
   wsConnect, wsSend, wsOn, wsOff, wsDisconnect, wsIsConnected, WS_URL,
 } from '../online/ws-client.js';
 import { drawFrame, getImage, preloadSprite, AIRCRAFT_SPRITE } from '../game/sprites.js';
+import { publicPilotName } from '../utils/pilot-name.js';
 
 // ── PLANE SPRITES ────────────────────────────────────────────────────────────
 // The opponent always shows this fixed model (distinct from whatever the
@@ -104,7 +105,7 @@ export async function enterArena(opts = {}) {
   $('btn-arena-rematch')?.classList.remove('hidden');
   if ($('btn-arena-lobby')) $('btn-arena-lobby').textContent = 'LOBBY';
 
-  _myName  = (G.playerName || 'PILOT').toUpperCase();
+  _myName  = publicPilotName(G.playerName, 14);
   _oppName = '???';
   _updateNameplates();
   _updateHP();
@@ -350,7 +351,7 @@ function _registerHandlers(sid) {
   wsOn('matched', msg => {
     if (_session !== sid) return;
     _isP1    = msg.isP1;
-    _myName  = (G.playerName || 'PILOT').toUpperCase();
+    _myName  = publicPilotName(G.playerName, 14);
     _oppName = msg.opponentName;
     _oppLP   = msg.opponentLP || 0;
     _hideStatus();
