@@ -16,7 +16,7 @@
   <style>
     /* np-yellow: the whole page (status bar / notch area included) stays the
        intro's yellow until the intro is gone (new-player-intro.js). */
-    html.np-boot, html.np-boot body, html.np-yellow, html.np-yellow body { background: #ffc800 !important; }
+    html.np-boot, html.np-boot body, html.np-yellow, html.np-yellow body { background: var(--np-page, #ffc800) !important; }
     html.np-boot body > *:not(#np-intro) { visibility: hidden !important; }
   </style>
   <link rel="icon" type="image/png" sizes="64x64" href="./favicon.png?v=3">

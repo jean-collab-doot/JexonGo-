@@ -76,8 +76,28 @@ export function playNewPlayerIntro(onDone, { leave = false } = {}) {
     .then(() => {
       overlay.classList.add('np-go');
       SFX.introExit();
+      // The phone's top bar follows the white wash (style.css npWash /
+      // npWashOut) so the top of the screen never shows a yellow band over
+      // the white, then goes back to yellow with the logo.
+      setTimeout(() => { if (overlay.isConnected) setTopBar(WASH_WHITE); }, WASH_TOP_WHITE_MS);
+      setTimeout(() => { if (overlay.isConnected) setTopBar(INTRO_YELLOW); }, WASH_TOP_YELLOW_MS);
       setTimeout(() => carryOn(overlay, onDone, leave), LOGO_HOLD_MS);
     });
+}
+
+const INTRO_YELLOW = '#ffc800';
+const WASH_WHITE = '#ffffff';
+// After .np-go: the wash's solid white reaches the top of the screen at about
+// 0.6 s and has faded away at about 1.5 s.
+const WASH_TOP_WHITE_MS = 600;
+const WASH_TOP_YELLOW_MS = 1500;
+
+// Colour of the phone / tablet top bar (theme-color) and of the page behind
+// the intro (seen in the notch and status-bar area).
+function setTopBar(color) {
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.content = color;
+  document.documentElement.style.setProperty('--np-page', color);
 }
 
 // Page and browser bar (theme-color) in the intro's yellow while it is on
@@ -85,12 +105,12 @@ export function playNewPlayerIntro(onDone, { leave = false } = {}) {
 function setYellowPage(on) {
   document.documentElement.classList.toggle('np-yellow', on);
   const meta = document.querySelector('meta[name="theme-color"]');
-  if (!meta) return;
   if (on) {
-    meta.dataset.base ||= meta.content;
-    meta.content = '#ffc800';
-  } else if (meta.dataset.base) {
-    meta.content = meta.dataset.base;
+    if (meta) meta.dataset.base ||= meta.content;
+    setTopBar(INTRO_YELLOW);
+  } else {
+    document.documentElement.style.removeProperty('--np-page');
+    if (meta?.dataset.base) meta.content = meta.dataset.base;
   }
 }
 
@@ -103,7 +123,9 @@ function carryOn(overlay, onDone, leave) {
   if (leave) {
     // Lobby: it is already rendered underneath; the intro fades away over it.
     onDone?.();
-    setYellowPage(false);   // the lobby shows through as the intro fades
+    // The top bar stays yellow until the intro is gone (removeIntro): switching
+    // it to the lobby colour at the start of the fade flashed the top of the
+    // screen.
     overlay.classList.add('np-leave');
     setTimeout(() => removeIntro(overlay), LEAVE_MS);
     return;

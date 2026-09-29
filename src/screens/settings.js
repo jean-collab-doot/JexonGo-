@@ -4,6 +4,7 @@ import { resetIntroBriefing } from './intro-briefing.js';
 import { showEquationConfig } from './onboarding.js';
 import { updateDrawerProfile } from './menu.js';
 import { renderBadges } from './hangar.js';
+import { clearNewBadges } from '../data/badges.js';
 
 const KEY = 'jexongo_settings';
 
@@ -194,6 +195,9 @@ export function initSettings() {
     _closeDrawer();
     renderBadges(document.getElementById('hangar-badges'));
     badgesOverlay?.classList.remove('hidden');
+    // The new badges were drawn with their "!"; they are now seen, so the
+    // "!" leaves the menu buttons (the cards keep it until the list is closed).
+    clearNewBadges();
   });
   document.getElementById('btn-badges-close')?.addEventListener('click', () => badgesOverlay?.classList.add('hidden'));
   badgesOverlay?.addEventListener('click', e => { if (e.target === badgesOverlay) badgesOverlay.classList.add('hidden'); });

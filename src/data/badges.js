@@ -1,5 +1,5 @@
 import { G, clampCoins } from '../state.js';
-import { save } from '../utils/storage.js';
+import { save, load } from '../utils/storage.js';
 
 export const BADGES = [
   { id:'first_takeoff', name:'Premier Décollage', rarity:'Commun', image:'/assets/Badges/01_Premier_Decollage_Commun.png', goal:'Terminer le niveau 1', reward:'+50 coins · équipé : +5% vitesse', test:()=>G.highestLevel>=1, progress:()=>[Math.min(G.highestLevel,1),1] },
@@ -24,8 +24,42 @@ export function unlockEligibleBadges(context={}) {
     if (badge.id==='boss_hunter') { G.secretAircraftUnlocked=true; if (!G.unlockedAircraft.includes('f117')) G.unlockedAircraft.push('f117'); if (!G.acquiredAircraft.includes('f117')) G.acquiredAircraft.push('f117'); }
   }
   G.unlockedBadges=[...owned];
+  if (unlocked.length) {
+    _newBadges = [...new Set([...newBadgeIds(), ...unlocked.map(b => b.id)])];
+    save('newBadges', _newBadges);
+    refreshBadgeAlerts();
+  }
   ['unlockedBadges','coins','comboAcePermanent','secretAircraftUnlocked','ownedShootingPlans','unlockedAircraft','acquiredAircraft'].forEach(k=>save(k,G[k]));
   return unlocked;
+}
+
+// Badges won but not looked at yet: a red "!" on the menu (☰) buttons, on
+// BADGES in the settings drawer and on the badge's card. Opening the badge
+// list clears them (settings.js).
+let _newBadges = null;
+function newBadgeIds() {
+  if (!_newBadges) _newBadges = Array.isArray(load('newBadges', [])) ? load('newBadges', []) : [];
+  return _newBadges.filter(id => (G.unlockedBadges || []).includes(id));
+}
+export function isNewBadge(id) {
+  return newBadgeIds().includes(id);
+}
+export function clearNewBadges() {
+  _newBadges = [];
+  save('newBadges', []);
+  refreshBadgeAlerts();
+}
+export function refreshBadgeAlerts() {
+  const on = newBadgeIds().length > 0;
+  document.querySelectorAll('.jx-burger, #btn-jx-badges').forEach(btn => {
+    btn.querySelector('.badge-alert')?.remove();
+    if (!on) return;
+    const dot = document.createElement('span');
+    dot.className = 'missions-badge badge-alert';
+    dot.textContent = '!';
+    dot.setAttribute('aria-label', 'Nouveau badge');
+    btn.appendChild(dot);
+  });
 }
 
 export function badgeXpMultiplier() {

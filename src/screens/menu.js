@@ -15,6 +15,7 @@ import { coinIcon, expIcon, uiIcon } from '../utils/icons.js';
 import { makeBottomSheet } from '../utils/bottomsheet.js';
 import { bindHangarTabs, renderHangarPanels, buyAircraftFromLobby, planeCost, meetsGradeRequirement } from './hangar.js';
 import { isMultiLobby, openMultiChoices } from './multiplayer.js';
+import { refreshBadgeAlerts } from '../data/badges.js';
 
 // ── GOOGLE SIGN-IN ───────────────────────────────────────────────────────────
 const GOOGLE_CLIENT_ID = '182729505930-rulb73m14t9qvfpjfbplknrcgn0fqvci.apps.googleusercontent.com';
@@ -605,6 +606,8 @@ export function initMenu(nav) {
 export function renderMenu() {
   _updateLobbyHud();
   _updateMissionsBadge();
+  refreshBadgeAlerts();
+  _updateFeatureLocks();
   _applyLang();
   const sheet = $('lobby-sheet');
   if (sheet) { sheet.style.transform = ''; sheet.classList.add('is-collapsed'); sheet.classList.remove('is-open'); }
@@ -638,6 +641,53 @@ function _updateLobbyHud() {
   if (minEl) minEl.textContent = `${today} MIN`;
   if (fillEl) fillEl.style.height = `${todayStats?.pct || 0}%`;
 }
+
+// MULTI opens once level 3 is completed, the TOP 20 once level 5 is (same
+// rule as the planes' "LEVEL N REQUIRED": G.highestLevel = last level won).
+// Before that the button is greyed with a padlock and a tap explains why.
+export const MULTI_UNLOCK_LEVEL = 3;
+export const TOP20_UNLOCK_LEVEL = 5;
+const FEATURE_LOCKS = [
+  { id: 'btn-lobby-multi', level: MULTI_UNLOCK_LEVEL, fr: 'Le multijoueur se débloque au niveau', en: 'Multiplayer unlocks at level' },
+  { id: 'btn-lobby-top20', level: TOP20_UNLOCK_LEVEL, fr: 'Le TOP 20 se débloque au niveau', en: 'The TOP 20 unlocks at level' },
+];
+
+function featureLocked(lock) {
+  // Never lock the way back out of MULTI mode (the button then reads SOLO).
+  if (lock.id === 'btn-lobby-multi' && isMultiLobby()) return false;
+  return (G.highestLevel || 0) < lock.level;
+}
+
+function _updateFeatureLocks() {
+  const fr = getLang() === 'fr';
+  for (const lock of FEATURE_LOCKS) {
+    const btn = $(lock.id);
+    if (!btn) continue;
+    const locked = featureLocked(lock);
+    btn.classList.toggle('is-locked', locked);
+    btn.querySelector('.jx-lock-tag')?.remove();
+    if (locked) {
+      const tag = document.createElement('span');
+      tag.className = 'jx-lock-tag';
+      tag.innerHTML = `${uiIcon('lock')}${fr ? 'NIV' : 'LV'} ${lock.level}`;
+      btn.appendChild(tag);
+    }
+  }
+}
+
+// Capture phase: runs before the buttons' own handlers (main.js /
+// leaderboard.js) and stops them while the feature is locked.
+document.addEventListener('click', e => {
+  const btn = e.target.closest?.('#btn-lobby-multi, #btn-lobby-top20');
+  if (!btn) return;
+  const lock = FEATURE_LOCKS.find(l => l.id === btn.id);
+  if (!lock || !featureLocked(lock)) return;
+  e.stopImmediatePropagation();
+  e.preventDefault();
+  SFX.noMoney?.();
+  const fr = getLang() === 'fr';
+  _showToast(`${fr ? lock.fr : lock.en} ${lock.level}`);
+}, true);
 
 function _updateMissionsBadge() {
   // The "!" now rides on the left carousel arrow (which opens the Mission page).

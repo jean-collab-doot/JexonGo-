@@ -32,6 +32,7 @@ const UI_ICONS = {
   // game / interface
   bolt:      '<path d="M13 2L4 14h7l-1 8 9-12h-7z"/>',
   clock:     '<circle cx="12" cy="13.5" r="8"/><path d="M12 9.5v4l2.6 2.6M9.5 2h5M12 2v3.5"/>',
+  lock:      '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7.5a4 4 0 0 1 8 0V11"/>',
   pin:       '<path d="M12 21.5s-7-6.3-7-11.5a7 7 0 0 1 14 0c0 5.2-7 11.5-7 11.5z"/><circle cx="12" cy="10" r="2.5"/>',
   warning:   '<path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18v.01"/>',
   eye:       '<path d="M2 12s3.8-7 10-7 10 7 10 7-3.8 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',

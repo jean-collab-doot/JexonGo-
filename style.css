@@ -15003,6 +15003,11 @@ html #s-result.rs-screen{padding:0 !important}
   z-index: 9500;
   overflow: hidden;
   background: #ffc800;
+  /* Own compositing layer: on iPhone / iPad a fixed overlay with animated
+     children could flicker along the top edge while it repainted. */
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  contain: paint;
 }
 .np-intro.np-leave { animation: npLeave 0.45s ease-in forwards; }
 .np-wind { position: absolute; inset: 0; }
@@ -16011,3 +16016,20 @@ html.touch-phone .briefing-mission-title {
 @keyframes bprBadge{0%{opacity:0;transform:translate(-170%,-10%) scale(1.3) rotate(-25deg)}20%{opacity:1}85%{opacity:1;transform:translate(0,0) scale(.7) rotate(0)}100%{opacity:0;transform:translate(0,0) scale(.2)}}
 @media (prefers-reduced-motion:reduce){.show .bpr-plane{animation:bdgFadeIn .4s both;filter:none}.show .bpr-badge,.show .bpr-mystery{animation:none}}
 @media (max-width:700px),(max-height:560px){.bpr-stage{width:clamp(150px,44dvmin,230px);margin:10px 0 6px}}
+
+/* Practice with lives off (game.js updateLivesHUD): infinity sign. */
+.hud-infinite-lives { font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; font-size: 34px; line-height: 28px; font-weight: 900; color: #ff4d6d; text-shadow: 0 0 8px rgba(255,77,109,.8), 2px 2px 0 #000; }
+
+/* New badge not looked at yet (badges.js refreshBadgeAlerts): "!" on the
+   menu buttons, BADGES in the settings drawer and the badge's card. */
+.jx-burger, #btn-jx-badges, .hangar-badge-card { position: relative; }
+.badge-alert, .badge-card-alert { z-index: 2; font-size: 8px; width: 18px; height: 18px; animation: badgeAlertPulse 1.1s ease-in-out infinite; }
+.badge-card-alert { top: 6px; right: 6px; }
+@keyframes badgeAlertPulse { 50% { transform: scale(1.18); } }
+@media (prefers-reduced-motion: reduce) { .badge-alert, .badge-card-alert { animation: none; } }
+
+/* MULTI / TOP 20 before their level (menu.js _updateFeatureLocks). */
+.jx-multi-btn.is-locked { filter: grayscale(.9) brightness(.8); }
+.jx-multi-btn.is-locked:active { transform: none; }
+.jx-lock-tag { position: absolute; left: 50%; bottom: -9px; transform: translateX(-50%); display: inline-flex; align-items: center; gap: 3px; padding: 2px 5px; border-radius: 6px; background: #1f2937; color: #fff; font-size: 7px; white-space: nowrap; text-shadow: none; box-shadow: 0 2px 0 rgba(0,0,0,.45); }
+.jx-lock-tag .ui-icon { width: 9px; height: 9px; }

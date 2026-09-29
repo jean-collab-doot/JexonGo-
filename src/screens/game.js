@@ -5395,6 +5395,11 @@ function updateLivesHUD() {
       : `<span class="tutorial-safe-life">∞ ${tutorialCopy().infinite}</span>`;
     return;
   }
+  // Practice with lives turned off: the infinity sign instead of hearts.
+  if (G.practiceMode && !G.practiceHearts) {
+    $('hud-lives').innerHTML = `<span class="hud-infinite-lives" role="img" aria-label="${getLang() === 'fr' ? 'Vies infinies' : 'Infinite lives'}">∞</span>`;
+    return;
+  }
   $('hud-lives').innerHTML = Array.from({ length: _maxLives }, (_, i) =>
     `<img src="/assets/fx/Iteam/heart-full.png" style="width:28px;height:28px;image-rendering:pixelated;opacity:${i < G.lives ? '1' : '0.3'}">`
   ).join('');

@@ -6,7 +6,7 @@ import { AIRCRAFT, AIRCRAFT_ORDER } from '../data/aircraft.js';
 import { paintPlaneInfoFisheye } from './plane-info-fisheye.js';
 import { t, getLang, applyI18n } from '../i18n.js';
 import { MISSILE_TYPES, SHOOTING_PLANS, renderShotPlanMiniCard, startShopPreview, stopShopPreview } from './shop.js';
-import { BADGES, unlockEligibleBadges } from '../data/badges.js';
+import { BADGES, unlockEligibleBadges, isNewBadge } from '../data/badges.js';
 import { coinIcon, uiIcon } from '../utils/icons.js';
 import { isMultiLobby, renderBotPanel, onHangarTabShown } from './multiplayer.js';
 import {
@@ -610,7 +610,8 @@ export function renderBadges(root) {
     const unlocked = owned.has(b.id);
     const active = G.activeBadge === b.id;
     const [value, max] = b.progress?.({}) || [0, 1];
-    return `<article data-preview-badge="${b.id}" class="hangar-badge-card ${unlocked ? 'unlocked' : 'locked'} ${active ? 'active' : ''}"><img src="${b.image}" alt="${b.name}"><div><em>${b.rarity}</em><h3>${b.name}</h3><p>${b.goal}</p><strong>${b.reward}</strong><small>${active ? 'ÉQUIPÉ' : unlocked ? 'DÉBLOQUÉ' : `${value.toLocaleString()} / ${max.toLocaleString()}`}</small>${unlocked ? `<button type="button" class="hangar-equip-badge ${active ? 'is-equipped' : ''}" data-equip-badge="${b.id}">${active ? 'DÉSÉQUIPER' : 'ÉQUIPER'}</button>` : ''}</div></article>`;
+    const fresh = unlocked && isNewBadge(b.id);   // won, not looked at yet
+    return `<article data-preview-badge="${b.id}" class="hangar-badge-card ${unlocked ? 'unlocked' : 'locked'} ${active ? 'active' : ''}${fresh ? ' is-new' : ''}">${fresh ? '<span class="missions-badge badge-card-alert" aria-label="Nouveau">!</span>' : ''}<img src="${b.image}" alt="${b.name}"><div><em>${b.rarity}</em><h3>${b.name}</h3><p>${b.goal}</p><strong>${b.reward}</strong><small>${active ? 'ÉQUIPÉ' : unlocked ? 'DÉBLOQUÉ' : `${value.toLocaleString()} / ${max.toLocaleString()}`}</small>${unlocked ? `<button type="button" class="hangar-equip-badge ${active ? 'is-equipped' : ''}" data-equip-badge="${b.id}">${active ? 'DÉSÉQUIPER' : 'ÉQUIPER'}</button>` : ''}</div></article>`;
   }).join('')}</div>`;
 
   root.querySelectorAll('[data-preview-badge]').forEach(button => button.addEventListener('click', () => {
