@@ -145,6 +145,7 @@ const nav = {
     cleanup();
     leaveCoopLink();
     G.lastCoopSession = null;
+    G.coopWinXp = false;
     exitMultiplayer();
     closeLeaderboard();
     setLevelMapPicker(null);

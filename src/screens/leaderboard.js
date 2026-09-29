@@ -1,7 +1,7 @@
 // TOP 20 MONDIAL (lobby TOP 20 button): real players only, from the public
 // Supabase table "leaderboard" (supabase/migrations/005). Two boards:
 //   EXP TOTAL    EXP earned since the start of the game
-//   MULTIJOUEUR  EXP earned in multiplayer games with a real teammate
+//   MULTIJOUEUR  EXP of games won with a real player (not the bot)
 // Podium for the top 3, then one orange row per player; the player's own row
 // is blue. While the panel is open it follows the table live (Supabase
 // Realtime), with a slow refresh as a fallback.
@@ -88,8 +88,8 @@ function render(rows, note = '') {
     ${note ? `<p class="top20-note">${note}</p>` : ''}
     <div class="top20-list">${list}</div>
     ${_board === 'multi' ? `<p class="top20-note">${f
-      ? 'EXP gagnée en jouant avec un vrai coéquipier (pas avec le bot).'
-      : 'EXP earned playing with a real teammate (not the bot).'}</p>` : ''}
+      ? 'EXP des parties gagnées avec un vrai joueur (pas avec le bot).'
+      : 'EXP from games won with a real player (not the bot).'}</p>` : ''}
     ${G.playerRegistered ? '' : `<p class="top20-note">${f
       ? 'Connecte-toi avec ton compte pour apparaître dans le classement.'
       : 'Sign in with your account to appear in the leaderboard.'}</p>`}`;

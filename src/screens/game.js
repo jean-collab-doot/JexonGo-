@@ -5410,6 +5410,9 @@ function finishLevel(won) {
   // Beginner practice won (last question or T key): main.js shows the Google
   // sign-in invitation to guests.
   G.beginnerPracticeDone = !!(won && _guidedRun);
+  // Won with a real teammate (even if they left before the end): this game's
+  // EXP also counts for the MULTIJOUEUR TOP 20 (state.js addLifetimeXp).
+  G.coopWinXp = !!(won && !G.practiceMode && G.coopSession?.mode === 'online');
   // Coins and EXP earned in gameplay are temporary until victory. Losing or
   // leaving the level discards the session counters without changing the
   // player's saved account balance.
@@ -5720,6 +5723,7 @@ export function initGame(levelNum, onComplete) {
   // New-player practice run (main.js startPracticeFromOnboarding): 10
   // questions, 1-5 free (no timer, infinite lives), 6-10 timed with 3 lives.
   _guidedRun = !!G.practiceMode && !!G.onboardingPracticeRun;
+  G.coopWinXp = false;   // a new game: nothing won with a teammate yet
   G.onboardingPracticeRun = false;
   _guidedLives = GUIDED_LIVES;
   _guidedBreakDone = false;

@@ -1724,6 +1724,14 @@ html.touch-mobile .menu-offline-banner {
   animation: blink 1.2s ease-in-out infinite;
 }
 #boss-health-wrap {
+  /* Floats over the top of the canvas (index.html: inside #game-canvas-wrap),
+     so hiding it never leaves a black band above the game. */
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 12;
+  box-sizing: border-box;
   width: 100%;
   min-height: 30px;
   flex-shrink: 0;

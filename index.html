@@ -389,13 +389,15 @@
       <button id="btn-quit-game" class="btn-quit-game" data-i18n="quit">&#x2715; QUIT</button>
     </div>
     <div id="timer-bar-wrap"><div id="timer-bar"></div></div>
-    <div id="boss-health-wrap" class="hidden" aria-label="Boss health">
-      <span id="boss-health-name">A330 MRTT</span>
-      <div id="boss-health-track"><div id="boss-health-fill"></div></div>
-      <span id="boss-health-value">0 / 0</span>
-    </div>
     <div id="game-canvas-wrap">
       <canvas id="game-canvas"></canvas>
+      <!-- Over the top of the game (not in the page flow): hidden, it leaves
+           no empty band above the canvas. -->
+      <div id="boss-health-wrap" class="hidden" aria-label="Boss health">
+        <span id="boss-health-name">A330 MRTT</span>
+        <div id="boss-health-track"><div id="boss-health-fill"></div></div>
+        <span id="boss-health-value">0 / 0</span>
+      </div>
       <button id="btn-player-shield" class="player-shield-button hidden" type="button" aria-label="Activate shield">
         <span class="player-shield-icon">&#x1F6E1;</span>
         <span id="player-shield-status">SHIELD</span>

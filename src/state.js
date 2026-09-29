@@ -36,13 +36,17 @@ export const MAX_GAME_COINS = 100;
 export const MAX_GAME_XP = 150;
 
 // Every XP gain also counts toward the "Fortune de Guerre" badge.
-// Also feeds the TOP 20 leaderboard: EXP from a game with a real teammate
-// (MULTI, not the bot) counts for the MULTIJOUEUR board too.
+// Also feeds the TOP 20 leaderboard: the EXP of a game WON with a real
+// teammate (MULTI, any real player, not the bot) counts for the MULTIJOUEUR
+// board too - pickups, end-of-level bonus and that level's chest. G.coopWinXp
+// is set by game.js finishLevel and cleared when another game starts or the
+// player goes back to the lobby, so nothing else (daily rewards, a solo game
+// right after) is counted.
 export function addLifetimeXp(amount) {
   const gained = Math.max(0, Number(amount) || 0);
   G.lifetimeXpEarned = (G.lifetimeXpEarned || 0) + gained;
   save('lifetimeXpEarned', G.lifetimeXpEarned);
-  if (gained > 0 && (G.coopSession || G.lastCoopSession)?.mode === 'online') {
+  if (gained > 0 && G.coopWinXp) {
     G.multiXpEarned = (G.multiXpEarned || 0) + gained;
     save('multiXpEarned', G.multiXpEarned);
   }
@@ -82,7 +86,8 @@ export const G = {
   activeAircraft: 't6',
   unlockedBadges: [], activeBadge: null, totalCorrectAnswers: 0, bestAnswerStreak: 0, flawlessLevels: 0,
   lifetimeXpEarned: 0,       // XP really earned since the player started (Fortune de Guerre badge)
-  multiXpEarned: 0,          // part of it earned in MULTI games with a real teammate (TOP 20 board)
+  multiXpEarned: 0,
+  coopWinXp: false,          // the game just won was with a real teammate (not saved)          // part of it earned in MULTI games with a real teammate (TOP 20 board)
   comboAcePermanent: false, secretAircraftUnlocked: false,
   ownedShootingPlans: ['default'],
   activeShootingPlan: 'default',
