@@ -51,7 +51,9 @@ export function clearNewBadges() {
 }
 export function refreshBadgeAlerts() {
   const on = newBadgeIds().length > 0;
-  document.querySelectorAll('.jx-burger, #btn-jx-badges').forEach(btn => {
+  // (+ the lobby's EXP chip, the pill beside the coins at the top.)
+  const expChip = document.getElementById('menu-hud-xp')?.closest('.jx-chip');
+  [...document.querySelectorAll('.jx-burger, #btn-jx-badges'), expChip].filter(Boolean).forEach(btn => {
     btn.querySelector('.badge-alert')?.remove();
     if (!on) return;
     const dot = document.createElement('span');

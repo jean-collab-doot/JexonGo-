@@ -55,10 +55,18 @@ let _playerShieldReadyAt = 0;
 let _playerShieldButtonHandler = null;
 let _lastShieldHudSecond = -1;
 let _shieldPausedAt = 0;   // paused during an equation (see syncAbilityPause)
+// Airdrop gadgets (X-ray / machine gun, protection field, air support) are
+// switched off while a question waits for its answer and switched back on
+// after it, with the time they had left. 0 = not paused.
+let _gadgetPausedAt = 0;
+
+function airdropWeaponActive(now = performance.now()) {
+  return now < (G.airdropXrayUntil || 0) && !_gadgetPausedAt;
+}
 
 function playerShieldActive(now = performance.now()) {
   return (G.activeBadge === 'good_student' && now < _playerShieldUntil && !_shieldPausedAt)
-    || now < (G.airdropShieldUntil || 0);   // airdrop "champ de protection"
+    || (now < (G.airdropShieldUntil || 0) && !_gadgetPausedAt);   // airdrop "champ de protection"
 }
 
 function updatePlayerShieldButton(now = performance.now(), force = false) {
@@ -138,7 +146,22 @@ function syncAbilityPause(paused, now = performance.now()) {
       _shieldPausedAt = now;
       _lastShieldHudSecond = -1;
     }
+    if (!_gadgetPausedAt && (now < (G.airdropXrayUntil || 0) || now < (G.airdropShieldUntil || 0)
+      || (_airSupport && now < _airSupport.until))) {
+      _gadgetPausedAt = now;
+    }
     return;
+  }
+  if (_gadgetPausedAt) {
+    const pausedMs = now - _gadgetPausedAt;
+    const from = _gadgetPausedAt;
+    if ((G.airdropXrayUntil || 0) > from) { G.airdropXrayUntil += pausedMs; G.airdropXrayShotReset = true; }
+    if ((G.airdropShieldUntil || 0) > from) G.airdropShieldUntil += pausedMs;
+    if (_airSupport && _airSupport.until > from) {
+      _airSupport.until += pausedMs;
+      _airSupport.nextShot += pausedMs;
+    }
+    _gadgetPausedAt = 0;
   }
   if (_skillPausedAt) {
     const pausedMs = now - _skillPausedAt;
@@ -1247,6 +1270,7 @@ function startA330BossIntro(done) {
   const showLine = () => {
     if (!_isActiveSid(sid)) return;
     if (!_bossDialogueSpeechStartedAt) _bossDialogueSpeechStartedAt = performance.now();
+    if (!lines[index]) return;   // CONTINUE tapped before the first line showed
     const [name, message, playerSpeaking] = lines[index];
     _bossDialogueSpeakerIsPlayer = playerSpeaking;
     speaker.textContent = name;
@@ -1770,7 +1794,7 @@ function updateBossHealthBar(boss = G.enemies.find(e => e.type === 'boss' && e.a
   const name = document.getElementById('boss-health-name');
   if (name) name.textContent = boss.spaceShuttleBoss ? 'SPACE SHUTTLE STS' : boss.c5Boss ? 'C-5 GALAXY' : boss.kawasakiBoss ? 'KAWASAKI C-2' : boss.b52Boss ? 'B-52' : 'A330 MRTT';
   if (fill) fill.style.width = `${Math.max(0, Math.min(100, hp / maxHp * 100))}%`;
-  if (value) value.textContent = `${hp} / ${maxHp}`;
+  if (value) value.textContent = `${Math.ceil(hp)} / ${maxHp}`;
 }
 
 function clearAnswerCelebration() {
@@ -2982,7 +3006,6 @@ function frame(ts = 0) {
 
   // ── Player missiles — fixed path after launch ─────────────────────────────
   // ── Enemy missiles (with level-based guidance) ─────────────────────────
-  updateAirdropXrayQuestionPause(ts || performance.now());
   updatePlayerAutoFire(ts || performance.now());
   updateMissiles(G.missiles, missile => {
     for (const enemy of G.enemies) {
@@ -3526,7 +3549,7 @@ function updateAndDrawAirSupport(now) {
   }
 
   // Lasers every 0.5 s at the nearest active enemy.
-  if (enterT >= 1 && exitT < 0 && now >= s.nextShot && !_cutsceneActive) {
+  if (enterT >= 1 && exitT < 0 && now >= s.nextShot && !_cutsceneActive && !_gadgetPausedAt) {
     s.nextShot = now + AIR_SUPPORT_SHOT_MS;
     let target = null, best = Infinity;
     for (const e of G.enemies) {
@@ -4040,46 +4063,9 @@ function fireAirdropMachineGun() {
   return true;
 }
 
-function updateAirdropXrayQuestionPause(now = performance.now()) {
-  const active = (G.airdropXrayUntil || 0) > now;
-  const qbox = document.getElementById('question-box');
-
-  if (active) {
-    if (!G.airdropXrayQuestionPaused) {
-      G.airdropXrayQuestionPaused = true;
-      G.airdropXrayResumeQuestion = false;
-    }
-
-    // A delayed nextQuestion() may run after the laser has already started.
-    // Re-cancel any equation and timer that appears during the whole bonus.
-    const questionNeedsPause = !!G.question && !G.answerLocked;
-    if (questionNeedsPause) G.airdropXrayResumeQuestion = true;
-    if (G.timerInterval) {
-      clearInterval(G.timerInterval);
-      G.timerInterval = null;
-    }
-    if (qbox) {
-      qbox.classList.add('shooting-hidden');
-      qbox.style.visibility = 'hidden';
-    }
-  } else if (!active && G.airdropXrayQuestionPaused) {
-    const shouldResume = G.airdropXrayResumeQuestion && !G.answerLocked;
-    G.airdropXrayQuestionPaused = false;
-    G.airdropXrayResumeQuestion = false;
-    if (shouldResume && qbox) {
-      qbox.classList.remove('shooting-hidden', 'fading', 'question-inactive');
-      qbox.style.visibility = '';
-      void qbox.offsetWidth;
-      qbox.classList.add('resume-appearing');
-      setTimeout(() => qbox.classList.remove('resume-appearing'), 420);
-      startTimer(false);
-    }
-  }
-}
-
 function updatePlayerAutoFire(now = performance.now()) {
   const plan = activeShootingPlan();
-  const xrayActive = (G.airdropXrayUntil || 0) > now;
+  const xrayActive = airdropWeaponActive(now);
   const machineGunActive = xrayActive && G.airdropWeapon === 'machinegun';
   const cadenceMs = machineGunActive ? 300 : xrayActive ? 500 : Math.max(0.35, shotDelaySeconds(Number(plan?.cadence || 5) * (activeAircraftAbility().fireRate || 1))) * 1000;
   const inShootingWindow = xrayActive || _shootingWindowUntil > now;
@@ -4187,7 +4173,27 @@ const BOSS_DEBRIS_COLORS = ['#fff3b0', '#ffd166', '#ff9f1c', '#ff5400', '#c1121f
 let _bossDeaths = [];
 let _bigShakeUntil = 0;
 
+// Boss level won: no new question may come up while the boss explodes and
+// the level ends (the level's question count no longer matters), and the one
+// on screen goes away.
+let _bossDefeated = false;
+function stopQuestionsAfterBoss() {
+  _bossDefeated = true;
+  G.answerLocked = true;
+  if (G.timerInterval) { clearInterval(G.timerInterval); G.timerInterval = null; }
+  clearTimeout(_revealTimer);
+  _revealTimer = null;
+  const qbox = document.getElementById('question-box');
+  if (qbox) {
+    qbox.classList.remove('appearing', 'resume-appearing');
+    qbox.classList.add('question-inactive');
+    qbox.style.visibility = 'hidden';
+  }
+  $('timer-bar-wrap')?.classList.add('timer-finished');
+}
+
 function startBossDeath(boss) {
+  if (levelCfg?.isBossLevel) stopQuestionsAfterBoss();
   const now = performance.now();
   const size = getEnemyDrawSize(boss) || boss.size || 160;
   const blasts = [];
@@ -4433,7 +4439,7 @@ const MISSILE_HIT_RECOVERY_MS = 3000;
 const MISSILE_HIT_FEEDBACK_MS = 450;
 
 function airdropShieldActive() {
-  return performance.now() < (G.airdropShieldUntil || 0);
+  return performance.now() < (G.airdropShieldUntil || 0) && !_gadgetPausedAt;
 }
 
 // The player cannot be hurt (enemy shots fizzle, enemy planes pass through):
@@ -4539,10 +4545,15 @@ function onEnemyAircraftCollision(enemy) {
   loseLife({ fromEnemyHit: true });
 }
 
+const A10_BOSS_SHELL_DAMAGE = 0.4;
 function onMissileHit(enemy, missile) {
   SFX.explode();
   const badgeDamage = G.activeBadge === 'flawless' ? 1.15 : (G.activeBadge === 'boss_hunter' && enemy.type === 'boss' ? 1.25 : 1);
-  const destroyed = hitEnemy(enemy, (missile?.damage ?? 1) * badgeDamage);
+  let damage = (missile?.damage ?? 1) * badgeDamage;
+  // A-10 GAU-8 on a boss: each shell is weak, so a 5-shell burst does about
+  // two normal missiles' worth instead of ten (it melted bosses in 2 bursts).
+  if (enemy.type === 'boss' && missile?.type === 'player-gau8') damage = A10_BOSS_SHELL_DAMAGE * badgeDamage;
+  const destroyed = hitEnemy(enemy, damage);
   if (enemy.type === 'boss') updateBossHealthBar(enemy);
   if (destroyed) {
     if (enemy.type === 'boss') startBossDeath(enemy);
@@ -4564,7 +4575,7 @@ function onMissileHit(enemy, missile) {
 
 // ── QUESTION CYCLE ───────────────────────────────────────────────────────────
 function nextQuestion() {
-  if (_transitioning) return;
+  if (_transitioning || _bossDefeated) return;
   stopShootingWindow();
   const questionTarget = isTutorialActive() ? tutorialQuestionTarget()
     : _guidedRun ? GUIDED_QUESTIONS : levelCfg.questionCount;
@@ -5686,6 +5697,7 @@ export function initGame(levelNum, onComplete) {
   _bossPlayerAnchor = null;
   _finishPlaneAnim = null;
   _levelEnding = false;
+  _bossDefeated = false;
   clearQuestionUI();
   const qbox = document.getElementById('question-box');
   if (qbox) qbox.style.visibility = '';
@@ -5772,8 +5784,7 @@ export function initGame(levelNum, onComplete) {
   _airSupport = null;
   _coop = null;
   G.airdropXrayShotReset = false;
-  G.airdropXrayQuestionPaused = false;
-  G.airdropXrayResumeQuestion = false;
+  _gadgetPausedAt = 0;
   G.currentLevel = levelNum;
   if (savedTutorial) {
     G.currentLevel = savedTutorial.currentLevel || levelNum;
