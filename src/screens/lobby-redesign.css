@@ -1869,6 +1869,7 @@ html #s-levelmap::after {
 .jx-plane-buy.hidden { display: none; }
 .jx-plane-buy span { font-size: 9px; opacity: .9; }
 .jx-plane-buy b { font-size: 13px; }
+.jx-plane-buy .jx-plane-buy-cost { font-size: 10px; opacity: .9; }
 .jx-plane-buy:active { transform: translateX(-50%) translateY(3px); box-shadow: 0 2px 0 #9a4a00; }
 /* Not affordable yet (or level too low): grey, still tappable to say why. */
 .jx-plane-buy.is-disabled {

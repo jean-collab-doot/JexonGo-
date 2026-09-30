@@ -150,7 +150,7 @@ function openPlaneInfo(id) {
     if (active)                 { label = fr ? 'ÉQUIPÉ' : 'EQUIPPED'; disabled = true; }
     else if (unlocked)          label = fr ? 'ÉQUIPER' : 'EQUIP';
     else if (secretLocked)      { label = 'SECRET'; disabled = true; }
-    else if (!meetsGradeRequirement(plane)) { label = `LV ${plane.gradeRequired}`; disabled = true; }
+    else if (!meetsGradeRequirement(plane)) { label = `LV ${plane.gradeRequired} · ${planeCost(plane).toLocaleString()} XP`; disabled = true; }
     else if (canBuyAircraft(id)) label = `${t('unlock')} · ${planeCost(plane).toLocaleString()} XP`;
     else                        { label = `${planeCost(plane).toLocaleString()} XP`; disabled = true; }
     btn.textContent = label;
@@ -242,7 +242,7 @@ function renderPlanes(body) {
     else if (active)        status = t('active');
     else if (plane.starter) status = t('starter');
     else if (unlocked)      status = 'OK';
-    else if (plane.gradeRequired && !gradeOk) status = `LV ${plane.gradeRequired}`;
+    else if (plane.gradeRequired && !gradeOk) status = `LV ${plane.gradeRequired}<br>${cost.toLocaleString()} XP`;
     else                    status = `${cost.toLocaleString()} XP`;
 
     card.innerHTML = `

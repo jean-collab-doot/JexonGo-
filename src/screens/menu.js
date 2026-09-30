@@ -391,9 +391,12 @@ function renderLobbyPlane() {
   const fr = getLang() === 'fr';
   const gradeOk = meetsGradeRequirement(plane);
   const cost = planeCost(plane);
+  // Level still too low: the level AND the EXP price, so the player knows
+  // both what to reach and what to save up.
   btn.innerHTML = `<span>${plane.name.toUpperCase()}</span><b>${gradeOk
     ? `${cost.toLocaleString()} XP`
-    : (fr ? `NIVEAU ${plane.gradeRequired} REQUIS` : `LEVEL ${plane.gradeRequired} REQUIRED`)}</b>`;
+    : (fr ? `NIVEAU ${plane.gradeRequired} REQUIS` : `LEVEL ${plane.gradeRequired} REQUIRED`)}</b>${gradeOk
+    ? '' : `<small class="jx-plane-buy-cost">${cost.toLocaleString()} XP</small>`}`;
   btn.classList.toggle('is-disabled', !gradeOk || (G.xp || 0) < cost);
 }
 
