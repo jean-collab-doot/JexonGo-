@@ -9,7 +9,7 @@ import { t, getLang, setLang, applyI18n } from '../i18n.js';
 import { syncAccountFromCloud, deleteCloudSave, flushCloudSave, fetchCloudSave,
          mergeSaveSnapshots, exportSaveSnapshot, applySaveSnapshot } from '../systems/cloud-save.js';
 import { signInWithEmail, signOutSupabase } from '../systems/supabase-client.js';
-import { claimSessionOrBlock, releaseSession, sessionBlockedMessage } from '../systems/session-guard.js';
+import { claimSessionOrBlock, releaseSession, sessionBlockedMessage, askTakeover } from '../systems/session-guard.js';
 import { SFX } from '../audio/sound.js';
 import { coinIcon, expIcon, uiIcon } from '../utils/icons.js';
 import { makeBottomSheet } from '../utils/bottomsheet.js';
@@ -258,7 +258,8 @@ async function _handleLoginSubmit() {
     return;
   }
 
-  const { blocked } = await claimSessionOrBlock();
+  let { blocked } = await claimSessionOrBlock();
+  if (blocked && await askTakeover()) ({ blocked } = await claimSessionOrBlock({ takeover: true }));
   if (blocked) {
     await signOutSupabase().catch(() => {});
     errEl.textContent = sessionBlockedMessage();

@@ -30,7 +30,7 @@ import { canSendFeedback, markFeedbackSent, sendFeedback, sendNewPlayerNotificat
 import { t, getLang, applyI18n } from './i18n.js';
 import { syncAccountFromCloud, flushCloudSave, pushCloudSave } from './systems/cloud-save.js';
 import { signInWithGoogleIdToken, signUpWithEmail, signOutSupabase } from './systems/supabase-client.js';
-import { claimSessionOrBlock, sessionBlockedMessage } from './systems/session-guard.js';
+import { claimSessionOrBlock, sessionBlockedMessage, sessionLostMessage, askTakeover, onSessionLost } from './systems/session-guard.js';
 import { applyDeviceClasses } from './utils/device.js';
 import { isLevelUnlocked } from './systems/progression.js';
 import { isPilotNameAllowed } from './utils/pilot-name.js';
@@ -488,7 +488,9 @@ window._onGoogleCredential = async function(response) {
       return;
     }
 
-    const { blocked } = await claimSessionOrBlock();
+    // Open on another device: continue here (that device signs out) or cancel.
+    let { blocked } = await claimSessionOrBlock();
+    if (blocked && await askTakeover()) ({ blocked } = await claimSessionOrBlock({ takeover: true }));
     if (blocked) {
       await signOutSupabase().catch(() => {});
       _showLoginToast(sessionBlockedMessage(), 4200);
@@ -936,8 +938,8 @@ if (import.meta.env?.DEV && new URLSearchParams(location.search).has('connect'))
 // The intro has taken over the page: let the rest show normally again.
 document.documentElement.classList.remove('np-boot');
 
-function _forceSignOutBlocked() {
-  _showLoginToast(sessionBlockedMessage(), 4000);
+function _forceSignOutBlocked(message = sessionBlockedMessage()) {
+  _showLoginToast(message, 4000);
   signOutSupabase().catch(() => {}).then(() => {
     G.playerRegistered = false;
     G.playerEmail = '';
@@ -953,7 +955,12 @@ function _forceSignOutBlocked() {
 }
 
 if (G.playerRegistered && G.playerEmail) {
-  claimSessionOrBlock().then(({ blocked }) => {
+  claimSessionOrBlock().then(async ({ blocked }) => {
+    // Another device has the account: continue here, or sign out here.
+    if (blocked) {
+      while (document.getElementById('np-intro')) await new Promise(r => setTimeout(r, 300));
+      if (await askTakeover()) ({ blocked } = await claimSessionOrBlock({ takeover: true }));
+    }
     if (blocked) { _forceSignOutBlocked(); return; }
     return syncAccountFromCloud().then(async sync => {
       // Google players from before the nickname existed still show their
@@ -970,6 +977,10 @@ if (G.playerRegistered && G.playerEmail) {
     });
   }).catch(() => {});
 }
+
+// Another device took this account over: sign out here (the progress is
+// in the cloud save, which that device loaded).
+onSessionLost(() => _forceSignOutBlocked(sessionLostMessage()));
 
 // Auto-save every 30 seconds for registered players
 setInterval(() => { if (G.playerRegistered) saveAll(); }, 30000);

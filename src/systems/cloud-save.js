@@ -2,6 +2,7 @@
 import { G, saveAll, clampCoins } from '../state.js';
 import { save } from '../utils/storage.js';
 import { getSupabaseAccessToken } from './supabase-client.js';
+import { holdsSession } from './session-guard.js';
 
 export const API_URL =
   (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
@@ -27,6 +28,10 @@ const PERSIST_KEYS = [
   'focusOperation', 'focusOperations', 'focusTopics', 'schoolLevel', 'playerCountry', 'numberRangeMax', 'pendingPlacement', 'tutorialMode',
   'onboardingStartMode', 'onboardingLevelLength', 'dailyGoalMinutes',
   'tutorialPlan', 'tutorialProgress', 'tutorialCompleted', 'postTutorialConnectPrompt', 'currentLevel',
+  // Bought / earned items, so another device gets them too.
+  'acquiredAircraft', 'unlockedBadges', 'activeBadge', 'totalCorrectAnswers', 'bestAnswerStreak',
+  'flawlessLevels', 'comboAcePermanent', 'secretAircraftUnlocked', 'ownedShootingPlans',
+  'activeShootingPlan', 'ownedMissileTypes', 'activeMissileType', 'botUpgrades', 'hasSeenBriefing',
 ];
 
 let _pushTimer = null;
@@ -49,7 +54,30 @@ export function applySaveSnapshot(snap) {
 }
 
 function _union(a, b) {
-  return [...new Set([...(a || []), ...(b || [])])];
+  return [...new Set([...(Array.isArray(a) ? a : []), ...(Array.isArray(b) ? b : [])])];
+}
+
+// Hangar upgrades per aircraft: keep the higher level of each upgrade and
+// every weapon bought on either device.
+function _mergePlaneUpgrades(local, remote) {
+  const out = {};
+  const planes = new Set([...Object.keys(local || {}), ...Object.keys(remote || {})]);
+  for (const id of planes) {
+    const l = local?.[id] || {};
+    const r = remote?.[id] || {};
+    const rec = { ...r, ...l };
+    for (const key of ['lives', 'shots', 'homing', 'xp', 'dropTime']) {
+      rec[key] = Math.max(l[key] | 0, r[key] | 0);
+    }
+    rec.dropChance = { ...(r.dropChance || {}), ...(l.dropChance || {}) };
+    for (const key of Object.keys(rec.dropChance)) {
+      rec.dropChance[key] = Math.max(l.dropChance?.[key] | 0, r.dropChance?.[key] | 0);
+    }
+    rec.weapons = _union(l.weapons, r.weapons);
+    rec.weapon = l.weapon || r.weapon;
+    out[id] = rec;
+  }
+  return out;
 }
 
 function _hasPilotConfig(snap) {
@@ -144,8 +172,37 @@ export function mergeSaveSnapshots(local, remote) {
   }
   out.dailyStarterPlanComplete = !!(local.dailyStarterPlanComplete || remote.dailyStarterPlanComplete);
 
+  out.acquiredAircraft   = _union(local.acquiredAircraft, remote.acquiredAircraft);
+  out.unlockedBadges     = _union(local.unlockedBadges, remote.unlockedBadges);
+  out.ownedShootingPlans = _union(local.ownedShootingPlans, remote.ownedShootingPlans);
+  out.ownedMissileTypes  = _union(local.ownedMissileTypes, remote.ownedMissileTypes);
+  out.totalCorrectAnswers = Math.max(local.totalCorrectAnswers || 0, remote.totalCorrectAnswers || 0);
+  out.bestAnswerStreak    = Math.max(local.bestAnswerStreak || 0, remote.bestAnswerStreak || 0);
+  out.flawlessLevels      = Math.max(local.flawlessLevels || 0, remote.flawlessLevels || 0);
+  out.comboAcePermanent      = !!(local.comboAcePermanent || remote.comboAcePermanent);
+  out.secretAircraftUnlocked = !!(local.secretAircraftUnlocked || remote.secretAircraftUnlocked);
+  out.hasSeenBriefing        = !!(local.hasSeenBriefing || remote.hasSeenBriefing);
+  out.planeUpgrades = _mergePlaneUpgrades(local.planeUpgrades, remote.planeUpgrades);
+  const lb = local.botUpgrades || {};
+  const rb = remote.botUpgrades || {};
+  out.botUpgrades = {
+    ...rb, ...lb,
+    planes: _union(lb.planes, rb.planes),
+    fire: Math.max(lb.fire || 1, rb.fire || 1),
+    hp: Math.max(lb.hp || 3, rb.hp || 3),
+  };
+
+  // Choices (plane, badge, weapon, profile look) follow the device that is
+  // further in the game: a brand-new device takes them from the account.
   if ((remote.highestLevel || 0) >= (local.highestLevel || 0)) {
     out.activeAircraft = remote.activeAircraft ?? local.activeAircraft;
+    out.activeBadge = remote.activeBadge ?? local.activeBadge;
+    out.activeShootingPlan = remote.activeShootingPlan ?? local.activeShootingPlan;
+    out.activeMissileType = remote.activeMissileType ?? local.activeMissileType;
+    out.botUpgrades.aircraft = rb.aircraft ?? lb.aircraft;
+    out.pilotEmblem = remote.pilotEmblem ?? local.pilotEmblem;
+    out.pilotMotto = remote.pilotMotto ?? local.pilotMotto;
+    out.profileTheme = remote.profileTheme ?? local.profileTheme;
   }
 
   // A nickname the player chose wins over a name taken from the Google
@@ -208,6 +265,8 @@ export async function pushCloudSave(opts = {}) {
   const email = (G.playerEmail || '').toLowerCase().trim();
   if (!G.playerRegistered || !email) return false;
   if (_cloudSaveOffline) return false;
+  // Another device took the account over: never overwrite its save.
+  if (!holdsSession()) return false;
   if (!CLOUD_SAVE_AVAILABLE) return false;
 
   const authType = opts.authType || G.playerAuthType || 'supabase';
