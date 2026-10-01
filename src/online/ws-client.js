@@ -5,10 +5,13 @@ const _handlers = new Map(); // eventType → Set<fn>
 let _ws         = null;
 let _connected  = false;
 
+// The multiplayer server runs on Fly.io (fly.toml). VITE_WS_URL (Vercel
+// environment variable) overrides the address, e.g. after renaming the app.
+const FLY_WS_URL = 'wss://jexongo-ws.fly.dev';
 export const WS_URL =
   (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
     ? `ws://${location.hostname}:8080`
-    : `wss://${location.hostname}/ws`;
+    : (import.meta.env?.VITE_WS_URL || FLY_WS_URL);
 
 // ── PUBLIC API ────────────────────────────────────────────────────────────────
 export function wsConnect(url = WS_URL) {

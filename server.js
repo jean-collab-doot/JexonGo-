@@ -14,6 +14,21 @@ import { publicPilotName } from './src/utils/pilot-name.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 8080;
+// Fly.io (fly.toml) runs only the multiplayer game server: the e-mail and
+// cloud-save APIs stay on Vercel (api/), so they are not exposed twice.
+const WS_ONLY = process.env.WS_ONLY === '1';
+// Sites allowed to open a game connection. Requests without an Origin
+// header (not from a browser) are allowed.
+const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS
+  || 'https://jexongo.app,https://www.jexongo.app,capacitor://localhost,https://localhost')
+  .split(',').map(o => o.trim()).filter(Boolean);
+function isAllowedOrigin(origin) {
+  if (!origin) return true;
+  if (ALLOWED_ORIGINS.includes(origin)) return true;
+  // Vercel previews of this project, and the local dev server.
+  if (/^https:\/\/jexon-go-[a-z0-9-]+\.vercel\.app$/.test(origin)) return true;
+  return /^http:\/\/(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+)(:\d+)?$/.test(origin);
+}
 const SAVES_DIR = path.join(__dirname, 'data', 'saves');
 const AIR_CUP_START_SERVER = new Date('2026-06-11T00:00:00Z').getTime();
 const AIR_CUP_END_SERVER   = new Date('2026-07-15T23:59:59Z').getTime();
@@ -145,13 +160,27 @@ async function _handleSaveApi(req, res) {
 }
 
 const server = http.createServer(async (req, res) => {
-  if (await _handleEmailApi(req, res)) return;
-  if (await _handleSaveApi(req, res)) return;
+  if (!WS_ONLY && await _handleEmailApi(req, res)) return;
+  if (!WS_ONLY && await _handleSaveApi(req, res)) return;
   _cors(res);
   res.writeHead(200);
   res.end('JexonGo WS server running');
 });
-const wss = new WebSocketServer({ server });
+const wss = new WebSocketServer({
+  server,
+  maxPayload: 64 * 1024,
+  verifyClient: ({ origin }) => isAllowedOrigin(origin),
+});
+
+// Drop connections that stopped answering (phone locked, network lost), so
+// their room frees up; the pings also keep idle connections open.
+setInterval(() => {
+  for (const ws of wss.clients) {
+    if (ws._alive === false) { ws.terminate(); continue; }
+    ws._alive = false;
+    try { ws.ping(); } catch (_) {}
+  }
+}, 25000);
 
 // ── MATH ENGINE ─────────────────────────────────────────────────────────────
 function randInt(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
@@ -584,6 +613,8 @@ function _broadcastTournamentResult(tournament, winner) {
 
 // ── WS EVENTS ─────────────────────────────────────────────────────────────────
 wss.on('connection', ws => {
+  ws._alive = true;
+  ws.on('pong', () => { ws._alive = true; });
   ws._rid  = null;
   ws._seat = null;
   ws._tournamentId = null;
@@ -782,7 +813,7 @@ wss.on('connection', ws => {
   ws.on('error', () => {});
 });
 
-_ensureSavesDir();
+if (!WS_ONLY) _ensureSavesDir();
 server.listen(PORT, () =>
   console.log(`[JexonGo] Server → http://localhost:${PORT}  |  ws://localhost:${PORT}`)
 );

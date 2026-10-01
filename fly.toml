@@ -1,0 +1,33 @@
+# JexonGo multiplayer server (server.js) on Fly.io.
+# The game connects to wss://jexongo-ws.fly.dev (src/online/ws-client.js).
+# If you pick another app name, also set VITE_WS_URL in Vercel.
+app = 'jexongo-ws'
+primary_region = 'yul'   # Montréal
+
+[build]
+  dockerfile = 'Dockerfile'
+
+[env]
+  PORT = '8080'
+  WS_ONLY = '1'
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  # Rooms and codes live in memory: keep exactly one machine always running,
+  # otherwise two players could land on different machines, or a sleeping
+  # machine would drop the rooms.
+  auto_stop_machines = 'off'
+  auto_start_machines = true
+  min_machines_running = 1
+
+  [[http_service.checks]]
+    grace_period = '10s'
+    interval = '30s'
+    method = 'GET'
+    path = '/'
+    timeout = '5s'
+
+[[vm]]
+  size = 'shared-cpu-1x'
+  memory = '256mb'

@@ -1,0 +1,6 @@
+# The Fly.io image only copies server.js, api/ and src/utils/pilot-name.js.
+*
+!server.js
+!api/email.js
+!api/save.js
+!src/utils/pilot-name.js
