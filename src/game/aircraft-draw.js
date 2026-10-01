@@ -17,8 +17,11 @@ let _cachedPlayerSize = 0, _cachedPlayerSizeW = -1;
 let _cachedEnemyScale = 0, _cachedEnemyScaleW = -1;
 let _cachedEnemySize = 0, _cachedEnemySizeW = -1;
 
-export function setSpriteCanvasWidth(w) {
+let _spriteCanvasH = 0;
+
+export function setSpriteCanvasWidth(w, h = 0) {
   _spriteCanvasW = w || 0;
+  _spriteCanvasH = h || 0;
   _cachedPlayerSizeW = -1;
   _cachedEnemyScaleW = -1;
   _cachedEnemySizeW = -1;
@@ -76,9 +79,13 @@ function getTouchEnemySize() {
 export function getEnemyDrawSize(enemy) {
   if (enemy?.a330Boss || enemy?.b52Boss || enemy?.kawasakiBoss || enemy?.c5Boss || enemy?.spaceShuttleBoss) {
     const w = _layoutWidth();
-    return Math.round(isTouchMobile()
+    const size = isTouchMobile()
       ? _clamp(w * 0.40, 115, 170)
-      : _clamp(w * 0.34, 180, 300));
+      : _clamp(w * 0.34, 180, 300);
+    // Never bigger than the playfield allows: on a short / landscape screen
+    // the width-based size alone pushed the boss half off the top.
+    const h = _spriteCanvasH || window.innerHeight;
+    return Math.round(Math.min(size, h * 0.34, w * 0.9));
   }
   return isTouchMobile() ? getTouchEnemySize() : enemy.size * getEnemyScale();
 }

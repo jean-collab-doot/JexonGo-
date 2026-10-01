@@ -1324,7 +1324,7 @@ function startA330BossIntro(done) {
       boss.entryProgress = 1;
       boss.spawnAlpha = 1;
       boss.x = canvas.width / 2;
-      boss.y = boss.entryTargetY || canvas.height * 0.19;
+      boss.y = bossRestY(boss);
       boss._targetX = boss.x;
       boss._targetY = boss.y;
       boss.combatActive = true;
@@ -2133,6 +2133,32 @@ function _setCanvasSize(w, h) {
   }
 }
 
+// ── Boss always fully on screen ─────────────────────────────────────────────
+// Space the boss box needs from the top: the floating health bar plus half
+// its own height, in canvas pixels.
+function bossTopInset() {
+  const bar = document.getElementById('boss-health-wrap');
+  const cssH = canvas?.clientHeight || 0;
+  const barH = bar && !bar.classList.contains('hidden') && bar.offsetHeight ? bar.offsetHeight : 30;
+  return cssH > 0 ? barH * (canvas.height / cssH) : barH;
+}
+function bossHalfExtents(e) {
+  const size = getEnemyDrawSize(e);
+  return { hw: (e.spaceShuttleBoss ? size * (176 / 250) : size) / 2, hh: size / 2 };
+}
+// A little air under the bar so a flat wing edge never looks cut off.
+function bossGap() { return Math.max(10, canvas.height * 0.03); }
+function bossRestY(e) {
+  return Math.max(canvas.height * 0.19, bossTopInset() + bossHalfExtents(e).hh + bossGap());
+}
+function clampBossOnScreen(e) {
+  const { hw, hh } = bossHalfExtents(e);
+  const top = bossTopInset() + hh + bossGap();
+  const bottom = Math.max(top, canvas.height - hh);
+  e.x = Math.max(hw, Math.min(canvas.width - hw, e.x));
+  e.y = Math.max(top, Math.min(bottom, e.y));
+}
+
 /** Question-box height in canvas pixel space (matches reduced internal resolution). */
 function _canvasQboxH() {
   const qbox = document.getElementById('question-box');
@@ -2252,7 +2278,7 @@ function resize() {
   _canvasRect = null;
   if (G.animFrame) { cancelAnimationFrame(G.animFrame); G.animFrame = null; }
   _setCanvasSize(w, h);
-  setSpriteCanvasWidth(canvas.width);
+  setSpriteCanvasWidth(canvas.width, canvas.height);
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   _qboxH = $('question-box').offsetHeight || 180;
   const bw = canvas.width;
@@ -2549,7 +2575,7 @@ function frame(ts = 0) {
         const savedY = dialogueBoss.y;
         const savedAlpha = dialogueBoss.spawnAlpha;
         dialogueBoss.x = canvas.width / 2;
-        const bossTargetY = dialogueBoss.entryTargetY || canvas.height * 0.19;
+        const bossTargetY = bossRestY(dialogueBoss);
         dialogueBoss.y = -getEnemyDrawSize(dialogueBoss) * 0.56
           + (bossTargetY + getEnemyDrawSize(dialogueBoss) * 0.56) * entranceEase;
         dialogueBoss.spawnAlpha = Math.min(1, entranceT * 1.8);
@@ -2708,6 +2734,7 @@ function frame(ts = 0) {
           const eased = p * p * (3 - 2 * p);
           e.spawnAlpha = Math.min(1, p * 2.2);
           e.x = canvas.width / 2;
+          e.entryTargetY = bossRestY(e);   // follows a resize / rotation mid-entry
           e.y = e.entryStartY + (e.entryTargetY - e.entryStartY) * eased;
           if (p >= 1) {
             e.entryActive = false;
@@ -2717,6 +2744,7 @@ function frame(ts = 0) {
           }
         }
         if (e.entryActive || !e.combatActive) {
+          if (!e.entryActive) clampBossOnScreen(e);
           drawEnemySprite(ctx, e, 0);
           continue;
         }
@@ -2860,7 +2888,7 @@ function frame(ts = 0) {
         e.y = frontY;
         if (e._targetY > frontY) e._targetY = frontY * 0.8;
       }
-      e.x = Math.max(44, Math.min(canvas.width - 44, e.x));
+      clampBossOnScreen(e);
 
     } else {
       const fireTop = canvas.height * 0.08;
@@ -5942,7 +5970,7 @@ export function initGame(levelNum, onComplete) {
     const cw = canvas.clientWidth, ch = canvas.clientHeight;
     if (!cw || !ch) { requestAnimationFrame(tryStart); return; }
     _setCanvasSize(cw, ch);
-    setSpriteCanvasWidth(canvas.width);
+    setSpriteCanvasWidth(canvas.width, canvas.height);
     ctx.setTransform(1, 0, 0, 1, 0, 0);
 
     // Animate loading screen while sprites download
@@ -6003,7 +6031,7 @@ export function initGame(levelNum, onComplete) {
           boss.entryActive = true;
           boss.entryProgress = 0;
           boss.spawnAlpha = 0;
-          boss.entryTargetY = canvas.height * 0.19;
+          boss.entryTargetY = bossRestY(boss);
           boss.entryStartY = -Math.max(180, getEnemyDrawSize(boss) * 0.7);
           boss.y = boss.entryStartY;
         } else if (levelNum === 20) {
@@ -6026,7 +6054,7 @@ export function initGame(levelNum, onComplete) {
           boss.entryActive = true;
           boss.entryProgress = 0;
           boss.spawnAlpha = 0;
-          boss.entryTargetY = canvas.height * 0.19;
+          boss.entryTargetY = bossRestY(boss);
           boss.entryStartY = -Math.max(180, getEnemyDrawSize(boss) * 0.7);
           boss.y = boss.entryStartY;
         } else if (levelNum === 30) {
@@ -6046,7 +6074,7 @@ export function initGame(levelNum, onComplete) {
           boss.entryActive = true;
           boss.entryProgress = 0;
           boss.spawnAlpha = 0;
-          boss.entryTargetY = canvas.height * 0.19;
+          boss.entryTargetY = bossRestY(boss);
           boss.entryStartY = -Math.max(180, getEnemyDrawSize(boss) * 0.7);
           boss.y = boss.entryStartY;
         } else if (levelNum === 40) {
@@ -6066,7 +6094,7 @@ export function initGame(levelNum, onComplete) {
           boss.entryActive = true;
           boss.entryProgress = 0;
           boss.spawnAlpha = 0;
-          boss.entryTargetY = canvas.height * 0.19;
+          boss.entryTargetY = bossRestY(boss);
           boss.entryStartY = -Math.max(180, getEnemyDrawSize(boss) * 0.7);
           boss.y = boss.entryStartY;
         } else if (levelNum === 50) {
@@ -6086,7 +6114,7 @@ export function initGame(levelNum, onComplete) {
           boss.entryActive = true;
           boss.entryProgress = 0;
           boss.spawnAlpha = 0;
-          boss.entryTargetY = canvas.height * 0.19;
+          boss.entryTargetY = bossRestY(boss);
           boss.entryStartY = -Math.max(180, getEnemyDrawSize(boss) * 0.7);
           boss.y = boss.entryStartY;
         }
