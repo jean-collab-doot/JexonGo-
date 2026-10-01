@@ -4,6 +4,7 @@ import { getLevel, equationExampleForLevel } from '../data/levels.js';
 import { getPilotInfo, getPilotGrade, getPilotGradeRank } from '../data/pilots.js';
 import { rankInsigniaSVG } from '../utils/rank-insignia.js';
 import { G } from '../state.js';
+import { AIRCRAFT } from '../data/aircraft.js';
 import { t, tOp, getLang } from '../i18n.js';
 import { SFX } from '../audio/sound.js';
 import { getLevelMapPicker, setLevelMapPicker } from './levelmap.js';
@@ -50,23 +51,25 @@ export function showBriefing(levelNum) {
   const grade = getPilotGrade(G.highestLevel || 0);
   const isFr = getLang() === 'fr';
 
-  const operationNames = levelCfg.ops.map(op => ({ '+': isFr ? 'addition' : 'addition', '-': isFr ? 'soustraction' : 'subtraction', '*': isFr ? 'multiplication' : 'multiplication', '/': isFr ? 'division' : 'division' }[op])).join(', ');
-  const enemyNames = [...new Set(levelCfg.enemyTypes)].map(type => ({ basic: isFr ? 'chasseurs' : 'fighters', fast: isFr ? 'avions rapides' : 'fast aircraft', tank: isFr ? 'hélicoptères blindés' : 'armored helicopters', turner: isFr ? 'Mirages' : 'Mirages', interceptor: isFr ? 'intercepteurs F-14' : 'F-14 interceptors', boss: 'boss' }[type] || type)).join(', ');
   const biomeName = isFr ? levelCfg.colors.labelFr : levelCfg.colors.label;
   const locationName = isFr ? levelCfg.location.nameFr : levelCfg.location.name;
   const weather = levelCfg.weather;
   const weatherName = isFr ? weather.labelFr : weather.label;
   const weatherDesc = isFr ? weather.descFr : weather.desc;
-  $('briefing-mission-title').textContent = isFr ? `MISSION ${levelNum} · ${biomeName}` : `MISSION ${levelNum} · ${biomeName}`;
-  const chestClause = levelCfg.isBossLevel
-    ? (isFr ? ' et vaincs le boss pour obtenir le coffre' : ', defeat the boss and earn the chest')
-    : levelCfg.isChestLevel
-      ? (isFr ? ' et obtiens un coffre en fin de mission' : ', and earn a chest at the end of the mission')
-      : '';
-  $('briefing-story').textContent = isFr
-    ? `Survole ${locationName} sous ${weatherName.toLowerCase()}. ${levelCfg.questionCount} questions de ${operationNames}, ${levelCfg.timeLimit} s chacune. Affronte ${enemyNames}, récupère ${levelCfg.mapCoinCount} pièces${chestClause}.`
-    : `Fly over ${locationName} under ${weatherName.toLowerCase()}. ${levelCfg.questionCount} ${operationNames} questions, ${levelCfg.timeLimit}s each. Fight ${enemyNames}, collect ${levelCfg.mapCoinCount} coins${chestClause}.`;
-  $('briefing-time').textContent = `${levelCfg.timeLimit}${t('secPerQ')}`;
+  $('briefing-mission-title').textContent = `MISSION ${levelNum} · ${biomeName}`;
+
+  // Operations really asked: the pilot's focus inside this level's own set,
+  // else the level's set limited by school grade (game.js applyGradeToQuestion).
+  const configuredOps = Array.isArray(G.focusOperations) && G.focusOperations.length
+    ? G.focusOperations
+    : G.focusOperation ? [G.focusOperation] : [];
+  const focusInLevel = configuredOps.filter(op => levelCfg.ops.includes(op));
+  const gradeOps = GRADE_OPS[G.playerGrade];
+  const byGrade = gradeOps ? levelCfg.ops.filter(op => gradeOps.includes(op)) : levelCfg.ops;
+  const opsToShow = focusInLevel.length ? focusInLevel : (byGrade.length ? byGrade : ['+']);
+
+  $('briefing-story').innerHTML = briefingStory(levelNum, levelCfg, opsToShow, locationName, weatherName, isFr);
+  $('briefing-time').textContent = `${answerSeconds(levelCfg)}${t('secPerQ')}`;
   $('briefing-location').textContent = locationName;
   $('briefing-weather-icon').innerHTML = uiIcon(weather.icon);
   $('briefing-weather-icon').style.color = weather.color;
@@ -79,15 +82,6 @@ export function showBriefing(levelNum) {
   const flyBtn = $('btn-briefing-fly');
   if (flyBtn) flyBtn.textContent = t('fly');
 
-  const configuredOps = Array.isArray(G.focusOperations) && G.focusOperations.length
-    ? G.focusOperations
-    : G.focusOperation ? [G.focusOperation] : [];
-  // The "weak topic" focus can only narrow the level's own operations — it
-  // must never show/ask an operation this level hasn't unlocked yet (this
-  // mirrors applyGradeToQuestion()/applyOnboardingFocus() in game.js, so the
-  // briefing always matches what will actually be asked in-game).
-  const focusInLevel = configuredOps.filter(op => levelCfg.ops.includes(op));
-  const opsToShow = focusInLevel.length ? focusInLevel : levelCfg.ops;
   const opSymbols = { '+': '+', '-': '-', '*': 'x', '/': '/' };
   $('briefing-ops').textContent = opsToShow
     .map(op => `${opSymbols[op] || op} ${tOp(op)}`)
@@ -125,4 +119,113 @@ export function showBriefing(levelNum) {
       </div>
     `;
   }
+}
+
+// ── Mission text ────────────────────────────────────────────────────────────
+// Written from what the level really does in game.js, so keep them in sync:
+// enemy mix (RANDOM_ENEMY_TYPES: every type on every level), answer time
+// (level time + weather + player bonuses), boss attacks, chests, airdrops.
+
+const BOSS_BRIEF = {
+  10: { name: 'A330',
+    fr: 'Son bouclier bloque tes missiles 5 secondes sur 10. Quand il tombe, il tire 3 missiles : esquive, puis frappe.',
+    en: 'Its shield blocks your missiles 5 seconds out of 10. When it drops, it fires 3 missiles: dodge, then strike.' },
+  20: { name: 'B-52',
+    fr: 'Sa tourelle laser suit ton avion pendant 5 secondes, puis se repose 10 secondes. Profite de la pause.',
+    en: 'Its laser turret tracks your plane for 5 seconds, then rests for 10. Use the pause.' },
+  30: { name: 'KAWASAKI C-2',
+    fr: 'Ses tourelles laser te suivent 5 secondes, puis se reposent 10 secondes. Reste en mouvement.',
+    en: 'Its laser turrets track you for 5 seconds, then rest for 10. Keep moving.' },
+  40: { name: 'C-5 GALAXY',
+    fr: 'Sa tourelle arrière te suit dans le blizzard 5 secondes, puis se repose 10 secondes.',
+    en: 'Its rear turret tracks you through the blizzard for 5 seconds, then rests for 10.' },
+  50: { name: 'NAVETTE STS', nameEn: 'SPACE SHUTTLE',
+    fr: 'Combat final : sa tourelle verrouille ta position 5 secondes, puis se repose 10 secondes.',
+    en: 'Final battle: its turret locks onto you for 5 seconds, then rests for 10.' },
+};
+
+// Same operations per school grade as game.js REASONABLE_GRADE_PROFILES.
+const GRADE_OPS = { 1: ['+'], 2: ['+', '-'], 3: ['+', '-', '*'], 4: ['+', '-', '*', '/'], 5: ['+', '-', '*', '/'], 6: ['+', '-', '*', '/'] };
+
+const OP_NAMES = {
+  '+': ['addition', 'addition'], '-': ['soustraction', 'subtraction'],
+  '*': ['multiplication', 'multiplication'], '/': ['division', 'division'],
+};
+// Level where each operation first appears (data/levels.js opsForLevel).
+const OP_FIRST_LEVEL = { '-': 16, '*': 26, '/': 36 };
+
+// Seconds per question as the game sets them (game.js startTimer).
+function answerSeconds(levelCfg) {
+  let s = levelCfg.timeLimit + (levelCfg.weather?.timeMod || 0);
+  if (G.likesMath === false) s += 4;
+  if (G.pendingPlacement) s += 2;
+  if (G.activeBadge === 'lightning_reflex') s += 5;
+  s += AIRCRAFT[G.activeAircraft]?.ability?.extraAnswerTime || 0;
+  return Math.max(3, s);
+}
+
+// Questions in a normal level (game.js applyOnboardingLevelLength).
+function questionCount(levelCfg) {
+  if (G.onboardingLevelLength === 'short') return Math.max(3, levelCfg.questionCount - 2);
+  if (G.onboardingLevelLength === 'long') return levelCfg.questionCount + 2;
+  return levelCfg.questionCount;
+}
+
+// "de" before a French word, elided before a vowel (d’addition).
+function deFr(word) {
+  return /^[aeiouyhéè]/i.test(word) ? `d’${word}` : `de ${word}`;
+}
+
+function listJoin(items, isFr) {
+  if (items.length < 2) return items.join('');
+  return `${items.slice(0, -1).join(', ')} ${isFr ? 'et' : 'and'} ${items[items.length - 1]}`;
+}
+
+function briefingStory(n, cfg, ops, locationName, weatherName, isFr) {
+  const L = isFr ? 0 : 1;
+  const opText = listJoin(ops.map(op => OP_NAMES[op]?.[L] || op), isFr);
+  const secs = answerSeconds(cfg);
+  const sky = weatherName.toLowerCase();
+  const lines = [];
+
+  // 1. Where, what to answer, who to fight.
+  if (cfg.isBossLevel) {
+    const boss = BOSS_BRIEF[n];
+    const bossName = isFr ? boss.name : (boss.nameEn || boss.name);
+    lines.push(isFr
+      ? `Destination : ${locationName}, météo : ${sky}. Le boss <b>${bossName}</b> t’attend. ${boss.fr}`
+      : `Destination: ${locationName}, weather: ${sky}. The boss <b>${bossName}</b> is waiting. ${boss.en}`);
+    lines.push(isFr
+      ? `Questions ${deFr(opText)}, ${secs} s chacune : chaque bonne réponse ouvre une fenêtre de tir. Elles continuent jusqu’à ce qu’il tombe, avec des escortes autour de lui.`
+      : `${opText.charAt(0).toUpperCase()}${opText.slice(1)} questions, ${secs}s each: every right answer opens a firing window. They keep coming until it falls, with escorts around it.`);
+  } else {
+    lines.push(isFr
+      ? `Destination : ${locationName}, météo : ${sky}. ${questionCount(cfg)} questions ${deFr(opText)}, ${secs} s chacune : chaque bonne réponse ouvre une fenêtre de tir.`
+      : `Destination: ${locationName}, weather: ${sky}. ${questionCount(cfg)} ${opText} questions, ${secs}s each: every right answer opens a firing window.`);
+    lines.push(isFr
+      ? `Ennemis : F-15 (certains avec missile à tête chercheuse), F-5 en formations et kamikazes${n >= 20 ? ' (jusqu’à deux à la fois)' : ''}, Eurofighter, F-14 au laser et hélicoptères Apache.`
+      : `Enemies: F-15s (some with homing missiles), F-5 formations and kamikazes${n >= 20 ? ' (up to two at once)' : ''}, Eurofighters, laser F-14s and Apache helicopters.`);
+  }
+
+  // 2. What is new on this level.
+  const news = [];
+  for (const [op, lvl] of Object.entries(OP_FIRST_LEVEL)) {
+    if (n === lvl && ops.includes(op)) news.push(isFr ? `première mission avec la ${OP_NAMES[op][0]}` : `first mission with ${OP_NAMES[op][1]}`);
+  }
+  if (n > 1 && n % 10 === 1) news.push(isFr ? 'nouveau territoire' : 'new territory');
+  if (n === 20) news.push(isFr ? 'les F-5 kamikazes peuvent arriver à deux' : 'kamikaze F-5s can come in pairs');
+  if (news.length) {
+    const txt = news.join(', ');
+    lines.push(`<span class="briefing-new">${isFr ? 'NOUVEAU' : 'NEW'}</span> ${txt.charAt(0).toUpperCase()}${txt.slice(1)}.`);
+  }
+
+  // 3. Rewards.
+  const reward = cfg.isBossLevel
+    ? (isFr ? 'un coffre en battant le boss' : 'a chest for beating the boss')
+    : cfg.isChestLevel ? (isFr ? 'un coffre à la fin' : 'a chest at the end') : '';
+  lines.push(isFr
+    ? `Ramasse ${cfg.mapCoinCount} pièces${reward ? ` et gagne ${reward}` : ''}. Un largage peut tomber du ciel : tire dessus pour obtenir un gadget.`
+    : `Collect ${cfg.mapCoinCount} coins${reward ? ` and win ${reward}` : ''}. An airdrop may fall from the sky: shoot it to get a gadget.`);
+
+  return lines.map(line => `<p>${line}</p>`).join('');
 }

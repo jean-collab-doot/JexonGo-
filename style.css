@@ -5251,6 +5251,18 @@ html.touch-mobile .badge-unlock-card button{min-height:40px;padding:10px 18px;fo
   border-left: 2px solid rgba(0,212,255,0.4);
   padding-left: 10px;
 }
+.briefing-story p { margin: 0; }
+.briefing-story p + p { margin-top: 6px; }
+.briefing-story b { color: #ffb347; font-weight: normal; }
+.briefing-story .briefing-new {
+  display: inline-block;
+  padding: 2px 5px;
+  margin-right: 4px;
+  color: #0b1324;
+  background: #ffd84a;
+  border-radius: 4px;
+  line-height: 1.4;
+}
 
 /* Conditions panel */
 .briefing-conditions {
