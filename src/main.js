@@ -1,5 +1,5 @@
 import { G, loadSave, saveAll } from './state.js';
-import { save, load, clearAll } from './utils/storage.js';
+import { save, load, clearAccountData } from './utils/storage.js';
 import { showScreen } from './utils/dom.js';
 import { SFX } from './audio/sound.js';
 import { initMenu, renderMenu, handleGoogleLogin } from './screens/menu.js';
@@ -945,11 +945,8 @@ function _forceSignOutBlocked(message = sessionBlockedMessage()) {
     G.playerEmail = '';
     G.playerPhoto = '';
     G.playerName = 'PILOT';
-    const lang = localStorage.getItem('jexongo_lang');
-    const settings = localStorage.getItem('jexongo_settings');
-    clearAll();
-    if (lang) localStorage.setItem('jexongo_lang', lang);
-    if (settings) localStorage.setItem('jexongo_settings', settings);
+    // Back to the lobby after the reload (not the new-player intro).
+    clearAccountData();
     setTimeout(() => location.reload(), 4000);
   });
 }

@@ -3,7 +3,7 @@ import { rollChestTier } from '../systems/chest.js';
 import { G, loadSave, saveAll, clampCoins, MAX_COINS } from '../state.js';
 import { LOGIN_REWARDS, claimDailyReward, getMissions, claimMission,
          hasPendingMissionClaim, getPlayMinuteStats, getMonthlyConfigChallenge } from '../systems/daily.js';
-import { clearAll, save, load } from '../utils/storage.js';
+import { clearAll, clearAccountData, save, load } from '../utils/storage.js';
 import { AIRCRAFT, AIRCRAFT_ORDER } from '../data/aircraft.js';
 import { t, getLang, setLang, applyI18n } from '../i18n.js';
 import { syncAccountFromCloud, deleteCloudSave, flushCloudSave, fetchCloudSave,
@@ -133,11 +133,8 @@ async function _handleSignOut() {
   G.playerEmail = '';
   G.playerPhoto = '';
   G.playerName = 'PILOT';
-  const lang = localStorage.getItem('jexongo_lang');
-  const settings = localStorage.getItem('jexongo_settings');
-  clearAll();
-  if (lang) localStorage.setItem('jexongo_lang', lang);
-  if (settings) localStorage.setItem('jexongo_settings', settings);
+  // Back to the lobby after the reload (not the new-player intro).
+  clearAccountData();
   location.reload();
 }
 
