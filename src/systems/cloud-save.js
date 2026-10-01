@@ -3,16 +3,56 @@ import { G, saveAll, clampCoins } from '../state.js';
 import { save } from '../utils/storage.js';
 import { getSupabaseAccessToken } from './supabase-client.js';
 import { holdsSession } from './session-guard.js';
+import { TEST_UNLOCK } from '../utils/test-mode.js';
 
 export const API_URL =
   (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
     ? `http://${location.hostname}:8080`
     : `${location.protocol}//${location.hostname}`;
 
-const CLOUD_SAVE_AVAILABLE =
-  location.hostname === 'localhost' ||
-  location.hostname === '127.0.0.1' ||
-  !location.hostname.endsWith('.vercel.app');
+// Also on the Vercel preview (owner's request): its test unlocks are kept
+// out of the account by previewSafeSnapshot().
+const CLOUD_SAVE_AVAILABLE = true;
+
+// What the account really has, as last read from / written to the cloud.
+let _cloudBase = { highestLevel: 0, unlockedAircraft: ['t6'] };
+let _cloudBaseKnown = false;
+export function _rememberCloudBase(data) {
+  _cloudBaseKnown = true;
+  if (!data) return;
+  _cloudBase = {
+    highestLevel: Math.max(0, data.highestLevel || 0),
+    unlockedAircraft: Array.isArray(data.unlockedAircraft) && data.unlockedAircraft.length ? data.unlockedAircraft : ['t6'],
+    activeAircraft: data.activeAircraft || 't6',
+  };
+}
+
+// Preview / dev server: every level and plane is unlocked for testing
+// (utils/test-mode.js). Never send those unlocks to the real account: the
+// unlocked planes stay as the account has them, and the best level can only
+// grow by one level at a time (the next level, as in the published game).
+export function previewSafeSnapshot(snap) {
+  if (!TEST_UNLOCK) return snap;
+  // Best level: only levels finished one after another from the account's.
+  let highestLevel = _cloudBase.highestLevel;
+  while (highestLevel < (snap.highestLevel || 0) && snap.levelStars?.[highestLevel + 1]) highestLevel++;
+  const levelStars = Object.fromEntries(Object.entries(snap.levelStars || {})
+    .filter(([lvl]) => Number(lvl) <= highestLevel));
+  const owned = new Set([..._cloudBase.unlockedAircraft, ...(snap.acquiredAircraft || []), 't6']);
+  const bot = snap.botUpgrades || {};
+  return {
+    ...snap,
+    highestLevel,
+    levelStars,
+    unlockedAircraft: _cloudBase.unlockedAircraft,
+    activeAircraft: owned.has(snap.activeAircraft) ? snap.activeAircraft : (_cloudBase.activeAircraft || 't6'),
+    botUpgrades: {
+      ...bot,
+      planes: (bot.planes || ['t6']).filter(id => owned.has(id)),
+      aircraft: owned.has(bot.aircraft) ? bot.aircraft : 't6',
+    },
+  };
+}
 
 const PERSIST_KEYS = [
   'xp', 'totalXpEarned', 'coins', 'blueprints', 'chestsWithoutEpic', 'levelStars',
@@ -242,7 +282,7 @@ export async function fetchCloudSave(email, _password, authType) {
       method: 'GET',
       headers: { Authorization: `Bearer ${token}` },
     });
-    if (res.status === 404) return { notFound: true };
+    if (res.status === 404) { _rememberCloudBase(null); return { notFound: true }; }
     if (res.status === 401 || res.status === 403) return { forbidden: true };
     if (res.status === 503) {
       _cloudSaveOffline = true;
@@ -254,6 +294,7 @@ export async function fetchCloudSave(email, _password, authType) {
       _cloudSaveOffline = true;
       return { offline: true };
     }
+    _rememberCloudBase(json.data);
     return { data: json.data, updatedAt: json.updatedAt };
   } catch (_) {
     _cloudSaveOffline = true;
@@ -267,6 +308,8 @@ export async function pushCloudSave(opts = {}) {
   if (_cloudSaveOffline) return false;
   // Another device took the account over: never overwrite its save.
   if (!holdsSession()) return false;
+  // Preview: the account must be read first (previewSafeSnapshot caps by it).
+  if (TEST_UNLOCK && !_cloudBaseKnown) return false;
   if (!CLOUD_SAVE_AVAILABLE) return false;
 
   const authType = opts.authType || G.playerAuthType || 'supabase';
@@ -274,12 +317,13 @@ export async function pushCloudSave(opts = {}) {
   try {
     const token = await getSupabaseAccessToken();
     if (!token) return false;
+    const snapshot = previewSafeSnapshot(exportSaveSnapshot());
     const res = await fetch(`${API_URL}/api/save`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify({
         ..._authBody({ authType }),
-        data: exportSaveSnapshot(),
+        data: snapshot,
         updatedAt: Date.now(),
       }),
     });
@@ -292,6 +336,7 @@ export async function pushCloudSave(opts = {}) {
       _cloudSaveOffline = true;
       return false;
     }
+    if (res.ok) _rememberCloudBase(snapshot);
     return res.ok;
   } catch (_) {
     _cloudSaveOffline = true;
