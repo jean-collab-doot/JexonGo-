@@ -3620,7 +3620,12 @@ function updateAndDrawAirSupport(now) {
 //  - online: the real teammate's plane follows the position they send (~15/s)
 //    and each of their shots fires from their plane at our enemies, so both
 //    players help each other in the same level.
-const COOP_SEND_MS = 100;   // 10 position updates / s (Supabase Realtime)
+// Teammate position over Supabase Realtime: 5 updates / s keeps a game near
+// 10 messages / s (free-plan quota). The receiver predicts the motion in
+// between (updateAndDrawCoop). A still plane only re-sends once a second.
+const COOP_SEND_MS = 200;
+const COOP_IDLE_SEND_MS = 1000;
+const COOP_PREDICT_MAX_MS = 260;
 // Bot teammate strength follows the level (1 -> 50): slower, less accurate
 // and slower-moving at the start, sharper later — never stronger than the
 // player's own help, never useless.
@@ -3656,8 +3661,20 @@ function ensureCoopHandlers() {
   _coopHandlersReady = true;
   wsOn('coop_state', msg => {
     if (!_coop || _coop.mode !== 'online' || !canvas) return;
-    _coop.tx = Math.max(0, Math.min(1, Number(msg.x) || 0)) * canvas.width;
-    _coop.ty = Math.max(0, Math.min(1, Number(msg.y) || 0)) * canvas.height;
+    const nx = Math.max(0, Math.min(1, Number(msg.x) || 0)) * canvas.width;
+    const ny = Math.max(0, Math.min(1, Number(msg.y) || 0)) * canvas.height;
+    // Speed between the last two updates, used to predict until the next one.
+    const at = performance.now();
+    const dt = at - (_coop.stateAt || 0);
+    if (_coop.seen && dt > 30 && dt < 1500) {
+      _coop.vx = (nx - _coop.tx) / dt;
+      _coop.vy = (ny - _coop.ty) / dt;
+    } else {
+      _coop.vx = _coop.vy = 0;
+    }
+    _coop.stateAt = at;
+    _coop.tx = nx;
+    _coop.ty = ny;
     if (msg.aircraft && AIRCRAFT[msg.aircraft] && msg.aircraft !== _coop.aircraft) {
       _coop.aircraft = msg.aircraft;
       preloadCoopSprites(msg.aircraft);
@@ -3999,19 +4016,24 @@ function updateAndDrawCoop(now) {
   if (_coop.mode === 'bot') {
     updateCoopBot(now, size);
   } else if (!_coop.left && now >= _coop.nextSend) {
+    const x = +(G.player.x / canvas.width).toFixed(4);
+    const y = +(G.player.y / canvas.height).toFixed(4);
+    const moved = x !== _coop.sentX || y !== _coop.sentY;
+    if (moved || now - (_coop.sentAt || 0) >= COOP_IDLE_SEND_MS) {
+      wsSend({ type: 'coop_state', x, y, aircraft: G.activeAircraft });
+      _coop.sentX = x; _coop.sentY = y; _coop.sentAt = now;
+    }
     _coop.nextSend = now + COOP_SEND_MS;
-    wsSend({
-      type: 'coop_state',
-      x: +(G.player.x / canvas.width).toFixed(4),
-      y: +(G.player.y / canvas.height).toFixed(4),
-      aircraft: G.activeAircraft,
-    });
   }
   if (!_coop.seen) return;
   if (_coop.mode !== 'bot') {
-    const k = Math.min(1, 0.3 * _frameStep);
-    _coop.x += (_coop.tx - _coop.x) * k;
-    _coop.y += (_coop.ty - _coop.y) * k;
+    // Follow the predicted position (last update + speed x time since it).
+    const ahead = Math.min(COOP_PREDICT_MAX_MS, now - (_coop.stateAt || now));
+    const px = Math.max(0, Math.min(canvas.width, _coop.tx + (_coop.vx || 0) * ahead));
+    const py = Math.max(0, Math.min(canvas.height, _coop.ty + (_coop.vy || 0) * ahead));
+    const k = Math.min(1, 0.25 * _frameStep);
+    _coop.x += (px - _coop.x) * k;
+    _coop.y += (py - _coop.y) * k;
   }
 
   updateCoopTurn(_coop.x - prevX);
