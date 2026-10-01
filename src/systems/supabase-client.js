@@ -28,6 +28,9 @@ export async function getSupabaseClient() {
           autoRefreshToken: true,
           detectSessionInUrl: true,
         },
+        // Co-op sends its position 10 times a second plus shots
+        // (online/coop-realtime.js); the library's default cap is 10.
+        realtime: { params: { eventsPerSecond: 20 } },
       }))
       .catch(error => {
         _supabaseClientPromise = null;

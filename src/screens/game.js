@@ -37,7 +37,7 @@ import {
   isTouchMobile, gameCanvasDpr,
 } from '../utils/device.js';
 import { setSpriteCanvasWidth } from '../game/aircraft-draw.js';
-import { wsOn, wsSend, wsDisconnect } from '../online/ws-client.js';
+import { coopOn as wsOn, coopSend as wsSend, coopDisconnect as wsDisconnect } from '../online/coop-realtime.js';
 
 const ENEMY_MOVEMENT_SPEED_SCALE = 0.82;
 // Phones and tablets: enemy planes fly 60% faster (they looked slow there).
@@ -3620,7 +3620,7 @@ function updateAndDrawAirSupport(now) {
 //  - online: the real teammate's plane follows the position they send (~15/s)
 //    and each of their shots fires from their plane at our enemies, so both
 //    players help each other in the same level.
-const COOP_SEND_MS = 66;
+const COOP_SEND_MS = 100;   // 10 position updates / s (Supabase Realtime)
 // Bot teammate strength follows the level (1 -> 50): slower, less accurate
 // and slower-moving at the start, sharper later — never stronger than the
 // player's own help, never useless.

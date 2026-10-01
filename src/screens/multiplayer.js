@@ -10,7 +10,8 @@
 import { SFX } from '../audio/sound.js';
 import { G } from '../state.js';
 import { getLang } from '../i18n.js';
-import { wsConnect, wsSend, wsOn, wsDisconnect, WS_URL } from '../online/ws-client.js';
+// Co-op runs over Supabase Realtime (no game server to host).
+import { coopConnect as wsConnect, coopSend as wsSend, coopOn as wsOn, coopDisconnect as wsDisconnect } from '../online/coop-realtime.js';
 import { highestUnlockedLevel } from '../systems/progression.js';
 import { TOTAL_LEVELS } from '../data/levels.js';
 import { publicPilotName } from '../utils/pilot-name.js';
@@ -427,6 +428,12 @@ function ensureHandlers() {
       ? `${hostName || 'Ton ami'} joue au niveau ${level}, mais tu ne l'as pas encore débloqué. Vous devez avoir débloqué le même niveau pour jouer ensemble.`
       : `${hostName || 'Your friend'} is playing level ${level}, but you haven't unlocked it yet. You both need that level unlocked to play together.`);
   });
+  // Supabase Realtime could not be reached (offline, blocked network).
+  wsOn('coop_unavailable', () => {
+    if (!_waiting) return;
+    _waiting = false;
+    showError(fr() ? 'Connexion impossible. Vérifie Internet et réessaie.' : 'Could not connect. Check your Internet and try again.');
+  });
   wsOn('coop_invalid', () => {
     if (!_waiting) return;
     _waiting = false;
@@ -447,7 +454,7 @@ function ensureHandlers() {
 async function connect() {
   ensureHandlers();
   try {
-    await wsConnect(WS_URL);
+    await wsConnect();
     return true;
   } catch (_) {
     _waiting = false;
