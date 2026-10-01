@@ -34,6 +34,7 @@ import { claimSessionOrBlock, sessionBlockedMessage } from './systems/session-gu
 import { applyDeviceClasses } from './utils/device.js';
 import { isLevelUnlocked } from './systems/progression.js';
 import { isPilotNameAllowed } from './utils/pilot-name.js';
+import { showPilotNamePrompt } from './screens/pilot-name-prompt.js';
 
 const ANALYTICS_OPT_OUT_KEY = 'jexongoAnalyticsOptOut';
 let _analyticsTrack = null;
@@ -451,15 +452,30 @@ function _showLoginToast(msg, duration = 2800) {
   setTimeout(() => el.classList.remove('toast-show'), duration);
 }
 
+// Pilot name prompt (cannot be skipped); saves locally and to the account.
+function askPilotName(realNames) {
+  return new Promise(resolve => showPilotNamePrompt({
+    realNames,
+    onDone: pilotName => {
+      G.playerName = pilotName;
+      G.pilotNameChosen = true;
+      save('playerName', pilotName);
+      save('pilotNameChosen', true);
+      pushCloudSave().catch(() => {});
+      renderMenu();
+      resolve(pilotName);
+    },
+  }));
+}
+
 window._onGoogleCredential = async function(response) {
   try {
     const raw     = response.credential.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
     const payload = JSON.parse(atob(raw));
-    // First name only: the full Google name may be a child's real full name
-    // and the pilot name is shown to other players.
-    const googleFirstName = payload.given_name || String(payload.name || '').trim().split(/\s+/)[0];
-    const name    = (googleFirstName || 'PILOT').toUpperCase().slice(0, 20);
     const email   = (payload.email || '').toLowerCase();
+    // The real name from Google is never used as the pilot name (other
+    // players see it): the player types a nickname, which may not contain it.
+    const realNames = [payload.given_name, payload.family_name, payload.name, email.split('@')[0]];
     const photo   = payload.picture || '';
 
     try {
@@ -484,6 +500,12 @@ window._onGoogleCredential = async function(response) {
     const shouldStartRecommended = !!load('postTutorialConnectPrompt', false);
     const recommendedPlan = load('tutorialPlan', null);
 
+    // Same account on this device with a nickname already chosen: keep it.
+    const keepPilotName = previousEmail === email && G.pilotNameChosen;
+    let name = keepPilotName ? G.playerName : 'PILOT';
+    G.pilotNameChosen = keepPilotName;
+    save('pilotNameChosen', keepPilotName);
+
     // Always persist identity first so loadSave can read them back
     G.playerName       = name;
     G.playerEmail      = email;
@@ -499,6 +521,8 @@ window._onGoogleCredential = async function(response) {
     loadSave();
     const sync = await syncAccountFromCloud({ authType: 'google' });
     const shouldNotifyNewGooglePlayer = !sync?.merged && (!wasRegistered || previousEmail !== email);
+    if (!G.pilotNameChosen) await askPilotName(realNames);
+    name = G.playerName;
     if (sync.offline) _showLoginToast(t('syncOffline') || 'Account connected - progress saves on this device.');
     else if (sync.merged) _showLoginToast(t('syncOk') || 'Progress synced from your account.');
 
@@ -724,6 +748,7 @@ function initRegistration() {
     await claimSessionOrBlock();
 
     G.playerName          = name;
+    G.pilotNameChosen     = true;
     G.playerEmail         = email;
     G.playerAge           = age;
     G.playerGrade         = grade;
@@ -930,7 +955,14 @@ function _forceSignOutBlocked() {
 if (G.playerRegistered && G.playerEmail) {
   claimSessionOrBlock().then(({ blocked }) => {
     if (blocked) { _forceSignOutBlocked(); return; }
-    return syncAccountFromCloud().then(sync => {
+    return syncAccountFromCloud().then(async sync => {
+      // Google players from before the nickname existed still show their
+      // real first name: ask them once for a pilot name.
+      if (G.playerAuthType === 'google' && !G.pilotNameChosen) {
+        // Let the yellow intro finish first.
+        while (document.getElementById('np-intro')) await new Promise(r => setTimeout(r, 300));
+        await askPilotName([G.playerName, G.playerEmail.split('@')[0]]);
+      }
       if (sync?.merged) renderMenu();
       else if (sync?.offline && window._showToast) {
         window._showToast(t('syncOffline') || 'Account connected - progress saves on this device.');

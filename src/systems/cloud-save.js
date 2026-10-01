@@ -21,7 +21,7 @@ const PERSIST_KEYS = [
   'sr71CleanLevels', 'highestLevel', 'lifetimeXpEarned', 'multiXpEarned', 'dailyLastLogin', 'dailyStreak', 'dailyLastClaimAt', 'dailyStarterPlanComplete', 'dailyMissions',
   'dailyMissionDate', 'playMinutesByDay', 'monthlyChallenge', 'claimedRanks', 'rankedLP', 'rankedWins', 'rankedLosses',
   'rankedWinStreak', 'rankedGamesPlayed', 'rankedSeasonStart', 'rankedFirstWinToday',
-  'playerName', 'playerEmail', 'playerPhoto', 'playerAge', 'playerGrade',
+  'playerName', 'pilotNameChosen', 'playerEmail', 'playerPhoto', 'playerAge', 'playerGrade',
   'pilotEmblem', 'pilotMotto', 'profileTheme', 'practiceTimeLimit',
   'hasSeenOnboarding', 'likesMath', 'onboardingAgeGroup', 'onboardingGrade',
   'focusOperation', 'focusOperations', 'focusTopics', 'schoolLevel', 'playerCountry', 'numberRangeMax', 'pendingPlacement', 'tutorialMode',
@@ -148,7 +148,12 @@ export function mergeSaveSnapshots(local, remote) {
     out.activeAircraft = remote.activeAircraft ?? local.activeAircraft;
   }
 
-  out.playerName  = local.playerName  || remote.playerName;
+  // A nickname the player chose wins over a name taken from the Google
+  // account (e.g. signing in on a new device).
+  out.pilotNameChosen = !!(local.pilotNameChosen || remote.pilotNameChosen);
+  out.playerName = (remote.pilotNameChosen && !local.pilotNameChosen)
+    ? remote.playerName
+    : (local.playerName || remote.playerName);
   out.playerPhoto = local.playerPhoto || remote.playerPhoto;
   out.playerGrade = Math.max(local.playerGrade || 0, remote.playerGrade || 0);
   out.playerAge   = Math.max(local.playerAge || 0, remote.playerAge || 0);

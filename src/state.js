@@ -125,6 +125,7 @@ export const G = {
 
   // --- Profile ---
   playerName:       'PILOT',
+  pilotNameChosen:  false,   // nickname typed by the player (not the Google name)
   playerEmail:      '',
   playerAuthType:   '',
   playerPhoto:      '',
@@ -193,6 +194,7 @@ export function loadSave() {
   // Always load identity first so login state is known
   G.playerRegistered  = load('playerRegistered', false);
   G.playerName        = load('playerName', 'PILOT');
+  G.pilotNameChosen   = !!load('pilotNameChosen', false);
   G.playerEmail       = load('playerEmail', '');
   G.playerAuthType    = load('playerAuthType', '');
   G.playerPhoto       = load('playerPhoto', '');
@@ -392,6 +394,7 @@ export function saveAll() {
   save('botUpgrades',       G.botUpgrades);
   save('sr71Earned',        G.sr71Earned);
   save('playerName',        G.playerName);
+  save('pilotNameChosen',   !!G.pilotNameChosen);
   save('playerEmail',       G.playerEmail);
   save('playerAuthType',    G.playerAuthType);
   save('playerPhoto',       G.playerPhoto);
