@@ -467,7 +467,9 @@ function ensureHandlers() {
     if (!_waiting) return;
     _waiting = false;
     wsDisconnect();
-    showError(fr() ? 'Code invalide ou partie introuvable.' : 'Invalid code or game not found.');
+    showError(fr()
+      ? 'Aucune partie trouvée avec ce code. Vérifie chaque caractère, et que ton ami a JexonGo ouvert sur l’écran du code.'
+      : 'No game found with this code. Check each character, and that your friend has JexonGo open on the code screen.');
   });
   wsOn('coop_start', msg => {
     if (!_waiting) return;

@@ -10,7 +10,8 @@
 import { getSupabaseClient } from '../systems/supabase-client.js';
 import { publicPilotName } from '../utils/pilot-name.js';
 
-const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+// No look-alikes in the game's pixel font: B/8, S/5, Z/2, G/6, O/Q/0, I/L/1, U/V.
+const CODE_CHARS = 'ACDEFHJKMNPRTWXY34679';
 const CODE_LENGTH = 6;
 const SUBSCRIBE_TIMEOUT_MS = 8000;
 // Joining: the request is repeated until the host answers. On a phone the
