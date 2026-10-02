@@ -5464,6 +5464,13 @@ function enterSpectator() {
     qbox.style.visibility = 'hidden';
   }
   document.getElementById('game-pause-overlay')?.classList.remove('dimmed', 'correction-dimmed');
+  // Out of lives after a wrong answer: the correction froze the game loop and
+  // only the next question restarts it. No question while watching, so
+  // restart it here (otherwise the spectator's screen stays frozen).
+  _correctionWaiting = false;
+  _correctionSnapshot = null;
+  _smoothResumeAfterCorrection = false;
+  if (!G.animFrame && !_cutsceneActive) _queueFrame(_activeSessionId);
   spawnMissileExplosion(G.particles, G.player.x, G.player.y, 'default', 24);
   SFX.explode?.();
   shakeFrames = 10;

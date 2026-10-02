@@ -1378,6 +1378,26 @@ html.touch-mobile .menu-offline-banner {
   font-size: 7px;
   color: #7dd3fc;
 }
+/* Phones: warnings sized to the screen. The captain's notices use the game's
+   pixel font (not the plain monospace) and the BOSS ALERT tagline keeps clear
+   of the screen edges, wrapping if needed. */
+@media (max-width: 600px) {
+  .tutorial-feedback { width: min(86vw, 380px); top: 88px; }
+  .tutorial-feedback-card {
+    font-family: 'Press Start 2P', monospace;
+    font-size: clamp(8px, 2.5vw, 11px);
+    line-height: 1.7;
+    padding: 9px 10px;
+  }
+  .tutorial-feedback-title { font-size: clamp(6px, 1.9vw, 8px); margin-bottom: 6px; }
+  .bab-content { padding: 0 7vw; }
+  .bab-warning { font-size: clamp(12px, 4.2vw, 18px); }
+  .bab-tagline {
+    max-width: 86vw;
+    font-size: clamp(8px, 2.5vw, 12px);
+    text-wrap: balance;
+  }
+}
 .tutorial-feedback-good {
   border-color: #00e84b;
   box-shadow: 3px 3px 0 rgba(0,0,0,0.65), 0 0 18px rgba(0,232,75,0.32);
