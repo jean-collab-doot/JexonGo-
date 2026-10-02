@@ -84,6 +84,7 @@ function _onMessage(msg) {
 
   if (_role === 'host' && msg.type === 'join') {
     const name = publicPilotName(msg.name, 14);
+    _emit('coop_progress', { step: 'join_request', name });
     // Same teammate asking again (its request was repeated): answer again.
     if (_partnerId && msg.from === _partnerId) {
       _post({ type: 'accept', to: msg.from, level: _host.level, hostName: _host.name, hostAircraft: _host.aircraft });
@@ -154,6 +155,7 @@ async function _open(code, { keepId = false, session = _session } = {}) {
   if (session !== _session) { supabase.removeChannel(channel); return; }
   _channel = channel;
   await channel.track({ role: _role }).catch(() => {});
+  _emit('coop_progress', { step: 'connected' });
 }
 
 async function _reopen() {
@@ -228,6 +230,7 @@ async function _join(msg) {
   const code = String(msg.code || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
   if (code.length < 5 || code.length > 7) { _emit('coop_invalid'); return; }
   _role = 'guest';
+  _emit('coop_progress', { step: 'connecting' });
   try {
     await _open(code);
   } catch (_) {
@@ -248,6 +251,7 @@ async function _join(msg) {
         .some(metas => (metas || []).some(m => m?.role === 'host'));
       if (hostHere) hostSeen = true;
       const waited = Date.now() - start;
+      _emit('coop_progress', { step: hostSeen ? 'host_seen' : 'searching', seconds: Math.round(waited / 1000) });
       if (waited > JOIN_MAX_MS || (!hostSeen && waited > HOST_LOOKUP_MS)) { resolve(null); return; }
       _post(request);
       setTimeout(ask, JOIN_RETRY_MS);

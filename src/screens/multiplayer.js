@@ -374,12 +374,34 @@ function showRealPlayer() {
   sheet.querySelector('.mp-cancel').onclick = showChoices;
 }
 
+/* global __BUILD_ID__ */
+const BUILD_ID = typeof __BUILD_ID__ !== 'undefined' ? __BUILD_ID__ : 'dev';
+
+// Live connection status under the waiting text (coop-realtime.js steps).
+function coopStatusText(step, info = {}) {
+  const f = fr();
+  switch (step) {
+    case 'connecting': return f ? 'Connexion au réseau…' : 'Connecting…';
+    case 'connected': return f ? 'Connecté ✓' : 'Connected ✓';
+    case 'searching': return f
+      ? `Connecté ✓ · partie pas encore trouvée (${info.seconds} s)`
+      : `Connected ✓ · game not found yet (${info.seconds}s)`;
+    case 'host_seen': return f
+      ? `Partie trouvée ✓ · en attente de la réponse de ton ami (${info.seconds} s)`
+      : `Game found ✓ · waiting for your friend to answer (${info.seconds}s)`;
+    case 'join_request': return f ? `${info.name} essaie de te rejoindre…` : `${info.name} is trying to join…`;
+    default: return '';
+  }
+}
+
 function showWaiting(title, text, code = '', note = '') {
   const f = fr();
   const sheet = openSheet(`
     <div class="mp-title">${title}</div>
     ${code ? `<div class="mp-bigcode">${code}</div>` : ''}
     <div class="mp-wait"><span class="mp-dots"><i></i><i></i><i></i></span>${text}</div>
+    <div class="mp-status" aria-live="polite">${_lastStatus}</div>
+    <div class="mp-build">v ${BUILD_ID}</div>
     ${note ? `<div class="mp-error">${note}</div>
       <button class="mp-choice mp-choice-small" type="button" data-mp="relevel">${f ? 'CHANGER DE NIVEAU' : 'CHANGE LEVEL'}</button>` : ''}
     <button class="mp-cancel" type="button">${f ? 'Annuler' : 'Cancel'}</button>`, { closable: false });
@@ -405,9 +427,16 @@ function showError(text) {
   sheet.querySelector('.mp-choice').onclick = showRealPlayer;
 }
 
+let _lastStatus = '';
 function ensureHandlers() {
   if (_handlersReady) return;
   _handlersReady = true;
+  wsOn('coop_progress', ({ step, ...info }) => {
+    if (!_waiting) return;
+    _lastStatus = coopStatusText(step, info);
+    const el = document.querySelector('#mp-sheet .mp-status');
+    if (el) el.textContent = _lastStatus;
+  });
   wsOn('coop_created', ({ code }) => {
     if (!_waiting) return;
     _hostCode = code;
@@ -464,6 +493,7 @@ async function connect() {
 }
 
 async function createGame(level) {
+  _lastStatus = '';
   _hostLevel = level;
   _hostCode = '';
   if ($('s-menu')?.classList.contains('hidden')) _nav.toMulti();   // back from the level map
@@ -474,6 +504,7 @@ async function createGame(level) {
 }
 
 async function joinGame(code) {
+  _lastStatus = '';
   _waiting = true;
   showWaiting(fr() ? 'CONNEXION...' : 'JOINING...', fr()
     ? 'Recherche de la partie. Ton ami doit avoir JexonGo ouvert à l’écran.'

@@ -1,4 +1,5 @@
 import { $, showScreen } from '../utils/dom.js';
+import { TEST_UNLOCK } from '../utils/test-mode.js';
 import { rollChestTier } from '../systems/chest.js';
 import { G, loadSave, saveAll, clampCoins, MAX_COINS } from '../state.js';
 import { LOGIN_REWARDS, claimDailyReward, getMissions, claimMission,
@@ -654,6 +655,9 @@ const FEATURE_LOCKS = [
 ];
 
 function featureLocked(lock) {
+  // Preview / dev server: open for testing, e.g. a second device joining a
+  // co-op game as a guest (one account can only be signed in on one device).
+  if (TEST_UNLOCK) return false;
   // Never lock the way back out of MULTI mode (the button then reads SOLO).
   if (lock.id === 'btn-lobby-multi' && isMultiLobby()) return false;
   return (G.highestLevel || 0) < lock.level;
