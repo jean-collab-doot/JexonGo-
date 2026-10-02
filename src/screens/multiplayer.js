@@ -392,8 +392,8 @@ function showWaiting(title, text, code = '', note = '') {
 
 function showHostCode(note = '') {
   showWaiting(fr() ? 'TON CODE' : 'YOUR CODE',
-    fr() ? `Niveau ${_hostLevel}. Donne ce code à ton ami. En attente de ton coéquipier...`
-      : `Level ${_hostLevel}. Give this code to your friend. Waiting for your teammate...`, _hostCode, note);
+    fr() ? `Niveau ${_hostLevel}. Donne ce code à ton ami, puis reviens ici : garde JexonGo ouvert à l’écran. En attente de ton coéquipier...`
+      : `Level ${_hostLevel}. Give this code to your friend, then come back here: keep JexonGo open on screen. Waiting for your teammate...`, _hostCode, note);
 }
 
 function showError(text) {
@@ -475,7 +475,9 @@ async function createGame(level) {
 
 async function joinGame(code) {
   _waiting = true;
-  showWaiting(fr() ? 'CONNEXION...' : 'JOINING...', fr() ? 'Recherche de la partie' : 'Looking for the game');
+  showWaiting(fr() ? 'CONNEXION...' : 'JOINING...', fr()
+    ? 'Recherche de la partie. Ton ami doit avoir JexonGo ouvert à l’écran.'
+    : 'Looking for the game. Your friend must have JexonGo open on screen.');
   if (!(await connect()) || !_waiting) return;
   wsSend({ type: 'coop_join', code, name: publicPilotName(G.playerName, 14), aircraft: G.activeAircraft, maxLevel: maxUnlockedLevel() });
 }
