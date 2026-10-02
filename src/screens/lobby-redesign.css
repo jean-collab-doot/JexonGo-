@@ -1690,11 +1690,13 @@ html #s-levelmap::after {
 }
 .mp-ico-plus::before { width: 22px; height: 6px; }
 .mp-ico-plus::after { width: 6px; height: 22px; }
-.mp-join { display: grid; gap: 6px; padding: 10px; border: 2px dashed #ffb700; border-radius: 14px; min-width: 0; }
+.mp-join { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; padding: 10px; border: 2px dashed #ffb700; border-radius: 14px; min-width: 0; box-sizing: border-box; }
 .mp-join label { font-size: 9px; color: #7a3d00; }
-.mp-join-row { display: flex; gap: 8px; }
+/* width: 0 on the field: an input's natural width (~20 characters) would
+   otherwise push the JOIN button past the dashed border on a phone. */
+.mp-join-row { display: flex; gap: 8px; min-width: 0; }
 .mp-code {
-  flex: 1; min-width: 0; padding: 10px 8px;
+  flex: 1 1 0; width: 0; min-width: 0; padding: 10px 6px;
   font-family: ui-monospace, 'SF Mono', Consolas, 'Roboto Mono', 'Courier New', monospace; font-weight: 800; font-size: 15px; letter-spacing: 3px; text-align: center; text-transform: uppercase;
   color: #1f3b73; background: #fff; border: 3px solid #ffd766; border-radius: 10px; outline: none;
 }

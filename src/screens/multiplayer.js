@@ -8,7 +8,7 @@
 //     and each one's shots help destroy the other's enemies (game.js, "CO-OP
 //     TEAMMATE").
 import { SFX } from '../audio/sound.js';
-import { G } from '../state.js';
+import { G, startingLives } from '../state.js';
 import { getLang } from '../i18n.js';
 // Co-op runs over Supabase Realtime (no game server to host).
 import { coopConnect as wsConnect, coopSend as wsSend, coopOn as wsOn, coopDisconnect as wsDisconnect } from '../online/coop-realtime.js';
@@ -463,6 +463,15 @@ function ensureHandlers() {
     _waiting = false;
     showError(fr() ? 'Connexion impossible. Vérifie Internet et réessaie.' : 'Could not connect. Check your Internet and try again.');
   });
+  // The two phones run different versions of the game.
+  wsOn('coop_version', ({ name }) => {
+    if (!_waiting) return;
+    _waiting = false;
+    wsDisconnect();
+    showError(fr()
+      ? `${name || 'Ton ami'} et toi n'avez pas la même version du jeu. Fermez JexonGo et rouvrez-le sur les 2 appareils (le numéro « v » sous le code doit être le même), puis recommencez.`
+      : `${name || 'Your friend'} and you don't have the same version of the game. Close JexonGo and open it again on both devices (the "v" number under the code must match), then try again.`);
+  });
   wsOn('coop_invalid', () => {
     if (!_waiting) return;
     _waiting = false;
@@ -475,7 +484,7 @@ function ensureHandlers() {
     if (!_waiting) return;
     _waiting = false;
     setPartner(msg.partnerName || 'PILOT', msg.partnerAircraft);
-    G.coopSession = { mode: 'online', partnerName: msg.partnerName, partnerAircraft: msg.partnerAircraft };
+    G.coopSession = { mode: 'online', partnerName: msg.partnerName, partnerAircraft: msg.partnerAircraft, partnerHearts: msg.partnerHearts };
     showWaiting(fr() ? "C'EST PARTI!" : "LET'S GO!",
       fr() ? `${msg.partnerName} est ton coéquipier!` : `${msg.partnerName} is your teammate!`);
     setTimeout(() => { hideSheet(); _nav.toGame(Number(msg.level) || 1); }, 1400);
@@ -502,7 +511,7 @@ async function createGame(level) {
   _waiting = true;
   showWaiting(fr() ? 'CRÉATION...' : 'CREATING...', fr() ? 'Connexion au serveur' : 'Connecting to the server');
   if (!(await connect()) || !_waiting) return;
-  wsSend({ type: 'coop_create', name: publicPilotName(G.playerName, 14), aircraft: G.activeAircraft, level: _hostLevel });
+  wsSend({ type: 'coop_create', name: publicPilotName(G.playerName, 14), aircraft: G.activeAircraft, level: _hostLevel, hearts: startingLives() });
 }
 
 async function joinGame(code) {
@@ -512,7 +521,7 @@ async function joinGame(code) {
     ? 'Recherche de la partie. Ton ami doit avoir JexonGo ouvert à l’écran.'
     : 'Looking for the game. Your friend must have JexonGo open on screen.');
   if (!(await connect()) || !_waiting) return;
-  wsSend({ type: 'coop_join', code, name: publicPilotName(G.playerName, 14), aircraft: G.activeAircraft, maxLevel: maxUnlockedLevel() });
+  wsSend({ type: 'coop_join', code, name: publicPilotName(G.playerName, 14), aircraft: G.activeAircraft, maxLevel: maxUnlockedLevel(), hearts: startingLives() });
 }
 
 function cancelWaiting() {

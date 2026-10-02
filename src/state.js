@@ -489,9 +489,14 @@ export function autoSave() {
   save('postTutorialConnectPrompt', G.postTutorialConnectPrompt);
 }
 
+// Hearts at the start of a level (badge, plane ability, hangar UPGRADE).
+export function startingLives() {
+  return 3 + (G.activeBadge === 'steady_recruit' ? 1 : 0) + (AIRCRAFT[G.activeAircraft]?.ability?.extraLives || 0)
+    + Math.max(0, Math.min(3, G.planeUpgrades?.[G.activeAircraft]?.lives | 0)); // hangar UPGRADE (per aircraft)
+}
+
 export function resetLevel() {
-  G.lives              = 3 + (G.activeBadge === 'steady_recruit' ? 1 : 0) + (AIRCRAFT[G.activeAircraft]?.ability?.extraLives || 0)
-                       + Math.max(0, Math.min(3, G.planeUpgrades?.[G.activeAircraft]?.lives | 0)); // hangar UPGRADE (per aircraft)
+  G.lives              = startingLives();
   G.questionsAnswered  = 0;
   G.correctAnswers     = 0;
   G.sessionXP          = 0;

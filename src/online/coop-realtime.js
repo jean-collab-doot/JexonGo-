@@ -26,6 +26,10 @@ const JOIN_MAX_MS = 90000;
 // come back before "… left the game".
 const PARTNER_GRACE_MS = 12000;
 const RELAYED = new Set(['coop_state', 'coop_shot', 'coop_done', 'coop_revive']);
+// Both teammates must run the same version of the game (an old cached copy
+// does not send hearts / spectator state, so the other screen shows them wrong).
+/* global __BUILD_ID__ */
+const BUILD = typeof __BUILD_ID__ !== 'undefined' ? __BUILD_ID__ : 'dev';
 
 const _handlers = new Map();   // type -> Set<fn>
 let _channel = null;
@@ -64,6 +68,10 @@ function _post(payload) {
     .catch?.(() => {});
 }
 
+function _hearts(value) {
+  return Math.max(1, Math.min(9, Number(value) | 0 || 3));
+}
+
 function _aircraft(value) {
   return String(value || 't6').replace(/[^a-z0-9]/gi, '').slice(0, 12) || 't6';
 }
@@ -88,10 +96,16 @@ function _onMessage(msg) {
     _emit('coop_progress', { step: 'join_request', name });
     // Same teammate asking again (its request was repeated): answer again.
     if (_partnerId && msg.from === _partnerId) {
-      _post({ type: 'accept', to: msg.from, level: _host.level, hostName: _host.name, hostAircraft: _host.aircraft });
+      _post({ type: 'accept', to: msg.from, level: _host.level, hostName: _host.name, hostAircraft: _host.aircraft, hostHearts: _host.hearts, build: BUILD });
       return;
     }
     if (_partnerId) { _post({ type: 'full', to: msg.from }); return; }
+    // Different version (one phone still has an old copy): no game together.
+    if (msg.build !== BUILD) {
+      _post({ type: 'outdated', to: msg.from, build: BUILD });
+      _emit('coop_version', { name });
+      return;
+    }
     // Both players must have unlocked the host's level (as server.js did).
     const joinerMax = Math.max(1, Number(msg.maxLevel) || 1);
     if (_host.level > joinerMax) {
@@ -100,12 +114,12 @@ function _onMessage(msg) {
       return;
     }
     _partnerId = msg.from;
-    _post({ type: 'accept', to: msg.from, level: _host.level, hostName: _host.name, hostAircraft: _host.aircraft });
-    _emit('coop_start', { level: _host.level, partnerName: name, partnerAircraft: _aircraft(msg.aircraft) });
+    _post({ type: 'accept', to: msg.from, level: _host.level, hostName: _host.name, hostAircraft: _host.aircraft, hostHearts: _host.hearts, build: BUILD });
+    _emit('coop_start', { level: _host.level, partnerName: name, partnerAircraft: _aircraft(msg.aircraft), partnerHearts: _hearts(msg.hearts) });
     return;
   }
 
-  if (_role === 'guest' && _joinWait && ['accept', 'locked', 'full'].includes(msg.type)) {
+  if (_role === 'guest' && _joinWait && ['accept', 'locked', 'full', 'outdated'].includes(msg.type)) {
     _joinWait(msg);
   }
 }
@@ -214,6 +228,7 @@ async function _create(msg) {
     name: publicPilotName(msg.name, 14),
     aircraft: _aircraft(msg.aircraft),
     level: Math.max(1, Math.min(50, Number(msg.level) || 1)),
+    hearts: _hearts(msg.hearts),
   };
   const code = _code();
   try {
@@ -241,7 +256,8 @@ async function _join(msg) {
   }
   if (!_channel) return;                          // cancelled meanwhile
   const session = _session;
-  const request = { type: 'join', name: publicPilotName(msg.name, 14), aircraft: _aircraft(msg.aircraft), maxLevel: Number(msg.maxLevel) || 1 };
+  const request = { type: 'join', name: publicPilotName(msg.name, 14), aircraft: _aircraft(msg.aircraft), maxLevel: Number(msg.maxLevel) || 1,
+    hearts: _hearts(msg.hearts), build: BUILD };
   const start = Date.now();
   let hostSeen = false;
   const answer = await new Promise(resolve => {
@@ -261,12 +277,19 @@ async function _join(msg) {
   });
   if (session !== _session) return;               // cancelled meanwhile
   _joinWait = null;
+  if (answer?.type === 'outdated' || (answer?.type === 'accept' && answer.build !== BUILD)) {
+    if (answer.type === 'accept') _post({ type: 'bye', to: answer.from });
+    coopDisconnect();
+    _emit('coop_version', { name: publicPilotName(answer.hostName, 14) });
+    return;
+  }
   if (answer?.type === 'accept') {
     _partnerId = answer.from;
     _emit('coop_start', {
       level: Math.max(1, Math.min(50, Number(answer.level) || 1)),
       partnerName: publicPilotName(answer.hostName, 14),
       partnerAircraft: _aircraft(answer.hostAircraft),
+      partnerHearts: _hearts(answer.hostHearts),
     });
     return;
   }

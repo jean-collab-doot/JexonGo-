@@ -3687,7 +3687,10 @@ function ensureCoopHandlers() {
     if (!_coop.seen) { _coop.seen = true; _coop.x = _coop.tx; _coop.y = _coop.ty; }
     // The teammate's own hearts and state (their game is the reference).
     if (Number.isFinite(msg.maxLives) && msg.maxLives > 0) _coop.maxHp = Math.min(9, msg.maxLives | 0);
-    if (Number.isFinite(msg.lives)) _coop.hp = Math.max(0, Math.min(_coop.maxHp, msg.lives | 0));
+    if (Number.isFinite(msg.lives)) {
+      _coop.hp = Math.max(0, Math.min(9, msg.lives | 0));
+      if (_coop.hp > _coop.maxHp) _coop.maxHp = _coop.hp;
+    }
     const nowDown = !!msg.down;
     if (nowDown && !_coop.down) {
       _coop.down = true;
@@ -3716,17 +3719,23 @@ function ensureCoopHandlers() {
     if (!_coop || _coop.mode !== 'online' || _coop.down) return;
     fireCoopShots(Math.max(1, Math.min(6, Number(msg.n) || 1)));
   });
-  wsOn('coop_done', () => {
+  wsOn('coop_done', msg => {
     if (!_coop) return;
+    if (msg.won === false) {
+      // The teammate was shot down while we were watching: the team lost.
+      if (!_spectating) return;
+      coopNotice(`Mission échouée: ${_coop.name} ne vole plus.`, `Mission failed: ${_coop.name} is out.`);
+      const sid = _sessionId;
+      setTimeout(() => {
+        if (_sessionId !== sid || !_spectating) return;
+        leaveSpectator();
+        endLevel(false);
+      }, 1500);
+      return;
+    }
     coopNotice(`${_coop.name} a terminé le niveau!`, `${_coop.name} finished the level!`);
     // Watching when the teammate finished: the level is won together.
-    if (_spectating) {
-      leaveSpectator();
-      G.lives = 1;
-      _playerDestroyed = false;
-      updateLivesHUD();
-      endLevel(true);
-    }
+    if (_spectating) endLevel(true);
   });
   // Teammate disconnected: straight back to the lobby (not the level map and
   // its briefing), whether the level is still running or already over.
@@ -3758,7 +3767,8 @@ function startCoop() {
     nextThink: 0, targetEnemy: null,
     tx: G.player.x - 90, ty: G.player.y + 20,
     nextShot: 0, nextSend: 0, lastSeen: 0, seen: session.mode === 'bot', left: false,
-    maxHp: session.mode === 'bot' ? Math.max(COOP_MAX_HP, Math.min(6, session.maxHp | 0)) : COOP_MAX_HP,
+    maxHp: session.mode === 'bot' ? Math.max(COOP_MAX_HP, Math.min(6, session.maxHp | 0))
+      : Math.max(1, Math.min(9, session.partnerHearts | 0 || COOP_MAX_HP)),
     fire: COOP_BOT_FIRE[Math.max(1, Math.min(5, session.fireLevel | 0 || 1)) - 1],
     hp: 0, down: false, healCount: 0, hitUntil: 0,
     turnRight: 0, turnLeft: 0,
@@ -3966,7 +3976,7 @@ function updateCoopTurn(moveDelta) {
 // leaveCoopLink() when the player goes back to the lobby or starts another game.
 function stopCoop(levelWon = false) {
   if (!_coop) return;
-  if (_coop.mode === 'online' && levelWon) wsSend({ type: 'coop_done' });
+  if (_coop.mode === 'online' && levelWon) wsSend({ type: 'coop_done', won: true });
   _coop = null;
 }
 
@@ -5629,7 +5639,7 @@ function updateStreakHUD() {
 
 // ── LEVEL END ────────────────────────────────────────────────────────────────
 function finishLevel(won) {
-  if (won && _coop?.mode === 'online' && !_coop.left) wsSend({ type: 'coop_done' });
+  if (_coop?.mode === 'online' && !_coop.left) wsSend({ type: 'coop_done', won: !!won });
   // Beginner practice won (last question or T key): main.js shows the Google
   // sign-in invitation to guests.
   G.beginnerPracticeDone = !!(won && _guidedRun);
@@ -5704,6 +5714,12 @@ function updateTimedPlayXp(frameMs) {
 }
 
 function endLevel(won) {
+  if (won && _spectating) {
+    leaveSpectator();
+    _playerDestroyed = false;
+    G.lives = Math.max(1, G.lives);
+    updateLivesHUD();
+  }
   if (!won || _levelEnding || !canvas || !G.player) {
     if (!_levelEnding) finishLevel(won);
     return;
