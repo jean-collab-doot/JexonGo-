@@ -3651,6 +3651,7 @@ const COOP_HEAL_ANSWERS = 3;
 const COOP_HIT_IMMUNE_MS = 1500;
 let _coop = null;
 let _coopHandlersReady = false;
+let _coopLeaving = false;   // teammate gone: going back to the lobby
 
 function coopNotice(fr, en) {
   showTutorialNotice(getLang() === 'fr' ? fr : en, true, 2600);
@@ -3690,10 +3691,22 @@ function ensureCoopHandlers() {
     if (!_coop) return;
     coopNotice(`${_coop.name} a terminé le niveau!`, `${_coop.name} finished the level!`);
   });
+  // Teammate disconnected: straight back to the lobby (not the level map and
+  // its briefing), whether the level is still running or already over.
   wsOn('coop_partner_left', () => {
-    if (!_coop || _coop.mode !== 'online') return;
-    _coop.left = true;
-    coopNotice(`${_coop.name} a quitté la partie.`, `${_coop.name} left the game.`);
+    const inCoopScreen = ['s-game', 's-result', 's-gameover']
+      .some(id => !document.getElementById(id)?.classList.contains('hidden'));
+    if (!G.coopLinkOpen || !inCoopScreen || _coopLeaving) return;
+    _coopLeaving = true;
+    const name = _coop?.name || G.lastCoopSession?.partnerName || 'PILOT';
+    const fr = getLang() === 'fr';
+    if (_coop) _coop.left = true;
+    coopNotice(`${name} s'est déconnecté. Retour au lobby…`, `${name} disconnected. Back to the lobby…`);
+    setTimeout(() => {
+      _coopLeaving = false;
+      window._nav?.toMenu?.();
+      window._showToast?.(fr ? `${name} s'est déconnecté.` : `${name} disconnected.`);
+    }, 2200);
   });
 }
 
