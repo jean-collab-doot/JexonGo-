@@ -28,7 +28,7 @@ import { checkDailyLogin, getDailyRewardView, recordPlayMinute, LOGIN_REWARDS, D
 import { showDailyReward } from './screens/menu.js';
 import { canSendFeedback, markFeedbackSent, sendFeedback, sendNewPlayerNotification, _resetNewPlayer, _testEmailNow } from './systems/feedback.js';
 import { t, getLang, applyI18n } from './i18n.js';
-import { syncAccountFromCloud, flushCloudSave, pushCloudSave } from './systems/cloud-save.js';
+import { syncAccountFromCloud, flushCloudSave, pushCloudSave, fetchCloudSave } from './systems/cloud-save.js';
 import { signInWithGoogleIdToken, signUpWithEmail, signOutSupabase } from './systems/supabase-client.js';
 import { claimSessionOrBlock, sessionBlockedMessage, sessionLostMessage, askTakeover, onSessionLost } from './systems/session-guard.js';
 import { applyDeviceClasses } from './utils/device.js';
@@ -521,7 +521,7 @@ window._onGoogleCredential = async function(response) {
     save('playerRegistered', true);
 
     loadSave();
-    const sync = await syncAccountFromCloud({ authType: 'google' });
+    const sync = await syncAccountFromCloud({ authType: 'google', onApplied: () => renderMenu() });
     const shouldNotifyNewGooglePlayer = !sync?.merged && (!wasRegistered || previousEmail !== email);
     if (!G.pilotNameChosen) await askPilotName(realNames);
     name = G.playerName;
@@ -952,14 +952,18 @@ function _forceSignOutBlocked(message = sessionBlockedMessage()) {
 }
 
 if (G.playerRegistered && G.playerEmail) {
+  // Read the account while the session is claimed (both at once), then show
+  // its coins / EXP in the lobby right away.
+  const remoteSave = fetchCloudSave(G.playerEmail, '', G.playerAuthType || 'supabase');
   claimSessionOrBlock().then(async ({ blocked }) => {
+    const tookOver = blocked;
     // Another device has the account: continue here, or sign out here.
     if (blocked) {
       while (document.getElementById('np-intro')) await new Promise(r => setTimeout(r, 300));
       if (await askTakeover()) ({ blocked } = await claimSessionOrBlock({ takeover: true }));
     }
     if (blocked) { _forceSignOutBlocked(); return; }
-    return syncAccountFromCloud().then(async sync => {
+    return syncAccountFromCloud({ remote: tookOver ? null : remoteSave, onApplied: () => renderMenu() }).then(async sync => {
       // Google players from before the nickname existed still show their
       // real first name: ask them once for a pilot name.
       if (G.playerAuthType === 'google' && !G.pilotNameChosen) {

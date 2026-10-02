@@ -386,21 +386,26 @@ export async function flushCloudSave() {
 
 /** Pull cloud save, merge with local, apply, and push merged result. */
 /** @returns {{ ok: boolean, merged?: boolean, offline?: boolean, forbidden?: boolean }} */
+// opts.remote: a fetchCloudSave() already started (read while the session is
+// claimed). opts.onApplied: called as soon as the account is merged in, so the
+// lobby shows its coins / EXP without waiting for the upload.
 export async function syncAccountFromCloud(opts = {}) {
   const email = (G.playerEmail || '').toLowerCase().trim();
   if (!G.playerRegistered || !email) return { ok: false };
 
   const authType = opts.authType || G.playerAuthType || 'supabase';
-  const local = exportSaveSnapshot();
-  const remote = await fetchCloudSave(email, '', authType);
+  let remote = opts.remote ? await opts.remote : null;
+  // The early read failed (sign-in not restored yet...): read again now.
+  if (!remote || remote.forbidden || remote.error) remote = await fetchCloudSave(email, '', authType);
   if (remote?.forbidden) return { ok: false, forbidden: true };
   if (remote?.offline) return { ok: false, offline: true };
 
   if (remote?.data) {
-    applySaveSnapshot(mergeSaveSnapshots(local, remote.data));
+    applySaveSnapshot(mergeSaveSnapshots(exportSaveSnapshot(), remote.data));
   }
 
   saveAll();
+  try { opts.onApplied?.(!!remote?.data); } catch (_) {}
   await pushCloudSave({ authType });
   return { ok: true, merged: !!remote?.data };
 }
