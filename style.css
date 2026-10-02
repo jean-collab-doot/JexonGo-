@@ -4179,7 +4179,21 @@ html.touch-mobile .badge-unlock-card button{min-height:40px;padding:10px 18px;fo
   opacity: 0;
   transition: opacity 0.2s, transform 0.2s;
   pointer-events: none;
-  white-space: nowrap;
+  /* Long messages ("Bon retour, …", sync, locked feature…) wrap inside the
+     screen instead of running off its sides on a phone. */
+  white-space: normal;
+  width: max-content;
+  max-width: calc(100vw - 32px);
+  box-sizing: border-box;
+  line-height: 1.7;
+}
+@media (max-width: 600px) {
+  #login-toast {
+    font-size: clamp(7px, 2.2vw, 9px);
+    letter-spacing: .5px;
+    padding: 10px 14px;
+    bottom: calc(88px + env(safe-area-inset-bottom));
+  }
 }
 #login-toast.toast-show {
   opacity: 1;
