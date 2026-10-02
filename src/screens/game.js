@@ -3652,6 +3652,9 @@ const COOP_HIT_IMMUNE_MS = 1500;
 let _coop = null;
 let _coopHandlersReady = false;
 let _coopLeaving = false;   // teammate gone: going back to the lobby
+// Online co-op: out of lives while the teammate still flies = spectator
+// until the teammate repairs us with COOP_HEAL_ANSWERS correct answers.
+let _spectating = false;
 
 function coopNotice(fr, en) {
   showTutorialNotice(getLang() === 'fr' ? fr : en, true, 2600);
@@ -3682,6 +3685,32 @@ function ensureCoopHandlers() {
     }
     _coop.lastSeen = performance.now();
     if (!_coop.seen) { _coop.seen = true; _coop.x = _coop.tx; _coop.y = _coop.ty; }
+    // The teammate's own hearts and state (their game is the reference).
+    if (Number.isFinite(msg.maxLives) && msg.maxLives > 0) _coop.maxHp = Math.min(9, msg.maxLives | 0);
+    if (Number.isFinite(msg.lives)) _coop.hp = Math.max(0, Math.min(_coop.maxHp, msg.lives | 0));
+    const nowDown = !!msg.down;
+    if (nowDown && !_coop.down) {
+      _coop.down = true;
+      _coop.healCount = 0;
+      _coop.targetEnemy = null;
+      spawnExplosion(G.particles, _coop.x, _coop.y, '#ef4444', 24);
+      if (_spectating) {
+        // Both out of lives: the team lost.
+        leaveSpectator();
+        endLevel(false);
+        return;
+      }
+      coopNotice(`${_coop.name} est tombé! 3 bonnes réponses pour le réparer`,
+        `${_coop.name} is down! 3 correct answers to repair them`);
+    } else if (!nowDown && _coop.down && !_coop.reviveSent) {
+      _coop.down = false;
+    }
+    if (!nowDown) _coop.reviveSent = false;
+    if (_spectating) updateSpectatorBanner(Math.max(0, Math.min(COOP_HEAL_ANSWERS, msg.heal | 0)));
+  });
+  // The teammate answered 3 times for us: back in the game.
+  wsOn('coop_revive', () => {
+    if (_spectating) reviveFromSpectator();
   });
   wsOn('coop_shot', msg => {
     if (!_coop || _coop.mode !== 'online' || _coop.down) return;
@@ -3690,6 +3719,14 @@ function ensureCoopHandlers() {
   wsOn('coop_done', () => {
     if (!_coop) return;
     coopNotice(`${_coop.name} a terminé le niveau!`, `${_coop.name} finished the level!`);
+    // Watching when the teammate finished: the level is won together.
+    if (_spectating) {
+      leaveSpectator();
+      G.lives = 1;
+      _playerDestroyed = false;
+      updateLivesHUD();
+      endLevel(true);
+    }
   });
   // Teammate disconnected: straight back to the lobby (not the level map and
   // its briefing), whether the level is still running or already over.
@@ -3817,7 +3854,9 @@ function preloadCoopSprites(aircraft) {
 
 // Enemy shots hitting the teammate's plane.
 function coopCheckHits(now, size) {
-  if (_coop.down || (_coop.mode === 'online' && _coop.left)) return;
+  // Online: the teammate's hits happen in their own game (lives come in
+  // coop_state); only the bot is hit here.
+  if (_coop.down || _coop.mode === 'online') return;
   const r = size * 0.3;
   for (let i = G.enemyMissiles.length - 1; i >= 0; i--) {
     const m = G.enemyMissiles[i];
@@ -3849,7 +3888,22 @@ function coopCheckHits(now, size) {
 
 // Called on each correct answer: after 3, the teammate gets all hearts back.
 function coopOnCorrectAnswer() {
-  if (!_coop || _coop.hp >= _coop.maxHp) return;
+  if (!_coop) return;
+  if (_coop.mode === 'online') {
+    // Online: only a teammate who is down (spectating) can be repaired.
+    if (!_coop.down || _coop.left) return;
+    _coop.healCount++;
+    if (_coop.healCount < COOP_HEAL_ANSWERS) { sendCoopStateNow(); return; }   // progress, shown to them
+    _coop.down = false;
+    _coop.reviveSent = true;
+    _coop.healCount = 0;
+    wsSend({ type: 'coop_revive' });
+    trackMission('coop_heals', 1);
+    spawnHitSpark(G.particles, _coop.x, _coop.y);
+    coopNotice(`${_coop.name} est de retour!`, `${_coop.name} is back!`);
+    return;
+  }
+  if (_coop.hp >= _coop.maxHp) return;
   _coop.healCount++;
   if (_coop.healCount < COOP_HEAL_ANSWERS) return;
   const wasDown = _coop.down;
@@ -4032,9 +4086,8 @@ function updateAndDrawCoop(now) {
     const x = +(G.player.x / canvas.width).toFixed(4);
     const y = +(G.player.y / canvas.height).toFixed(4);
     const moved = x !== _coop.sentX || y !== _coop.sentY;
-    if (moved || now - (_coop.sentAt || 0) >= COOP_IDLE_SEND_MS) {
-      wsSend({ type: 'coop_state', x, y, aircraft: G.activeAircraft });
-      _coop.sentX = x; _coop.sentY = y; _coop.sentAt = now;
+    if (moved || coopStatusKey() !== _coop.sentStatus || now - (_coop.sentAt || 0) >= COOP_IDLE_SEND_MS) {
+      sendCoopStateNow(now);
     }
     _coop.nextSend = now + COOP_SEND_MS;
   }
@@ -5353,6 +5406,93 @@ function _loadFrames(base, count) {
   });
 }
 
+// Our plane, hearts and spectator state for the teammate's game. Also sent
+// right away when the state changes (down, repair progress, back), without
+// waiting for the next frame.
+function coopStatusKey() {
+  const heal = _coop?.down ? _coop.healCount : 0;
+  return `${G.lives}/${_maxLives}/${_spectating ? 1 : 0}/${heal}`;
+}
+function sendCoopStateNow(now = performance.now()) {
+  if (!_coop || _coop.mode !== 'online' || _coop.left || !canvas || !G.player) return;
+  const x = +(G.player.x / canvas.width).toFixed(4);
+  const y = +(G.player.y / canvas.height).toFixed(4);
+  wsSend({ type: 'coop_state', x, y, aircraft: G.activeAircraft,
+    lives: Math.max(0, G.lives), maxLives: _maxLives, down: _spectating,
+    heal: _coop.down ? _coop.healCount : 0 });
+  _coop.sentX = x; _coop.sentY = y; _coop.sentAt = now; _coop.sentStatus = coopStatusKey();
+}
+
+// ── Online co-op spectator ─────────────────────────────────────────────────
+function canSpectateCoop() {
+  return _coop?.mode === 'online' && _coop.seen && !_coop.left && !_coop.down
+    && !G.practiceMode && !_levelEnding;
+}
+
+function enterSpectator() {
+  _spectating = true;
+  _playerDestroyed = true;
+  G.answerLocked = true;
+  stopShootingWindow();
+  clearTimeout(_revealTimer);
+  _revealTimer = null;
+  if (G.timerInterval) { clearInterval(G.timerInterval); G.timerInterval = null; }
+  const qbox = document.getElementById('question-box');
+  if (qbox) {
+    qbox.classList.remove('fading', 'appearing', 'resume-appearing', 'correction-active');
+    qbox.classList.add('question-inactive');
+    qbox.style.visibility = 'hidden';
+  }
+  document.getElementById('game-pause-overlay')?.classList.remove('dimmed', 'correction-dimmed');
+  spawnMissileExplosion(G.particles, G.player.x, G.player.y, 'default', 24);
+  SFX.explode?.();
+  shakeFrames = 10;
+  sendCoopStateNow();                 // tell the teammate now
+  updateSpectatorBanner(0);
+}
+
+function updateSpectatorBanner(heal) {
+  if (!_spectating) return;
+  const fr = getLang() === 'fr';
+  const name = _coop?.name || 'PILOT';
+  let el = document.getElementById('coop-spectator');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'coop-spectator';
+    el.className = 'coop-spectator';
+    (document.getElementById('game-canvas-wrap') || document.body).appendChild(el);
+  }
+  const dots = Array.from({ length: COOP_HEAL_ANSWERS }, (_, i) =>
+    `<i class="${i < heal ? 'on' : ''}"></i>`).join('');
+  el.innerHTML = `<b>${fr ? 'MODE SPECTATEUR' : 'SPECTATOR MODE'}</b>
+    <span>${fr ? `Tu es tombé. ${name} doit avoir 3 bonnes réponses pour te réparer.`
+      : `You're down. ${name} needs 3 correct answers to repair you.`}</span>
+    <span class="coop-spectator-dots">${dots}</span>`;
+}
+
+function leaveSpectator() {
+  _spectating = false;
+  document.getElementById('coop-spectator')?.remove();
+}
+
+function reviveFromSpectator() {
+  leaveSpectator();
+  _playerDestroyed = false;
+  G.lives = _maxLives;
+  updateLivesHUD();
+  _invincible = 180;
+  spawnHitSpark(G.particles, G.player.x, G.player.y);
+  coopNotice(`${_coop?.name || 'PILOT'} t'a réparé! De retour au combat!`,
+    `${_coop?.name || 'PILOT'} repaired you! Back in the fight!`);
+  sendCoopStateNow();
+  const sid = _sessionId;
+  setTimeout(() => {
+    if (_sessionId !== sid || _levelEnding) return;
+    if (levelCfg.isBossLevel || G.questionsAnswered < levelCfg.questionCount) nextQuestion();
+    else endLevel(true);
+  }, 1200);
+}
+
 function loseLife({ resumeDelayMs = 900, fromEnemyHit = false } = {}) {
   // A wrong answer is charged once CONTINUE is pressed: the equation is over,
   // so a shield paused by it counts again.
@@ -5423,6 +5563,10 @@ function loseLife({ resumeDelayMs = 900, fromEnemyHit = false } = {}) {
   updateLivesHUD();
   shakeFrames = 12;
   const sid = _sessionId;
+  if (G.lives <= 0 && canSpectateCoop()) {
+    enterSpectator();
+    return;
+  }
   if (G.lives <= 0) {
     G.continueState = {
       lives:             1,
@@ -5516,6 +5660,7 @@ function finishLevel(won) {
   _finishPlaneAnim = null;
   _levelEnding = false;
   _playerDestroyed = false;
+  if (_spectating) leaveSpectator();
   _sessionId++;
   _activeSessionId = 0;
   _gamePausedFromQuit = false;
@@ -6298,4 +6443,3 @@ export function initGame(levelNum, onComplete) {
     ro.disconnect();
   };
 }
-

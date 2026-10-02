@@ -354,7 +354,7 @@ function showRealPlayer() {
       <label for="mp-code">${f ? 'REJOINDRE AVEC UN CODE' : 'JOIN WITH A CODE'}</label>
       <div class="mp-join-row">
         <input id="mp-code" class="mp-code" type="text" autocomplete="off" autocapitalize="characters"
-          spellcheck="false" maxlength="${CODE_MAX}" placeholder="ABC123">
+          spellcheck="false" maxlength="${CODE_MAX}" placeholder="4KNDJW">
         <button class="mp-go" type="button" disabled>${f ? 'REJOINDRE' : 'JOIN'}</button>
       </div>
       <small class="mp-hint">${f ? `Code de ${CODE_MIN} à ${CODE_MAX} caractères` : `${CODE_MIN} to ${CODE_MAX} characters`}</small>

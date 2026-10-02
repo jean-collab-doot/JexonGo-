@@ -1726,6 +1726,12 @@ html #s-levelmap::after {
 .mp-dots i:nth-child(3) { animation-delay: .3s; }
 .mp-error { text-align: center; font-size: 9px; line-height: 1.6; color: #b91c1c; }
 .mp-choice-small { justify-content: center; }
+/* Phones: CREATE A GAME as a compact centred button, not a full-width card. */
+@media (max-width: 600px) {
+  .mp-choice[data-mp="host"] { justify-self: center; gap: 10px; padding: 8px 16px 8px 10px; }
+  .mp-choice[data-mp="host"] .mp-ico { width: 34px; height: 34px; }
+  .mp-choice[data-mp="host"] small { display: none; }
+}
 /* TON BOT: plane choice + FIRE POWER / LIVES upgrades. */
 .mp-botplane { display: flex; align-items: center; justify-content: center; gap: 6px; }
 .mp-botplane .mp-botname { flex: 1; min-width: 0; }
@@ -1882,3 +1888,31 @@ html #s-levelmap::after {
   background: linear-gradient(180deg, #9aa3ad, #6b7480);
   box-shadow: 0 5px 0 #454c55, inset 0 3px 0 rgba(255,255,255,.3);
 }
+
+/* Online co-op: out of lives, watching the teammate (game.js enterSpectator). */
+.coop-spectator {
+  position: absolute;
+  left: 50%;
+  top: 9%;      /* high up: the teammate flies near the bottom */
+  transform: translateX(-50%);
+  z-index: 13;
+  width: min(92%, 420px);
+  box-sizing: border-box;
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  padding: 12px 14px;
+  text-align: center;
+  font-family: 'Press Start 2P', monospace;
+  color: #fff;
+  background: rgba(8, 14, 32, 0.82);
+  border: 3px solid #60a5fa;
+  border-radius: 14px;
+  box-shadow: 0 0 18px rgba(96, 165, 250, 0.45);
+  pointer-events: none;
+}
+.coop-spectator b { font-size: clamp(10px, 3vw, 14px); color: #93c5fd; font-weight: normal; letter-spacing: 1px; }
+.coop-spectator span { font-size: clamp(7px, 2.2vw, 9px); line-height: 1.6; }
+.coop-spectator-dots { display: flex; gap: 8px; }
+.coop-spectator-dots i { width: 12px; height: 12px; border-radius: 50%; background: rgba(255, 255, 255, 0.25); }
+.coop-spectator-dots i.on { background: #4ade80; box-shadow: 0 0 8px #4ade80; }

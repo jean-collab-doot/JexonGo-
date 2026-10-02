@@ -25,7 +25,7 @@ const JOIN_MAX_MS = 90000;
 // A teammate who leaves the room (phone locked, other app) has this long to
 // come back before "… left the game".
 const PARTNER_GRACE_MS = 12000;
-const RELAYED = new Set(['coop_state', 'coop_shot', 'coop_done']);
+const RELAYED = new Set(['coop_state', 'coop_shot', 'coop_done', 'coop_revive']);
 
 const _handlers = new Map();   // type -> Set<fn>
 let _channel = null;
