@@ -8,6 +8,7 @@
 // on touch devices to keep phones smooth.
 
 import { isTouchMobile } from '../utils/device.js';
+import { getLang } from '../i18n.js';
 
 let fx = null;
 
@@ -540,16 +541,19 @@ function drawRingShower(ctx, step) {
 // push: px per frame at the peak of a gust · every: frames between gusts ·
 // bothWays: gusts can blow left or right (otherwise always to the right, the
 // way the sand / blizzard snow flies) · ambient: streaks visible even
-// between gusts.
+// between gusts · tailHead: share of gusts blowing from behind (pushes the
+// plane forward = up the screen) or head-on (pushes it back = down), storms.
 const GUST_CONFIG = {
-  STORM:     { push: 1.6, every: [300, 600], bothWays: true },
-  BLIZZARD:  { push: 1.6, every: [300, 600], bothWays: false },
-  SANDSTORM: { push: 1.6, every: [300, 600], bothWays: false },
+  STORM:     { push: 1.6, every: [300, 600], bothWays: true, tailHead: 0.6 },
+  BLIZZARD:  { push: 1.6, every: [300, 600], bothWays: false, tailHead: 0.4 },
+  SANDSTORM: { push: 1.6, every: [300, 600], bothWays: false, tailHead: 0.4 },
   WINDY:     { push: 1.4, every: [150, 330], bothWays: true, ambient: 0.3 },
-  TYPHOON:   { push: 2.3, every: [180, 360], bothWays: true },
-  JOVIAN:    { push: 1.3, every: [240, 480], bothWays: true },
+  TYPHOON:   { push: 2.3, every: [180, 360], bothWays: true, tailHead: 0.5 },
+  JOVIAN:    { push: 1.3, every: [240, 480], bothWays: true, tailHead: 0.5 },
   SUPERSONIC:{ push: 2.5, every: [150, 300], bothWays: false, ambient: 0.45 },
 };
+// Screens are shorter than wide: front / back gusts push a bit less.
+const TAIL_HEAD_PUSH = 0.75;
 const GUST_FRAMES = 150;          // ≈2.5 s
 
 function gustStrength() {
@@ -568,7 +572,14 @@ export function windIntensity() {
 export function windForce() {
   if (!fx) return 0;
   const cfg = GUST_CONFIG[fx.id];
-  return fx.gust && cfg ? fx.gust.dir * cfg.push * gustStrength() : 0;
+  return fx.gust && cfg && fx.gust.axis !== 'y' ? fx.gust.dir * cfg.push * gustStrength() : 0;
+}
+
+/** Vertical push (px per frame): < 0 tail wind (forward), > 0 head wind (back). */
+export function windForceY() {
+  if (!fx) return 0;
+  const cfg = GUST_CONFIG[fx.id];
+  return fx.gust && cfg && fx.gust.axis === 'y' ? fx.gust.dir * cfg.push * TAIL_HEAD_PUSH * gustStrength() : 0;
 }
 
 function updateGusts(ctx, step) {
@@ -578,8 +589,11 @@ function updateGusts(ctx, step) {
   if (!fx.gust) {
     fx.nextGust -= step;
     if (fx.nextGust <= 0) {
-      fx.gust = { dir: cfg.bothWays ? (Math.random() < 0.5 ? -1 : 1) : 1, age: 0 };
+      const axis = Math.random() < (cfg.tailHead || 0) ? 'y' : 'x';
+      const dir = axis === 'y' || cfg.bothWays ? (Math.random() < 0.5 ? -1 : 1) : 1;
+      fx.gust = { dir, axis, age: 0 };
       fx.lastGustDir = fx.gust.dir;
+      fx.lastGustAxis = axis;
     }
   } else {
     fx.gust.age += step;
@@ -597,6 +611,34 @@ function updateGusts(ctx, step) {
   ctx.lineCap = 'round';
   ctx.strokeStyle = fx.id === 'SANDSTORM' ? '#fde6c0' : '#ffffff';
   ctx.lineWidth = 2;
+  if ((fx.gust?.axis ?? fx.lastGustAxis) === 'y') {
+    // Front / back gust: streaks race up (tail wind) or down (head wind).
+    for (const st of fx.streaks) {
+      st.y += dir * st.speed * (0.4 + k) * step;
+      if (dir > 0 && st.y - st.len > h) { st.y = rand(-h * 0.3, 0); st.x = rand(0, w); }
+      if (dir < 0 && st.y + st.len < 0) { st.y = rand(h, h * 1.3); st.x = rand(0, w); }
+      ctx.globalAlpha = st.alpha * k;
+      ctx.beginPath();
+      ctx.moveTo(st.x, st.y);
+      ctx.lineTo(st.x, st.y - dir * st.len);
+      ctx.stroke();
+    }
+    // Name the gust while it blows hard.
+    if (fx.gust && k > 0.25) {
+      const fr = getLang() === 'fr';
+      const text = dir < 0 ? (fr ? '▲ VENT ARRIÈRE ▲' : '▲ TAIL WIND ▲') : (fr ? '▼ VENT DE FACE ▼' : '▼ HEAD WIND ▼');
+      ctx.globalAlpha = Math.min(1, (k - 0.25) * 2.5);
+      ctx.font = `${Math.max(10, Math.round(w * 0.018))}px 'Press Start 2P', monospace`;
+      ctx.textAlign = 'center';
+      ctx.lineWidth = 4;
+      ctx.strokeStyle = 'rgba(0,0,0,0.6)';
+      ctx.strokeText(text, w / 2, h * 0.2);
+      ctx.fillStyle = '#e0f2fe';
+      ctx.fillText(text, w / 2, h * 0.2);
+    }
+    ctx.restore();
+    return;
+  }
   for (const st of fx.streaks) {
     st.x += dir * st.speed * (0.4 + k) * step;
     if (dir > 0 && st.x - st.len > w) { st.x = rand(-w * 0.3, 0); st.y = rand(0, h); }

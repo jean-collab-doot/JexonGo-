@@ -21,7 +21,7 @@ import { shouldShowIntroBriefing, showIntroBriefing } from './intro-briefing.js'
 import { SHOOTING_PLANS } from './shop.js';
 import { initBackground, updateBackground, drawBackground } from '../game/background.js';
 import { initClouds, updateClouds, drawClouds } from '../game/clouds.js';
-import { initWeatherFx, drawWeatherFx, windForce, windIntensity } from '../game/weather-fx.js';
+import { initWeatherFx, drawWeatherFx, windForce, windForceY, windIntensity } from '../game/weather-fx.js';
 import { WEATHER_TYPES } from '../data/weather.js';
 import {
   initAirdrop, updateAirdrop, drawAirdrop, handleAirdropPointer,
@@ -2071,9 +2071,12 @@ function updatePlayerMovement() {
     G.player.x += velX * step;
     G.player.y += velY * step;
   }
-  // Extreme weather gusts push the aircraft sideways; the player can fly
-  // against the wind to hold position.
-  if (!_cutsceneActive) G.player.x += windForce() * step;
+  // Extreme weather gusts push the aircraft sideways, or (storms) from behind
+  // / head-on; the player can fly against the wind to hold position.
+  if (!_cutsceneActive) {
+    G.player.x += windForce() * step;
+    if (!_questionReturnAnim) G.player.y += windForceY() * step;
+  }
   G.player.x = Math.max(margin, Math.min(canvas.width  - margin, G.player.x));
   if (_questionReturnAnim) {
     const elapsed = performance.now() - _questionReturnAnim.start;

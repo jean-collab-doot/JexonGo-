@@ -15979,6 +15979,12 @@ html.touch-phone #s-briefing {
 html.touch-phone #s-briefing > * {
   flex-shrink: 0 !important;
 }
+/* Same on computers: on a shorter window (e.g. 1366x768) the flex column
+   squeezed the mission card down to its title and hid the description.
+   Blocks keep their full height and #s-briefing scrolls instead. */
+#s-briefing > * {
+  flex-shrink: 0;
+}
 @media (max-height: 760px) {
   html.touch-phone .briefing-pilot-row { margin-top: 4px !important; padding: 6px 10px !important; }
   html.touch-phone .briefing-card { margin-top: 6px !important; margin-bottom: 8px !important; padding: 10px 12px !important; }
