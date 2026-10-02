@@ -4701,7 +4701,8 @@ function onMissileHit(enemy, missile) {
 
 // ── QUESTION CYCLE ───────────────────────────────────────────────────────────
 function nextQuestion() {
-  if (_transitioning || _bossDefeated) return;
+  // Spectator (online co-op, out of lives): no questions until repaired.
+  if (_transitioning || _bossDefeated || _spectating) return;
   stopShootingWindow();
   const questionTarget = isTutorialActive() ? tutorialQuestionTarget()
     : _guidedRun ? GUIDED_QUESTIONS : levelCfg.questionCount;
@@ -4769,7 +4770,7 @@ function nextQuestion() {
 
   setTimeout(() => {
     // If the level ended while we were transitioning, abort
-    if (_sessionId !== _nqSid) { _transitioning = false; return; }
+    if (_sessionId !== _nqSid || _spectating) { _transitioning = false; return; }
 
     // Hide reveal banner
     reveal.classList.add('hidden');
@@ -4824,6 +4825,7 @@ function nextQuestion() {
     const returnDuration = returnPlayerAboveQuestionBox();
     const revealQuestionPanel = () => {
       if (_sessionId !== _nqSid) return;
+      if (_spectating) { _transitioning = false; return; }
       qbox.classList.remove('question-inactive');
       qbox.style.visibility = '';
       qbox.classList.remove('fading', 'shooting-hidden', 'resume-appearing', 'appearing');
@@ -4848,6 +4850,7 @@ function startTimer(resetTime = true) {
   if (G.timerInterval) clearInterval(G.timerInterval);
   G.timerInterval = null;
   const timerWrap = $('timer-bar-wrap');
+  if (_spectating) { timerWrap.style.visibility = 'hidden'; return; }
   if (_levelEnding) {
     timerWrap.classList.add('timer-finished');
     return;
@@ -4996,7 +4999,7 @@ function typedAnswerKey(e) {
 
 // ── ANSWER HANDLING ──────────────────────────────────────────────────────────
 function handleAnswer(choice, btn) {
-  if (G.answerLocked) return;
+  if (G.answerLocked || _spectating) return;
   G.answerLocked = true;
   _answerImmuneUntil = performance.now() + ANSWER_IMMUNE_MS;
   clearInterval(G.timerInterval);
@@ -5447,6 +5450,10 @@ function enterSpectator() {
   clearTimeout(_revealTimer);
   _revealTimer = null;
   if (G.timerInterval) { clearInterval(G.timerInterval); G.timerInterval = null; }
+  _transitioning = false;
+  const timerWrap = document.getElementById('timer-bar-wrap');
+  if (timerWrap) timerWrap.style.visibility = 'hidden';
+  document.getElementById('correct-answer-reveal')?.classList.add('hidden');
   const qbox = document.getElementById('question-box');
   if (qbox) {
     qbox.classList.remove('fading', 'appearing', 'resume-appearing', 'correction-active');
