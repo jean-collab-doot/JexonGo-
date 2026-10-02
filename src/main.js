@@ -972,6 +972,15 @@ if (G.playerRegistered && G.playerEmail) {
         await askPilotName([G.playerName, G.playerEmail.split('@')[0]]);
       }
       if (sync?.merged) renderMenu();
+      else if (sync?.forbidden) {
+        // The account's sign-in expired (or was ended): progress stays on
+        // this device and merges with the account when signing in again.
+        while (document.getElementById('np-intro')) await new Promise(r => setTimeout(r, 300));
+        _showLoginToast(getLang() === 'fr'
+          ? 'Ta connexion a expiré. Reconnecte-toi pour retrouver ta progression du compte.'
+          : 'Your sign-in expired. Sign in again to get your account progress back.', 4200);
+        if (G.playerAuthType === 'google') setTimeout(openConnectPrompt, 1200);
+      }
       else if (sync?.offline && window._showToast) {
         window._showToast(t('syncOffline') || 'Account connected - progress saves on this device.');
       }

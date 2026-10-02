@@ -105,7 +105,11 @@ export function clearSupabaseBrowserSession() {
 export async function signOutSupabase() {
   try {
     const supabase = await getSupabaseClient();
-    await supabase?.auth.signOut();
+    // 'local': sign out this device only. The default ('global') revoked the
+    // account's sessions on every device, so a phone signing out (or giving
+    // the game to another device with CONTINUER ICI) killed the other
+    // device's login: its token refresh failed and its saves were refused.
+    await supabase?.auth.signOut({ scope: 'local' });
   } finally {
     clearSupabaseBrowserSession();
   }

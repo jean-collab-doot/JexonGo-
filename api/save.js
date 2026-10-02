@@ -55,19 +55,29 @@ async function requestJson(url, options) {
   const response = await fetch(url, options);
   const data = await response.json().catch(() => null);
   if (!response.ok) {
-    throw new Error(data?.message || data?.error || `Supabase request failed (${response.status})`);
+    const error = new Error(data?.message || data?.msg || data?.error || `Supabase request failed (${response.status})`);
+    error.status = response.status;
+    throw error;
   }
   return data;
 }
 
+// An expired or revoked session is the player's to fix (sign in again): 401,
+// not a server error.
 async function getAuthenticatedUser(token) {
-  const data = await requestJson(`${SUPABASE_PROJECT_URL.replace(/\/$/, '')}/auth/v1/user`, {
-    headers: {
-      apikey: SUPABASE_PUBLISHABLE_KEY,
-      Authorization: `Bearer ${token}`,
-    },
-  });
-  if (!data?.id || !data?.email) throw new Error('invalid Supabase user');
+  let data;
+  try {
+    data = await requestJson(`${SUPABASE_PROJECT_URL.replace(/\/$/, '')}/auth/v1/user`, {
+      headers: {
+        apikey: SUPABASE_PUBLISHABLE_KEY,
+        Authorization: `Bearer ${token}`,
+      },
+    });
+  } catch (err) {
+    if ([400, 401, 403].includes(err.status)) err.status = 401;
+    throw err;
+  }
+  if (!data?.id || !data?.email) throw Object.assign(new Error('invalid Supabase user'), { status: 401 });
   return data;
 }
 
@@ -207,6 +217,7 @@ export default async function handler(req, res) {
 
     return send(res, 405, { error: 'method not allowed' });
   } catch (err) {
+    if (err?.status === 401) return send(res, 401, { error: 'session expired' });
     console.error('[Save] failed:', err);
     return send(res, 500, { error: err?.message || 'save failed' });
   }
