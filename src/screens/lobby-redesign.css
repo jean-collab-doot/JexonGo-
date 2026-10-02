@@ -1586,6 +1586,12 @@ html #s-levelmap::after {
 @media (min-width: 700px) {
   .jx-multi-btn { top: 8px; left: 14px; }
 }
+/* 700-819px (iPad portrait...): MULTI / TOP 20 sit in the top-left corner but
+   the coins bar still started at 3.5% and ran under them. Start it after the
+   buttons (from 820px the bar is already at 12%). */
+@media (min-width: 700px) and (max-width: 819.98px) {
+  .jx-hud { left: 92px; }
+}
 .jx-multi-btn:active { transform: translateY(3px); box-shadow: 0 2px 0 #9a4a00; }
 .jx-multi-ico { position: relative; width: 58px; height: 32px; }
 /* T-6 and F/A-18 flying together (co-op). */
