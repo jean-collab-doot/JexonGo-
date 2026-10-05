@@ -34,7 +34,7 @@ import { calcSpeedXP } from '../systems/xp.js';
 import { load, save } from '../utils/storage.js';
 import { t, getLang } from '../i18n.js';
 import {
-  isTouchMobile, gameCanvasDpr,
+  isTouchMobile, isTablet, isPhone, gameCanvasDpr,
 } from '../utils/device.js';
 import { setSpriteCanvasWidth } from '../game/aircraft-draw.js';
 import { coopOn as wsOn, coopSend as wsSend, coopDisconnect as wsDisconnect } from '../online/coop-realtime.js';
@@ -43,6 +43,14 @@ const ENEMY_MOVEMENT_SPEED_SCALE = 0.82;
 // Phones and tablets: enemy planes fly 60% faster (they looked slow there).
 const TOUCH_ENEMY_SPEED_MULT = 1.6;
 const TOUCH_F5_EXTRA_SPEED = 1.35;   // F-5s: 35% more on top of that
+// Tablets: their screen is much taller than a phone's, so at phone speed the
+// planes took far longer to cross it and looked slow. Extra speed in
+// proportion to the screen height (a phone is ~760px tall), at least +20%.
+const TABLET_SPEED_REF_HEIGHT = 760;
+function tabletEnemySpeedMult() {
+  if (!isTablet() || isPhone()) return 1;
+  return Math.max(1.2, Math.min(1.6, (window.innerHeight || TABLET_SPEED_REF_HEIGHT) / TABLET_SPEED_REF_HEIGHT));
+}
 const ENEMY_SPAWN_INTERVAL_SCALE = 0.9;
 // Frames between shots (60 fps): F-15 = 5 s, F-5 ('fast') = 5 s,
 // Eurofighter ('turner') = 3 s.
@@ -2695,7 +2703,8 @@ function frame(ts = 0) {
 
     for (const e of spawned) {
       e.speed       *= levelCfg.enemySpeedMult * ENEMY_MOVEMENT_SPEED_SCALE * (_guidedRun ? GUIDED_ENEMY_SPEED : 1)
-        * (isTouchMobile() ? TOUCH_ENEMY_SPEED_MULT * (e.type === 'fast' ? TOUCH_F5_EXTRA_SPEED : 1) : 1);
+        * (isTouchMobile() ? TOUCH_ENEMY_SPEED_MULT * (e.type === 'fast' ? TOUCH_F5_EXTRA_SPEED : 1) : 1)
+        * tabletEnemySpeedMult();
       // Same cadence on phone, tablet and computer.
       e.fireRate     = Math.max(30, Math.floor(e.fireRate * levelCfg.enemyFireRateMult));
       e.fireCooldown = 45 + Math.floor(Math.random() * 45);
