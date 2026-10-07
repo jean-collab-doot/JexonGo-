@@ -26,6 +26,23 @@ const copyGameAssets = {
   },
 };
 
+// The "test-debloque" deployment always starts as a brand-new player: every
+// page load wipes this site's saved data (save, settings, sign-in) before the
+// game's scripts run. Only that branch's build gets this script.
+const FRESH_PLAYER_BRANCH = process.env.VERCEL_ENV === 'preview'
+  && process.env.VERCEL_GIT_COMMIT_REF === 'test-debloque';
+const freshPlayerEveryLoad = {
+  name: 'fresh-player-every-load',
+  transformIndexHtml() {
+    if (!FRESH_PLAYER_BRANCH) return [];
+    return [{
+      tag: 'script',
+      injectTo: 'head-prepend',
+      children: 'try{localStorage.clear();sessionStorage.clear();}catch(e){}',
+    }];
+  },
+};
+
 export default {
   base: './',
   // Vercel preview deployments (not production) unlock every level and
@@ -40,7 +57,7 @@ export default {
     // phone still running an older cached version is easy to spot.
     __BUILD_ID__: JSON.stringify((process.env.VERCEL_GIT_COMMIT_SHA || 'local').slice(0, 7)),
   },
-  plugins: [copyGameAssets],
+  plugins: [copyGameAssets, freshPlayerEveryLoad],
   server: {
     watch: {
       // Browser downloads in progress (.crdownload, .part, .tmp) are locked by
