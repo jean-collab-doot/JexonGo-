@@ -6216,10 +6216,10 @@ export function initGame(levelNum, onComplete) {
 
 
   const sid = _sessionId;
-  // Beginner practice (after the briefing): the yellow T-6 loading screen
-  // covers the level while it loads, instead of the blue "loading" sky.
+  // Every game load (levels, practice, training, retry, MULTI): the yellow
+  // T-6 loading screen covers the level while it loads.
   _yellowLoader?.remove();
-  _yellowLoader = _guidedRun ? showYellowLoader() : null;
+  _yellowLoader = showYellowLoader();
   const loader = _yellowLoader;
 
   function tryStart() {
@@ -6443,15 +6443,8 @@ export function initGame(levelNum, onComplete) {
           else nextQuestion();
         });
       };
-      // Yellow loading screen: the countdown starts once it has gone.
-      const startLevelFlow = () => {
-        if (!loader) { startLevelFlowNow(); return; }
-        _cutsceneActive = true;
-        loader.hide().then(() => {
-          if (_yellowLoader === loader) _yellowLoader = null;
-          if (_isActiveSid(sid)) startLevelFlowNow();
-        });
-      };
+      const startLevelFlow = startLevelFlowNow;
+      const afterLoading = () => {
       if (shouldForceIntroBriefingBeforeFirstRound() || shouldShowIntroBriefing(levelNum)) {
         _cutsceneActive = true;
         _stopGameLoop();
@@ -6464,6 +6457,15 @@ export function initGame(levelNum, onComplete) {
           }
         });
       } else startLevelFlow();
+      };
+      // Yellow loading screen: what comes next (briefing or countdown) starts
+      // once it has gone; nothing moves underneath meanwhile.
+      if (!loader) { afterLoading(); return; }
+      _cutsceneActive = true;
+      loader.hide().then(() => {
+        if (_yellowLoader === loader) _yellowLoader = null;
+        if (_isActiveSid(sid)) afterLoading();
+      });
     });
   }
   requestAnimationFrame(tryStart);
