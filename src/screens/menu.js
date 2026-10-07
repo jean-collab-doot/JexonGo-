@@ -934,7 +934,17 @@ export function openMissionsPanel() {
 // own cover-fit math to convert that fraction into real on-screen px, the
 // same trick used for the shop's missile buttons (see positionArsenalButtons
 // in shop.js). Re-run on resize while the panel is open.
-const MISSION_TABLET_POS = { fx: 0.499, fy: 0.489 };
+// The tablet's screen in mission-briefing-bg.webp (1536x1024): its glowing
+// border spans x 719-816, y 468-534 (centre and size as fractions of the art).
+const MISSION_TABLET_POS = { fx: 0.4997, fy: 0.4893, fw: 0.0632, fh: 0.0645 };
+// "50% 0%", "center top", "left 30%"... as fractions (0 = left / top).
+function objectPositionFractions(img) {
+  const words = { left: 0, top: 0, center: 0.5, right: 1, bottom: 1 };
+  const parts = (getComputedStyle(img).objectPosition || '50% 50%').trim().split(/\s+/);
+  const frac = v => (v in words ? words[v] : v.endsWith('%') ? parseFloat(v) / 100 : 0.5);
+  return [frac(parts[0] || '50%'), frac(parts[1] || parts[0] || '50%')];
+}
+
 function positionMissionTablet() {
   const bg  = document.querySelector('#missions-panel .jx-bg');
   const btn = $('btn-missions-tablet');
@@ -942,19 +952,42 @@ function positionMissionTablet() {
   const place = () => {
     const iw = bg.naturalWidth, ih = bg.naturalHeight;
     if (!iw || !ih) return false;
-    const rect = bg.parentElement.getBoundingClientRect();
-    const vw = rect.width, vh = rect.height;
+    // Measured on the image itself, relative to the box the hotspot is
+    // positioned in, so nothing else (padding, another parent) shifts it.
+    const box = bg.getBoundingClientRect();
+    const host = (btn.offsetParent || bg.parentElement).getBoundingClientRect();
+    const vw = box.width, vh = box.height;
     if (!vw || !vh) return false;
+    // object-fit: cover, cropped where object-position says (read from the
+    // page: lobby-redesign.css sets it per screen).
     const scale = Math.max(vw / iw, vh / ih);
     const dw = iw * scale, dh = ih * scale;
-    const offsetX = (vw - dw) / 2, offsetY = (vh - dh) / 2;
-    btn.style.left = `${offsetX + MISSION_TABLET_POS.fx * dw}px`;
-    btn.style.top  = `${offsetY + MISSION_TABLET_POS.fy * dh}px`;
+    const [ax, ay] = objectPositionFractions(bg);
+    const offsetX = (box.left - host.left) + (vw - dw) * ax;
+    const offsetY = (box.top - host.top) + (vh - dh) * ay;
+    const pos = MISSION_TABLET_POS;
+    btn.style.left = `${offsetX + pos.fx * dw}px`;
+    btn.style.top  = `${offsetY + pos.fy * dh}px`;
+    // Same size as the tablet's screen (plus its glow), on every screen size.
+    btn.style.width  = `${Math.round(pos.fw * dw + 8)}px`;
+    btn.style.height = `${Math.round(pos.fh * dh + 8)}px`;
+    btn.style.visibility = '';
     return true;
   };
+  // Hidden until it can sit on the tablet (the room picture may still be
+  // loading): never shown at a default spot beside it.
+  if (!place()) btn.style.visibility = 'hidden';
   const tryPlace = () => { if (!place()) requestAnimationFrame(place); };
   if (bg.complete) requestAnimationFrame(tryPlace);
   else bg.addEventListener('load', () => requestAnimationFrame(tryPlace), { once: true });
+  // Follows every later size change of the picture (rotation, window resize,
+  // the panel finishing its layout).
+  if (!bg._tabletObserver && typeof ResizeObserver !== 'undefined') {
+    bg._tabletObserver = new ResizeObserver(() => {
+      if (!$('missions-panel')?.classList.contains('hidden')) place();
+    });
+    bg._tabletObserver.observe(bg);
+  }
 }
 if (typeof window !== 'undefined') {
   window.addEventListener('resize', () => {
