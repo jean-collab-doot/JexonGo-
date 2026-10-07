@@ -400,8 +400,9 @@ let _reopenConnectPrompt = false;
 window._startBriefingPractice = () =>
   showBriefingEquationOptions(() => showIntroBriefing(() =>
     startPracticeFromOnboarding({ skipConnectPrompt: true })));   // no Google invitation here
-function openConnectPrompt() {
+function openConnectPrompt(reason = '') {
   showConnectPrompt({
+    reason,
     onGoogle: () => handleGoogleLogin('google'),
     onLegal: kind => {
       _reopenConnectPrompt = true;
@@ -420,7 +421,7 @@ function cleanup() {
 
 window._nav = nav;
 // No account: tapping a level after level 1 opens the sign-in invitation.
-window._openConnectPrompt = () => openConnectPrompt();
+window._openConnectPrompt = () => openConnectPrompt('levels');
 window._showFeedbackPopup  = () => showFeedbackPopup();
 window._resetNewPlayer     = _resetNewPlayer;
 window._testEmailNow       = _testEmailNow;

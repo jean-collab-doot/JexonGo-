@@ -12,12 +12,14 @@ const GOOGLE_G = `<svg viewBox="0 0 48 48" aria-hidden="true">
   <path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.7-6c-2.2 1.5-5 2.3-8.2 2.3-6.2 0-11.5-4.1-13.4-9.8l-7.9 6.1C6.6 42.6 14.6 48 24 48z"/>
 </svg>`;
 
-export function showConnectPrompt({ onGoogle, onLater, onLegal } = {}) {
+// reason 'levels': a player without an account reached the end of level 1.
+export function showConnectPrompt({ onGoogle, onLater, onLegal, reason = '' } = {}) {
   document.getElementById('connect-prompt')?.remove();
   const fr = getLang() === 'fr';
+  const levels = reason === 'levels';
   const perks = fr
-    ? [['save', 'Ta progression est sauvegardée'], ['coin', 'Garde tes pièces et tes avions'], ['phone', 'Joue sur tous tes appareils']]
-    : [['save', 'Your progress is saved'], ['coin', 'Keep your coins and planes'], ['phone', 'Play on all your devices']];
+    ? [['star', 'Tous les niveaux débloqués'], ['save', 'Ta progression est sauvegardée'], ['coin', 'Garde tes pièces et tes avions'], ['phone', 'Joue sur tous tes appareils']]
+    : [['star', 'Every level unlocked'], ['save', 'Your progress is saved'], ['coin', 'Keep your coins and planes'], ['phone', 'Play on all your devices']];
   const overlay = document.createElement('div');
   overlay.id = 'connect-prompt';
   overlay.className = 'cp';
@@ -25,9 +27,11 @@ export function showConnectPrompt({ onGoogle, onLater, onLegal } = {}) {
     <div class="cp-plane"></div>
     <div class="cp-card">
       <div class="cp-title">${fr ? 'BRAVO PILOTE!' : 'GREAT JOB, PILOT!'}</div>
-      <div class="cp-sub">${fr ? 'Tu as fini ta première pratique!' : 'You finished your first practice!'}</div>
+      <div class="cp-sub">${levels
+        ? (fr ? 'Pour jouer au niveau 2 et plus, connecte-toi!' : 'Sign in to play level 2 and beyond!')
+        : (fr ? 'Tu as fini ta première pratique!' : 'You finished your first practice!')}</div>
       <div class="cp-google">${GOOGLE_G}</div>
-      <div class="cp-ask">${fr ? 'Connecte-toi avec ton compte Google' : 'Sign in with your Google account'}</div>
+      <div class="cp-ask">${fr ? 'Connecte-toi avec ton compte Google. C’est gratuit!' : 'Sign in with your Google account. It’s free!'}</div>
       <ul class="cp-perks">
         ${perks.map(([icon, text], i) => `<li style="--i:${i}"><span>${uiIcon(icon)}</span>${text}</li>`).join('')}
       </ul>
