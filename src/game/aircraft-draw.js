@@ -40,12 +40,12 @@ function getPlayerSize() {
   if (_cachedPlayerSizeW !== w) {
     _cachedPlayerSizeW = w;
     if (isTouchMobile()) {
-      const min = isPhone() ? 48 : 72;
-      const max = isPhone() ? 62 : 96;
+      const min = isPhone() ? 48 : 58;   // tablets: ~20% smaller than before (72-96)
+      const max = isPhone() ? 62 : 78;
       _cachedPlayerSize = Math.round(_clamp(w * 0.18, min, max));
     } else {
       const narrow = w <= 520;
-      _cachedPlayerSize = narrow ? 64 : 112;
+      _cachedPlayerSize = narrow ? 64 : 90;   // computers: ~20% smaller than before (112)
     }
   }
   return _cachedPlayerSize;
