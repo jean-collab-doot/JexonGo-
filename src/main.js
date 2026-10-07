@@ -34,6 +34,7 @@ import { claimSessionOrBlock, sessionBlockedMessage, sessionLostMessage, askTake
 import { applyDeviceClasses } from './utils/device.js';
 import { isLevelUnlocked } from './systems/progression.js';
 import { isPilotNameAllowed } from './utils/pilot-name.js';
+import { isPasswordLeaked } from './utils/password-check.js';
 import { showPilotNamePrompt } from './screens/pilot-name-prompt.js';
 
 const ANALYTICS_OPT_OUT_KEY = 'jexongoAnalyticsOptOut';
@@ -729,6 +730,7 @@ function initRegistration() {
     if (!tos)                           { err.textContent = t('regErrTos');      return; }
     if (!privacy)                       { err.textContent = t('regErrPrivacy');  return; }
     if (age < PARENT_CONSENT_AGE && !parentOk) { err.textContent = t('regErrParent'); return; }
+    if (await isPasswordLeaked(pw))     { err.textContent = t('regErrPasswordLeaked'); return; }
 
     err.textContent       = '';
     try {

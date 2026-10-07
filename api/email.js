@@ -1,3 +1,6 @@
+import { getSupabaseUser } from './_supabase-user.js';
+import { publicPilotName } from '../src/utils/pilot-name.js';
+
 function env(...names) {
   for (const name of names) {
     const value = process.env[name];
@@ -48,6 +51,37 @@ const EMAILJS_NEW_PLAYER_TEMPLATE_ID = env(
   'NEXT_PUBLIC_EMAILJS_NEW_PLAYER_TEMPLATE_ID',
   'VITE_EMAILJS_NEW_PLAYER_TEMPLATE_ID',
 ) || DEFAULT_EMAILJS_NEW_PLAYER_TEMPLATE_ID;
+
+// EmailJS private key (Account > Security). Once "Use Private Key" is turned
+// on in EmailJS, only this server can send: the public key alone is refused.
+const EMAILJS_PRIVATE_KEY = env('EMAILJS_PRIVATE_KEY', 'EMAILJS_ACCESS_TOKEN');
+
+// Feedback can be sent without an account, so it is limited per address:
+// at most FEEDBACK_MAX messages per FEEDBACK_WINDOW_MS. Kept in memory, so it
+// is a best-effort brake per server instance, not a hard global limit.
+const FEEDBACK_MAX = 5;
+const FEEDBACK_WINDOW_MS = 10 * 60 * 1000;
+const _feedbackHits = new Map();
+
+function clientIp(req) {
+  const forwarded = String(req.headers?.['x-forwarded-for'] || '').split(',')[0].trim();
+  return forwarded || req.socket?.remoteAddress || 'unknown';
+}
+
+function feedbackAllowed(req) {
+  const now = Date.now();
+  const ip = clientIp(req);
+  const hits = (_feedbackHits.get(ip) || []).filter(at => now - at < FEEDBACK_WINDOW_MS);
+  if (hits.length >= FEEDBACK_MAX) return false;
+  hits.push(now);
+  _feedbackHits.set(ip, hits);
+  if (_feedbackHits.size > 5000) _feedbackHits.clear();
+  return true;
+}
+
+function clip(value, max) {
+  return String(value ?? '').slice(0, max);
+}
 
 function send(res, status, body) {
   res.status(status).json(body);
@@ -111,18 +145,18 @@ function emailHealth() {
 function feedbackParams(body) {
   const params = {
     type: 'feedback',
-    player_name: body.playerName || 'PILOT',
-    player_email: body.playerEmail || '(no email)',
-    email: body.playerEmail || '(no email)',
-    reply_to: body.playerEmail || '',
-    grade: String(body.grade || '0'),
-    date: body.date || new Date().toLocaleDateString(),
-    rating: String(body.rating || '0'),
-    comment: body.comment || '(no comment)',
-    level: String(body.level || '0'),
-    xp: String(body.xp || '0'),
-    aircraft: Array.isArray(body.aircraft) ? body.aircraft.join(', ') : String(body.aircraft || ''),
-    playtime: body.playtime || '0 min',
+    player_name: publicPilotName(body.playerName || 'PILOT', 20),
+    player_email: clip(body.playerEmail || '(no email)', 120),
+    email: clip(body.playerEmail || '(no email)', 120),
+    reply_to: clip(body.playerEmail || '', 120),
+    grade: clip(body.grade || '0', 4),
+    date: clip(body.date || new Date().toLocaleDateString(), 40),
+    rating: clip(body.rating || '0', 2),
+    comment: clip(body.comment || '(no comment)', 2000),
+    level: clip(body.level || '0', 4),
+    xp: clip(body.xp || '0', 12),
+    aircraft: clip(Array.isArray(body.aircraft) ? body.aircraft.join(', ') : String(body.aircraft || ''), 200),
+    playtime: clip(body.playtime || '0 min', 40),
   };
   params.message = [
     `Player: ${params.player_name}`,
@@ -147,7 +181,7 @@ function newPlayerParams(body) {
 
   const params = {
     type: 'new-player',
-    player_name: body.playerName || 'PILOT',
+    player_name: publicPilotName(body.playerName || 'PILOT', 20),
     player_email: playerEmail,
     email: playerEmail,
     to_email: playerEmail,
@@ -156,12 +190,12 @@ function newPlayerParams(body) {
     to: playerEmail,
     toEmail: playerEmail,
     recipient: playerEmail,
-    to_name: body.playerName || 'PILOT',
+    to_name: publicPilotName(body.playerName || 'PILOT', 20),
     reply_to: playerEmail,
-    player_grade: String(body.playerGrade || '0'),
-    language: body.language || 'unknown',
-    date: body.date || new Date().toLocaleDateString(),
-    time: body.time || new Date().toLocaleTimeString(),
+    player_grade: clip(body.playerGrade || '0', 4),
+    language: clip(body.language || 'unknown', 20),
+    date: clip(body.date || new Date().toLocaleDateString(), 40),
+    time: clip(body.time || new Date().toLocaleTimeString(), 40),
   };
   params.message = [
     'New JexonGo pilot',
@@ -183,6 +217,7 @@ async function sendEmailJs({ serviceId, templateId, publicKey, params }) {
       service_id: serviceId,
       template_id: templateId,
       user_id: publicKey,
+      ...(EMAILJS_PRIVATE_KEY ? { accessToken: EMAILJS_PRIVATE_KEY } : {}),
       template_params: params,
     }),
   });
@@ -205,14 +240,20 @@ export default async function handler(req, res) {
     if (configError) return send(res, 503, { ok: false, error: configError });
 
     if (type === 'new-player') {
+      // Only a signed-in player, and only to their own account address:
+      // nobody can use JexonGo to send the welcome email to strangers.
+      const user = await getSupabaseUser(req);
+      if (!user) return send(res, 401, { ok: false, error: 'sign in required' });
       await sendEmailJs({
         serviceId: EMAILJS_NEW_PLAYER_SERVICE_ID,
         templateId: EMAILJS_NEW_PLAYER_TEMPLATE_ID,
         publicKey: EMAILJS_NEW_PLAYER_PUBLIC_KEY,
-        params: newPlayerParams(body),
+        params: newPlayerParams({ ...body, playerEmail: user.email }),
       });
       return send(res, 200, { ok: true, playerTemplateSent: true });
     }
+
+    if (!feedbackAllowed(req)) return send(res, 429, { ok: false, error: 'too many messages, try again later' });
 
     await sendEmailJs({
       serviceId: EMAILJS_FEEDBACK_SERVICE_ID,
