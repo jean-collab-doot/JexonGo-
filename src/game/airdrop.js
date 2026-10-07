@@ -1,4 +1,5 @@
 import { G, addSessionCoins, addSessionXp } from '../state.js';
+import { FULL_UNLOCK } from '../utils/test-mode.js';
 import { drawFrame } from './sprites.js';
 import { SFX } from '../audio/sound.js';
 import { airdropChanceMult, airdropItemDurationMs } from '../data/upgrades.js';
@@ -13,7 +14,7 @@ let drop = null;
 const PLANE_ANIM_END = 120;
 // A drop in 35 % of normal levels, 12-20 s after the start. The local dev
 // server (`npm run dev`) drops one every level after 6-10 s, for testing.
-const DEV_TEST = !!import.meta.env?.DEV;
+const DEV_TEST = FULL_UNLOCK;
 const AIRDROP_LEVEL_CHANCE = DEV_TEST ? 1 : 0.35;
 const AIRDROP_DELAY_MIN_FRAMES = (DEV_TEST ? 6 : 12) * 60;
 const AIRDROP_DELAY_MAX_FRAMES = (DEV_TEST ? 10 : 20) * 60;

@@ -37,6 +37,7 @@ import {
   isTouchMobile, isTablet, isPhone, gameCanvasDpr,
 } from '../utils/device.js';
 import { setSpriteCanvasWidth } from '../game/aircraft-draw.js';
+import { FULL_UNLOCK } from '../utils/test-mode.js';
 import { coopOn as wsOn, coopSend as wsSend, coopDisconnect as wsDisconnect } from '../online/coop-realtime.js';
 
 const ENEMY_MOVEMENT_SPEED_SCALE = 0.82;
@@ -1947,7 +1948,7 @@ function onKeyDown(e) {
   if (k in keys) { keys[k] = true; pointerTarget = null; e.preventDefault(); }
   // Test shortcuts, local dev server only (never in the published game):
   // Y+U god mode · Q+W+E kill the boss · R+M+H+U / T win the level.
-  if (!import.meta.env?.DEV) return;
+  if (!FULL_UNLOCK) return;
   _gameCT.set(k, Date.now());
   if (_gameCheatHeld(['y', 'u']))             _toggleGodMode();
   if (_gameCheatHeld(['q', 'w', 'e']))        _killBoss();

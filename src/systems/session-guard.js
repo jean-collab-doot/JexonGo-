@@ -5,6 +5,7 @@
 // device notices on its next heartbeat and signs out.
 import { getLang } from '../i18n.js';
 import { getSupabaseClient, getSupabaseSession } from './supabase-client.js';
+import { NO_ACCOUNT_WRITES } from '../utils/test-mode.js';
 
 const STALE_MS = 2 * 60 * 1000; // no heartbeat in 2 min = treat as abandoned
 const HEARTBEAT_MS = 30 * 1000;
@@ -66,6 +67,9 @@ export function holdsSession() { return !_lost; }
  * @returns {Promise<{ blocked: boolean }>}
  */
 export async function claimSessionOrBlock({ takeover = false } = {}) {
+  // "test-debloque" deployment: it never takes the account's slot (the real
+  // device keeps playing) and never saves to the account anyway.
+  if (NO_ACCOUNT_WRITES) return { blocked: false };
   try {
     const supabase = await getSupabaseClient();
     const session = await getSupabaseSession();

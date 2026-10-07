@@ -5,6 +5,7 @@
 import { G } from '../state.js';
 import { getSupabaseClient, getSupabaseSession } from './supabase-client.js';
 import { publicPilotName } from '../utils/pilot-name.js';
+import { NO_ACCOUNT_WRITES } from '../utils/test-mode.js';
 
 const MIN_GAP_MS = 5000;
 let _lastPushAt = 0;
@@ -15,7 +16,8 @@ let _tableMissing = false;   // migration 005 not run yet: don't keep writing
 async function push() {
   _pending = null;
   _lastPushAt = Date.now();
-  if (!G.playerRegistered || _tableMissing) return;
+  // "test-debloque" deployment: its test EXP never goes on the public TOP 20.
+  if (!G.playerRegistered || _tableMissing || NO_ACCOUNT_WRITES) return;
   try {
     const supabase = await getSupabaseClient();
     const session = await getSupabaseSession();

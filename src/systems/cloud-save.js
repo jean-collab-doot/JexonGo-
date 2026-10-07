@@ -3,7 +3,7 @@ import { G, saveAll, clampCoins } from '../state.js';
 import { save } from '../utils/storage.js';
 import { getSupabaseAccessToken } from './supabase-client.js';
 import { holdsSession } from './session-guard.js';
-import { TEST_UNLOCK } from '../utils/test-mode.js';
+import { TEST_UNLOCK, NO_ACCOUNT_WRITES } from '../utils/test-mode.js';
 
 export const API_URL =
   (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
@@ -308,6 +308,8 @@ export async function pushCloudSave(opts = {}) {
   if (_cloudSaveOffline) return false;
   // Another device took the account over: never overwrite its save.
   if (!holdsSession()) return false;
+  // "test-debloque" deployment: test values never reach the real account.
+  if (NO_ACCOUNT_WRITES) return false;
   // Preview: the account must be read first (previewSafeSnapshot caps by it).
   if (TEST_UNLOCK && !_cloudBaseKnown) return false;
   if (!CLOUD_SAVE_AVAILABLE) return false;

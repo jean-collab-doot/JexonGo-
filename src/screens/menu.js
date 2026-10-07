@@ -1,5 +1,5 @@
 import { $, showScreen } from '../utils/dom.js';
-import { TEST_UNLOCK } from '../utils/test-mode.js';
+import { TEST_UNLOCK, FULL_UNLOCK } from '../utils/test-mode.js';
 import { rollChestTier } from '../systems/chest.js';
 import { G, loadSave, saveAll, clampCoins, MAX_COINS } from '../state.js';
 import { LOGIN_REWARDS, claimDailyReward, getMissions, claimMission,
@@ -581,7 +581,7 @@ export function initMenu(nav) {
   }
   function _clearKeys(...keys) { keys.forEach(k => _ct.delete(k)); }
 
-  if (import.meta.env?.DEV) document.addEventListener('keydown', e => {
+  if (FULL_UNLOCK) document.addEventListener('keydown', e => {
     const k = String(e.key || '').toLowerCase();
     if (!k) return;
     _ct.set(k, Date.now());

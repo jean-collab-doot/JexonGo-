@@ -32,6 +32,10 @@ export default {
   // aircraft for testing on a phone: src/utils/test-mode.js.
   define: {
     __PREVIEW_TEST__: JSON.stringify(process.env.VERCEL_ENV === 'preview'),
+    // The separate "test-debloque" branch deployment: everything unlocked, as
+    // on the local dev server (max coins / EXP, test shortcuts).
+    __FULL_UNLOCK__: JSON.stringify(process.env.VERCEL_ENV === 'preview'
+      && process.env.VERCEL_GIT_COMMIT_REF === 'test-debloque'),
     // Short commit id of this build, shown on the MULTI waiting screen so a
     // phone still running an older cached version is easy to spot.
     __BUILD_ID__: JSON.stringify((process.env.VERCEL_GIT_COMMIT_SHA || 'local').slice(0, 7)),
