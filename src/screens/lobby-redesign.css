@@ -1936,3 +1936,38 @@ html #s-levelmap::after {
 .coop-spectator-dots { display: flex; gap: 8px; }
 .coop-spectator-dots i { width: 12px; height: 12px; border-radius: 50%; background: rgba(255, 255, 255, 0.25); }
 .coop-spectator-dots i.on { background: #4ade80; box-shadow: 0 0 8px #4ade80; }
+
+/* ---- Lobby tour for new players (lobby-tour.js) ---------------------------- */
+/* Everything goes dark except the light on one button; the bubble says what it
+   does. The overlay takes every tap: only CONTINUER / COMPRIS moves on. */
+.lt { position: fixed; inset: 0; z-index: 9400; animation: ltIn .25s ease-out both; }
+.lt.lt-out { animation: ltOut .25s ease-in forwards; }
+.lt-light {
+  position: fixed; border-radius: 18px; pointer-events: none;
+  box-shadow: 0 0 0 9999px rgba(3, 8, 20, .82), 0 0 0 3px rgba(255, 215, 102, .95), 0 0 26px 6px rgba(255, 200, 0, .55);
+  transition: left .3s ease, top .3s ease, width .3s ease, height .3s ease;
+  animation: ltGlow 1.4s ease-in-out infinite alternate;
+}
+.lt-bubble {
+  position: fixed; box-sizing: border-box; padding: 14px 14px 12px;
+  display: grid; gap: 8px; justify-items: center; text-align: center;
+  font-family: var(--jx-font); color: #3a1d00;
+  background: #fffaf0; border: 4px solid #ff9d00; border-radius: 18px;
+  box-shadow: 0 0 0 4px rgba(255,255,255,.55), 0 12px 26px rgba(0,0,0,.45);
+  transition: left .3s ease, top .3s ease;
+}
+.lt-bubble.lt-pop { animation: ltPop .3s cubic-bezier(.2,1.4,.4,1) both; }
+.lt-count { font-size: 8px; color: #a0651b; letter-spacing: 1px; }
+.lt-title { font-size: clamp(13px, 4vw, 16px); color: #ff8a00; text-shadow: 1px 1px 0 rgba(122,58,0,.25); }
+.lt-text { font-size: clamp(8px, 2.5vw, 10px); line-height: 1.7; }
+.lt-next {
+  margin-top: 4px; padding: 10px 22px; border: 0; border-radius: 14px; cursor: pointer;
+  font-family: var(--jx-font); font-size: 11px; color: #fff; text-shadow: 1px 1px 0 var(--jx-ink);
+  background: linear-gradient(180deg, #ffb347, #ff8a00 55%, #e06a00);
+  box-shadow: 0 4px 0 #9a4a00;
+}
+.lt-next:active { transform: translateY(3px); box-shadow: 0 1px 0 #9a4a00; }
+@keyframes ltIn { from { opacity: 0; } }
+@keyframes ltOut { to { opacity: 0; } }
+@keyframes ltPop { from { opacity: 0; transform: scale(.85); } }
+@keyframes ltGlow { to { box-shadow: 0 0 0 9999px rgba(3, 8, 20, .82), 0 0 0 3px rgba(255, 230, 140, 1), 0 0 38px 10px rgba(255, 200, 0, .75); } }

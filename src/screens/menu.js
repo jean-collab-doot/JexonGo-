@@ -17,6 +17,7 @@ import { makeBottomSheet } from '../utils/bottomsheet.js';
 import { bindHangarTabs, renderHangarPanels, buyAircraftFromLobby, planeCost, meetsGradeRequirement } from './hangar.js';
 import { isMultiLobby, openMultiChoices } from './multiplayer.js';
 import { refreshBadgeAlerts } from '../data/badges.js';
+import { initLobbyTour } from './lobby-tour.js';
 
 // ── GOOGLE SIGN-IN ───────────────────────────────────────────────────────────
 const GOOGLE_CLIENT_ID = '182729505930-rulb73m14t9qvfpjfbplknrcgn0fqvci.apps.googleusercontent.com';
@@ -478,6 +479,7 @@ function _doReset() {
 
 // ── PUBLIC API ───────────────────────────────────────────────────────────────
 export function initMenu(nav) {
+  initLobbyTour();   // new players: the lobby's buttons, one by one
   window._jexongoNav = nav;
 
   $('btn-play').onclick = () => {
