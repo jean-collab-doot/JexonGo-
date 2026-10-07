@@ -2,9 +2,9 @@ import { $ } from '../utils/dom.js';
 import { uiIcon } from '../utils/icons.js';
 import { G } from '../state.js';
 import { getLevel, TOTAL_LEVELS, BIOME_META, BIOMES } from '../data/levels.js';
-import { levelState } from '../systems/progression.js';
+import { levelState, guestLevelCapped } from '../systems/progression.js';
 import { SFX } from '../audio/sound.js';
-import { getLang } from '../i18n.js';
+import { getLang, t } from '../i18n.js';
 import { nodePositions, buildMapBackdrop, routeSegment, territoryArt } from './levelmap-territories.js';
 import { paintFisheye, warmFisheye, lensPositions } from './levelmap-fisheye.js';
 
@@ -256,6 +256,13 @@ function _renderBiomePage(playerLevel, { autoScroll = true } = {}) {
 
     if (visualState === 'locked') {
       element.setAttribute('aria-disabled', 'true');
+      // No account: the next levels open by signing in.
+      if (guestLevelCapped()) {
+        element.addEventListener('click', () => {
+          window._showToast?.(t('signInAlert'));
+          window._openConnectPrompt?.();
+        });
+      }
     } else {
       element.style.setProperty('--node-accent', BIOME_META[biome].accent);
       element.addEventListener('click', () => {

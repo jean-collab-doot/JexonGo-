@@ -3,7 +3,7 @@ import { G, autoSave, clampCoins, MAX_GAME_COINS, maxGameXp, xpUpgradeMultiplier
 import { save, load } from '../utils/storage.js';
 import { SFX } from '../audio/sound.js';
 import { calcStars } from '../systems/xp.js';
-import { saveProgress } from '../systems/progression.js';
+import { saveProgress, guestLevelCapped, GUEST_MAX_LEVEL } from '../systems/progression.js';
 import { rollChest } from '../systems/chest.js';
 import { trackMission } from '../systems/daily.js';
 import { getPilotGrade, getNextGrade } from '../data/pilots.js';
@@ -152,6 +152,10 @@ export function initResult(nav) {
       nav.toChest(rollChest(), 'map');
     } else {
       nav.toMap();
+    }
+    // No account and level 1 won: sign in to go on to level 2.
+    if (guestLevelCapped() && (G.currentLevel || 1) >= GUEST_MAX_LEVEL) {
+      setTimeout(() => window._openConnectPrompt?.(), 500);
     }
   };
   $('btn-result-retry').onclick = () => nav.toGame(G.currentLevel, G.practiceMode);

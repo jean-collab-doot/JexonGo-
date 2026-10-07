@@ -38,19 +38,23 @@ import {
 } from '../utils/device.js';
 import { setSpriteCanvasWidth } from '../game/aircraft-draw.js';
 import { FULL_UNLOCK } from '../utils/test-mode.js';
+import { guestLevelCapped, GUEST_MAX_LEVEL } from '../systems/progression.js';
 import { coopOn as wsOn, coopSend as wsSend, coopDisconnect as wsDisconnect } from '../online/coop-realtime.js';
 
 const ENEMY_MOVEMENT_SPEED_SCALE = 0.82;
 // Phones and tablets: enemy planes fly 60% faster (they looked slow there).
 const TOUCH_ENEMY_SPEED_MULT = 1.6;
 const TOUCH_F5_EXTRA_SPEED = 1.35;   // F-5s: 35% more on top of that
-// Tablets: their screen is much taller than a phone's, so at phone speed the
-// planes took far longer to cross it and looked slow. Extra speed in
-// proportion to the screen height (a phone is ~760px tall), at least +20%.
-const TABLET_SPEED_REF_HEIGHT = 760;
-function tabletEnemySpeedMult() {
-  if (!isTablet() || isPhone()) return 1;
-  return Math.max(1.2, Math.min(1.6, (window.innerHeight || TABLET_SPEED_REF_HEIGHT) / TABLET_SPEED_REF_HEIGHT));
+// Tablets and computers: a taller screen than a phone's (~760px) took the
+// planes far longer to cross at the same speed, so they looked slow. Extra
+// speed in proportion to the screen height: tablets +20% to +60%, computers
+// up to +50% (a window up to ~760px tall stays as before).
+const SCREEN_SPEED_REF_HEIGHT = 760;
+function screenEnemySpeedMult() {
+  if (isPhone()) return 1;
+  const ratio = (window.innerHeight || SCREEN_SPEED_REF_HEIGHT) / SCREEN_SPEED_REF_HEIGHT;
+  if (isTablet()) return Math.max(1.2, Math.min(1.6, ratio));
+  return Math.max(1, Math.min(1.5, ratio));
 }
 const ENEMY_SPAWN_INTERVAL_SCALE = 0.9;
 // Frames between shots (60 fps): F-15 = 5 s, F-5 ('fast') = 5 s,
@@ -507,8 +511,11 @@ function nearestEnemyAheadOf(missile) {
 // 'fast' (F-5) is listed three times so its crossing waves show up more often.
 const RANDOM_ENEMY_TYPES = ['basic', 'fast', 'fast', 'fast', 'tank', 'turner', 'interceptor'];
 
+// No account: level 1 only (systems/progression.js). Practice and the
+// training stay open.
 function hasGuestTrialLeft(levelNum = G.currentLevel || 1) {
-  return true;
+  if (G.practiceMode || isTutorialActive() || G.tutorialMode) return true;
+  return !guestLevelCapped() || levelNum <= GUEST_MAX_LEVEL;
 }
 
 function recordGuestGamePlayed() {
@@ -2705,7 +2712,7 @@ function frame(ts = 0) {
     for (const e of spawned) {
       e.speed       *= levelCfg.enemySpeedMult * ENEMY_MOVEMENT_SPEED_SCALE * (_guidedRun ? GUIDED_ENEMY_SPEED : 1)
         * (isTouchMobile() ? TOUCH_ENEMY_SPEED_MULT * (e.type === 'fast' ? TOUCH_F5_EXTRA_SPEED : 1) : 1)
-        * tabletEnemySpeedMult();
+        * screenEnemySpeedMult();
       // Same cadence on phone, tablet and computer.
       e.fireRate     = Math.max(30, Math.floor(e.fireRate * levelCfg.enemyFireRateMult));
       e.fireCooldown = 45 + Math.floor(Math.random() * 45);
@@ -5928,6 +5935,7 @@ export function initGame(levelNum, onComplete) {
   if (!hasGuestTrialLeft(levelNum)) {
     if (window._showToast) window._showToast(t('signInAlert'));
     window._nav?.toMenu?.();
+    window._openConnectPrompt?.();
     return () => {};
   }
   _sessionId++;

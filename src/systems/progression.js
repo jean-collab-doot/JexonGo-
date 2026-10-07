@@ -1,5 +1,13 @@
 import { save, load } from '../utils/storage.js';
-import { TEST_UNLOCK } from '../utils/test-mode.js';
+import { TEST_UNLOCK, FULL_UNLOCK } from '../utils/test-mode.js';
+import { G } from '../state.js';
+
+// Players without an account can play level 1 only; signing in opens the
+// rest (and saves the progress). Not on the dev server / test-debloque.
+export const GUEST_MAX_LEVEL = 1;
+export function guestLevelCapped() {
+  return !G.playerRegistered && !FULL_UNLOCK;
+}
 
 // Set to false to restore normal progressive unlocking (complete a level to
 // open the next one). While true, every level shows as available regardless
@@ -16,6 +24,7 @@ export function saveProgress(levelNum, stars, xp) {
 }
 
 export function highestUnlockedLevel(levelStars = {}, highestLevel = 0, recommendedLevel = 1) {
+  if (guestLevelCapped()) return GUEST_MAX_LEVEL;
   if (UNLOCK_ALL_LEVELS) return 9999;
   const completed = Object.keys(levelStars)
     .map(Number)
