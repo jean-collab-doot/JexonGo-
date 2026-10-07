@@ -24,7 +24,7 @@ import { initMultiplayer, enterMultiplayer, exitMultiplayer, isMultiLobby } from
 import { initLeaderboard, closeLeaderboard } from './screens/leaderboard.js';
 import { resetIntroBriefing } from './screens/intro-briefing.js';
 import { preloadShips } from './game/sprites.js';
-import { checkDailyLogin, getDailyRewardView, recordPlayMinute, LOGIN_REWARDS, DAILY_INTERVAL_MS } from './systems/daily.js';
+import { checkDailyLogin, recordPlayMinute, LOGIN_REWARDS, DAILY_INTERVAL_MS } from './systems/daily.js';
 import { showDailyReward } from './screens/menu.js';
 import { canSendFeedback, markFeedbackSent, sendFeedback, sendNewPlayerNotification, _resetNewPlayer, _testEmailNow } from './systems/feedback.js';
 import { t, getLang, applyI18n } from './i18n.js';
@@ -891,8 +891,10 @@ if (G.tutorialMode && G.onboardingStartMode !== 'placement') {
 }
 preloadShips(G.activeAircraft);
 
-// Every page load that opens on the lobby shows the 7-day rewards
-// (view-only once today's reward is claimed).
+// A page load that opens on the lobby shows the 7-day rewards only when a
+// reward is ready to unlock (signed in, tutorial done, 24 h since the last
+// claim). Nothing pops up while waiting, once all 7 days are done, or for
+// players without an account.
 // Local test only: http://localhost:5173/?daily (or ?daily=3 for day 3)
 // always shows it, view-only, without granting anything.
 function showDailyRewardOnPageLoad() {
@@ -904,11 +906,8 @@ function showDailyRewardOnPageLoad() {
     showDailyReward(LOGIN_REWARDS[day - 1], day, null, true, day < 7 ? Date.now() + DAILY_INTERVAL_MS : 0);
     return;
   }
-  // Players without a Google account see the calendar too (day 1, with a
-  // button to sign in and claim it).
-  const view = getDailyRewardView()
-    || (!G.playerRegistered ? { reward: LOGIN_REWARDS[0], streak: 1, claimed: false } : null);
-  if (view) showDailyReward(view.reward, view.streak, null, view.claimed, view.nextAt);
+  const daily = checkDailyLogin();
+  if (daily.isNewDay) showDailyReward(daily.reward, daily.streak);
 }
 
 // The yellow T-6 intro opens JexonGo every time. New players (onboarding

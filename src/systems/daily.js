@@ -224,20 +224,6 @@ export function checkDailyLogin() {
   return { isNewDay: true, reward: LOGIN_REWARDS[claimed], streak: claimed + 1 };
 }
 
-// What the 7-day popup shows on a page load: the next reward to claim, or,
-// while waiting for the 24 h (or once all 7 days are done), the calendar in
-// view-only mode with the last claimed day and the time left.
-export function getDailyRewardView() {
-  const daily = checkDailyLogin();
-  if (daily.isNewDay) return { reward: daily.reward, streak: daily.streak, claimed: false };
-  if (!G.playerRegistered || !G.tutorialCompleted) return null;
-  const streak = Math.max(1, dailyClaimedCount());
-  return {
-    reward: LOGIN_REWARDS[streak - 1], streak, claimed: true,
-    nextAt: streak < 7 ? nextDailyClaimAt() : 0,
-  };
-}
-
 export function claimDailyReward() {
   const daily = checkDailyLogin();
   if (!daily.isNewDay) return { claimed: false, badges: [] };
