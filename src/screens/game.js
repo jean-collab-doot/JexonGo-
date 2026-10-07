@@ -16,7 +16,8 @@ import {
 import { AIRCRAFT } from '../data/aircraft.js';
 import { getLevel } from '../data/levels.js';
 import { SFX } from '../audio/sound.js';
-import { preloadBiome, drawFrame, hasTurnArt, SPRITE_DEFS, AIRCRAFT_SPRITE, preloadSprite } from '../game/sprites.js';
+import { preloadBiome, drawFrame, hasTurnArt, SPRITE_DEFS, AIRCRAFT_SPRITE, preloadSprite, biomeBgKey } from '../game/sprites.js';
+import { showYellowLoader } from './new-player-intro.js';
 import { shouldShowIntroBriefing, showIntroBriefing } from './intro-briefing.js';
 import { SHOOTING_PLANS } from './shop.js';
 import { initBackground, updateBackground, drawBackground } from '../game/background.js';
@@ -45,14 +46,15 @@ const ENEMY_MOVEMENT_SPEED_SCALE = 0.82;
 // Phones and tablets: enemy planes fly 60% faster (they looked slow there).
 const TOUCH_ENEMY_SPEED_MULT = 1.6;
 const TOUCH_F5_EXTRA_SPEED = 1.35;   // F-5s: 35% more on top of that
-// Tablets and computers: a taller screen than a phone's (~760px) took the
-// planes far longer to cross at the same speed, so they looked slow. Extra
-// speed in proportion to the screen height: tablets +20% to +60%, computers
-// up to +50% (a window up to ~760px tall stays as before).
+// Every screen format (phone, tablet, computer): a taller screen took the
+// planes longer to cross at the same speed, so they looked slow. Extra speed
+// in proportion to the screen height (reference ~760px): phones up to +40%,
+// tablets +20% to +60%, computers up to +50%; a screen up to ~760px tall
+// stays as before.
 const SCREEN_SPEED_REF_HEIGHT = 760;
 function screenEnemySpeedMult() {
-  if (isPhone()) return 1;
   const ratio = (window.innerHeight || SCREEN_SPEED_REF_HEIGHT) / SCREEN_SPEED_REF_HEIGHT;
+  if (isPhone()) return Math.max(1, Math.min(1.4, ratio));
   if (isTablet()) return Math.max(1.2, Math.min(1.6, ratio));
   return Math.max(1, Math.min(1.5, ratio));
 }
@@ -2316,6 +2318,25 @@ function placePlayer() {
 }
 
 // ── LOADING SCREEN ──────────────────────────────────────────────────────────
+let _yellowLoader = null;
+
+// The level's map must be downloaded before the game starts: preloadBiome
+// carries on even when an image failed, so try the map again a few times.
+// Each attempt is capped (a request that never answers must not hold the
+// player on the loading screen forever).
+function withTimeout(promise, ms) {
+  return Promise.race([promise, new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), ms))]);
+}
+async function ensureMapLoaded(biome, levelNum) {
+  const key = biomeBgKey(biome, levelNum);
+  for (let attempt = 0; attempt < 4; attempt++) {
+    try { await withTimeout(preloadSprite(key), 25000); return true; } catch (_) {
+      await new Promise(r => setTimeout(r, 1200 * (attempt + 1)));
+    }
+  }
+  return false;
+}
+
 function drawLoadingScreen() {
   const cw = canvas.width, ch = canvas.height;
   const sky = ctx.createLinearGradient(0, 0, 0, ch);
@@ -6195,9 +6216,14 @@ export function initGame(levelNum, onComplete) {
 
 
   const sid = _sessionId;
+  // Beginner practice (after the briefing): the yellow T-6 loading screen
+  // covers the level while it loads, instead of the blue "loading" sky.
+  _yellowLoader?.remove();
+  _yellowLoader = _guidedRun ? showYellowLoader() : null;
+  const loader = _yellowLoader;
 
   function tryStart() {
-    if (!_isActiveSid(sid)) return;
+    if (!_isActiveSid(sid)) { loader?.remove(); return; }
     const cw = canvas.clientWidth, ch = canvas.clientHeight;
     if (!cw || !ch) { requestAnimationFrame(tryStart); return; }
     _setCanvasSize(cw, ch);
@@ -6212,16 +6238,16 @@ export function initGame(levelNum, onComplete) {
       _loadRaf = requestAnimationFrame(loadTick);
     });
 
-    preloadBiome(levelCfg.biome, {
+    withTimeout(preloadBiome(levelCfg.biome, {
       aircraftId: G.activeAircraft,
       levelNum: levelCfg.num,
       enemyTypes: [
         ...RANDOM_ENEMY_TYPES,
         ...(levelCfg.isBossLevel ? ['boss'] : []),
       ],
-    }).then(() => {
+    }), 30000).catch(() => {}).then(() => ensureMapLoaded(levelCfg.biome, levelCfg.num)).then(() => {
       cancelAnimationFrame(_loadRaf);
-      if (!_isActiveSid(sid)) return;
+      if (!_isActiveSid(sid)) { loader?.remove(); return; }
       initBackground(levelCfg.biome, levelCfg.num);
       initClouds(levelCfg.biome, canvas.width, canvas.height, levelCfg.weather?.id);
       initWeatherFx(levelCfg.weather, canvas.width, canvas.height);
@@ -6403,15 +6429,27 @@ export function initGame(levelNum, onComplete) {
         maxEnemies = baseMaxEnemies;
       }
 
+      // The map is drawn once now (its scaled copy is built here), so the
+      // game never starts on a blank or half-drawn background.
+      drawCountdownSafeFrame();
       _startGameLoop(sid);
       updateTutorialHUD();
-      const startLevelFlow = () => {
+      const startLevelFlowNow = () => {
         _cutsceneActive = true;
         drawCountdownSafeFrame();
         _lastFrameTs = 0;
         showStartCountdown(() => {
           if ([10, 20, 30, 40, 50].includes(levelNum)) startA330BossIntro(nextQuestion);
           else nextQuestion();
+        });
+      };
+      // Yellow loading screen: the countdown starts once it has gone.
+      const startLevelFlow = () => {
+        if (!loader) { startLevelFlowNow(); return; }
+        _cutsceneActive = true;
+        loader.hide().then(() => {
+          if (_yellowLoader === loader) _yellowLoader = null;
+          if (_isActiveSid(sid)) startLevelFlowNow();
         });
       };
       if (shouldForceIntroBriefingBeforeFirstRound() || shouldShowIntroBriefing(levelNum)) {
@@ -6442,6 +6480,7 @@ export function initGame(levelNum, onComplete) {
   document.addEventListener('visibilitychange', _onVisibility);
 
   return () => {
+    _yellowLoader?.remove(); _yellowLoader = null;
     _sessionId++;
     SFX.weatherStop();
     SFX.engineStop();

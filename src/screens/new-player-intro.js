@@ -85,6 +85,44 @@ export function playNewPlayerIntro(onDone, { leave = false } = {}) {
     });
 }
 
+// Loading screen in the intro's style (yellow, the T-6 rising and hovering,
+// no logo): between the briefing and the beginner practice while the level
+// loads (game.js). hide() lets the plane shoot off the top, fades the yellow
+// away and resolves once it is gone; it waits for the plane's rise first.
+export function showYellowLoader() {
+  document.getElementById('np-loader')?.remove();
+  const overlay = buildIntro();
+  overlay.id = 'np-loader';
+  overlay.querySelector('.np-title')?.remove();
+  overlay.querySelector('.np-wash')?.remove();
+  setYellowPage(true);
+  const shownAt = performance.now();
+  let hiding = null;
+  return {
+    hide() {
+      hiding ||= new Promise(resolve => {
+        const wait = Math.max(0, RISE_MS + MIN_HOVER_MS - (performance.now() - shownAt));
+        setTimeout(() => {
+          overlay.classList.add('np-go');
+          setTimeout(() => {
+            overlay.classList.add('np-leave');
+            setTimeout(() => {
+              overlay.remove();
+              if (!document.getElementById('np-intro')) setYellowPage(false);
+              resolve();
+            }, LEAVE_MS);
+          }, 650);
+        }, wait);
+      });
+      return hiding;
+    },
+    remove() {
+      overlay.remove();
+      if (!document.getElementById('np-intro')) setYellowPage(false);
+    },
+  };
+}
+
 const INTRO_YELLOW = '#ffc800';
 const WASH_WHITE = '#ffffff';
 // After .np-go: the wash's solid white reaches the top of the screen at about
