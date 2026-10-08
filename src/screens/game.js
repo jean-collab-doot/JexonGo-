@@ -1121,6 +1121,7 @@ function showStartCountdown(done, { keepPlane = false } = {}) {
   // begins.
   const targetX = G.player.x;
   const targetY = G.player.y;
+  _planeWaitingOffscreen = false;
   _countdownPlaneAnim = {
     start: performance.now(),
     duration: 2600,
@@ -1474,6 +1475,10 @@ let _bossDialogueSpeechStartedAt = 0;
 let _bossDialogueExit = null;
 let _bossPlayerAnchor = null;
 let _countdownPlaneAnim = null;
+// True from the end of loading until the countdown starts: the aircraft waits
+// below the bottom edge, so the yellow loading screen fades onto an empty sky
+// and the plane then flies in, instead of sitting in the middle first.
+let _planeWaitingOffscreen = false;
 let _finishPlaneAnim = null;
 let _levelEnding = false;
 let _countdownRaf = null;
@@ -2508,6 +2513,9 @@ function countdownPlanePosition(now = performance.now()) {
     };
   }
   if (!_countdownPlaneAnim) {
+    if (_planeWaitingOffscreen) {
+      return { x: G.player.x, y: canvas.height + getPlayerSize() * 0.9 };
+    }
     return { x: G.player.x + float.x, y: G.player.y + float.y };
   }
   const t = Math.min(1, Math.max(0, (now - _countdownPlaneAnim.start) / _countdownPlaneAnim.duration));
@@ -6174,6 +6182,7 @@ export function initGame(levelNum, onComplete) {
     }
     _stopGameLoop();
     _countdownPlaneAnim = null;
+    _planeWaitingOffscreen = false;
     pointerTarget = null;
     _jsOrigin = _jsCurrent = null;
     _touchId  = null;
@@ -6256,6 +6265,7 @@ export function initGame(levelNum, onComplete) {
       if (airdropSelected) preloadSprite('ship-b2').catch(() => {});
       _qboxH = $('question-box').offsetHeight || 180;
       placePlayer();
+      _planeWaitingOffscreen = true;   // flies in with the countdown
       startCoop();   // MULTI teammate (bot or real player), if any
       // The canvas has its final dimensions here. Creating map coins earlier
       // can place them outside the visible playfield on a fresh game launch.
@@ -6497,6 +6507,7 @@ export function initGame(levelNum, onComplete) {
     G.lastCoopSession = G.coopSession || null;
     G.coopSession = null;
     _countdownPlaneAnim = null;
+    _planeWaitingOffscreen = false;
     if (_activeSessionId === sid) _activeSessionId = 0;
     _gamePausedFromQuit = false;
     G.pausedGameResume = null;
