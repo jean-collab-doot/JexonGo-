@@ -806,71 +806,6 @@
     </div>
   </div>
 
-  <!-- REGISTRATION SCREEN -->
-  <div id="s-register" class="screen hidden">
-    <div class="reg-wrap">
-      <button id="btn-reg-close" class="sett-close" style="position:absolute;top:10px;right:10px;color:#fff;border-color:#fff"><svg class="ui-icon ui-icon-x" viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
-      <div class="reg-logo">JEXON<span class="reg-logo-go">GO</span></div>
-      <div class="reg-tagline">AERIAL MATH COMBAT</div>
-      <div class="reg-title" data-i18n="regTitle">CREATE YOUR PILOT</div>
-      <div class="reg-form">
-        <input id="reg-name"     type="text"     class="reg-input" placeholder="CALL SIGN / NAME" data-i18n-placeholder="regNamePh" maxlength="20" autocomplete="off">
-        <input id="reg-email"    type="email"    class="reg-input" placeholder="EMAIL ADDRESS" data-i18n-placeholder="regEmailPh" autocomplete="email">
-        <div class="pw-field-wrap">
-          <input id="reg-password" type="password" class="reg-input" placeholder="PASSWORD (6+ CHARS)" data-i18n-placeholder="regPasswordPh" autocomplete="new-password">
-          <button type="button" class="pw-eye-btn" id="btn-reg-pw-toggle" aria-label="Show password"><svg class="ui-icon ui-icon-eye" viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M2 12s3.8-7 10-7 10 7 10 7-3.8 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></button>
-        </div>
-        <div class="pw-field-wrap">
-          <input id="reg-password-confirm" type="password" class="reg-input" placeholder="CONFIRM PASSWORD" data-i18n-placeholder="regConfirmPasswordPh" autocomplete="new-password">
-          <button type="button" class="pw-eye-btn" id="btn-reg-confirm-pw-toggle" aria-label="Show password"><svg class="ui-icon ui-icon-eye" viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M2 12s3.8-7 10-7 10 7 10 7-3.8 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></button>
-        </div>
-        <select id="reg-age" class="reg-input reg-select">
-          <option value="" data-i18n="regAgePh">-- SELECT YOUR AGE --</option>
-          <option value="5">5</option>
-          <option value="6">6</option>
-          <option value="7">7</option>
-          <option value="8">8</option>
-          <option value="9">9</option>
-          <option value="10">10</option>
-          <option value="11">11</option>
-          <option value="12">12</option>
-          <option value="13">13</option>
-          <option value="14">14</option>
-          <option value="15">15</option>
-          <option value="16">16</option>
-          <option value="17">17</option>
-          <option value="18">18+</option>
-        </select>
-        <select id="reg-grade" class="reg-input reg-select">
-          <option value="" data-i18n="regGradePh">-- SELECT SCHOOL GRADE --</option>
-          <option value="1">GRADE 1</option>
-          <option value="2">GRADE 2</option>
-          <option value="3">GRADE 3</option>
-          <option value="4">GRADE 4</option>
-          <option value="5">GRADE 5</option>
-          <option value="6">GRADE 6</option>
-        </select>
-        <div class="reg-tos-row">
-          <input type="checkbox" id="reg-tos" class="reg-tos-check">
-          <label for="reg-tos" class="reg-tos-label" data-i18n="regTos">I AGREE TO THE TERMS OF SERVICE</label>
-          <button id="btn-reg-terms" type="button" class="reg-policy-link" data-i18n="termsPolicyLink">TERMS OF USE</button>
-        </div>
-        <div class="reg-tos-row">
-          <input type="checkbox" id="reg-privacy" class="reg-tos-check">
-          <label for="reg-privacy" class="reg-tos-label" data-i18n="regPrivacy">I HAVE READ AND ACCEPT THE PRIVACY POLICY.</label>
-          <button id="btn-reg-privacy" type="button" class="reg-policy-link" data-i18n="privacyPolicyLink">PRIVACY POLICY</button>
-        </div>
-        <!-- Shown only when the selected age is under 13 -->
-        <div id="reg-parent-row" class="reg-tos-row hidden">
-          <input type="checkbox" id="reg-parent" class="reg-tos-check">
-          <label for="reg-parent" class="reg-tos-label" data-i18n="regParent">MY PARENT OR GUARDIAN HAS READ THE PRIVACY POLICY AND AGREES THAT I CREATE AN ACCOUNT.</label>
-        </div>
-        <div id="reg-error" class="reg-error"></div>
-        <button id="btn-reg-submit" class="btn btn-primary" data-i18n="regSubmit">▶︎ CREATE PILOT</button>
-      </div>
-    </div>
-  </div>
-
   <!-- PRIVACY POLICY SCREEN -->
   <div id="s-privacy" class="screen hidden">
     <div class="privacy-sky">
@@ -1710,20 +1645,40 @@
     </div>
   </div>
 
-  <!-- LOGIN MODAL -->
-  <div id="login-modal" class="sett-backdrop hidden">
-    <div class="login-modal-panel">
-      <div class="login-modal-header">
-        <span class="login-modal-title" data-i18n="loginTitle">LOG IN</span>
-        <button id="btn-login-modal-close" class="sett-close"><svg class="ui-icon ui-icon-x" viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+  <!-- AGE CHECK: shown before the first Google sign-in (age-gate.js) -->
+  <div id="age-gate-modal" class="sett-backdrop hidden">
+    <div class="delete-account-panel">
+      <div class="delete-account-title" data-i18n="ageGateTitle">BEFORE SIGNING IN</div>
+      <label class="delete-question">
+        <span data-i18n="ageGateQuestion">HOW OLD ARE YOU?</span>
+        <select id="age-gate-age" class="reg-input reg-select">
+          <option value="" data-i18n="ageGatePick">-- CHOOSE YOUR AGE --</option>
+          <option value="5">5</option>
+          <option value="6">6</option>
+          <option value="7">7</option>
+          <option value="8">8</option>
+          <option value="9">9</option>
+          <option value="10">10</option>
+          <option value="11">11</option>
+          <option value="12">12</option>
+          <option value="13">13</option>
+          <option value="14">14</option>
+          <option value="15">15</option>
+          <option value="16">16</option>
+          <option value="17">17</option>
+          <option value="18">18+</option>
+        </select>
+      </label>
+      <label id="age-gate-parent-row" class="delete-confirm-row hidden">
+        <input id="age-gate-parent" type="checkbox">
+        <span data-i18n="ageGateParent">MY PARENT OR GUARDIAN HAS READ THE PRIVACY POLICY AND AGREES THAT I CREATE AN ACCOUNT.</span>
+      </label>
+      <button id="btn-age-gate-policy" type="button" class="btn btn-secondary" data-i18n="ageGateReadPolicy">READ THE PRIVACY POLICY</button>
+      <div id="age-gate-error" class="login-modal-error"></div>
+      <div class="delete-account-actions">
+        <button id="btn-age-gate-cancel" class="btn btn-secondary" data-i18n="ageGateCancel">CANCEL</button>
+        <button id="btn-age-gate-continue" class="btn btn-primary" data-i18n="ageGateContinue">CONTINUE</button>
       </div>
-      <input id="login-modal-email"    type="email"    class="reg-input" placeholder="EMAIL ADDRESS" autocomplete="email">
-      <div class="pw-field-wrap">
-        <input id="login-modal-password" type="password" class="reg-input" placeholder="PASSWORD" autocomplete="current-password">
-        <button type="button" class="pw-eye-btn" id="btn-login-pw-toggle" aria-label="Show password"><svg class="ui-icon ui-icon-eye" viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M2 12s3.8-7 10-7 10 7 10 7-3.8 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></button>
-      </div>
-      <div id="login-modal-error" class="login-modal-error"></div>
-      <button id="btn-login-modal-submit" class="btn btn-primary" style="margin-top:4px">▶︎ LOG IN</button>
     </div>
   </div>
 

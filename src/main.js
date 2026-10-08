@@ -29,12 +29,10 @@ import { showDailyReward } from './screens/menu.js';
 import { canSendFeedback, markFeedbackSent, sendFeedback, sendNewPlayerNotification, _resetNewPlayer, _testEmailNow } from './systems/feedback.js';
 import { t, getLang, applyI18n } from './i18n.js';
 import { syncAccountFromCloud, flushCloudSave, pushCloudSave, fetchCloudSave } from './systems/cloud-save.js';
-import { signInWithGoogleIdToken, signUpWithEmail, signOutSupabase } from './systems/supabase-client.js';
+import { signInWithGoogleIdToken, signOutSupabase } from './systems/supabase-client.js';
 import { claimSessionOrBlock, sessionBlockedMessage, sessionLostMessage, askTakeover, onSessionLost } from './systems/session-guard.js';
 import { applyDeviceClasses } from './utils/device.js';
 import { isLevelUnlocked } from './systems/progression.js';
-import { isPilotNameAllowed } from './utils/pilot-name.js';
-import { isPasswordLeaked } from './utils/password-check.js';
 import { showPilotNamePrompt } from './screens/pilot-name-prompt.js';
 
 const ANALYTICS_OPT_OUT_KEY = 'jexongoAnalyticsOptOut';
@@ -601,7 +599,7 @@ document.getElementById('btn-lobby-multi')?.addEventListener('click', () => {
   else nav.toMulti();
 });
 initGradeScreen();
-initRegistration();
+initLegalScreens();
 initFeedback();
 
 if (!document.getElementById('s-menu')?.classList.contains('hidden')) {
@@ -632,10 +630,10 @@ document.addEventListener('click', e => {
     return;
   }
 
-  if (btn.id === 'btn-privacy-back' || btn.id === 'btn-terms-back' || btn.id === 'btn-reg-close') {
+  if (btn.id === 'btn-privacy-back' || btn.id === 'btn-terms-back') {
     e.preventDefault();
     nav.toMenu();
-    if (_reopenConnectPrompt && btn.id !== 'btn-reg-close') {
+    if (_reopenConnectPrompt) {
       _reopenConnectPrompt = false;
       openConnectPrompt();
     }
@@ -672,18 +670,10 @@ document.addEventListener('click', e => {
   }
 }, true);
 
-// ── REGISTRATION SCREEN ───────────────────────────────────────────────────────
-function initRegistration() {
-  document.getElementById('btn-reg-close').addEventListener('click', () => {
-    renderMenu();
-    showScreen('s-menu');
-  });
-  document.getElementById('btn-reg-privacy')?.addEventListener('click', () => {
-    showScreen('s-privacy');
-  });
-  document.getElementById('btn-reg-terms')?.addEventListener('click', () => {
-    showScreen('s-terms');
-  });
+// ── PRIVACY / TERMS SCREENS ─────────────────────────────────────────────────
+// Sign-in is Google only: the old email/password "create your pilot" form
+// is gone. Only the legal pages opened from the lobby remain here.
+function initLegalScreens() {
   document.getElementById('btn-menu-privacy')?.addEventListener('click', () => {
     showScreen('s-privacy');
   });
@@ -697,84 +687,6 @@ function initRegistration() {
   document.getElementById('btn-terms-back')?.addEventListener('click', () => {
     renderMenu();
     showScreen('s-menu');
-  });
-
-  // Under 13, a parent or guardian must agree before the account is created.
-  const PARENT_CONSENT_AGE = 13;
-  document.getElementById('reg-age')?.addEventListener('change', e => {
-    const age = parseInt(e.target.value, 10);
-    const needsParent = !!age && age < PARENT_CONSENT_AGE;
-    document.getElementById('reg-parent-row')?.classList.toggle('hidden', !needsParent);
-    if (!needsParent) document.getElementById('reg-parent').checked = false;
-  });
-
-  document.getElementById('btn-reg-submit').addEventListener('click', async () => {
-    const name  = (document.getElementById('reg-name').value  || '').trim().toUpperCase();
-    const email = (document.getElementById('reg-email').value || '').trim().toLowerCase();
-    const pw    = (document.getElementById('reg-password').value || '');
-    const pwConfirm = (document.getElementById('reg-password-confirm').value || '');
-    const age   = parseInt(document.getElementById('reg-age').value, 10);
-    const grade = parseInt(document.getElementById('reg-grade').value, 10);
-    const tos   = document.getElementById('reg-tos').checked;
-    const privacy = document.getElementById('reg-privacy').checked;
-    const parentOk = !!document.getElementById('reg-parent')?.checked;
-    const err   = document.getElementById('reg-error');
-
-    if (!name)                          { err.textContent = t('regErrName');     return; }
-    if (!isPilotNameAllowed(name))      { err.textContent = t('regErrNameBad');  return; }
-    if (!email || !email.includes('@')) { err.textContent = t('regErrEmail');    return; }
-    if (pw.length < 6)                  { err.textContent = t('regErrPassword'); return; }
-    if (pw !== pwConfirm)               { err.textContent = t('regErrPasswordMatch'); return; }
-    if (!age)                           { err.textContent = t('regErrAge');      return; }
-    if (!grade)                         { err.textContent = t('regErrGrade');    return; }
-    if (!tos)                           { err.textContent = t('regErrTos');      return; }
-    if (!privacy)                       { err.textContent = t('regErrPrivacy');  return; }
-    if (age < PARENT_CONSENT_AGE && !parentOk) { err.textContent = t('regErrParent'); return; }
-    if (await isPasswordLeaked(pw))     { err.textContent = t('regErrPasswordLeaked'); return; }
-
-    err.textContent       = '';
-    try {
-      const auth = await signUpWithEmail(email, pw, {
-        player_name: name,
-        player_grade: grade,
-        player_age: age,
-        // Record when a parent agreed for an under-13 account.
-        ...(age < PARENT_CONSENT_AGE ? { parent_consent_at: new Date().toISOString() } : {}),
-      });
-      if (!auth?.session) {
-        err.textContent = getLang() === 'fr'
-          ? 'CONFIRMEZ VOTRE EMAIL AVANT DE JOUER'
-          : 'CONFIRM YOUR EMAIL BEFORE PLAYING';
-        return;
-      }
-    } catch (authErr) {
-      err.textContent = authErr?.message || (getLang() === 'fr' ? 'COMPTE IMPOSSIBLE A CREER' : 'ACCOUNT CREATION FAILED');
-      return;
-    }
-
-    await claimSessionOrBlock();
-
-    G.playerName          = name;
-    G.pilotNameChosen     = true;
-    G.playerEmail         = email;
-    G.playerAge           = age;
-    G.playerGrade         = grade;
-    G.playerRegistered    = true;
-
-    saveAll();
-    loadSave();
-    await pushCloudSave({ authType: 'email' });
-
-    sendNewPlayerNotification({ playerName: name, playerEmail: email, playerGrade: grade });
-
-    renderMenu();
-    showScreen('s-menu');
-    SFX.playMusic('menu');
-    const _daily = checkDailyLogin();
-    if (_daily.isNewDay) {
-      setTimeout(() => showDailyReward(_daily.reward, _daily.streak), 600);
-    }
-    setTimeout(() => showFeedbackPopup(), 1500);
   });
 }
 

@@ -54,30 +54,6 @@ export async function getSupabaseAccessToken() {
   return session?.access_token || '';
 }
 
-export async function signInWithEmail(email, password) {
-  const supabase = await getSupabaseClient();
-  if (!supabase) throw new Error('Supabase unavailable');
-  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-  if (error) throw error;
-  return data;
-}
-
-export async function signUpWithEmail(email, password, metadata = {}) {
-  const supabase = await getSupabaseClient();
-  if (!supabase) throw new Error('Supabase unavailable');
-  const { data, error } = await supabase.auth.signUp({
-    email,
-    password,
-    options: { data: metadata },
-  });
-  if (error) throw error;
-  if (!data?.session) {
-    const signedIn = await signInWithEmail(email, password).catch(() => null);
-    if (signedIn?.session) return signedIn;
-  }
-  return data;
-}
-
 export async function signInWithGoogleIdToken(idToken) {
   const supabase = await getSupabaseClient();
   if (!supabase) throw new Error('Supabase unavailable');

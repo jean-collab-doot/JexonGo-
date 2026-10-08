@@ -62,7 +62,7 @@ const PERSIST_KEYS = [
   'sr71CleanLevels', 'highestLevel', 'lifetimeXpEarned', 'multiXpEarned', 'dailyLastLogin', 'dailyStreak', 'dailyLastClaimAt', 'dailyStarterPlanComplete', 'dailyMissions',
   'dailyMissionDate', 'playMinutesByDay', 'monthlyChallenge', 'claimedRanks', 'rankedLP', 'rankedWins', 'rankedLosses',
   'rankedWinStreak', 'rankedGamesPlayed', 'rankedSeasonStart', 'rankedFirstWinToday',
-  'playerName', 'pilotNameChosen', 'playerEmail', 'playerPhoto', 'playerAge', 'playerGrade',
+  'playerName', 'pilotNameChosen', 'playerEmail', 'playerPhoto', 'playerAge', 'consentAge', 'parentConsentAt', 'playerGrade',
   'pilotEmblem', 'pilotMotto', 'profileTheme', 'practiceTimeLimit',
   'hasSeenOnboarding', 'likesMath', 'onboardingAgeGroup', 'onboardingGrade',
   'focusOperation', 'focusOperations', 'focusTopics', 'schoolLevel', 'playerCountry', 'numberRangeMax', 'pendingPlacement', 'tutorialMode',
@@ -254,6 +254,8 @@ export function mergeSaveSnapshots(local, remote) {
   out.playerPhoto = local.playerPhoto || remote.playerPhoto;
   out.playerGrade = Math.max(local.playerGrade || 0, remote.playerGrade || 0);
   out.playerAge   = Math.max(local.playerAge || 0, remote.playerAge || 0);
+  out.consentAge  = local.consentAge || remote.consentAge || 0;
+  out.parentConsentAt = local.parentConsentAt || remote.parentConsentAt || null;
 
   const pilotConfigSource = _hasPilotConfig(local) ? local : remote;
   if (_hasPilotConfig(pilotConfigSource)) _applyPilotConfig(out, pilotConfigSource);

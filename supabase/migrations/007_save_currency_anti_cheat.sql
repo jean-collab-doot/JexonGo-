@@ -26,6 +26,7 @@ create or replace function public.save_number(doc jsonb, key text)
 returns numeric
 language sql
 immutable
+set search_path = ''
 as $$
   select case when jsonb_typeof(doc -> key) = 'number' then (doc ->> key)::numeric end
 $$;
@@ -33,6 +34,7 @@ $$;
 create or replace function public.saves_cap_currency()
 returns trigger
 language plpgsql
+set search_path = ''
 as $$
 declare
   coin_max    constant numeric := 12000;

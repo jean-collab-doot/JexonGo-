@@ -5,7 +5,7 @@ const SCREEN_IDS = [
   's-hangar', 's-shop', 's-training', 's-result', 's-chest', 's-gameover',
   's-ranked', 's-ranked-find', 's-ranked-intro', 's-ranked-duel', 's-ranked-result',
   's-briefing', 's-classroom',
-  's-arena', 's-grade', 's-register', 's-profile', 's-privacy', 's-terms',
+  's-arena', 's-grade', 's-profile', 's-privacy', 's-terms',
 ];
 
 // Screens still using the old 4-icon bottom nav. 's-menu', 's-hangar' and

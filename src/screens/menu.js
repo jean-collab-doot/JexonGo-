@@ -7,10 +7,9 @@ import { LOGIN_REWARDS, claimDailyReward, getMissions, claimMission,
 import { clearAll, clearAccountData, save, load } from '../utils/storage.js';
 import { AIRCRAFT, AIRCRAFT_ORDER } from '../data/aircraft.js';
 import { t, getLang, setLang, applyI18n } from '../i18n.js';
-import { syncAccountFromCloud, deleteCloudSave, flushCloudSave, fetchCloudSave,
-         mergeSaveSnapshots, exportSaveSnapshot, applySaveSnapshot } from '../systems/cloud-save.js';
-import { signInWithEmail, signOutSupabase } from '../systems/supabase-client.js';
-import { claimSessionOrBlock, releaseSession, sessionBlockedMessage, askTakeover } from '../systems/session-guard.js';
+import { deleteCloudSave, flushCloudSave } from '../systems/cloud-save.js';
+import { signOutSupabase } from '../systems/supabase-client.js';
+import { releaseSession } from '../systems/session-guard.js';
 import { SFX } from '../audio/sound.js';
 import { coinIcon, expIcon, uiIcon } from '../utils/icons.js';
 import { makeBottomSheet } from '../utils/bottomsheet.js';
@@ -18,6 +17,7 @@ import { bindHangarTabs, renderHangarPanels, buyAircraftFromLobby, planeCost, me
 import { isMultiLobby, openMultiChoices } from './multiplayer.js';
 import { refreshBadgeAlerts } from '../data/badges.js';
 import { initLobbyTour } from './lobby-tour.js';
+import { askAgeBeforeSignIn } from './age-gate.js';
 
 // ── GOOGLE SIGN-IN ───────────────────────────────────────────────────────────
 const GOOGLE_CLIENT_ID = '182729505930-rulb73m14t9qvfpjfbplknrcgn0fqvci.apps.googleusercontent.com';
@@ -74,6 +74,12 @@ async function _handleLogin(provider) {
   if (provider !== 'google') return;
   if (_googleLoginPending) return;
   _googleLoginPending = true;
+
+  // Age first (parent agreement under 13), before Google creates anything.
+  if (!(await askAgeBeforeSignIn())) {
+    _googleLoginPending = false;
+    return;
+  }
 
   if (!(await _ensureGSI())) {
     _showToast(t('googleNotAvail'));
@@ -225,75 +231,6 @@ async function _confirmDeleteAccount() {
   }
 
   await _finishLocalAccountDeletion();
-}
-
-function _openLoginOverlay() {
-  const modal = document.getElementById('login-modal');
-  if (!modal) return;
-  document.getElementById('login-modal-email').value    = '';
-  document.getElementById('login-modal-password').value = '';
-  document.getElementById('login-modal-error').textContent = '';
-  modal.classList.remove('hidden');
-  document.getElementById('login-modal-email').focus();
-}
-
-function _closeLoginOverlay() {
-  const modal = document.getElementById('login-modal');
-  if (modal) modal.classList.add('hidden');
-}
-
-async function _handleLoginSubmit() {
-  const emailIn = document.getElementById('login-modal-email').value.trim().toLowerCase();
-  const pwIn    = document.getElementById('login-modal-password').value;
-  const errEl   = document.getElementById('login-modal-error');
-
-  if (!emailIn || !emailIn.includes('@')) { errEl.textContent = t('loginErrEmail'); return; }
-  if (!pwIn)                              { errEl.textContent = t('loginErrPw');    return; }
-
-  try {
-    await signInWithEmail(emailIn, pwIn);
-  } catch (_) {
-    errEl.textContent = t('loginErrWrong');
-    return;
-  }
-
-  let { blocked } = await claimSessionOrBlock();
-  if (blocked && await askTakeover()) ({ blocked } = await claimSessionOrBlock({ takeover: true }));
-  if (blocked) {
-    await signOutSupabase().catch(() => {});
-    errEl.textContent = sessionBlockedMessage();
-    return;
-  }
-
-  const remote = await fetchCloudSave(emailIn, '', 'email');
-
-  if (remote?.forbidden) { errEl.textContent = t('loginErrWrong'); return; }
-
-  if (remote?.offline) {
-    const storedEmail = (load('playerEmail', '') || '').toLowerCase();
-    if (!storedEmail)                                  { errEl.textContent = t('loginErrNone');  return; }
-    if (emailIn !== storedEmail)                       { errEl.textContent = t('loginErrWrong'); return; }
-  } else if (remote?.notFound) {
-    errEl.textContent = t('loginErrNone');
-    return;
-  }
-
-  _closeLoginOverlay();
-  G.playerRegistered = true;
-  G.playerEmail      = emailIn;
-  G.playerAuthType   = 'email';
-  save('playerRegistered', true);
-  save('playerEmail',      emailIn);
-  save('playerAuthType',   'email');
-  loadSave();
-  if (remote?.data) {
-    applySaveSnapshot(mergeSaveSnapshots(exportSaveSnapshot(), remote.data));
-    saveAll();
-  }
-  const sync = await syncAccountFromCloud({ authType: 'email' });
-  if (sync.offline) _showToast(t('syncOffline') || 'Account connected - progress saves on this device.');
-  renderMenu();
-  _showToast(t('welcomeBack').replace('{name}', G.playerName || 'PILOT'));
 }
 
 // ── TOAST ────────────────────────────────────────────────────────────────────
@@ -536,29 +473,7 @@ export function initMenu(nav) {
     _openDeleteAccountModal();
   });
 
-  // Login / delete-account modals (kept from the old flow)
-  document.getElementById('btn-login-modal-close')?.addEventListener('click', _closeLoginOverlay);
-  document.getElementById('login-modal')?.addEventListener('click', e => {
-    if (e.target === document.getElementById('login-modal')) _closeLoginOverlay();
-  });
-  document.getElementById('btn-login-modal-submit')?.addEventListener('click', _handleLoginSubmit);
-  document.getElementById('login-modal-password')?.addEventListener('keydown', e => {
-    if (e.key === 'Enter') _handleLoginSubmit();
-  });
-  function _makePwToggle(btnId, inputId) {
-    const btn   = document.getElementById(btnId);
-    const input = document.getElementById(inputId);
-    if (!btn || !input) return;
-    btn.addEventListener('click', () => {
-      const show = input.type === 'password';
-      input.type  = show ? 'text' : 'password';
-      btn.innerHTML = uiIcon(show ? 'eyeOff' : 'eye');
-    });
-  }
-  _makePwToggle('btn-login-pw-toggle', 'login-modal-password');
-  _makePwToggle('btn-reg-pw-toggle',   'reg-password');
-  _makePwToggle('btn-reg-confirm-pw-toggle', 'reg-password-confirm');
-
+  // Delete-account modal
   document.getElementById('btn-delete-account-cancel')?.addEventListener('click', _closeDeleteAccountModal);
   document.getElementById('btn-delete-account-confirm')?.addEventListener('click', _confirmDeleteAccount);
   document.getElementById('delete-account-modal')?.addEventListener('click', e => {

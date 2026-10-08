@@ -12255,6 +12255,14 @@ html.touch-phone #menu-canvas {
   accent-color: #ef4444;
   flex-shrink: 0;
 }
+/* Age check before Google sign-in (index.html #age-gate-modal): the policy
+   button wraps on two lines in French, keep those lines apart. */
+#btn-age-gate-policy {
+  line-height: 1.6;
+  white-space: normal;
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
 .delete-account-actions {
   display: grid;
   grid-template-columns: 1fr 1fr;

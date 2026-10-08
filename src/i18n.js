@@ -25,11 +25,6 @@ const STRINGS = {
     signOut:         '× SIGN OUT',
     signUp:          'SIGN UP',
     logIn:           '▶︎ LOG IN',
-    loginTitle:      'LOG IN',
-    loginErrEmail:   'ENTER A VALID EMAIL',
-    loginErrPw:      'ENTER YOUR PASSWORD',
-    loginErrNone:    'NO ACCOUNT — SIGN UP FIRST',
-    loginErrWrong:   'WRONG EMAIL OR PASSWORD',
 
     // Briefing
     briefingTitle:   'MISSION BRIEFING',
@@ -229,30 +224,6 @@ const STRINGS = {
     pilotAirAce:       'AIR ACE',
 
     // Registration screen
-    regTitle:          'CREATE YOUR PILOT',
-    regNamePh:         'CALL SIGN / NAME',
-    regEmailPh:        'EMAIL ADDRESS',
-    regPasswordPh:     'PASSWORD (6+ CHARS)',
-    regConfirmPasswordPh: 'CONFIRM PASSWORD',
-    regAgePh:          '-- SELECT YOUR AGE --',
-    regGradePh:        '-- SELECT SCHOOL GRADE --',
-    regTos:            'I AGREE TO THE TERMS OF SERVICE',
-    regPrivacy:        'I HAVE READ AND ACCEPT THE PRIVACY POLICY.',
-    regParent:         'MY PARENT OR GUARDIAN HAS READ THE PRIVACY POLICY AND AGREES THAT I CREATE AN ACCOUNT.',
-    privacyPolicyLink: 'PRIVACY POLICY',
-    termsPolicyLink:   'TERMS OF USE',
-    regSubmit:         '▶︎ CREATE PILOT',
-    regErrName:        'ENTER YOUR CALL SIGN',
-    regErrNameBad:     'CHOOSE ANOTHER CALL SIGN',
-    regErrPasswordLeaked: 'THIS PASSWORD LEAKED ONLINE. CHOOSE ANOTHER ONE',
-    regErrParent:      'UNDER 13: A PARENT MUST AGREE',
-    regErrEmail:       'ENTER A VALID EMAIL',
-    regErrPassword:    'PASSWORD MUST BE 6+ CHARS',
-    regErrPasswordMatch: 'PASSWORDS DO NOT MATCH',
-    regErrAge:         'SELECT YOUR AGE',
-    regErrGrade:       'SELECT YOUR SCHOOL GRADE',
-    regErrTos:         'ACCEPT THE TERMS TO CONTINUE',
-    regErrPrivacy:     'ACCEPT THE PRIVACY POLICY',
 
     // Login toasts & alerts
     welcomeBack:       'WELCOME BACK, {name}!',
@@ -270,6 +241,16 @@ const STRINGS = {
 
     // Account deletion
     deleteAccount:      'DELETE ACCOUNT',
+    // Age check before the first Google sign-in
+    ageGateTitle:      'BEFORE SIGNING IN',
+    ageGateQuestion:   'HOW OLD ARE YOU?',
+    ageGatePick:       '-- CHOOSE YOUR AGE --',
+    ageGateParent:     'MY PARENT OR GUARDIAN HAS READ THE PRIVACY POLICY AND AGREES THAT I CREATE AN ACCOUNT.',
+    ageGateReadPolicy: 'READ THE PRIVACY POLICY',
+    ageGateErrAge:     'CHOOSE YOUR AGE',
+    ageGateErrParent:  'UNDER 13: A PARENT MUST AGREE',
+    ageGateCancel:     'CANCEL',
+    ageGateContinue:   'CONTINUE',
     deleteAccountTitle: 'DELETE ACCOUNT',
     deleteAccountWarning: 'This permanently deletes your JexonGO cloud save from this account.',
     deleteReasonLabel:  'WHY ARE YOU DELETING?',
@@ -360,11 +341,6 @@ const STRINGS = {
     signOut:         '× DÉCONNEXION',
     signUp:          'S\'INSCRIRE',
     logIn:           '▶︎ SE CONNECTER',
-    loginTitle:      'CONNEXION',
-    loginErrEmail:   'EMAIL INVALIDE',
-    loginErrPw:      'MOT DE PASSE REQUIS',
-    loginErrNone:    'AUCUN COMPTE — INSCRIVEZ-VOUS D\'ABORD',
-    loginErrWrong:   'EMAIL OU MOT DE PASSE INCORRECT',
 
     // Briefing
     briefingTitle:   'BRIEFING DE MISSION',
@@ -564,30 +540,6 @@ const STRINGS = {
     pilotAirAce:       'AS DE L\'AIR',
 
     // Registration screen
-    regTitle:          'CRÉER VOTRE PILOTE',
-    regNamePh:         'INDICATIF / NOM',
-    regEmailPh:        'ADRESSE EMAIL',
-    regPasswordPh:     'MOT DE PASSE (6+ CAR.)',
-    regConfirmPasswordPh: 'CONFIRMER LE MOT DE PASSE',
-    regAgePh:          '-- SÉLECTIONNEZ VOTRE ÂGE --',
-    regGradePh:        '-- CHOISIR VOTRE NIVEAU --',
-    regTos:            'J\'ACCEPTE LES CONDITIONS D\'UTILISATION',
-    regPrivacy:        'J\'AI LU ET J\'ACCEPTE LA POLITIQUE DE CONFIDENTIALITE.',
-    regParent:         'MON PARENT OU TUTEUR A LU LA POLITIQUE DE CONFIDENTIALITE ET ACCEPTE QUE JE CREE UN COMPTE.',
-    privacyPolicyLink: 'POLITIQUE DE CONFIDENTIALITE',
-    termsPolicyLink:   'CONDITIONS D\'UTILISATION',
-    regSubmit:         '▶︎ CRÉER MON PILOTE',
-    regErrName:        'ENTREZ VOTRE INDICATIF',
-    regErrNameBad:     'CHOISIS UN AUTRE INDICATIF',
-    regErrPasswordLeaked: 'CE MOT DE PASSE A FUITE SUR INTERNET. CHOISIS-EN UN AUTRE',
-    regErrParent:      'MOINS DE 13 ANS : UN PARENT DOIT ACCEPTER',
-    regErrEmail:       'EMAIL INVALIDE',
-    regErrPassword:    'MOT DE PASSE 6 CAR. MIN.',
-    regErrPasswordMatch: 'LES MOTS DE PASSE NE CORRESPONDENT PAS',
-    regErrAge:         'SÉLECTIONNEZ VOTRE ÂGE',
-    regErrGrade:       'CHOISISSEZ VOTRE NIVEAU',
-    regErrTos:         'ACCEPTEZ LES CONDITIONS',
-    regErrPrivacy:     'ACCEPTEZ LA POLITIQUE DE CONFIDENTIALITE',
 
     // Login toasts & alerts
     welcomeBack:       'BIENVENUE, {name} !',
@@ -605,6 +557,16 @@ const STRINGS = {
 
     // Account deletion
     deleteAccount:      'SUPPRIMER LE COMPTE',
+    // Vérification de l'âge avant la première connexion Google
+    ageGateTitle:      'AVANT DE TE CONNECTER',
+    ageGateQuestion:   'QUEL ÂGE AS-TU ?',
+    ageGatePick:       '-- CHOISIS TON ÂGE --',
+    ageGateParent:     'MON PARENT OU TUTEUR A LU LA POLITIQUE DE CONFIDENTIALITÉ ET ACCEPTE QUE JE CRÉE UN COMPTE.',
+    ageGateReadPolicy: 'LIRE LA POLITIQUE DE CONFIDENTIALITÉ',
+    ageGateErrAge:     'CHOISIS TON ÂGE',
+    ageGateErrParent:  'MOINS DE 13 ANS : UN PARENT DOIT ACCEPTER',
+    ageGateCancel:     'ANNULER',
+    ageGateContinue:   'CONTINUER',
     deleteAccountTitle: 'SUPPRIMER LE COMPTE',
     deleteAccountWarning: 'Cela supprime definitivement la sauvegarde cloud JexonGO de ce compte.',
     deleteReasonLabel:  'POURQUOI SUPPRIMEZ-VOUS ?',

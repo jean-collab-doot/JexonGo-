@@ -130,6 +130,8 @@ export const G = {
   playerAuthType:   '',
   playerPhoto:      '',
   playerAge:        0,
+  consentAge:       0,      // age answered before Google sign-in (age-gate.js)
+  parentConsentAt:  null,   // ISO date a parent agreed (players under 13)
   playerRegistered: false,
   pilotEmblem:      'plane',
   pilotMotto:       '',
@@ -199,6 +201,8 @@ export function loadSave() {
   G.playerAuthType    = load('playerAuthType', '');
   G.playerPhoto       = load('playerPhoto', '');
   G.playerAge         = load('playerAge', 0);
+  G.consentAge        = load('consentAge', 0);
+  G.parentConsentAt   = load('parentConsentAt', null);
   G.playerGrade       = load('playerGrade', 0);
   G.pilotEmblem       = load('pilotEmblem', 'plane');
   G.pilotMotto        = load('pilotMotto', '');
@@ -399,6 +403,8 @@ export function saveAll() {
   save('playerAuthType',    G.playerAuthType);
   save('playerPhoto',       G.playerPhoto);
   save('playerAge',         G.playerAge);
+  save('consentAge',        G.consentAge);
+  save('parentConsentAt',   G.parentConsentAt);
   save('playerRegistered',  G.playerRegistered);
   save('playerGrade',       G.playerGrade);
   save('pilotEmblem',       G.pilotEmblem);
