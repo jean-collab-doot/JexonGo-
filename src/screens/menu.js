@@ -323,11 +323,34 @@ function renderLobbyPlane() {
   const cost = planeCost(plane);
   // Level still too low: the level AND the EXP price, so the player knows
   // both what to reach and what to save up.
-  btn.innerHTML = `<span>${plane.name.toUpperCase()}</span><b>${gradeOk
-    ? `${cost.toLocaleString()} XP`
-    : (fr ? `NIVEAU ${plane.gradeRequired} REQUIS` : `LEVEL ${plane.gradeRequired} REQUIRED`)}</b>${gradeOk
-    ? '' : `<small class="jx-plane-buy-cost">${cost.toLocaleString()} XP</small>`}`;
+  // One compact line: name · price (· level needed while it is too low).
+  btn.innerHTML = `<span>${plane.name.toUpperCase()}</span><b>${cost.toLocaleString()} XP</b>${gradeOk
+    ? '' : `<small class="jx-plane-buy-cost">${fr ? `NIV. ${plane.gradeRequired} REQUIS` : `LEVEL ${plane.gradeRequired} NEEDED`}</small>`}`;
   btn.classList.toggle('is-disabled', !gradeOk || (G.xp || 0) < cost);
+  placeLobbyBuyButton();
+}
+
+// The buy button sits just above JOUER, measured on screen: under the plane
+// it slid behind JOUER on short screens (JOUER's place differs per device).
+function placeLobbyBuyButton() {
+  const btn = $('btn-lobby-plane-buy');
+  const menu = $('s-menu');
+  const play = $('btn-play');
+  if (!btn || !menu || !play || btn.classList.contains('hidden')) return;
+  if (btn.parentElement !== menu) menu.appendChild(btn);
+  // Placed again whenever the lobby shows up or changes size.
+  if (!menu._buyObserver && typeof ResizeObserver !== 'undefined') {
+    menu._buyObserver = new ResizeObserver(() => placeLobbyBuyButton());
+    menu._buyObserver.observe(menu);
+    menu._buyObserver.observe(play);
+  }
+  const m = menu.getBoundingClientRect();
+  const p = play.getBoundingClientRect();
+  if (!p.height) return;
+  btn.style.top = `${Math.max(8, p.top - m.top - btn.offsetHeight - 12)}px`;
+}
+if (typeof window !== 'undefined') {
+  window.addEventListener('resize', () => requestAnimationFrame(placeLobbyBuyButton));
 }
 
 function buyLobbyPreview() {

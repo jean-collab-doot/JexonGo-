@@ -1888,20 +1888,21 @@ html #s-levelmap::after {
 
 /* ---- Lobby: a plane not owned yet (menu.js renderLobbyPlane) ---- */
 #menu-selected-plane.is-locked { filter: grayscale(1) brightness(.72) contrast(.9); opacity: .9; }
+/* Compact, one line, placed just above JOUER by menu.js placeLobbyBuyButton. */
 .jx-plane-buy {
-  position: absolute; left: 50%; top: 100%; transform: translateX(-50%);
-  display: flex; flex-direction: column; align-items: center; gap: 4px;
-  margin-top: 6px; padding: 8px 16px; min-width: 150px;
-  border: 0; border-radius: 14px; cursor: pointer;
-  font-family: var(--jx-font); color: #fff; text-shadow: 2px 2px 0 var(--jx-ink);
+  position: absolute; z-index: 17; left: 50%; top: 100%; transform: translateX(-50%);
+  display: flex; flex-wrap: wrap; justify-content: center; align-items: baseline; gap: 2px 8px;
+  margin: 0; padding: 7px 14px; min-width: 0; max-width: calc(100% - 32px); box-sizing: border-box;
+  border: 0; border-radius: 12px; cursor: pointer;
+  font-family: var(--jx-font); color: #fff; text-shadow: 1px 1px 0 var(--jx-ink);
   background: linear-gradient(180deg, #ffb347, #ff8a00 55%, #e06a00);
-  box-shadow: 0 5px 0 #9a4a00, inset 0 3px 0 rgba(255,255,255,.45);
+  box-shadow: 0 4px 0 #9a4a00, inset 0 2px 0 rgba(255,255,255,.45);
   white-space: nowrap;
 }
 .jx-plane-buy.hidden { display: none; }
-.jx-plane-buy span { font-size: 9px; opacity: .9; }
-.jx-plane-buy b { font-size: 13px; }
-.jx-plane-buy .jx-plane-buy-cost { font-size: 10px; opacity: .9; }
+.jx-plane-buy span { font-size: clamp(8px, 2.2vw, 10px); opacity: .9; }
+.jx-plane-buy b { font-size: clamp(9px, 2.6vw, 12px); }
+.jx-plane-buy .jx-plane-buy-cost { font-size: clamp(7px, 2vw, 9px); opacity: .9; }
 .jx-plane-buy:active { transform: translateX(-50%) translateY(3px); box-shadow: 0 2px 0 #9a4a00; }
 /* Not affordable yet (or level too low): grey, still tappable to say why. */
 .jx-plane-buy.is-disabled {

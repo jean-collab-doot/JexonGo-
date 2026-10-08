@@ -7591,8 +7591,8 @@ html.touch-tablet .menu-top-left {
 .ob-panel {
   position: relative;
   width: min(100%, 560px);
-  min-height: calc(100vh - 42px);
-  max-height: calc(100vh - 24px);
+  min-height: calc(var(--app-height, 100dvh) - 42px);
+  max-height: calc(var(--app-height, 100dvh) - 24px);
   margin: 12px 0;
   padding: 16px 16px 14px;
   border: 2px solid rgba(125,211,252,0.75);
@@ -7633,7 +7633,7 @@ html.touch-tablet .menu-top-left {
   align-items: center;
   justify-content: center;
   gap: 26px;
-  min-height: min(720px, calc(100vh - 42px));
+  min-height: min(720px, calc(var(--app-height, 100dvh) - 42px));
 }
 .ob-hud {
   position: relative;
@@ -7942,8 +7942,8 @@ html.touch-tablet .menu-top-left {
 
 @media (orientation: landscape) and (max-height: 520px) {
   :root {
-    --phone-stage-w: min(100vw, calc(100vh * 16 / 9));
-    --phone-stage-h: min(100vh, calc(100vw * 9 / 16));
+    --phone-stage-w: min(100vw, calc(var(--app-height, 100dvh) * 16 / 9));
+    --phone-stage-h: min(var(--app-height, 100dvh), calc(100vw * 9 / 16));
   }
   body {
     background: #000;
@@ -7954,7 +7954,7 @@ html.touch-tablet .menu-top-left {
   #onboarding-overlay,
   #brief-overlay {
     left: calc((100vw - var(--phone-stage-w)) / 2);
-    top: calc((100vh - var(--phone-stage-h)) / 2);
+    top: calc((var(--app-height, 100dvh) - var(--phone-stage-h)) / 2);
     right: auto;
     bottom: auto;
     width: var(--phone-stage-w);
@@ -9321,7 +9321,7 @@ html.touch-tablet .menu-top-left {
   }
   .ob-panel {
     width: min(96vw, 780px);
-    max-height: calc(100vh - 16px);
+    max-height: calc(var(--app-height, 100dvh) - 16px);
     min-height: 0;
     margin: auto;
     padding: 10px 14px;
@@ -9529,7 +9529,7 @@ html.touch-tablet .menu-top-left {
 
   #brief-overlay {
     left: calc((100vw - var(--phone-stage-w)) / 2);
-    top: calc((100vh - var(--phone-stage-h)) / 2);
+    top: calc((var(--app-height, 100dvh) - var(--phone-stage-h)) / 2);
     right: auto;
     bottom: auto;
     width: var(--phone-stage-w);
@@ -9663,7 +9663,7 @@ html.touch-tablet .menu-top-left {
 @media (orientation: landscape) and (max-height: 520px) {
   :root {
     --phone-stage-w: 100vw;
-    --phone-stage-h: 100vh;
+    --phone-stage-h: var(--app-height, 100dvh);
   }
 
   .screen,
@@ -9674,7 +9674,7 @@ html.touch-tablet .menu-top-left {
     left: 0;
     top: 0;
     width: 100vw;
-    height: 100vh;
+    height: var(--app-height, 100dvh);
   }
 
   #s-menu .menu-content {
@@ -10097,7 +10097,7 @@ html.touch-tablet .menu-top-left {
     right: auto;
     bottom: auto;
     width: 100vw;
-    height: 100vh;
+    height: var(--app-height, 100dvh);
     transform: none;
   }
 
@@ -10250,7 +10250,7 @@ html.touch-tablet .menu-top-left {
   #brief-card {
     top: 50%;
     width: min(92vw, 420px);
-    max-height: calc(100vh - 96px);
+    max-height: calc(var(--app-height, 100dvh) - 96px);
     padding: 14px;
     overflow-y: auto;
   }
