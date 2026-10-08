@@ -37,7 +37,8 @@ function _loadGsiScript() {
     }
 
     const script = document.createElement('script');
-    script.src = 'https://accounts.google.com/gsi/client';
+    // hl: Google's button in the game's language ("Se connecter avec Google").
+    script.src = `https://accounts.google.com/gsi/client?hl=${getLang() === 'fr' ? 'fr' : 'en'}`;
     script.async = true;
     script.defer = true;
     script.dataset.jexongoGsi = '1';
@@ -94,35 +95,27 @@ function _showGsiFallback() {
   let overlay = document.getElementById('gsi-fallback-overlay');
   if (overlay) { overlay.classList.remove('hidden'); return; }
 
+  // Same yellow design as the age check and the sign-in invitation (.cp).
+  const fr = getLang() === 'fr';
   overlay = document.createElement('div');
   overlay.id = 'gsi-fallback-overlay';
-  overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.75);display:flex;align-items:center;justify-content:center;';
-
-  const box = document.createElement('div');
-  box.style.cssText = 'background:#1e293b;border:1px solid #334155;border-radius:16px;padding:28px 32px;text-align:center;min-width:280px;';
-
-  const title = document.createElement('p');
-  title.textContent = t('signInGoogle');
-  title.style.cssText = 'color:#fff;font-family:monospace;font-size:13px;letter-spacing:1px;margin:0 0 20px;';
-  box.appendChild(title);
-
-  const btnWrap = document.createElement('div');
-  btnWrap.style.cssText = 'display:flex;justify-content:center;';
-  box.appendChild(btnWrap);
-
-  const cancel = document.createElement('button');
-  cancel.textContent = getLang() === 'fr' ? '× ANNULER' : '× CANCEL';
-  cancel.style.cssText = 'display:block;margin:18px auto 0;background:none;border:none;color:#64748b;cursor:pointer;font-size:11px;letter-spacing:1px;';
-  cancel.onclick = () => overlay.classList.add('hidden');
-  box.appendChild(cancel);
-
-  overlay.appendChild(box);
+  overlay.className = 'cp pnp gsi';
+  overlay.innerHTML = `
+    <div class="cp-card pnp-card">
+      <div class="cp-title">${fr ? 'CONNEXION' : 'SIGN IN'}</div>
+      <div class="cp-sub">${t('signInGoogle')}</div>
+      <div class="gsi-btn-wrap"></div>
+      <button class="cp-later" type="button">${fr ? 'Annuler' : 'Cancel'}</button>
+    </div>`;
+  const btnWrap = overlay.querySelector('.gsi-btn-wrap');
+  overlay.querySelector('.cp-later').onclick = () => overlay.classList.add('hidden');
   overlay.onclick = e => { if (e.target === overlay) overlay.classList.add('hidden'); };
   document.body.appendChild(overlay);
 
   google.accounts.id.renderButton(btnWrap, {
     type: 'standard', size: 'large', text: 'signin_with',
-    theme: 'filled_blue', shape: 'pill',
+    theme: 'outline', shape: 'pill',
+    locale: fr ? 'fr' : 'en',   // the button's text in the game's language
   });
 }
 

@@ -1646,12 +1646,14 @@
   </div>
 
   <!-- AGE CHECK: shown before the first Google sign-in (age-gate.js) -->
-  <div id="age-gate-modal" class="sett-backdrop hidden">
-    <div class="delete-account-panel">
-      <div class="delete-account-title" data-i18n="ageGateTitle">BEFORE SIGNING IN</div>
-      <label class="delete-question">
-        <span data-i18n="ageGateQuestion">HOW OLD ARE YOU?</span>
-        <select id="age-gate-age" class="reg-input reg-select">
+  <!-- Age check before Google sign-in (age-gate.js), in the game's yellow
+       design like the pilot name and sign-in invitation (.cp / .pnp). -->
+  <div id="age-gate-modal" class="cp pnp ag hidden" role="dialog" aria-modal="true">
+    <div class="cp-card pnp-card ag-card">
+      <div class="cp-title" data-i18n="ageGateTitle">BEFORE SIGNING IN</div>
+      <label class="ag-field">
+        <span class="cp-sub" data-i18n="ageGateQuestion">HOW OLD ARE YOU?</span>
+        <select id="age-gate-age" class="pnp-input ag-select">
           <option value="" data-i18n="ageGatePick">-- CHOOSE YOUR AGE --</option>
           <option value="5">5</option>
           <option value="6">6</option>
@@ -1669,16 +1671,14 @@
           <option value="18">18+</option>
         </select>
       </label>
-      <label id="age-gate-parent-row" class="delete-confirm-row hidden">
+      <label id="age-gate-parent-row" class="ag-parent hidden">
         <input id="age-gate-parent" type="checkbox">
         <span data-i18n="ageGateParent">MY PARENT OR GUARDIAN HAS READ THE PRIVACY POLICY AND AGREES THAT I CREATE AN ACCOUNT.</span>
       </label>
-      <button id="btn-age-gate-policy" type="button" class="btn btn-secondary" data-i18n="ageGateReadPolicy">READ THE PRIVACY POLICY</button>
-      <div id="age-gate-error" class="login-modal-error"></div>
-      <div class="delete-account-actions">
-        <button id="btn-age-gate-cancel" class="btn btn-secondary" data-i18n="ageGateCancel">CANCEL</button>
-        <button id="btn-age-gate-continue" class="btn btn-primary" data-i18n="ageGateContinue">CONTINUE</button>
-      </div>
+      <button id="btn-age-gate-policy" type="button" class="ag-policy" data-i18n="ageGateReadPolicy">READ THE PRIVACY POLICY</button>
+      <div id="age-gate-error" class="pnp-error" role="alert"></div>
+      <button id="btn-age-gate-continue" type="button" class="ag-continue" data-i18n="ageGateContinue">CONTINUE</button>
+      <button id="btn-age-gate-cancel" type="button" class="cp-later" data-i18n="ageGateCancel">CANCEL</button>
     </div>
   </div>
 
