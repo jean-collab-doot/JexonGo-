@@ -1887,7 +1887,21 @@ html #s-levelmap::after {
 .top20-podium-col.is-me .top20-podium-name { color: #1f3b73; text-shadow: none; }
 
 /* ---- Lobby: a plane not owned yet (menu.js renderLobbyPlane) ---- */
-#menu-selected-plane.is-locked { filter: grayscale(1) brightness(.72) contrast(.9); opacity: .9; }
+#menu-selected-plane.is-locked,
+#training-selected-plane.is-locked { filter: grayscale(1) brightness(.72) contrast(.9); opacity: .9; }
+/* Training: a plane not owned yet (training.js renderTrainingPlane). */
+.jx-plane-note {
+  position: absolute; left: 50%; top: 100%; transform: translateX(-50%);
+  display: flex; flex-wrap: wrap; justify-content: center; align-items: baseline; gap: 2px 8px;
+  padding: 6px 12px; max-width: calc(100% - 32px); box-sizing: border-box;
+  border-radius: 12px; pointer-events: none; white-space: nowrap;
+  font-family: var(--jx-font); color: #fff; text-shadow: 1px 1px 0 var(--jx-ink);
+  background: linear-gradient(180deg, #9aa3ad, #6b7480);
+  box-shadow: 0 4px 0 #454c55, inset 0 2px 0 rgba(255,255,255,.3);
+}
+.jx-plane-note.hidden { display: none; }
+.jx-plane-note b { font-size: clamp(9px, 2.6vw, 12px); }
+.jx-plane-note span { font-size: clamp(7px, 2vw, 9px); opacity: .9; }
 /* Compact, one line, placed just above JOUER by menu.js placeLobbyBuyButton. */
 .jx-plane-buy {
   position: absolute; z-index: 17; left: 50%; top: 100%; transform: translateX(-50%);

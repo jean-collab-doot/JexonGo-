@@ -300,7 +300,7 @@ export function updateSelectedPlaneShowcase(imgEl, nameEl) {
 // button under it to buy it. The game always uses G.activeAircraft.
 let _lobbyPreview = null;
 
-function lobbyPlanes() {
+export function lobbyPlanes() {
   return AIRCRAFT_ORDER.filter(id => AIRCRAFT[id] && (!AIRCRAFT[id].secret || G.unlockedAircraft.includes(id)));
 }
 

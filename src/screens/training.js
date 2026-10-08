@@ -3,7 +3,8 @@ import { uiIcon } from '../utils/icons.js';
 import { G } from '../state.js';
 import { applyI18n, t, getLang } from '../i18n.js';
 import { save } from '../utils/storage.js';
-import { updateSelectedPlaneShowcase, cyclePlane } from './menu.js';
+import { updateSelectedPlaneShowcase, lobbyPlanes } from './menu.js';
+import { AIRCRAFT } from '../data/aircraft.js';
 import { makeBottomSheet } from '../utils/bottomsheet.js';
 import { BIOMES, BIOME_META } from '../data/levels.js';
 import { weatherOptionsForBiome } from '../data/weather.js';
@@ -40,6 +41,50 @@ export function practiceLevelNumber() {
 
 let _nav = null;
 
+// Training ◀︎ ▶︎: every plane, like the lobby. An owned plane becomes the
+// active one; a plane not owned yet is only shown (grey) with a note that it
+// is bought in the lobby. Practice always flies G.activeAircraft.
+let _trainingPreview = null;
+
+function renderTrainingPlane() {
+  const img = $('training-selected-plane');
+  if (_trainingPreview && G.unlockedAircraft.includes(_trainingPreview)) _trainingPreview = null;
+  if (!_trainingPreview) updateSelectedPlaneShowcase(img, null);
+  else if (img) {
+    img.src = `/assets/hangar/${_trainingPreview}.webp`;
+    img.dataset.plane = _trainingPreview;
+  }
+  img?.classList.toggle('is-locked', !!_trainingPreview);
+  let note = $('training-plane-note');
+  if (!note && img) {
+    note = document.createElement('div');
+    note.id = 'training-plane-note';
+    note.className = 'jx-plane-note';
+    img.parentElement.appendChild(note);
+  }
+  if (!note) return;
+  note.classList.toggle('hidden', !_trainingPreview);
+  if (_trainingPreview) {
+    const fr = getLang() === 'fr';
+    note.innerHTML = `<b>${AIRCRAFT[_trainingPreview].name.toUpperCase()}</b><span>${fr ? 'À acheter dans le lobby' : 'Buy it in the lobby'}</span>`;
+  }
+}
+
+function cycleTrainingPlane(dir) {
+  const list = lobbyPlanes();
+  const cur = list.indexOf(_trainingPreview || G.activeAircraft);
+  const next = list[((cur === -1 ? 0 : cur) + dir + list.length) % list.length];
+  if (G.unlockedAircraft.includes(next)) {
+    G.activeAircraft = next;
+    save('activeAircraft', next);
+    _trainingPreview = null;
+    updateSelectedPlaneShowcase($('menu-selected-plane'), null);
+  } else {
+    _trainingPreview = next;
+  }
+  renderTrainingPlane();
+}
+
 export function initTraining(nav) {
   _nav = nav;
 
@@ -56,8 +101,8 @@ export function initTraining(nav) {
   // pull-up drawer).
   $('btn-training-page-left')?.addEventListener('click', () => nav.toShop('prev'));
 
-  $('btn-training-plane-prev')?.addEventListener('click', () => cyclePlane(-1, { ownedOnly: true }));
-  $('btn-training-plane-next')?.addEventListener('click', () => cyclePlane(1, { ownedOnly: true }));
+  $('btn-training-plane-prev')?.addEventListener('click', () => cycleTrainingPlane(-1));
+  $('btn-training-plane-next')?.addEventListener('click', () => cycleTrainingPlane(1));
 }
 
 // Full practice-session setup (operations, difficulty, biome, weather,
@@ -247,7 +292,8 @@ export function renderTraining() {
   const xpEl = $('training-xp');
   if (coinsEl) coinsEl.textContent = (G.coins || 0).toLocaleString();
   if (xpEl) xpEl.textContent = (G.xp || 0).toLocaleString();
-  updateSelectedPlaneShowcase($('training-selected-plane'), null);
+  _trainingPreview = null;
+  renderTrainingPlane();
   const sheet = $('training-sheet');
   if (sheet) { sheet.style.transform = ''; sheet.classList.add('is-collapsed'); sheet.classList.remove('is-open'); }
   applyI18n();
