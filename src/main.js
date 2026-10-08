@@ -188,8 +188,9 @@ const nav = {
       level: levelNum,
       mode: practiceMode ? 'practice' : 'level',
     });
-    // A level (new or replayed) always starts its music from the beginning.
-    SFX.playMusic([10, 20, 30, 40, 50].includes(levelNum) ? 'dialogue' : 'game', { restart: true });
+    // Quiet while the level loads (the yellow loading screen has the plane's
+    // engine); game.js starts the level's music once it has loaded.
+    SFX.stopMusic();
     _cleanup = initGame(levelNum, (won) => {
       cleanup();
       if (_practiceNumberMaxBeforeRun !== null) {

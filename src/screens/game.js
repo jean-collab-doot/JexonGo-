@@ -6460,11 +6460,16 @@ export function initGame(levelNum, onComplete) {
       };
       // Yellow loading screen: what comes next (briefing or countdown) starts
       // once it has gone; nothing moves underneath meanwhile.
-      if (!loader) { afterLoading(); return; }
+      // The level's music starts once loading is over (from the beginning,
+      // for a new or replayed level).
+      const startMusic = () => SFX.playMusic([10, 20, 30, 40, 50].includes(levelNum) ? 'dialogue' : 'game', { restart: true });
+      if (!loader) { startMusic(); afterLoading(); return; }
       _cutsceneActive = true;
       loader.hide().then(() => {
         if (_yellowLoader === loader) _yellowLoader = null;
-        if (_isActiveSid(sid)) afterLoading();
+        if (!_isActiveSid(sid)) return;
+        startMusic();
+        afterLoading();
       });
     });
   }

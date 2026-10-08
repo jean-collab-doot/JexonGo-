@@ -1097,6 +1097,16 @@ export const SFX = {
     _sweep(600, 4200, 0.45, 0.3);
     [784, 1175].forEach((f, i) => _after(i * 80, () => _tone(_ac(), f, 'triangle', 0.2, 0.2)));
   },
+  // Yellow loading screen before a game (new-player-intro.js showYellowLoader):
+  // the intro's T-6 engine hums while the level loads, then flies off.
+  loaderStart() {
+    _canAutoplay().then(ok => {
+      if (!ok || _sfxVol === 0) return;
+      try { _ac(); } catch (_) { return; }
+      _introEngineStart(0);
+    });
+  },
+  loaderExit() { _introEngineExit(); },
   // Player engine (see PLAYER ENGINE above).
   engineStart(aircraftId) { _engineStart(aircraftId); },
   engineStop() { _engineStop(); },
