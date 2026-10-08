@@ -1080,18 +1080,18 @@ export const SFX = {
     });
   },
   // The T-6 shoots off the top, the white wash, then the logo and JOUER.
-  // returning: a player who already played (straight to the lobby) gets no
-  // whoosh on the white wash.
+  // returning: a player who already played goes straight to the lobby, so
+  // there is no JOUER pop after the logo.
   introExit({ returning = false } = {}) {
     if (!_audioRunning()) return;
     _introEngineExit();
-    if (!returning) _after(150, () => _sweep(400, 5200, 0.85, 0.3, 0.9));   // white wash
+    _after(150, () => _sweep(400, 5200, 0.85, 0.3, 0.9));          // white wash
     _after(1300, () => {                                             // logo lands
       _hit(300, 0.3, 0.16);
       [1047, 1319, 1568, 2093].forEach((f, i) =>
         _after(i * 60, () => _tone(_ac(), f, 'sine', 0.35, 0.1)));
     });
-    _after(1800, () => _tone(_ac(), 660, 'triangle', 0.12, 0.2, 440));  // JOUER pops in
+    if (!returning) _after(1800, () => _tone(_ac(), 660, 'triangle', 0.12, 0.2, 440));  // JOUER pops in
   },
   // JOUER pressed: a bright whoosh into the questionnaire.
   introPlay() {
