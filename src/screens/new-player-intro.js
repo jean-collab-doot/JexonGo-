@@ -75,7 +75,7 @@ export function playNewPlayerIntro(onDone, { leave = false } = {}) {
   Promise.all([pageLoaded(), new Promise(resolve => setTimeout(resolve, minDelay))])
     .then(() => {
       overlay.classList.add('np-go');
-      SFX.introExit();
+      SFX.introExit({ returning: leave });
       // The phone's top bar follows the white wash (style.css npWash /
       // npWashOut) so the top of the screen never shows a yellow band over
       // the white, then goes back to yellow with the logo.

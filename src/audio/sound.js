@@ -1080,10 +1080,12 @@ export const SFX = {
     });
   },
   // The T-6 shoots off the top, the white wash, then the logo and JOUER.
-  introExit() {
+  // returning: a player who already played (straight to the lobby) gets no
+  // whoosh on the white wash.
+  introExit({ returning = false } = {}) {
     if (!_audioRunning()) return;
     _introEngineExit();
-    _after(150, () => _sweep(400, 5200, 0.85, 0.3, 0.9));          // white wash
+    if (!returning) _after(150, () => _sweep(400, 5200, 0.85, 0.3, 0.9));   // white wash
     _after(1300, () => {                                             // logo lands
       _hit(300, 0.3, 0.16);
       [1047, 1319, 1568, 2093].forEach((f, i) =>

@@ -337,14 +337,19 @@ function placeLobbyBuyButton() {
   const menu = $('s-menu');
   const play = $('btn-play');
   if (!btn || !menu || !play || btn.classList.contains('hidden')) return;
-  if (btn.parentElement !== menu) menu.appendChild(btn);
+  // Same layer as the HANGAR sheet (z-index 30), so the open sheet covers it.
+  const host = menu.querySelector('.menu-content') || menu;
+  if (btn.parentElement !== host) {
+    const sheet = $('lobby-sheet');
+    host.insertBefore(btn, sheet?.parentElement === host ? sheet : null);
+  }
   // Placed again whenever the lobby shows up or changes size.
   if (!menu._buyObserver && typeof ResizeObserver !== 'undefined') {
     menu._buyObserver = new ResizeObserver(() => placeLobbyBuyButton());
     menu._buyObserver.observe(menu);
     menu._buyObserver.observe(play);
   }
-  const m = menu.getBoundingClientRect();
+  const m = (btn.offsetParent || host).getBoundingClientRect();
   const p = play.getBoundingClientRect();
   if (!p.height) return;
   btn.style.top = `${Math.max(8, p.top - m.top - btn.offsetHeight - 12)}px`;
