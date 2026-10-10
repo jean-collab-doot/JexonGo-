@@ -4778,6 +4778,11 @@ function onMissileHit(enemy, missile) {
 function nextQuestion() {
   // Spectator (online co-op, out of lives): no questions until repaired.
   if (_transitioning || _bossDefeated || _spectating) return;
+  // A question is already on screen and not answered yet: keep it. Two
+  // timers can both ask for the next one (e.g. a missile hit near the end of
+  // the shooting window: the window's end, then the hit's recovery), and the
+  // second one used to swap the equation for another out of nowhere.
+  if (G.question && !G.answerLocked) return;
   stopShootingWindow();
   const questionTarget = isTutorialActive() ? tutorialQuestionTarget()
     : _guidedRun ? GUIDED_QUESTIONS : levelCfg.questionCount;
