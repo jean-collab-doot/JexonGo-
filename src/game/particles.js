@@ -12,11 +12,14 @@ export function spawnExplosion(particles, x, y, color, count = 14) {
 }
 
 export function spawnMissileExplosion(particles, x, y, missileType = 'default', count = 14) {
+  // first: the sheets open on frames of the whole missile (flying, then
+  // glowing) before it bursts; the explosion starts after them so no missile
+  // is seen on top of it.
   const profiles = {
-    fire: { spriteKey: 'explosion-fire', glow: '#ff6a00', ring: '#ffcf33', size: 4.0, frames: 12 },
-    ice: { spriteKey: 'explosion-ice', glow: '#67e8f9', ring: '#dffbff', size: 5.4, frames: 12 },
-    nuke: { spriteKey: 'explosion-nuke', glow: '#ff9d00', ring: '#ffe45c', size: 8.2, frames: 12 },
-    ray:  { spriteKey: 'explosion-ray', glow: '#8b5cf6', ring: '#22d3ee', size: 6.0, frames: 12 },
+    fire: { spriteKey: 'explosion-fire', glow: '#ff6a00', ring: '#ffcf33', size: 4.0, frames: 12, first: 4 },
+    ice: { spriteKey: 'explosion-ice', glow: '#67e8f9', ring: '#dffbff', size: 5.4, frames: 12, first: 5 },
+    nuke: { spriteKey: 'explosion-nuke', glow: '#ff9d00', ring: '#ffe45c', size: 8.2, frames: 12, first: 2 },
+    ray:  { spriteKey: 'explosion-ray', glow: '#8b5cf6', ring: '#22d3ee', size: 6.0, frames: 12, first: 4 },
     default: { spriteKey: 'enemy-death', glow: '#f97316', ring: '#fde047', size: 3.5, frames: 7 },
   };
   const profile = profiles[missileType] || profiles.default;
@@ -27,7 +30,7 @@ export function spawnMissileExplosion(particles, x, y, missileType = 'default', 
     glow: profile.glow,
     ring: profile.ring,
     x, y,
-    frame: 0,
+    frame: profile.first || 0,
     frameRate: 0.32,
     totalFrames: profile.frames,
     size: Math.max(50, count * profile.size),

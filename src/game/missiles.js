@@ -38,12 +38,24 @@ export function createMissile(x, y, tx, ty, speed, enemyId, color = '#00d4ff', d
 // point each frame instead of flying its original straight line, so it always
 // reaches an enemy that is still on screen instead of possibly missing it.
 const HOMING_TURN_RATE = 0.12;
+// onLost(missile): a homing missile with no target for HOMING_LOST_FRAMES in a
+// row, or still flying after HOMING_MAX_FRAMES (circling a target it cannot
+// reach), is removed and onLost shows its explosion.
+const HOMING_LOST_FRAMES = 6;
+const HOMING_MAX_FRAMES = 300;
 
-export function updateMissiles(missiles, onHit, step = 1, findTarget = null) {
+export function updateMissiles(missiles, onHit, step = 1, findTarget = null, onLost = null) {
   for (let i = missiles.length - 1; i >= 0; i--) {
     const m = missiles[i];
     if (m.homing && findTarget) {
       const target = findTarget(m);
+      m.homingAge = (m.homingAge || 0) + step;
+      m.lostFrames = target ? 0 : (m.lostFrames || 0) + step;
+      if (onLost && (m.lostFrames >= HOMING_LOST_FRAMES || m.homingAge >= HOMING_MAX_FRAMES)) {
+        onLost(m);
+        missiles.splice(i, 1);
+        continue;
+      }
       if (target) {
         const dx = target.x - m.x, dy = target.y - m.y;
         const d = Math.sqrt(dx * dx + dy * dy) || 1;
@@ -52,6 +64,11 @@ export function updateMissiles(missiles, onHit, step = 1, findTarget = null) {
         const turn = Math.min(1, HOMING_TURN_RATE * step);
         m.vx += (desiredVx - m.vx) * turn;
         m.vy += (desiredVy - m.vy) * turn;
+        // Turning blends the two directions, which shortens the vector: keep
+        // the speed, or a missile turning around slows down to a stop.
+        const k = speed / (Math.sqrt(m.vx * m.vx + m.vy * m.vy) || 1);
+        m.vx *= k;
+        m.vy *= k;
       }
     }
     m.x += m.vx * step;

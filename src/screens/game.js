@@ -3127,7 +3127,9 @@ function frame(ts = 0) {
     return hitAirdrop(missile);
   }, _frameStep, (activeAircraftAbility().homing || homingUpgradeOwned() || coopBotAbility()?.homing)
     ? m => (m.allyHoming ? nearestEnemyTo(m.x, m.y) : nearestEnemyAheadOf(m))
-    : m => (m.allyHoming ? nearestEnemyTo(m.x, m.y) : null));
+    : m => (m.allyHoming ? nearestEnemyTo(m.x, m.y) : null),
+  // A homing missile with no aircraft left to chase blows itself up.
+  m => spawnMissileExplosion(G.particles, m.x, m.y, m.type || 'default', 10));
   drawMissiles(ctx, G.missiles, false);
 
   for (let i = G.enemyMissiles.length - 1; i >= 0; i--) {
@@ -4472,7 +4474,8 @@ function drawBossDeaths(now) {
       ctx.restore();
 
       // Huge fireball sprite.
-      const fbFrame = bt / 1000 * 60 * 0.3;
+      // (Frames 0-1 of the sheet are the nuke missile itself: skipped.)
+      const fbFrame = 2 + bt / 1000 * 60 * 0.3;
       if (fbFrame < 12) {
         const fb = d.size * 2.3;
         drawFrame(ctx, 'explosion-nuke', fbFrame, d.x, d.y, fb, fb);
