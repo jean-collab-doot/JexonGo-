@@ -1,4 +1,4 @@
-import { G, resetLevel, clampCoins, addSessionCoins, addSessionXp, addLifetimeXp } from '../state.js';
+import { G, resetLevel, clampCoins, addSessionCoins, addSessionXp, addLifetimeXp, MAX_COINS, MAX_GAME_COINS } from '../state.js';
 import { uiIcon } from '../utils/icons.js';
 import { $, showScreen } from '../utils/dom.js';
 import { newQuestion } from '../game/math-engine.js';
@@ -1518,6 +1518,14 @@ function awardGameplayCoins(amount) {
   addSessionCoins(reward);
 }
 
+// Coins full: the game's limit (MAX_GAME_COINS) or the account's (MAX_COINS)
+// is reached. Coins on the map then fade away and no new ones appear.
+const MAP_COIN_FADE_FRAMES = 54;   // about 0.9 s
+function mapCoinsFull() {
+  const session = G.airdropSessionCoins || 0;
+  return session >= MAX_GAME_COINS || (G.coins || 0) + session >= MAX_COINS;
+}
+
 function resetMapCoins() {
   _mapCoins = [];
   _mapCoinsReleased = 0;
@@ -1541,6 +1549,7 @@ function releaseCorrectAnswerCoins() {
 }
 
 function spawnMapCoin(cw, y = -35, x = null, value = null) {
+  if (mapCoinsFull()) return;
   const margin = Math.min(70, cw * 0.14);
   _mapCoins.push({
     x: x == null
@@ -1558,8 +1567,11 @@ const MAP_COIN_SIZE = 46;
 const MAP_COIN_SIZE_PHONE = 30;
 function updateAndDrawMapCoins(ctx, cw, ch, step, magnetRadius = 0) {
   const playerRadius = Math.max(24, getPlayerSize() * 0.38);
+  const full = mapCoinsFull();
   for (let i = _mapCoins.length - 1; i >= 0; i--) {
     const coin = _mapCoins[i];
+    if (full) coin.fade = (coin.fade || 0) + step;
+    if (coin.fade >= MAP_COIN_FADE_FRAMES) { _mapCoins.splice(i, 1); continue; }
     coin.phase += 0.035 * step;
     coin.y += 1.05 * step;
     if (magnetRadius > 0) {
@@ -1576,6 +1588,17 @@ function updateAndDrawMapCoins(ctx, cw, ch, step, magnetRadius = 0) {
     const size = isTouchMobile() ? MAP_COIN_SIZE_PHONE : MAP_COIN_SIZE;
     // 3D spin: front → edge → back → edge → front (aligned sheet frames).
     const spinFrame = MAP_COIN_SPIN[Math.floor(performance.now() / 70 + coin.spinOffset) % MAP_COIN_SPIN.length];
+    if (coin.fade) {
+      // Fading away: grows a little while it turns transparent, and can no
+      // longer be picked up.
+      const k = coin.fade / MAP_COIN_FADE_FRAMES;
+      const s = size * (1 + k * 0.35);
+      ctx.save();
+      ctx.globalAlpha *= 1 - k * k * (3 - 2 * k);
+      drawFrame(ctx, 'map-coin-spin', spinFrame, drawX, coin.y, s, s);
+      ctx.restore();
+      continue;
+    }
     drawFrame(ctx, 'map-coin-spin', spinFrame, drawX, coin.y, size, size);
 
     const dx = drawX - G.player.x;
