@@ -1,4 +1,5 @@
 import { G, resetLevel, clampCoins, addSessionCoins, addSessionXp, addLifetimeXp, MAX_COINS, MAX_GAME_COINS } from '../state.js';
+import { chosenBasicOpsForLevel, chosenExtraOps, extraTopicShare } from '../systems/question-topics.js';
 import { uiIcon } from '../utils/icons.js';
 import { $, showScreen } from '../utils/dom.js';
 import { newQuestion } from '../game/math-engine.js';
@@ -559,12 +560,10 @@ function normalizeOps(ops) {
 function applyGradeToQuestion(ops, cap, mCap, grade) {
   const selectedOps = G.practiceMode ? normalizeOps(ops) : selectedFocusOperations();
   const selectedAllowedOps = selectedOps.filter(op => ['+', '-', '*', '/'].includes(op));
-  // The player's "weak topic" focus (picked once at onboarding) may only
-  // narrow which of THIS level's own operations get asked — it must never
-  // introduce an operation the level hasn't unlocked yet (e.g. level 1 must
-  // stay addition-only even if the player once flagged subtraction/division
-  // as their weak spot).
-  const focusInLevel = G.practiceMode ? selectedAllowedOps : selectedAllowedOps.filter(op => ops.includes(op));
+  // Levels ask only the operations the player chose: inside this level's own
+  // set when some of them are in it, else the chosen ones
+  // (systems/question-topics.js).
+  const focusInLevel = G.practiceMode ? selectedAllowedOps : chosenBasicOpsForLevel(ops);
   if (!grade && !focusInLevel.length) return { ops, cap, mCap };
   const p = REASONABLE_GRADE_PROFILES[grade] || REASONABLE_GRADE_PROFILES[6];
   // Pilot setup choices apply for every grade; grade only keeps the numbers reasonable.
@@ -586,13 +585,10 @@ function applyGradeToQuestion(ops, cap, mCap, grade) {
 // Exponent / algebra: chosen at onboarding (G.focusTopics) or in the
 // practice setup (G.practiceOps). Not part of any level's own op set, so they
 // are mixed in on top of it (see nextQuestion).
-const EXTRA_TOPIC_OPS = { exponent: '^', algebra: 'alg' };
-const EXTRA_TOPIC_SHARE = 0.4;   // share of level questions from those topics
-
 function selectedExtraTopicOps() {
   if (G.practiceMode) return (G.practiceOps || []).filter(op => op === '^' || op === 'alg');
   if (isTutorialActive()) return [];   // placement rounds stay on + - x /
-  return [...new Set((G.focusTopics || []).map(topic => EXTRA_TOPIC_OPS[topic]).filter(Boolean))];
+  return chosenExtraOps();
 }
 
 // School year (1-12) from the onboarding class (qc-sec2, fr-4e, us-8...).
@@ -4874,12 +4870,12 @@ function nextQuestion() {
     // Extra topics: practice with only exponent/algebra selected asks only
     // those; otherwise they replace part of the usual questions.
     const extraOps = selectedExtraTopicOps();
-    const practiceBasics = G.practiceMode
-      ? (G.practiceOps || []).filter(op => ['+', '-', '*', '/'].includes(op)).length : 1;
-    const extraShare = !extraOps.length ? 0
-      : !practiceBasics ? 1
-      : G.practiceMode ? extraOps.length / (extraOps.length + practiceBasics)
-      : EXTRA_TOPIC_SHARE;
+    // Only the chosen equations: no chosen + - x / means only exponent /
+    // algebra; otherwise each chosen equation comes up about as often.
+    const basicCount = G.practiceMode
+      ? (G.practiceOps || []).filter(op => ['+', '-', '*', '/'].includes(op)).length
+      : chosenBasicOpsForLevel(levelCfg.ops).length;
+    const extraShare = extraTopicShare(extraOps.length, basicCount);
     G.question = Math.random() < extraShare
       ? newQuestion(extraOps, G.practiceMode ? (G.practiceNumberMax || rawCap) : extraTopicCap(rawCap), rawMCap)
       : newQuestion(mathCfg.ops, mathCfg.cap, mathCfg.mCap);

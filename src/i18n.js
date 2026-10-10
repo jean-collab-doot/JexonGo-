@@ -48,6 +48,8 @@ const STRINGS = {
       '-': 'Subtraction',
       '*': 'Multiplication',
       '/': 'Division',
+      '^': 'Exponent',
+      alg: 'Algebra',
     },
 
     // Game HUD
@@ -364,6 +366,8 @@ const STRINGS = {
       '-': 'Soustraction',
       '*': 'Multiplication',
       '/': 'Division',
+      '^': 'Exposant',
+      alg: 'Algèbre',
     },
 
     // Game HUD

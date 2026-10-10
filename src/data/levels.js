@@ -123,8 +123,19 @@ function seededRandom(seed) {
 function rndSeeded(seed, min, max) {
   return Math.floor(seededRandom(seed) * (max - min + 1)) + min;
 }
+const SQUARE = { 2: '²', 3: '³' };
 export function equationExampleForLevel(n, ops, cap, multCap) {
   const op = ops[Math.floor(seededRandom(n * 13.7) * ops.length)];
+  // Exponent / algebra: same shapes as the game's questions (math-engine.js).
+  if (op === '^') {
+    const base = rndSeeded(n * 2.1, 2, cap <= 15 ? 5 : 10);
+    return { text: `${base}${SQUARE[2]} = ?`, answer: base * base, op };
+  }
+  if (op === 'alg') {
+    const x = rndSeeded(n * 2.1, 1, Math.max(5, Math.min(cap, 20)));
+    const a = rndSeeded(n * 3.3, 1, Math.max(5, Math.min(cap, 20)));
+    return { text: `x + ${a} = ${x + a}, x = ?`, answer: x, op };
+  }
   let a, b, answer;
   switch (op) {
     case '+': a = rndSeeded(n * 2.1, 1, cap); b = rndSeeded(n * 3.3, 1, cap); answer = a + b; break;

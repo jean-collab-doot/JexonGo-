@@ -4,6 +4,7 @@ import { getLevel, equationExampleForLevel } from '../data/levels.js';
 import { getPilotInfo, getPilotGrade, getPilotGradeRank } from '../data/pilots.js';
 import { rankInsigniaSVG } from '../utils/rank-insignia.js';
 import { G } from '../state.js';
+import { chosenBasicOpsForLevel, chosenExtraOps } from '../systems/question-topics.js';
 import { AIRCRAFT } from '../data/aircraft.js';
 import { t, tOp, getLang } from '../i18n.js';
 import { SFX } from '../audio/sound.js';
@@ -58,15 +59,17 @@ export function showBriefing(levelNum) {
   const weatherDesc = isFr ? weather.descFr : weather.desc;
   $('briefing-mission-title').textContent = `MISSION ${levelNum} · ${biomeName}`;
 
-  // Operations really asked: the pilot's focus inside this level's own set,
-  // else the level's set limited by school grade (game.js applyGradeToQuestion).
-  const configuredOps = Array.isArray(G.focusOperations) && G.focusOperations.length
-    ? G.focusOperations
-    : G.focusOperation ? [G.focusOperation] : [];
-  const focusInLevel = configuredOps.filter(op => levelCfg.ops.includes(op));
+  // Equations really asked (same rule as the game, systems/question-topics.js):
+  // only the pilot's chosen ones (+ - x / inside this level's set when some
+  // are in it, plus exponent / algebra); nothing chosen = the level's set
+  // limited by school grade.
+  const chosenBasics = chosenBasicOpsForLevel(levelCfg.ops);
+  const extras = chosenExtraOps();
   const gradeOps = GRADE_OPS[G.playerGrade];
   const byGrade = gradeOps ? levelCfg.ops.filter(op => gradeOps.includes(op)) : levelCfg.ops;
-  const opsToShow = focusInLevel.length ? focusInLevel : (byGrade.length ? byGrade : ['+']);
+  const opsToShow = chosenBasics.length || extras.length
+    ? [...chosenBasics, ...extras]
+    : (byGrade.length ? byGrade : ['+']);
 
   $('briefing-story').innerHTML = briefingStory(levelNum, levelCfg, opsToShow, locationName, weatherName, isFr);
   $('briefing-time').textContent = `${answerSeconds(levelCfg)}${t('secPerQ')}`;
@@ -82,7 +85,7 @@ export function showBriefing(levelNum) {
   const flyBtn = $('btn-briefing-fly');
   if (flyBtn) flyBtn.textContent = t('fly');
 
-  const opSymbols = { '+': '+', '-': '-', '*': 'x', '/': '/' };
+  const opSymbols = { '+': '+', '-': '-', '*': 'x', '/': '/', '^': 'x²', alg: 'x=?' };
   $('briefing-ops').textContent = opsToShow
     .map(op => `${opSymbols[op] || op} ${tOp(op)}`)
     .join('  ');
@@ -150,6 +153,7 @@ const GRADE_OPS = { 1: ['+'], 2: ['+', '-'], 3: ['+', '-', '*'], 4: ['+', '-', '
 const OP_NAMES = {
   '+': ['addition', 'addition'], '-': ['soustraction', 'subtraction'],
   '*': ['multiplication', 'multiplication'], '/': ['division', 'division'],
+  '^': ['exposant', 'exponent'], alg: ['algèbre', 'algebra'],
 };
 // Level where each operation first appears (data/levels.js opsForLevel).
 const OP_FIRST_LEVEL = { '-': 16, '*': 26, '/': 36 };
@@ -184,6 +188,8 @@ function listJoin(items, isFr) {
 function briefingStory(n, cfg, ops, locationName, weatherName, isFr) {
   const L = isFr ? 0 : 1;
   const opText = listJoin(ops.map(op => OP_NAMES[op]?.[L] || op), isFr);
+  // French: "d’addition et d’algèbre" ("de" before each word).
+  const opTextDe = isFr ? listJoin(ops.map(op => deFr(OP_NAMES[op]?.[0] || op)), true) : opText;
   const secs = answerSeconds(cfg);
   const sky = weatherName.toLowerCase();
   const lines = [];
@@ -196,11 +202,11 @@ function briefingStory(n, cfg, ops, locationName, weatherName, isFr) {
       ? `Destination : ${locationName}, météo : ${sky}. Le boss <b>${bossName}</b> t’attend. ${boss.fr}`
       : `Destination: ${locationName}, weather: ${sky}. The boss <b>${bossName}</b> is waiting. ${boss.en}`);
     lines.push(isFr
-      ? `Questions ${deFr(opText)}, ${secs} s chacune : chaque bonne réponse ouvre une fenêtre de tir. Elles continuent jusqu’à ce qu’il tombe, avec des escortes autour de lui.`
+      ? `Questions ${opTextDe}, ${secs} s chacune : chaque bonne réponse ouvre une fenêtre de tir. Elles continuent jusqu’à ce qu’il tombe, avec des escortes autour de lui.`
       : `${opText.charAt(0).toUpperCase()}${opText.slice(1)} questions, ${secs}s each: every right answer opens a firing window. They keep coming until it falls, with escorts around it.`);
   } else {
     lines.push(isFr
-      ? `Destination : ${locationName}, météo : ${sky}. ${questionCount(cfg)} questions ${deFr(opText)}, ${secs} s chacune : chaque bonne réponse ouvre une fenêtre de tir.`
+      ? `Destination : ${locationName}, météo : ${sky}. ${questionCount(cfg)} questions ${opTextDe}, ${secs} s chacune : chaque bonne réponse ouvre une fenêtre de tir.`
       : `Destination: ${locationName}, weather: ${sky}. ${questionCount(cfg)} ${opText} questions, ${secs}s each: every right answer opens a firing window.`);
     lines.push(isFr
       ? `Ennemis : F-15 (certains avec missile à tête chercheuse), F-5 en formations et kamikazes${n >= 20 ? ' (jusqu’à deux à la fois)' : ''}, Eurofighter, F-14 au laser et hélicoptères Apache.`
