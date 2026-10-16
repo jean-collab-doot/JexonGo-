@@ -2552,12 +2552,12 @@ function frame(ts = 0) {
     return;
   }
   const prevFrameTs = _lastFrameTs || ts;
-  const frameMs = prevFrameTs ? Math.max(8, Math.min(42, ts - prevFrameTs)) : 16.7;
-  // Phones: a frame that took longer moves the game further (up to 2x, i.e.
-  // full speed down to 30 fps), so a busy phone no longer slows the game down.
-  const targetStep = isTouchMobile()
-    ? Math.max(0.95, Math.min(2, frameMs / 16.7))
-    : Math.max(0.85, Math.min(1.2, frameMs / 16.7));
+  const frameMs = prevFrameTs ? Math.max(4, Math.min(42, ts - prevFrameTs)) : 16.7;
+  // The game moves by the real time each frame took, on every device: a
+  // 120-144 Hz screen takes smaller steps (it ran up to 2x too fast), a slow
+  // computer takes bigger ones (up to 2x, i.e. full speed down to 30 fps; it
+  // ran in slow motion on desktops, capped at 1.2x).
+  const targetStep = Math.max(0.25, Math.min(2, frameMs / 16.7));
   const questionFocusTarget = isQuestionAwaitingAnswer() ? 1 : 0;
   syncAbilityPause(Boolean(questionFocusTarget) || _correctionWaiting);
   const focusEaseMs = questionFocusTarget ? 420 : 520;
@@ -3209,7 +3209,7 @@ function frame(ts = 0) {
   updateNukeButton(nowForNuke);
 
   // ── Player ─────────────────────────────────────────────────────────────
-  if (_invincible > 0) _invincible--;
+  if (_invincible > 0) _invincible = Math.max(0, _invincible - _frameStep);   // in 60 fps frames
   // B-2 FURTIF ends with the button's real-time countdown, not a frame count
   // (frames run faster on 120 Hz screens and stop during questions).
   // It also switches off while the skill is paused and back on after.
