@@ -1,4 +1,5 @@
 import { G, resetLevel, clampCoins, addSessionCoins, addSessionXp, addLifetimeXp, MAX_COINS, MAX_GAME_COINS } from '../state.js';
+import { gentleFx, drawGlitterBurst } from '../game/glitter.js';
 import { chosenBasicOpsForLevel, chosenExtraOps, extraTopicShare } from '../systems/question-topics.js';
 import { uiIcon } from '../utils/icons.js';
 import { $, showScreen } from '../utils/dom.js';
@@ -1499,6 +1500,7 @@ let _invincible   = 0;
 let _stealthActive  = false;
 let _stealthAnswers = 0;   // correct-answer counter for stealth trigger
 let _nukeAnim       = 0;
+let _nukeGlitter    = null;   // glitter.js burst of the current nuke (gentle mode)
 let _nukeApplied    = false;
 let _nukeSweepUntil = 0;
 let _nukeReadyAt    = 0;
@@ -3423,13 +3425,19 @@ function frame(ts = 0) {
     const { x: cx, y: cy } = nukeBlastPoint();
 
     // Flash overlay
+    const gentle = gentleFx();
     let fl = t < 0.33 ? t / 0.33 : t < 0.55 ? 1 : 1 - (t - 0.55) / 0.25;
-    fl = Math.max(0, Math.min(1, fl)) * 0.85;
-    ctx.fillStyle = `rgba(255,200,60,${fl})`;
+    fl = Math.max(0, Math.min(1, fl)) * (gentle ? 0.5 : 0.85);
+    ctx.fillStyle = gentle ? `rgba(255,236,250,${fl})` : `rgba(255,200,60,${fl})`;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+    // Youngest players: a screen-wide glitter burst instead of the shockwave.
+    if (gentle) {
+      if (!_nukeGlitter) _nukeGlitter = {};
+      drawGlitterBurst(ctx, cx, cy, Math.hypot(canvas.width, canvas.height) * 0.9, t, _nukeGlitter);
+    }
     // Expanding shockwave ring
-    if (t > 0.1 && t < 0.95) {
+    if (!gentle && t > 0.1 && t < 0.95) {
       const rt  = (t - 0.1) / 0.85;
       const r   = Math.hypot(canvas.width, canvas.height) * rt;
       const ra  = (1 - rt) * 0.9;
@@ -3477,6 +3485,7 @@ function frame(ts = 0) {
 
     ctx.globalAlpha = 1;
     _nukeAnim--;
+    if (_nukeAnim <= 0) _nukeGlitter = null;
   }
 
   // Top-edge fade — drawn last so it overlays all game elements
@@ -4449,13 +4458,15 @@ function drawBossDeaths(now) {
       drawEnemySprite(ctx, d.boss, Math.sin(t / 90) * 0.06 * k);
     }
 
-    // 2) Chain of explosions across the hull.
+    // 2) Chain of explosions across the hull (glitter for the youngest).
+    const gentle = gentleFx();
     for (const b of d.blasts) {
       const bt = t - b.at;
       if (bt < 0) continue;
       const frame = b.first + bt / 1000 * 60 * 0.4;
       if (frame >= b.frames) continue;
-      drawFrame(ctx, b.key, frame, d.x + b.dx, d.y + b.dy, b.size, b.size);
+      if (gentle) drawGlitterBurst(ctx, d.x + b.dx, d.y + b.dy, b.size * 1.2, (frame - b.first) / (b.frames - b.first), b);
+      else drawFrame(ctx, b.key, frame, d.x + b.dx, d.y + b.dy, b.size, b.size);
     }
 
     // 3) Final blast.
@@ -4469,6 +4480,22 @@ function drawBossDeaths(now) {
       }
       const bt = t - BOSS_BOOM_MS;
       const k = bt / (BOSS_DEATH_MS - BOSS_BOOM_MS);   // 0 → 1
+
+      // Youngest players: one huge glitter burst and a soft flash instead of
+      // the fireball, shockwaves, burning debris and smoke.
+      if (gentle) {
+        const flash = Math.max(0, 1 - bt / 380);
+        if (flash > 0) {
+          ctx.save();
+          ctx.fillStyle = `rgba(255,240,250,${0.6 * flash})`;
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          ctx.restore();
+        }
+        drawGlitterBurst(ctx, d.x, d.y, d.size * 2.6, k, d);
+        if (!d.glitterRing) d.glitterRing = {};
+        drawGlitterBurst(ctx, d.x, d.y, d.size * 1.4, Math.min(1, k * 1.4), d.glitterRing);
+        continue;
+      }
 
       // White flash over the whole screen.
       const flash = Math.max(0, 1 - bt / 380);

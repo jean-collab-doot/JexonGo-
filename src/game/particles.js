@@ -1,4 +1,5 @@
 import { drawFrame } from './sprites.js';
+import { gentleFx, drawGlitterBurst } from './glitter.js';
 
 export function spawnExplosion(particles, x, y, color, count = 14) {
   particles.push({
@@ -30,6 +31,7 @@ export function spawnMissileExplosion(particles, x, y, missileType = 'default', 
     glow: profile.glow,
     ring: profile.ring,
     x, y,
+    first: profile.first || 0,
     frame: profile.first || 0,
     frameRate: 0.32,
     totalFrames: profile.frames,
@@ -61,8 +63,15 @@ export function updateParticles(particles) {
 export function drawParticles(ctx, particles) {
   const max = 24;
   const limit = Math.min(particles.length, max);
+  // Youngest players (glitter.js): every explosion and spark is glitter.
+  const gentle = gentleFx();
   for (let i = 0; i < limit; i++) {
     const p = particles[i];
+    if (gentle) {
+      const first = p.first || 0;
+      drawGlitterBurst(ctx, p.x, p.y, p.size * 1.15, (p.frame - first) / Math.max(1, p.totalFrames - first), p);
+      continue;
+    }
     drawFrame(ctx, p.spriteKey, p.frame, p.x, p.y, p.size, p.size);
     drawMissileExplosionOverlay(ctx, p);
   }

@@ -2,6 +2,8 @@
 // per use, so swapping a sound is just replacing the file in its folder and
 // its name here. Sounds without a file are short synthesized tones.
 // Use .mp3 (or .wav): iPhone / Safari can't always play .ogg.
+import { gentleFx } from '../game/glitter.js';
+
 const _m = path => encodeURI(`/assets/music/${path}`);
 const MUSIC = {
   menu:     _m('Lobby Music/8_bit_ooame_lofi.mp3'),
@@ -1035,6 +1037,14 @@ export const SFX = {
   },
   // A little under the shots, so a laser that hits at once is still heard.
   explode: _throttled(60, () => {
+    // Youngest players (game/glitter.js): a bright sparkle, no blast.
+    if (gentleFx()) {
+      try {
+        const ctx = _ac();
+        [1568, 2093, 2637, 3136].forEach((f, i) => _after(i * 45, () => _tone(ctx, f, 'sine', 0.22, 0.12)));
+      } catch (_) {}
+      return;
+    }
     _playBuf(SOUND.explosion, 0.75, ctx => {
       _noise(ctx, 0.55, 0.85);
       _tone(ctx, 82, 'sawtooth', 0.45, 0.48);
@@ -1231,6 +1241,12 @@ export const SFX = {
     _nukeFlightStop();
     if (_sfxVol === 0) return;
     const ctx = _ac();
+    // Youngest players (game/glitter.js): a long rising sparkle, no blast.
+    if (gentleFx()) {
+      [1047, 1319, 1568, 2093, 2637, 3136, 4186].forEach((f, i) =>
+        _after(i * 70, () => _tone(ctx, f, 'sine', 0.35, 0.14)));
+      return;
+    }
     const v = _sfxVol;
     const now = ctx.currentTime;
     _noiseBurst(ctx, 'highpass', 5000, 1500, 0.25, 0.7 * v, 0.004);       // the crack
