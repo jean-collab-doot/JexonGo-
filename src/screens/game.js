@@ -2546,6 +2546,7 @@ function countdownPlanePosition(now = performance.now()) {
 }
 
 // ── GAME LOOP ───────────────────────────────────────────────────────────────
+const DESKTOP_GAME_SPEED = 1.7;
 function frame(ts = 0) {
   if (!_canRunSid()) {
     G.animFrame = null;
@@ -2557,7 +2558,9 @@ function frame(ts = 0) {
   // 120-144 Hz screen takes smaller steps (it ran up to 2x too fast), a slow
   // computer takes bigger ones (up to 2x, i.e. full speed down to 30 fps; it
   // ran in slow motion on desktops, capped at 1.2x).
-  const targetStep = Math.max(0.25, Math.min(2, frameMs / 16.7));
+  // Computers (mouse) play faster: the pace players knew on 120-144 Hz
+  // screens, now the same on every computer.
+  const targetStep = Math.max(0.25, Math.min(2, frameMs / 16.7)) * (isTouchMobile() ? 1 : DESKTOP_GAME_SPEED);
   const questionFocusTarget = isQuestionAwaitingAnswer() ? 1 : 0;
   syncAbilityPause(Boolean(questionFocusTarget) || _correctionWaiting);
   const focusEaseMs = questionFocusTarget ? 420 : 520;
