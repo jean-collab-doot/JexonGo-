@@ -1180,6 +1180,12 @@ html #s-levelmap::after {
     0 0 0 9px #161d1a,
     inset 0 0 0 2px rgba(150,200,60,.22) !important;
 }
+/* Computers: the map fits the screen (no scrolling on shorter screens such as
+   1366x657 or 1280x609); nodes are placed in % of the map and sized from it
+   (--tn), so they follow. */
+html:not(.touch-phone):not(.touch-tablet):not(.touch-mobile) #s-levelmap #levelmap-scroll #levelmap-nodes {
+  min-height: 240px !important;
+}
 #s-levelmap #levelmap-scroll #levelmap-nodes {
   --tn: clamp(34px, min(17cqw, 10.5cqh), 104px);
   container-type: size;
@@ -1188,7 +1194,7 @@ html #s-levelmap::after {
   flex: 1 0 0 !important;
   width: 100% !important;
   max-width: none !important;
-  min-height: 520px !important;
+  min-height: 520px !important;   /* phones / tablets: big enough nodes to tap, the map scrolls */
   margin: 0 !important;
   padding: 0 !important;
   overflow: hidden;
