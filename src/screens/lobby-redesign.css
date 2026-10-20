@@ -476,7 +476,10 @@
    buttons are placed in real pixels by positionArsenalButtons() in shop.js,
    which redoes the browser's own cover-fit math — a plain CSS % position
    would drift off the art the moment the cover crop changes. */
-#s-shop .jx-bg { object-position: center center; }
+/* Framed a bit above the middle: on wide, short screens (1280x609...) a
+   centred crop pushed the top row of missiles up behind the MAGASIN sign.
+   shop.js positionArsenalButtons() reads this value to place the buttons. */
+#s-shop .jx-bg { object-position: center 22%; }
 .jx-arsenal-btns { position: absolute; inset: 0; z-index: 6; pointer-events: none; }
 #s-shop .jx-arsenal-btn {
   position: absolute; transform: translate(-50%, 0); pointer-events: auto;

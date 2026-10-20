@@ -283,7 +283,9 @@ function positionArsenalButtons() {
     const scale = Math.max(vw / iw, vh / ih);
     const dw = iw * scale, dh = ih * scale;
     const offsetX = (vw - dw) / 2; // object-position-x: center
-    const offsetY = (vh - dh) / 2; // object-position-y: center (see CSS override)
+    // object-position-y from the CSS (lobby-redesign.css: 22%, not centred).
+    const posY = parseFloat((getComputedStyle(bg).objectPosition || '').split(' ')[1]);
+    const offsetY = (vh - dh) * (Number.isFinite(posY) ? posY / 100 : 0.5);
     wrap.querySelectorAll('.jx-arsenal-btn').forEach(btn => {
       btn.style.left = `${offsetX + Number(btn.dataset.fx) * dw}px`;
       btn.style.top  = `${offsetY + Number(btn.dataset.fy) * dh}px`;
