@@ -200,7 +200,6 @@ export function showResult(won) {
   const xp    = Math.min(Math.round((G.sessionXP || 0) * badgeXpMultiplier() * xpUpgradeMultiplier()), Math.max(0, maxGameXp() - collectedXpSoFar));
   const stars = calcStars(correct, answered, hits);
   const accuracy = answered > 0 ? Math.round((correct / answered) * 100) : 0;
-  const finalScore = (correct * 100) + (stars * 250) + Math.max(0, xp) + Math.max(0, G.streak || 0) * 25 - hits * 100;
 
   // Coins earned: scale by stars and level
   const COINS_PER_STAR = [0, 15, 35, 60];
@@ -302,7 +301,6 @@ export function showResult(won) {
   // Stats
   const total = isBoss ? answered : 10;
   $('rs-stats').innerHTML = [
-    ['SCORE', `<span data-count="${finalScore}" data-plain="1">0</span>`],
     [fr ? 'RÉPONSES' : 'ANSWERS', `${correct}/${total}`],
     [fr ? 'PRÉCISION' : 'ACCURACY', `${accuracy}%`],
     [fr ? 'TOUCHÉ' : 'HITS', String(hits)],

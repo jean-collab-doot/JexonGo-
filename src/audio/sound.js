@@ -50,10 +50,12 @@ function _ac() {
 // ── BUFFER CACHE ──────────────────────────────────────────────────────────────
 const _bufs    = {};
 const _offsets = {};
+const _loading = {};
 
+// Resolves once the sound is ready (or failed to load).
 function _loadBuf(url) {
-  if (_bufs[url]) return;
-  fetch(url)
+  if (_bufs[url]) return Promise.resolve();
+  return _loading[url] ||= fetch(url)
     .then(r => r.arrayBuffer())
     .then(ab => _ac().decodeAudioData(ab))
     .then(b  => {
@@ -63,7 +65,8 @@ function _loadBuf(url) {
       _offsets[url] = i / b.sampleRate;
       _bufs[url] = b;
     })
-    .catch(() => {});
+    .catch(() => {})
+    .finally(() => { delete _loading[url]; });
 }
 
 // ── SFX CANCELLATION ──────────────────────────────────────────────────────────
@@ -933,6 +936,12 @@ const BOSS_MUSIC = {
   arctic: MUSIC.bossArctic, space: MUSIC.bossSpace,
 };
 
+function _musicSrc(key) {
+  return key.startsWith('boss-') ? (BOSS_MUSIC[key.slice(5)] || MUSIC.bossOcean)
+    : { menu: MUSIC.menu, ranked: MUSIC.menu, shop: MUSIC.menu, game: MUSIC.game,
+        arena: MUSIC.game, dialogue: MUSIC.dialogue, boss: MUSIC.dialogue }[key];
+}
+
 const _enemyShot = (url, vol) => _throttled(110, () =>
   _playBuf(url, vol, ctx => _tone(ctx, 180, 'sawtooth', 0.15, 0.12, 900)));
 const ENEMY_SHOT = {
@@ -971,10 +980,15 @@ export const SFX = {
   // 'boss-<biome>' (boss fight: ocean, desert, city, arctic, space).
   // { restart: true } plays it from the beginning instead of resuming.
   playMusic(key, { restart = false } = {}) {
-    const src = key.startsWith('boss-') ? (BOSS_MUSIC[key.slice(5)] || MUSIC.bossOcean)
-      : { menu: MUSIC.menu, ranked: MUSIC.menu, shop: MUSIC.menu, game: MUSIC.game,
-          arena: MUSIC.game, dialogue: MUSIC.dialogue, boss: MUSIC.dialogue }[key];
+    const src = _musicSrc(key);
     if (src) _playMusic(src, restart);
+  },
+  // Downloads a game's sounds and music (keys as for playMusic) before it
+  // starts (game.js loading screen); resolves once they are all in.
+  preloadGame(musicKeys = []) {
+    const music = musicKeys.map(_musicSrc).filter(Boolean)
+      .map(src => fetch(src).then(r => r.blob()).catch(() => {}));
+    return Promise.all([...Object.values(SOUND).map(_loadBuf), ...music]);
   },
   stopMusic() { _stopMusic(); },
 
@@ -1109,16 +1123,6 @@ export const SFX = {
     _sweep(600, 4200, 0.45, 0.3);
     [784, 1175].forEach((f, i) => _after(i * 80, () => _tone(_ac(), f, 'triangle', 0.2, 0.2)));
   },
-  // Yellow loading screen before a game (new-player-intro.js showYellowLoader):
-  // the intro's T-6 engine hums while the level loads, then flies off.
-  loaderStart() {
-    _canAutoplay().then(ok => {
-      if (!ok || _sfxVol === 0) return;
-      try { _ac(); } catch (_) { return; }
-      _introEngineStart(0);
-    });
-  },
-  loaderExit() { _introEngineExit(); },
   // Player engine (see PLAYER ENGINE above).
   engineStart(aircraftId) { _engineStart(aircraftId); },
   engineStop() { _engineStop(); },

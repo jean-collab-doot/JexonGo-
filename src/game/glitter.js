@@ -8,8 +8,9 @@ import { G } from '../state.js';
 
 const GENTLE_MAX_SCHOOL_YEAR = 4;
 
-// School year 1-12 from the onboarding class (qc-prim3, fr-ce2, us-3...).
-function schoolYear(level = G.schoolLevel || '') {
+// School year 1-12 from the onboarding class (qc-prim3, fr-ce2, us-3...);
+// 0 when unknown.
+export function schoolYear(level = G.schoolLevel || '') {
   const qc = level.match(/^qc-(prim|sec)(\d)/);
   if (qc) return qc[1] === 'sec' ? 6 + Number(qc[2]) : Number(qc[2]);
   const us = level.match(/^us-(\d+)/);
@@ -24,6 +25,63 @@ export function gentleFx() {
 }
 
 const GLITTER_COLORS = ['#ff7ac6', '#ffd23f', '#7ee8fa', '#b28dff', '#8fff9c', '#ffffff', '#ffb36b'];
+const SHOT_COLORS = ['#ff5fa2', '#ffb13b', '#ffe14d', '#5ee87a', '#4cc9ff', '#9b7bff'];
+let _shotCount = 0;
+
+// Gentle mode enemy shots (missiles.js): each one is a round candy ball in
+// its own rainbow colour with a white core and two small dots trailing
+// behind, instead of a missile or bullet.
+export function drawRainbowShot(ctx, m, r) {
+  m._rainbow ??= _shotCount++;
+  const color = SHOT_COLORS[m._rainbow % SHOT_COLORS.length];
+  const speed = Math.hypot(m.vx || 0, m.vy || 0) || 1;
+  const dx = (m.vx || 0) / speed, dy = (m.vy || 0) / speed;
+  ctx.save();
+  for (let i = 2; i >= 1; i--) {
+    ctx.globalAlpha = 0.55 - i * 0.15;
+    ctx.fillStyle = SHOT_COLORS[(m._rainbow + i) % SHOT_COLORS.length];
+    ctx.beginPath();
+    ctx.arc(m.x - dx * r * 1.5 * i, m.y - dy * r * 1.5 * i, r * (1 - i * 0.25), 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 0.35;
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.arc(m.x, m.y, r * 1.7, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.globalAlpha = 1;
+  ctx.beginPath();
+  ctx.arc(m.x, m.y, r, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#ffffff';
+  ctx.beginPath();
+  ctx.arc(m.x - r * 0.25, m.y - r * 0.25, r * 0.38, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
+// Gentle mode player lasers (hangar upgrade, X-RAY airdrop): a glowing beam
+// in its own rainbow colour with a white core, `len` px long.
+export function drawRainbowBeam(ctx, m, len, thick) {
+  m._rainbow ??= _shotCount++;
+  const color = SHOT_COLORS[m._rainbow % SHOT_COLORS.length];
+  ctx.save();
+  ctx.translate(m.x, m.y);
+  ctx.rotate(Math.atan2(m.vy || 0, m.vx || 0));
+  ctx.lineCap = 'round';
+  ctx.strokeStyle = color;
+  const line = (half, width) => {
+    ctx.lineWidth = width;
+    ctx.beginPath(); ctx.moveTo(-half, 0); ctx.lineTo(half, 0); ctx.stroke();
+  };
+  ctx.globalAlpha = 0.35;
+  line(len * 0.5, thick * 2.6);
+  ctx.globalAlpha = 1;
+  line(len * 0.5, thick);
+  ctx.strokeStyle = '#ffffff';
+  line(len * 0.44, thick * 0.4);
+  ctx.restore();
+}
 const SPECKS = 26;
 
 // Seeded once per burst (kept on `owner`), so a burst does not flicker.

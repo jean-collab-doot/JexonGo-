@@ -1,0 +1,399 @@
+/* =============================================================================
+   In-game interface in the lobby's orange & yellow style (lobby-redesign.css
+   building blocks): the top bar (hearts, coins, EXP, QUITTER), the timer,
+   the question box (choices and typed keypad), the wrong-answer correction,
+   and the lobby's play-time gauge. Loaded last; `html body #…` outranks the
+   older dark rules in style.css.
+   ============================================================================= */
+
+/* ---- Lobby: play-time gauge (left edge) ----------------------------------- */
+html body .jx-daytab {
+  width: 46px;
+  border: 0; border-radius: 20px;
+  background: linear-gradient(180deg, #ffab3d, var(--jx-orange) 55%, var(--jx-orange-deep));
+  box-shadow: 0 4px 0 var(--jx-orange-dk), inset 0 2px 0 rgba(255,255,255,.35);
+  padding: 6px;
+  box-sizing: border-box;
+}
+html body .jx-daytab-bot {
+  border-radius: 14px;
+  background: rgba(122,58,0,.35);
+  box-shadow: inset 0 2px 0 rgba(0,0,0,.18);
+}
+/* Minutes played today fill it with the JOUER yellow. */
+html body .jx-daytab-fill {
+  background: linear-gradient(180deg, var(--jx-yellow-hi), var(--jx-yellow) 55%, #F0A500);
+  box-shadow: inset 0 2px 0 rgba(255,255,255,.5);
+  border-radius: 12px;
+}
+html body .jx-daytab-bot span {
+  color: #fff; text-shadow: 2px 2px 0 var(--jx-ink);
+}
+
+/* ---- Game: top bar -------------------------------------------------------- */
+html body #s-game #game-hud {
+  width: auto;
+  margin: max(6px, env(safe-area-inset-top)) 2.5% 0;
+  padding: 6px 8px 6px 14px;
+  min-height: 52px;
+  box-sizing: border-box;
+  background: linear-gradient(180deg, #ffab3d, var(--jx-orange) 55%, var(--jx-orange-deep));
+  border: 0; border-radius: 24px;
+  box-shadow: 0 3px 0 var(--jx-orange-dk), inset 0 2px 0 rgba(255,255,255,.35);
+  font-family: var(--jx-font);
+}
+html body #s-game .hud-currency-item,
+html body #s-game .hud-currency-item b,
+html body #s-game #hud-level,
+html body #s-game #hud-streak {
+  font-family: var(--jx-font); font-size: 15px;
+  color: #fff; text-shadow: 2px 2px 0 var(--jx-ink) !important;
+}
+html body #s-game #hud-streak { font-size: 13px; }
+html body #s-game .hud-currency-item img { width: 26px; height: 26px; }
+html body #s-game #hud-lives { filter: drop-shadow(2px 2px 0 var(--jx-ink)); }
+/* QUITTER: the lobby's yellow button. */
+html body #s-game .btn-quit-game {
+  min-height: 40px; padding: 6px 14px;
+  border: 0; border-radius: 16px !important;
+  font-family: var(--jx-font); font-size: 13px; letter-spacing: 1px;
+  color: #fff; text-shadow: 2px 2px 0 var(--jx-ink);
+  background: linear-gradient(180deg, var(--jx-yellow-hi), var(--jx-yellow) 50%, #F0A500);
+  box-shadow: 0 3px 0 #A56A00, inset 0 2px 0 rgba(255,255,255,.5);
+}
+html body #s-game .btn-quit-game:active { transform: translateY(2px); box-shadow: 0 1px 0 #A56A00; }
+
+/* Timer: a yellow gauge in a brown groove under the bar. */
+html body #s-game #timer-bar-wrap {
+  width: auto; height: 10px;
+  margin: 6px 4% 0;
+  border: 0; border-radius: 6px;
+  background: rgba(122,58,0,.55);
+  box-shadow: inset 0 2px 0 rgba(0,0,0,.25);
+  overflow: hidden;
+}
+html body #s-game #timer-bar {
+  border-radius: 6px;
+  background: linear-gradient(180deg, var(--jx-yellow-hi), var(--jx-yellow) 55%, #F0A500);
+  box-shadow: none;
+}
+
+/* ---- Game: question box --------------------------------------------------- */
+html body #s-game #question-box:not(.correction-active) {
+  background: var(--jx-yellow) !important;
+  border: 7px solid var(--jx-orange) !important;
+  border-bottom-width: 0 !important;
+  border-radius: 26px 26px 0 0 !important;
+  box-shadow: 0 -4px 14px rgba(0,0,0,.25) !important;
+  font-family: var(--jx-font);
+}
+html body #s-game #question-text {
+  font-family: var(--jx-font);
+  color: #fff !important;
+  text-shadow: 3px 3px 0 var(--jx-ink) !important;
+}
+/* Answers: orange tiles with white text, like the hangar's slots. */
+html body #s-game .answer-btn {
+  font-family: var(--jx-font);
+  color: #fff;
+  text-shadow: 2px 2px 0 var(--jx-ink) !important;
+  background: linear-gradient(180deg, #ffab3d, var(--jx-orange) 55%, var(--jx-orange-deep));
+  border: 0;
+  border-radius: 18px !important;
+  box-shadow: 0 4px 0 var(--jx-orange-dk), inset 0 2px 0 rgba(255,255,255,.35) !important;
+}
+html body #s-game .answer-btn:hover { color: #fff; }
+html body #s-game .answer-btn:active { transform: translateY(2px); box-shadow: 0 2px 0 var(--jx-orange-dk) !important; }
+html body #s-game .answer-btn.correct {
+  color: #fff;
+  background: linear-gradient(180deg, #7ef08f, #34c35f 55%, #23a24c);
+  box-shadow: 0 4px 0 #17733a, 0 0 16px rgba(52,195,95,.6) !important;
+}
+html body #s-game .answer-btn.wrong {
+  color: #fff;
+  background: linear-gradient(180deg, #ff8f8f, #f05252 55%, #d93636);
+  box-shadow: 0 4px 0 #9b1f1f !important;
+}
+html body #s-game .answer-btn:disabled:not(.correct):not(.wrong) { opacity: .55; }
+
+/* Typed answers: the number display and the keypad. */
+html body #s-game .typed-display {
+  font-family: var(--jx-font);
+  color: var(--jx-ink);
+  background: #fff7dc;
+  border: 4px solid var(--jx-orange);
+  border-radius: 16px;
+  box-shadow: inset 0 3px 0 rgba(122,58,0,.12);
+  text-shadow: none !important;
+}
+html body #s-game .typed-display.is-empty { color: rgba(122,58,0,.55); }
+html body #s-game .typed-display.correct { color: #fff; background: #34c35f; border-color: #23a24c; }
+html body #s-game .typed-display.wrong   { color: #fff; background: #f05252; border-color: #d93636; }
+html body #s-game .typed-key.typed-ok {
+  background: linear-gradient(180deg, var(--jx-yellow-hi), var(--jx-yellow) 45%, #F0A500);
+  box-shadow: 0 4px 0 #A56A00, inset 0 2px 0 rgba(255,255,255,.5) !important;
+}
+html body #s-game .typed-key.typed-ok:disabled:not(.correct):not(.wrong) { opacity: .5; }
+
+/* ---- Game: wrong-answer correction ---------------------------------------- */
+html body #s-game #question-box.correction-active #question-text {
+  color: #fff !important; text-shadow: 3px 3px 0 var(--jx-ink), 0 0 8px rgba(0,0,0,.6) !important;
+}
+html body #s-game #correct-answer-reveal {
+  background: var(--jx-yellow) !important;
+  border: 7px solid var(--jx-orange) !important;
+  border-radius: 26px !important;
+  box-shadow: 0 5px 0 var(--jx-orange-dk), 0 10px 26px rgba(0,0,0,.35) !important;
+  font-family: var(--jx-font);
+}
+html body #s-game .car-step {
+  font-family: var(--jx-font);
+  border: 0 !important;
+  border-radius: 16px;
+  text-shadow: none !important;
+  line-height: 1.45;
+}
+/* "Pas grave !": the orange pill. */
+html body #s-game .car-step-wrong {
+  color: #fff; text-shadow: 2px 2px 0 var(--jx-ink) !important;
+  background: linear-gradient(180deg, #ffab3d, var(--jx-orange) 55%, var(--jx-orange-deep));
+  box-shadow: 0 3px 0 var(--jx-orange-dk);
+}
+/* Steps: light cards on the yellow sheet, brown text. */
+html body #s-game .car-step-how,
+html body #s-game .car-step-check {
+  color: var(--jx-ink);
+  background: rgba(255,255,255,.55);
+  box-shadow: inset 0 0 0 2px rgba(245,147,30,.45);
+}
+html body #s-game .car-step-how *,
+html body #s-game .car-step-check * { color: inherit; }
+/* The right answer: green. */
+html body #s-game .car-step-answer {
+  color: #fff; text-shadow: 2px 2px 0 #17733a !important;
+  background: linear-gradient(180deg, #7ef08f, #34c35f 55%, #23a24c);
+  box-shadow: 0 3px 0 #17733a;
+}
+/* CONTINUER: the JOUER button. */
+html body #s-game .correction-continue-btn {
+  font-family: var(--jx-font); letter-spacing: 2px;
+  color: #fff; text-shadow: 2px 2px 0 var(--jx-ink);
+  background: linear-gradient(180deg, var(--jx-yellow-hi), var(--jx-yellow) 45%, #F0A500);
+  border: 0; border-radius: 20px !important;
+  box-shadow: 0 6px 0 #A56A00, inset 0 3px 0 rgba(255,255,255,.5);
+}
+html body #s-game .correction-continue-btn:active { transform: translateY(3px); box-shadow: 0 3px 0 #A56A00; }
+
+/* ---- Sizes for the lobby font (Pixelify Sans is smaller than the old
+   Press Start 2P at the same px; !important beats the old phone sizes) ---- */
+html body #s-game #question-text {
+  font-size: clamp(26px, 7vw, 40px) !important; letter-spacing: 2px; line-height: 1.2;
+  color: var(--jx-ink) !important;
+  text-shadow: 0 2px 0 rgba(255,255,255,.6) !important;
+}
+html body #s-game .answer-btn { font-size: clamp(22px, 6vw, 30px) !important; }
+html body #s-game .typed-key { font-size: clamp(20px, 5.4vw, 28px) !important; }
+html body #s-game .typed-display { font-size: clamp(22px, 6vw, 30px) !important; }
+html body #s-game .typed-display.is-empty { font-size: clamp(13px, 3.6vw, 17px) !important; }
+html body #s-game .car-step { font-size: clamp(12px, 3.3vw, 16px) !important; padding: 6px 12px; line-height: 1.35; }
+html body #s-game .correction-continue-btn { font-size: clamp(16px, 4.4vw, 22px) !important; }
+html body #s-game .hud-currency-item,
+html body #s-game .hud-currency-item b { font-size: clamp(14px, 4vw, 18px) !important; }
+html body #s-game .btn-quit-game { font-size: clamp(12px, 3.4vw, 15px) !important; }
+/* During the correction the question sits on the dimmed map: white. */
+html body #s-game #question-box.correction-active #question-text {
+  color: #fff !important; text-shadow: 3px 3px 0 var(--jx-ink), 0 0 10px rgba(0,0,0,.7) !important;
+}
+
+/* ---- Top bar across the whole width (no dark band around a floating pill) */
+html body #s-game #game-hud {
+  margin: 0; width: 100%;
+  padding: max(6px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) 6px max(14px, env(safe-area-inset-left));
+  border-radius: 0 0 22px 22px;
+  box-shadow: 0 4px 0 var(--jx-orange-dk), inset 0 -2px 0 rgba(255,255,255,.15);
+  position: relative; z-index: 3;
+}
+html body #s-game { background: #7a4410; }
+html body #s-game #timer-bar-wrap { margin: 8px 4% 4px; }
+
+/* ---- Lobby play-time gauge: readable minutes */
+html body .jx-daytab-bot span { font-size: 14px; }
+
+/* ---- Correction: everything fits, CONTINUER included ---------------------
+   The question and its answers move up, the card gets the room under them. */
+html body #s-game #question-box.correction-active #question-text {
+  margin-top: clamp(70px, 14vh, 200px) !important;
+}
+html body #s-game #question-box.correction-active #correct-answer-reveal {
+  max-height: min(62dvh, calc(100dvh - 305px), 560px) !important;
+  gap: 6px;
+  padding: 10px 12px !important;
+}
+@media (min-width: 900px) {
+  html body #s-game #question-box.correction-active #correct-answer-reveal {
+    left: 50% !important; right: auto !important;
+    width: min(820px, calc(100vw - 32px)) !important;
+    transform: translateX(-50%) !important;
+  }
+}
+html body #s-game .correction-continue-btn { min-height: 48px; flex-shrink: 0; }
+
+/* =============================================================================
+   Round 2: week tracker popup, briefing back arrow, no band under the game's
+   top bar, readable numbers in the equations.
+   ============================================================================= */
+
+/* ---- Week tracker popup (#week-overlay): the yellow sheet ---------------- */
+html body #week-overlay .jx-drawer {
+  background: var(--jx-yellow) !important;
+  border: 9px solid var(--jx-orange) !important;
+  border-radius: 28px !important;
+  box-shadow: 0 6px 0 var(--jx-orange-dk), 0 20px 50px rgba(0,0,0,.45) !important;
+}
+html body #week-overlay .jx-week-title {
+  font-size: 20px; color: #fff; text-shadow: 2px 2px 0 var(--jx-ink);
+}
+html body #week-overlay .jx-week-subtitle,
+html body #week-overlay .jx-week-goal-config,
+html body #week-overlay .jx-week-goal-label {
+  font-size: 13px; color: var(--jx-ink);
+}
+/* Today's minutes: an orange coin with a white rim. */
+html body #week-overlay .jx-week-badge {
+  width: 60px; height: 60px;
+  background: linear-gradient(180deg, #ffab3d, var(--jx-orange) 55%, var(--jx-orange-deep));
+  border: 3px solid #fff;
+  box-shadow: 0 3px 0 var(--jx-orange-dk);
+}
+html body #week-overlay .jx-week-badge-value { font-size: 18px; color: #fff; text-shadow: 2px 2px 0 var(--jx-ink); }
+html body #week-overlay .jx-week-badge-unit { font-size: 10px; color: #fff3dc; }
+/* Days: orange tubes that fill with the JOUER yellow. */
+html body #week-overlay .jx-week-pill {
+  width: 34px; height: 100px;
+  border: 0; border-radius: 17px;
+  background: linear-gradient(180deg, #ffab3d, var(--jx-orange) 55%, var(--jx-orange-deep));
+  box-shadow: 0 3px 0 var(--jx-orange-dk), inset 0 0 0 4px rgba(122,58,0,.18);
+}
+html body #week-overlay .jx-week-pill::before { background: linear-gradient(180deg, rgba(255,255,255,.35), rgba(255,255,255,0) 55%); }
+html body #week-overlay .jx-week-pill.is-today {
+  box-shadow: 0 3px 0 var(--jx-orange-dk), 0 0 0 3px #fff;
+}
+html body #week-overlay .jx-week-pill-fill {
+  background: linear-gradient(180deg, #fff3a8, var(--jx-yellow-hi) 40%, #F0A500);
+  box-shadow: inset 0 2px 0 rgba(255,255,255,.6);
+  border-radius: 0 0 17px 17px;
+}
+html body #week-overlay .jx-week-day-value { font-size: 14px; color: #fff; text-shadow: 2px 2px 0 var(--jx-ink); }
+html body #week-overlay .jx-week-day-label { font-size: 11px; color: var(--jx-ink); }
+html body #week-overlay .jx-week-pill.is-today ~ .jx-week-day-label { color: var(--jx-orange-dk); font-weight: 700; }
+html body #week-overlay .jx-week-divider { background: rgba(122,58,0,.25); }
+html body #week-overlay .jx-week-goal-title { font-size: 16px; color: #fff; text-shadow: 2px 2px 0 var(--jx-ink); }
+html body #week-overlay .jx-week-goal-bar {
+  height: 20px; border: 0; border-radius: 10px;
+  background: rgba(122,58,0,.3);
+  box-shadow: inset 0 2px 0 rgba(0,0,0,.18);
+}
+html body #week-overlay .jx-week-goal-fill {
+  background: linear-gradient(180deg, #ffab3d, var(--jx-orange) 55%, var(--jx-orange-deep));
+  box-shadow: none; border-radius: 10px;
+}
+
+/* ---- Briefing: the back arrow straight on the orange bar (no yellow square) */
+html body #s-briefing .briefing-topbar .btn-icon {
+  background: none; box-shadow: none; border: 0;
+  font-size: 26px;
+}
+
+/* ---- Game: no band under the top bar ------------------------------------
+   The bar goes straight to the map; the timer is a thin strip along its
+   bottom edge instead of a separate row. */
+html body #s-game #game-hud {
+  border-radius: 0;
+  box-shadow: inset 0 2px 0 rgba(255,255,255,.3);
+}
+html body #s-game #timer-bar-wrap {
+  margin: 0; height: 6px;
+  border-radius: 0;
+  background: var(--jx-orange-dk);
+  box-shadow: none;
+}
+html body #s-game #timer-bar { border-radius: 0 3px 3px 0; }
+
+/* ---- Readable numbers in the equations ------------------------------------
+   The pixel font's 5 looks like an S and its 7 like a 1: questions, answers,
+   the keypad and the correction steps use a plain bold font. */
+html body #s-game #question-text,
+html body #s-game .answer-btn,
+html body #s-game .typed-key,
+html body #s-game .typed-display:not(.is-empty),
+html body #s-game .car-step,
+html body #s-briefing #briefing-example {
+  font-family: 'Arial Rounded MT Bold', 'Trebuchet MS', 'Segoe UI', system-ui, -apple-system, sans-serif !important;
+  font-weight: 800;
+  letter-spacing: 1px;
+}
+html body #s-game .typed-key.typed-ok,
+html body #s-game .typed-key.typed-del { font-family: var(--jx-font) !important; }
+
+/* ---- Week tracker, round 2 -------------------------------------------------
+   Day tubes like the lobby's play-time gauge: an orange frame around a brown
+   groove that fills with yellow. Today's minutes without the round coin. No
+   white dot on the month bar. */
+html body #week-overlay .jx-week-pill {
+  border: 4px solid var(--jx-orange);
+  background: rgba(122,58,0,.32);
+  box-shadow: 0 3px 0 var(--jx-orange-dk), inset 0 2px 0 rgba(0,0,0,.18);
+}
+html body #week-overlay .jx-week-pill::before { content: none; }
+html body #week-overlay .jx-week-pill.is-today {
+  border-color: #fff;
+  box-shadow: 0 3px 0 var(--jx-orange-dk), inset 0 2px 0 rgba(0,0,0,.18);
+}
+html body #week-overlay .jx-week-pill-fill {
+  background: linear-gradient(180deg, var(--jx-yellow-hi), var(--jx-yellow) 55%, #F0A500);
+  box-shadow: inset 0 2px 0 rgba(255,255,255,.55);
+  border-radius: 12px;
+}
+html body #week-overlay .jx-week-badge {
+  width: auto; height: auto; padding: 0;
+  background: none; border: 0; box-shadow: none;
+}
+html body #week-overlay .jx-week-badge-value { font-size: 26px; }
+html body #week-overlay .jx-week-badge-unit { font-size: 12px; color: #fff; text-shadow: 1px 1px 0 var(--jx-ink); }
+html body #week-overlay .jx-week-goal-fill::after { content: none; }
+
+/* ---- Manual aim ----------------------------------------------------------
+   Computer: a crosshair cursor while the shots can be aimed. Phones and
+   tablets: the aim joystick bottom right (game.js #aim-pad), an orange
+   ring with a yellow knob, shown only while the weapons fire. */
+html body #s-game canvas.aiming { cursor: crosshair; }
+html body #s-game .aim-pad {
+  position: absolute; z-index: 25;
+  right: max(16px, env(safe-area-inset-right));
+  bottom: max(22px, calc(env(safe-area-inset-bottom) + 14px));
+  width: 118px; height: 118px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(122,58,0,.35) 0 52%, transparent 53%),
+    linear-gradient(180deg, #ffab3d, var(--jx-orange) 55%, var(--jx-orange-deep));
+  box-shadow: 0 4px 0 var(--jx-orange-dk), inset 0 2px 0 rgba(255,255,255,.35);
+  display: grid; place-items: center;
+  touch-action: none;
+  opacity: .92;
+}
+html body #s-game .aim-pad.hidden { display: none; }
+html body #s-game .aim-pad-knob {
+  width: 50px; height: 50px; border-radius: 50%;
+  background: linear-gradient(180deg, var(--jx-yellow-hi), var(--jx-yellow) 50%, #F0A500);
+  box-shadow: 0 3px 0 #A56A00, inset 0 2px 0 rgba(255,255,255,.55);
+  pointer-events: none;
+}
+
+/* Aim joystick, smaller; on the left when chosen in RÉGLAGE > CONTRÔLES. */
+html body #s-game .aim-pad { width: 86px; height: 86px; }
+html body #s-game .aim-pad-knob { width: 36px; height: 36px; }
+html body #s-game .aim-pad.aim-pad-left {
+  right: auto;
+  left: max(16px, env(safe-area-inset-left));
+}
+/* The joystick side only matters on phones and tablets. */
+html:not(.touch-mobile):not(.touch-tablet) .sett-touch-only { display: none !important; }

@@ -330,25 +330,33 @@ function drawTimedPickup(ctx, type, x, y, scale, timer) {
   ctx.restore();
 }
 
-export function drawAirdrop(ctx, cw, ch) {
-  if (!drop || drop.state === AIRDROP_STATE.IDLE || (drop.state === AIRDROP_STATE.DONE && !drop.planeActive)) return;
+// The A400M carrier: game.js draws it last, above everything (the player's
+// plane and the weather included).
+export function drawAirdropCarrier(ctx, cw, ch) {
+  if (!drop || !drop.planeActive) return;
   ctx.save();
   ctx.imageSmoothingEnabled = false;
-  if (drop.planeActive) {
-    const { size: planeSize, y } = getCarrierPose(cw, ch, drop.planeTimer);
-    if (drop.planeTimer < PLANE_ANIM_END) {
-      const frame = Math.floor(drop.planeTimer / 10);
-      drawFrame(ctx, 'airdrop-plane', frame, drop.planeX, y, planeSize, planeSize);
-    } else {
-      // Continue with the clean standalone carrier after the release sheet ends.
-      const exitY = y + planeSize * EXIT_PLANE_Y_OFFSET;
-      drawFrame(
-        ctx, 'airdrop-plane-exit', 0, drop.planeX, exitY,
-        planeSize * EXIT_PLANE_WIDTH_SCALE,
-        planeSize * EXIT_PLANE_HEIGHT_SCALE,
-      );
-    }
+  const { size: planeSize, y } = getCarrierPose(cw, ch, drop.planeTimer);
+  if (drop.planeTimer < PLANE_ANIM_END) {
+    const frame = Math.floor(drop.planeTimer / 10);
+    drawFrame(ctx, 'airdrop-plane', frame, drop.planeX, y, planeSize, planeSize);
+  } else {
+    // Continue with the clean standalone carrier after the release sheet ends.
+    const exitY = y + planeSize * EXIT_PLANE_Y_OFFSET;
+    drawFrame(
+      ctx, 'airdrop-plane-exit', 0, drop.planeX, exitY,
+      planeSize * EXIT_PLANE_WIDTH_SCALE,
+      planeSize * EXIT_PLANE_HEIGHT_SCALE,
+    );
   }
+  ctx.restore();
+}
+
+// The parachute crate, its opening and the reward (behind the player).
+export function drawAirdrop(ctx, cw, ch) {
+  if (!drop || drop.state === AIRDROP_STATE.IDLE || drop.state === AIRDROP_STATE.DONE) return;
+  ctx.save();
+  ctx.imageSmoothingEnabled = false;
   if (drop.state === AIRDROP_STATE.DESCEND || drop.state === AIRDROP_STATE.LANDED) {
     const planeSize = Math.min(460, cw * 1.08);
     // The carrier sheet already completes deployment; hold the fully opened

@@ -12,6 +12,9 @@ export const settings = {
   volume:  80,   // 0-100 SFX
   music:   45,   // 0-100 music
   effects: true,
+  aimSens:  5,   // 1-10 how fast the aim follows the cursor / aim joystick (game.js)
+  moveSens: 5,   // 1-10 how fast the plane moves (game.js)
+  aimPadSide: 'right',   // phones / tablets: aim joystick 'right' or 'left' (game.js)
 };
 
 export function loadSettings() {
@@ -44,6 +47,19 @@ function _refresh() {
   }
   const musicVal = document.getElementById('sett-music-val');
   if (musicVal) musicVal.textContent = settings.music + '%';
+
+  const side = document.getElementById('sett-aim-side');
+  if (side) side.textContent = settings.aimPadSide === 'left' ? t('sideLeft') : t('sideRight');
+
+  for (const [key, id] of [['aimSens', 'aim'], ['moveSens', 'move']]) {
+    const slider = document.getElementById(`sett-${id}-slider`);
+    if (slider) {
+      slider.value = settings[key];
+      slider.style.setProperty('--pct', ((settings[key] - 1) / 9 * 100) + '%');
+    }
+    const val = document.getElementById(`sett-${id}-val`);
+    if (val) val.textContent = settings[key];
+  }
 
   const eff = document.getElementById('sett-effects');
   if (eff) {
@@ -152,6 +168,20 @@ export function initSettings() {
     e.target.style.setProperty('--pct', settings.music + '%');
     _save(); _apply();
   });
+  // Aim joystick side (phones / tablets).
+  document.getElementById('sett-aim-side')?.addEventListener('click', () => {
+    settings.aimPadSide = settings.aimPadSide === 'left' ? 'right' : 'left';
+    _save(); _refresh();
+  });
+  // Control sensitivity sliders (aim and plane), 1-10.
+  for (const [key, id] of [['aimSens', 'aim'], ['moveSens', 'move']]) {
+    document.getElementById(`sett-${id}-slider`)?.addEventListener('input', e => {
+      settings[key] = Number(e.target.value);
+      document.getElementById(`sett-${id}-val`).textContent = settings[key];
+      e.target.style.setProperty('--pct', ((settings[key] - 1) / 9 * 100) + '%');
+      _save();
+    });
+  }
   document.getElementById('sett-volume-slider')?.addEventListener('change', () => { _save(); _apply(); _refresh(); });
   document.getElementById('sett-music-slider')?.addEventListener('change', () => { _save(); _apply(); _refresh(); });
 

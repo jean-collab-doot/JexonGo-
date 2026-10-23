@@ -95,8 +95,7 @@ export function showYellowLoader() {
   overlay.id = 'np-loader';
   overlay.querySelector('.np-title')?.remove();
   overlay.querySelector('.np-wash')?.remove();
-  setYellowPage(true);
-  SFX.loaderStart();   // the T-6 engine while it loads (the game music comes after)
+  setYellowPage(true);   // silent: nothing is heard while the game loads
   const shownAt = performance.now();
   let hiding = null;
   return {
@@ -105,7 +104,6 @@ export function showYellowLoader() {
         const wait = Math.max(0, RISE_MS + MIN_HOVER_MS - (performance.now() - shownAt));
         setTimeout(() => {
           overlay.classList.add('np-go');
-          SFX.loaderExit();   // the engine roars away with the plane
           setTimeout(() => {
             overlay.classList.add('np-leave');
             setTimeout(() => {
@@ -119,7 +117,6 @@ export function showYellowLoader() {
       return hiding;
     },
     remove() {
-      SFX.loaderExit();
       overlay.remove();
       if (!document.getElementById('np-intro')) setYellowPage(false);
     },

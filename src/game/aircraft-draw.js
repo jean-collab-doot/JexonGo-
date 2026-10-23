@@ -139,7 +139,9 @@ export function drawEnemySprite(ctx, enemy, bankAngle = 0) {
     const row = bankSignal > 0 ? 5 : 0;
     const drawWidth = size;
     const drawEnemyFrame = () => drawFrame(
-      ctx, enemy.bankSpriteKey, row + bankLevel, enemy.x, enemy.y, drawWidth, size, { rotate: Math.PI });
+      ctx, enemy.bankSpriteKey, row + bankLevel, enemy.x, enemy.y, drawWidth, size,
+      // Kamikazes bank while pointing their nose at the player.
+      { rotate: Math.PI + (enemy.kamikaze ? rotation : 0) });
     if (enemy.spriteFilter) {
       ctx.save();
       ctx.filter = enemy.spriteFilter;

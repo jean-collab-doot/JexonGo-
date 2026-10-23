@@ -47,6 +47,22 @@ function pages(fr) {
       ],
     },
     {
+      // Manual aim (game.js MANUAL AIM): only while the plane fires.
+      art: 'aim',
+      title: fr ? 'VISER TES TIRS' : 'AIMING YOUR SHOTS',
+      tips: fr ? [
+        ['target', 'Ordinateur : la souris dirige tes tirs.'],
+        ['touch', 'Téléphone : pousse le joystick de tir.'],
+        ['move', 'La ligne pointillée montre où ils vont.'],
+        ['gear', 'Réglages : RÉGLAGE > CONTRÔLES.'],
+      ] : [
+        ['target', 'Computer: the mouse steers your shots.'],
+        ['touch', 'Phone: push the aim joystick.'],
+        ['move', 'The dotted line shows where they go.'],
+        ['gear', 'Settings: SETTINGS > CONTROLS.'],
+      ],
+    },
+    {
       art: 'lives',
       title: fr ? 'TES VIES' : 'YOUR LIVES',
       tips: fr ? [
@@ -114,6 +130,25 @@ function artHtml(kind) {
           <div class="ht-phone-screen">
             <div class="ht-mini-t6"></div>
             <div class="ht-finger"></div>
+          </div>
+        </div>
+      </div>`;
+    case 'aim':
+      // Computer: the cursor slides left / right and the dotted aim line
+      // follows. Phone: the aim joystick's knob does the same.
+      return `<div class="ht-ctrl ht-aim">
+        <div class="ht-pc">
+          <div class="ht-pc-sky">
+            <div class="ht-aim-line"></div>
+            <div class="ht-mini-t6 ht-still"></div>
+            <div class="ht-aim-cursor"></div>
+          </div>
+        </div>
+        <div class="ht-phone">
+          <div class="ht-phone-screen">
+            <div class="ht-aim-line"></div>
+            <div class="ht-mini-t6 ht-still"></div>
+            <div class="ht-aim-pad"><i></i></div>
           </div>
         </div>
       </div>`;

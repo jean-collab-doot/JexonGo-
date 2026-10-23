@@ -4,6 +4,7 @@
 import { drawFrame } from './sprites.js';
 import { isTouchMobile } from '../utils/device.js';
 import { G } from '../state.js';
+import { gentleFx, drawRainbowShot, drawRainbowBeam } from './glitter.js';
 
 const BOLT_FRAMES     = 12;
 const BOLT_W          = 24;
@@ -111,7 +112,17 @@ export function drawMissiles(ctx, missiles, isEnemy = false) {
   const scale = isTouchMobile() ? 0.78 : 1;
   const w = BOLT_W * scale;
   const h = BOLT_H * scale;
+  // Gentle mode: the enemies' shots are rainbow balls, the player's lasers
+  // and machine-gun bullets (hangar upgrades, airdrops) rainbow too; the
+  // player's missiles keep their normal look.
+  const gentle = gentleFx();
   for (const m of missiles) {
+    if (gentle && isEnemy) { drawRainbowShot(ctx, m, 6 * scale); continue; }
+    if (gentle && m.type === 'player-machine-gun') { drawRainbowShot(ctx, m, 4.5 * scale); continue; }
+    if (gentle && (m.type === 'player-laser' || m.type === 'xray')) {
+      drawRainbowBeam(ctx, m, 44 * scale, 6 * scale);
+      continue;
+    }
     if (m.type === 'player-laser') {
       // Player laser (hangar UPGRADE weapon): a long, glowing orange beam.
       const angle = Math.atan2(m.vy, m.vx);
@@ -181,16 +192,8 @@ export function drawMissiles(ctx, missiles, isEnemy = false) {
     }
     if (m.type === 'enemy-homing') {
       // Homing F-15 missile: the game's real missile sprite, turned along its
-      // path, with a short smoke trail behind it.
+      // path (no smoke trail).
       const angle = Math.atan2(m.vy, m.vx);
-      ctx.save();
-      ctx.translate(m.x, m.y);
-      ctx.rotate(angle);
-      ctx.fillStyle = 'rgba(210,210,210,0.3)';
-      ctx.beginPath();
-      ctx.ellipse(-h * 0.75, 0, h * 0.35, w * 0.16, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.restore();
       drawFrame(ctx, 'bolt', m.boltFrame || 0, m.x, m.y, w, h, { rotate: angle + Math.PI / 2 });
       continue;
     }

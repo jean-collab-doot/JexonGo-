@@ -70,7 +70,7 @@ function bossCompanionTypesForLevel(n) {
 // How many companion enemies can be on screen at once (not counting the boss)
 function bossCompanionCountForLevel(n) {
   const m = n / 10;
-  return 2 + m * 2; // 4, 6, 8, 10, 12 for lv10→50
+  return 5 + m; // 6, 7, 8, 9, 10 for lv10→50
 }
 
 // Maximum enemies on screen at once
@@ -79,7 +79,7 @@ function maxEnemiesForLevel(n) {
     const milestone = n / 10;
     return 2 + milestone;
   }
-  return Math.min(20, 5 + Math.floor((n - 1) / 3)); // 5 → 20
+  return 6 + Math.floor((n - 1) / 12); // 6 → 10
 }
 
 // Frames between enemy spawns

@@ -69,6 +69,8 @@
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="src/screens/worldcup-intro.css">
   <link rel="stylesheet" href="src/screens/lobby-redesign.css">
+  <link rel="stylesheet" href="src/screens/mission-screens.css">
+  <link rel="stylesheet" href="src/screens/game-ui.css">
 </head>
 <body>
   <!-- Opening intro (src/screens/new-player-intro.js takes it over). It is
@@ -180,6 +182,35 @@
           <button id="sett-effects" class="sett-toggle sett-on">ON</button>
         </div>
         <button id="btn-change-equations" class="sett-action-btn" type="button">CHANGER LES EQUATIONS</button>
+      </div>
+
+      <button class="jx-pill" type="button" data-jx-sub="drawer-controls" data-i18n="jxControls">CONTRÔLES</button>
+      <div id="drawer-controls" class="jx-sub">
+        <div class="sett-row sett-row-volume">
+          <div class="sett-row-left">
+            <span class="sett-label" data-i18n="aimSensitivity">VISEUR</span>
+          </div>
+          <div class="sett-slider-wrap">
+            <input type="range" id="sett-aim-slider" class="sett-slider" min="1" max="10" value="5">
+            <span id="sett-aim-val" class="sett-vol-val">5</span>
+          </div>
+        </div>
+        <div class="sett-row sett-row-volume">
+          <div class="sett-row-left">
+            <span class="sett-label" data-i18n="moveSensitivity">AVION</span>
+          </div>
+          <div class="sett-slider-wrap">
+            <input type="range" id="sett-move-slider" class="sett-slider" min="1" max="10" value="5">
+            <span id="sett-move-val" class="sett-vol-val">5</span>
+          </div>
+        </div>
+        <!-- Phones and tablets only (hidden on computers by game-ui.css). -->
+        <div class="sett-row sett-touch-only">
+          <div class="sett-row-left">
+            <span class="sett-label" data-i18n="aimPadSide">JOYSTICK DE TIR</span>
+          </div>
+          <button id="sett-aim-side" class="sett-toggle sett-on" type="button">DROITE</button>
+        </div>
       </div>
 
       <button id="btn-menu-privacy" class="jx-pill" type="button" data-i18n="jxPolicyUser">Politique de confidentialité</button>
@@ -428,6 +459,9 @@
       <div id="tutorial-captain-guide" class="tutorial-captain-guide hidden"></div>
       <div id="tutorial-round-summary" class="tutorial-round-summary hidden"></div>
       <div id="tutorial-analysis" class="tutorial-analysis hidden"></div>
+      <!-- Aim joystick (phones / tablets): steers the player's shots while
+           they fire; game.js shows it only then. -->
+      <div id="aim-pad" class="aim-pad hidden" aria-hidden="true"><div class="aim-pad-knob"></div></div>
       <div id="game-pause-overlay"></div>
       <div id="question-box">
         <div id="question-text"></div>

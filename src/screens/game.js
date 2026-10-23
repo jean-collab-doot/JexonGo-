@@ -1,5 +1,5 @@
 import { G, resetLevel, clampCoins, addSessionCoins, addSessionXp, addLifetimeXp, MAX_COINS, MAX_GAME_COINS } from '../state.js';
-import { gentleFx, drawGlitterBurst } from '../game/glitter.js';
+import { gentleFx, drawGlitterBurst, schoolYear } from '../game/glitter.js';
 import { chosenBasicOpsForLevel, chosenExtraOps, extraTopicShare } from '../systems/question-topics.js';
 import { uiIcon } from '../utils/icons.js';
 import { $, showScreen } from '../utils/dom.js';
@@ -27,7 +27,7 @@ import { initClouds, updateClouds, drawClouds } from '../game/clouds.js';
 import { initWeatherFx, drawWeatherFx, windForce, windForceY, windIntensity } from '../game/weather-fx.js';
 import { WEATHER_TYPES } from '../data/weather.js';
 import {
-  initAirdrop, updateAirdrop, drawAirdrop, handleAirdropPointer,
+  initAirdrop, updateAirdrop, drawAirdrop, drawAirdropCarrier, handleAirdropPointer,
   rollAirdropForLevel, hitAirdrop,
 } from '../game/airdrop.js';
 import { trackMission } from '../systems/daily.js';
@@ -514,6 +514,20 @@ function nearestEnemyAheadOf(missile) {
 // complete pair/formation.
 // 'fast' (F-5) is listed three times so its crossing waves show up more often.
 const RANDOM_ENEMY_TYPES = ['basic', 'fast', 'fast', 'fast', 'tank', 'turner', 'interceptor'];
+// Apache helicopters: picked only this often when drawn, one at a time.
+const APACHE_KEEP_CHANCE = 0.4;
+
+// The school year sets how many planes fly at once: years 1-3 the fewest,
+// 4-6 a few less, 7 and up the level's full count (the player's age no
+// longer changes it then). Unknown year: the level's count with the age
+// adjustment.
+function schoolYearEnemyCap(levelCap, ageCap = levelCap) {
+  const year = schoolYear();
+  if (!year) return ageCap;
+  if (year <= 3) return Math.max(2, levelCap - 4);
+  if (year <= 6) return Math.max(3, levelCap - 2);
+  return levelCap;
+}
 
 // No account: level 1 only (systems/progression.js). Practice and the
 // training stay open.
@@ -808,8 +822,9 @@ function showTutorialNotice(text, good = false, durationMs = 2200) {
   panel._hideTimer = setTimeout(() => panel.classList.add('hidden'), durationMs);
 }
 
-// After question 5: enemies stop appearing and the ones on screen vanish, the
-// player flies alone for 5 s, then a new 3-2-1 countdown starts questions 6-10.
+// After question 5: a 5 s break without questions. The game keeps running and
+// enemies keep flying, but none of them fires; then questions 6-10 follow
+// straight away (no countdown, which would freeze the game).
 const GUIDED_BREAK_MS = 5000;
 let _guidedBreakDone = false;
 let _guidedBreakUntil = 0;
@@ -840,19 +855,12 @@ function startGuidedBreak() {
     questionBox.classList.add('question-inactive');
     questionBox.style.visibility = 'hidden';
   }
-  G.enemyMissiles = [];
-  for (const enemy of G.enemies) {
-    if (!enemy.active || enemy.type === 'boss') continue;
-    spawnHitSpark(G.particles, enemy.x, enemy.y);
-    enemy.active = false;
-  }
+  G.enemyMissiles = [];   // shots already flying vanish; no new ones (see the enemy fire loop)
   showGuidedLivesBanner();
-  // Then the 3-2-1 countdown with the plane staying where it is (no climb-in).
   setTimeout(() => {
     if (_sessionId !== sid) return;
     _guidedBreakUntil = 0;
-    _skipPracticeBannerOnce = true;
-    showStartCountdown(nextQuestion, { keepPlane: true });
+    nextQuestion();
   }, GUIDED_BREAK_MS);
 }
 
@@ -1788,11 +1796,11 @@ function drawKamikazeMark(e) {
 // Some F-15s lock on (red ring, ~0.8 s) then fire a missile that follows the
 // player, like the kamikaze F-5: it turns slowly, stops steering over the
 // last third of the screen (a sidestep makes it miss), and gives up after
-// ~3.5 s or while the F-117 is stealthed.
+// ~4 s or while the F-117 is stealthed.
 const HOMING_F15_CHANCE = 0.35;
 const HOMING_LOCK_FRAMES = 48;
 const HOMING_TURN = 0.022;          // max heading change per frame (rad)
-const HOMING_MAX_AGE = 210;         // frames of guidance
+const HOMING_MAX_AGE = 240;         // frames of guidance (4 s)
 
 function steerHomingMissile(m) {
   m.age = (m.age || 0) + _frameStep;
@@ -1960,7 +1968,134 @@ const JS_RADIUS    = 72;     // max joystick drag radius (px on screen)
 function _moveSpeed() {
   const badgeSpeed = G.activeBadge === 'first_takeoff' ? 1.05 : 1;
   const turboSpeed = aircraftTurboActive() ? SR71_TURBO_SPEED_MULT : 1;
-  return (isTouchMobile() ? 4.4 : MOVE_SPEED) * (AIRCRAFT[G.activeAircraft]?.ability?.moveSpeed || 1) * badgeSpeed * turboSpeed;
+  return (isTouchMobile() ? 4.4 : MOVE_SPEED) * (AIRCRAFT[G.activeAircraft]?.ability?.moveSpeed || 1) * badgeSpeed * turboSpeed
+    * _moveSensitivity;
+}
+
+// ── CONTROL SENSITIVITY (settings.js: RÉGLAGE > CONTRÔLES, 1-10, 5 = normal)
+// Read once per level from the saved settings.
+let _moveSensitivity = 1;   // plane speed: x0.6 (1) → x1 (5) → x1.5 (10)
+let _aimSensitivity  = 1;   // how fast the aim turns: x0.2 (1) → x1 (5) → x2 (10)
+function loadControlSensitivity() {
+  let saved = {};
+  try { saved = JSON.parse(localStorage.getItem('jexongo_settings') || '{}') || {}; } catch (_) {}
+  const level = v => Math.max(1, Math.min(10, Number(v) || 5));
+  _moveSensitivity = 0.5 + level(saved.moveSens) * 0.1;
+  _aimSensitivity  = level(saved.aimSens) / 5;
+  // Phones / tablets: the aim joystick on the right (default) or the left.
+  document.getElementById('aim-pad')?.classList.toggle('aim-pad-left', saved.aimPadSide === 'left');
+}
+
+// ── MANUAL AIM ──────────────────────────────────────────────────────────────
+// While the player's weapons fire (after a correct answer), the shots go
+// where the player aims: the mouse cursor on a computer, the aim joystick
+// (#aim-pad) on a phone or tablet. A dotted line shows the direction.
+// Homing weapons (F-22 PRECISION, the hangar homing upgrade) aim by
+// themselves: no manual aim, no line, no joystick.
+const AIM_MAX_ANGLE = 1.35;   // rad either side of straight ahead
+const AIM_FOLLOW    = 0.2;    // share of the gap closed each frame (x sensitivity)
+let _aimAngle  = 0;           // current aim, 0 = straight up, + = to the right
+let _aimTarget = 0;           // where the cursor / joystick points
+let _aimCursor = null;        // computer: mouse position in canvas pixels (only x is used)
+let _aimPadTouch = null;      // touch id dragging the aim joystick
+
+function manualAimEnabled() {
+  return !(activeAircraftAbility().homing || homingUpgradeOwned());
+}
+
+function aimVisible(now = performance.now()) {
+  return manualAimEnabled() && !_cutsceneActive && !_correctionWaiting
+    && (_shootingWindowUntil > now || airdropWeaponActive(now));
+}
+
+function aimAngleTo(dx, dy) {
+  return Math.max(-AIM_MAX_ANGLE, Math.min(AIM_MAX_ANGLE, Math.atan2(dx, -dy)));
+}
+
+function updateAim() {
+  // Computer: only the mouse steers the shots. Its position across the
+  // screen sets the angle (left edge = far left, middle = straight ahead,
+  // right edge = far right), so moving the plane with the keys never
+  // changes where the shots go.
+  if (_aimCursor && canvas?.width) {
+    const across = Math.max(0, Math.min(1, _aimCursor.x / canvas.width)) * 2 - 1;
+    _aimTarget = across * AIM_MAX_ANGLE;
+  }
+  _aimAngle += (_aimTarget - _aimAngle) * Math.min(1, AIM_FOLLOW * _aimSensitivity * (_frameStep || 1));
+  const show = aimVisible();
+  const pad = document.getElementById('aim-pad');
+  if (pad && isTouchMobile() && pad.classList.contains('hidden') === show) pad.classList.toggle('hidden', !show);
+  if (canvas) canvas.classList.toggle('aiming', show && !isTouchMobile());
+}
+
+// The extra angle every player shot gets (0 with homing weapons).
+function aimOffset() {
+  return manualAimEnabled() ? _aimAngle : 0;
+}
+
+function drawAimLine(fromX, fromY) {
+  if (!aimVisible()) return;
+  const len = Math.min(canvas.height * 0.5, 460);
+  const dx = Math.sin(_aimAngle), dy = -Math.cos(_aimAngle);
+  const x0 = fromX + dx * getPlayerSize() * 0.55, y0 = fromY + dy * getPlayerSize() * 0.55;
+  const x1 = x0 + dx * len, y1 = y0 + dy * len;
+  const unit = Math.max(1, canvas.width / (canvas.clientWidth || canvas.width));
+  ctx.save();
+  ctx.lineCap = 'round';
+  ctx.setLineDash([10 * unit, 9 * unit]);
+  ctx.lineDashOffset = -(performance.now() / 30) % (19 * unit);   // dots run forward
+  ctx.strokeStyle = 'rgba(122,58,0,.55)';
+  ctx.lineWidth = 6 * unit;
+  ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
+  ctx.strokeStyle = '#ffffff';
+  ctx.lineWidth = 3 * unit;
+  ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
+  // Arrow head at the end.
+  ctx.setLineDash([]);
+  const h = 12 * unit, back = Math.atan2(dy, dx) + Math.PI;
+  ctx.fillStyle = '#ffffff';
+  ctx.strokeStyle = 'rgba(122,58,0,.7)';
+  ctx.lineWidth = 2 * unit;
+  ctx.beginPath();
+  ctx.moveTo(x1 + dx * h * 0.6, y1 + dy * h * 0.6);
+  ctx.lineTo(x1 + Math.cos(back - 0.5) * h, y1 + Math.sin(back - 0.5) * h);
+  ctx.lineTo(x1 + Math.cos(back + 0.5) * h, y1 + Math.sin(back + 0.5) * h);
+  ctx.closePath(); ctx.fill(); ctx.stroke();
+  ctx.restore();
+}
+
+function canvasAimMove(e) {
+  if (isTouchMobile()) return;
+  const r = _canvasRect || (_canvasRect = canvas.getBoundingClientRect());
+  _aimCursor = _cssToCanvas(e.clientX - r.left, e.clientY - r.top);
+}
+function canvasAimLeave() { _aimCursor = null; }
+
+// Aim joystick (touch): the direction from the pad's centre to the finger.
+function aimPadTouch(e) {
+  const pad = e.currentTarget;
+  if (e.cancelable) e.preventDefault();
+  e.stopPropagation();
+  let t = null;
+  if (e.type === 'touchstart') { t = e.changedTouches[0]; _aimPadTouch = t.identifier; }
+  else t = [...e.touches].find(x => x.identifier === _aimPadTouch);
+  if (!t) return;
+  const r = pad.getBoundingClientRect();
+  const dx = t.clientX - (r.left + r.width / 2);
+  const dy = t.clientY - (r.top + r.height / 2);
+  const dist = Math.hypot(dx, dy);
+  const knob = pad.querySelector('.aim-pad-knob');
+  const max = r.width * 0.32;
+  const k = Math.min(dist, max) / (dist || 1);
+  if (knob) knob.style.transform = `translate(${dx * k}px, ${dy * k}px)`;
+  if (dist > 8) _aimTarget = aimAngleTo(dx, dy);
+}
+function aimPadRelease(e) {
+  if ([...(e.changedTouches || [])].some(t => t.identifier === _aimPadTouch)) {
+    _aimPadTouch = null;
+    const knob = e.currentTarget.querySelector('.aim-pad-knob');
+    if (knob) knob.style.transform = '';   // the aim stays where it was
+  }
 }
 
 function _turnRate() {
@@ -2153,6 +2288,15 @@ function attachInputListeners() {
   canvas.addEventListener('touchend',    clearPointer,  { passive: true });
   canvas.addEventListener('touchcancel', clearPointer,  { passive: true });
   canvas.addEventListener('click', canvasAirdropClick);
+  canvas.addEventListener('mousemove', canvasAimMove);
+  canvas.addEventListener('mouseleave', canvasAimLeave);
+  const pad = document.getElementById('aim-pad');
+  if (pad) {
+    pad.addEventListener('touchstart', aimPadTouch, { passive: false });
+    pad.addEventListener('touchmove', aimPadTouch, { passive: false });
+    pad.addEventListener('touchend', aimPadRelease);
+    pad.addEventListener('touchcancel', aimPadRelease);
+  }
 }
 
 function detachInputListeners() {
@@ -2163,6 +2307,17 @@ function detachInputListeners() {
   canvas.removeEventListener('touchend',    clearPointer);
   canvas.removeEventListener('touchcancel', clearPointer);
   canvas.removeEventListener('click', canvasAirdropClick);
+  canvas.removeEventListener('mousemove', canvasAimMove);
+  canvas.removeEventListener('mouseleave', canvasAimLeave);
+  canvas.classList.remove('aiming');
+  const pad = document.getElementById('aim-pad');
+  if (pad) {
+    pad.removeEventListener('touchstart', aimPadTouch);
+    pad.removeEventListener('touchmove', aimPadTouch);
+    pad.removeEventListener('touchend', aimPadRelease);
+    pad.removeEventListener('touchcancel', aimPadRelease);
+    pad.classList.add('hidden');
+  }
 }
 
 // ── MOBILE GAME LOOP (phone + tablet only) ────────────────────────────────────
@@ -2286,6 +2441,9 @@ function _canRunSid(sid = _activeSessionId) {
 
 function _queueFrame(sid = _activeSessionId) {
   if (!_canRunSid(sid)) return;
+  // Nothing runs under the loading screen (a resize or tab switch must not
+  // start the game while it is still downloading).
+  if (_levelLoading) return;
   // The game stays frozen while the wrong-answer correction is shown, even
   // if a resize or tab switch tries to restart the loop. nextQuestion()
   // restarts it once the player presses CONTINUE.
@@ -2345,6 +2503,7 @@ function placePlayer() {
 
 // ── LOADING SCREEN ──────────────────────────────────────────────────────────
 let _yellowLoader = null;
+let _levelLoading = false;
 
 // The level's map must be downloaded before the game starts: preloadBiome
 // carries on even when an image failed, so try the map again a few times.
@@ -2687,8 +2846,8 @@ function frame(ts = 0) {
     && enemy.firstShotAt
     && performance.now() < enemy.firstShotAt
   );
-  // New-player practice break (after question 5): no new enemies.
-  const spawnPaused = bossFirstShotGraceActive || guidedBreakActive();
+  // The first boss shot's grace: no new enemies.
+  const spawnPaused = bossFirstShotGraceActive;
   if (!spawnPaused) {
     spawnTimer -= _frameStep;
     // Keep planes coming one after another: an empty sky brings the next wave
@@ -2699,13 +2858,21 @@ function frame(ts = 0) {
       else if (left === 1) spawnTimer = Math.min(spawnTimer, 50);
     }
   }
-  if (!spawnPaused && spawnTimer <= 0) {
+  // A formation (W, V, X, F-14 line) flies alone: nothing else comes in
+  // while one of its planes is still on screen.
+  const waveOnScreen = G.enemies.some(e => e.wave && e.active && !e.turncoat);
+  if (!spawnPaused && !waveOnScreen && spawnTimer <= 0) {
     // New-player practice: only lone F-15s (no formations, lasers or gunships).
     const types = _guidedRun ? ['basic'] : RANDOM_ENEMY_TYPES;
-    const type  = types[Math.floor(Math.random() * types.length)];
+    let type = types[Math.floor(Math.random() * types.length)];
+    if (type === 'tank' && (Math.random() > APACHE_KEEP_CHANCE
+        || G.enemies.some(e => e.type === 'tank' && e.active && !e.turncoat))) {
+      type = types.filter(t => t !== 'tank')[Math.floor(Math.random() * (types.length - 1))];
+    }
     const activeCount = activeRegularEnemyCount();
     const normalCap = adaptiveMaxEnemies();
     const spawned = [];
+    const skyEmpty = activeCount === 0;
 
     if (type === 'tank') {
       // Apaches now make individual, brief machine-gun ambushes.
@@ -2725,33 +2892,29 @@ function frame(ts = 0) {
         // A single F-5 flying straight down from a random position.
         if (activeCount < normalCap) spawned.push(spawnEnemy(canvas.width, 'fast'));
       } else if (shape === 'x') {
-        // Crossing waves grow with the level: two pairs, then up to four.
-        // Pairs always remain complete so their paths draw an X.
-        const desiredPairs = Math.min(4, 2 + Math.floor(Math.max(0, G.currentLevel - 1) / 15));
-        const availablePairs = Math.floor(Math.max(0, normalCap - activeCount) / 2);
-        const pairCount = Math.min(desiredPairs, availablePairs);
-        for (let lane = 0; lane < pairCount; lane++) {
-          spawned.push(spawnEnemy(canvas.width, 'fast', { crossSide: -1, crossLane: lane }));
-          spawned.push(spawnEnemy(canvas.width, 'fast', { crossSide: 1, crossLane: lane }));
+        // Crossing waves (only into an empty sky): two pairs, three from
+        // level 25. Pairs always remain complete so their paths draw an X.
+        const pairCount = G.currentLevel >= 25 ? 3 : 2;
+        if (skyEmpty) {
+          for (let lane = 0; lane < pairCount; lane++) {
+            spawned.push(spawnEnemy(canvas.width, 'fast', { crossSide: -1, crossLane: lane }));
+            spawned.push(spawnEnemy(canvas.width, 'fast', { crossSide: 1, crossLane: lane }));
+          }
+          spawned.forEach(e => { e.wave = true; });
         }
       } else {
-        // V: 5, 7 or 9 planes (odd, so there is a lead plane at the tip).
-        // W: 5 to 10 planes. A whole formation may exceed the normal cap a
-        // little, but never pushes the screen past 10 regular enemies.
+        // One V (5 or 7 planes, odd so there is a lead plane at the tip) or
+        // one W row (5 to 7 planes), only into an empty sky.
         const count = shape === 'v'
-          ? [5, 7, 9][Math.floor(Math.random() * 3)]
-          : 5 + Math.floor(Math.random() * 6);
-        if (activeCount + count <= Math.max(normalCap, 10)) {
-          spawned.push(...spawnF5Formation(shape, count));
-        }
+          ? [5, 7][Math.floor(Math.random() * 2)]
+          : 5 + Math.floor(Math.random() * 3);
+        if (skyEmpty) spawned.push(...spawnF5Formation(shape, count).map(e => Object.assign(e, { wave: true })));
       }
     } else if (type === 'interceptor') {
-      // F-14s fly solo or in a side-by-side line of 2, 3 or 4. The whole
-      // line must fit under the 10 regular enemies limit.
-      const count = [1, 2, 3, 4][Math.floor(Math.random() * 4)];
-      const cap = count === 1 ? normalCap : Math.max(normalCap, 10);
-      if (activeCount + count <= cap) {
-        spawned.push(...spawnF14Line(count));
+      // F-14s fly solo, or in a side-by-side line of 2 or 3 into an empty sky.
+      const count = [1, 2, 3][Math.floor(Math.random() * 3)];
+      if (count === 1 ? activeCount < normalCap : skyEmpty) {
+        spawned.push(...spawnF14Line(count).map(e => Object.assign(e, { wave: count > 1 })));
       }
     } else if (activeCount < normalCap) {
       // Independent enemies: F-15 straight runs and randomly turning Mirages.
@@ -2967,7 +3130,9 @@ function frame(ts = 0) {
       const fireTop = canvas.height * 0.08;
       const fireBot = Math.min(canvas.height * 0.78, G.player.y - 80);
       const inFireZone = e.y > fireTop && e.y < fireBot;
-      if (e.type === 'interceptor') {
+      if (guidedBreakActive()) {
+        // Beginner practice break after question 5: enemies fly, none fires.
+      } else if (e.type === 'interceptor') {
         // F-14 exclusive weapon: one straight red laser every 0.2 seconds
         // (12 simulation frames), in 3 s volleys separated by 3 s pauses
         // (180 frames each; the cycle only runs while in the fire zone).
@@ -3264,8 +3429,8 @@ function frame(ts = 0) {
   updateAircraftRegen(ts || performance.now());
   const shootingPlan = activeShootingPlan();
 
-  // Render the carrier, parachute crate, and its destruction effect behind
-  // the player's aircraft.
+  // Render the parachute crate and its destruction effect behind the
+  // player's aircraft (the A400M carrier is drawn last, above everything).
   updateAirdrop(_frameStep, canvas.width, canvas.height,
     activeAircraftAbility().magnet ? C130_MAGNET_RADIUS : 0);
   // Airdrop crate held the (extremely rare) nuke: launch the nuclear strike.
@@ -3361,6 +3526,10 @@ function frame(ts = 0) {
 
   ctx.globalAlpha = 1;
 
+  // ── Manual aim: dotted line from the player's nose ─────────────────────
+  updateAim();
+  if (!_playerDestroyed) drawAimLine(playerDrawX, playerDrawY);
+
   // ── Weather (rain, storm, fog, snow…) over the whole playfield ──────────
   const weatherTarget = !_cutsceneActive && !_playerDestroyed ? G.player : null;
   for (const event of drawWeatherFx(ctx, canvas.width, canvas.height, _frameStep, weatherTarget)) {
@@ -3368,6 +3537,9 @@ function frame(ts = 0) {
   }
   SFX.weatherWind(windIntensity());
   ctx.globalAlpha = 1;
+
+  // ── A400M airdrop carrier: above everything, the player's plane too ─────
+  drawAirdropCarrier(ctx, canvas.width, canvas.height);
 
   if (shaking) ctx.restore();
 
@@ -3577,7 +3749,7 @@ function firePlayerShootingPlan() {
   const homing = Boolean(ability.homing) || homingUpgradeOwned();
   for (const shot of aircraftShots) {
     const source = sourceForShot(shot);
-    const target = targetPointForShot(source, shot);
+    const target = targetPointForShot(source, { ...shot, angle: (shot.angle || 0) + aimOffset() });
     const damage = (shot.damage || 1) * (ability.damage || 1);
     if (ability.weapon === 'gau8') {
       // A-10 GAU-8: a burst of five heavy shells, each worth double damage.
@@ -4238,8 +4410,9 @@ function fireAirdropXray() {
   if (!G.enemies.some(e => e.active)) return false;
   const sourceX = G.player.x;
   const sourceY = G.player.y - 42;
+  const reach = Math.max(canvas.height * 1.4, 900), aim = aimOffset();
   const missile = createMissile(
-    sourceX, sourceY, sourceX, sourceY - Math.max(canvas.height * 1.4, 900),
+    sourceX, sourceY, sourceX + Math.sin(aim) * reach, sourceY - Math.cos(aim) * reach,
     (isTouchMobile() ? 11.2 : 9.6) * MISSILE_SPEED_SCALE,
     null, '#ff2020', 1,
   );
@@ -4259,6 +4432,11 @@ function fireAirdropMachineGun() {
     if (d < best) { best = d; target = e; }
   }
   if (!target) return false;
+  // Manual aim: along the dotted line instead of at the nearest enemy.
+  if (manualAimEnabled()) {
+    const reach = Math.max(canvas.height * 1.4, 900);
+    target = { x: G.player.x + Math.sin(_aimAngle) * reach, y: G.player.y - Math.cos(_aimAngle) * reach };
+  }
   const speed = (isTouchMobile() ? 9.8 : 8.4) * MISSILE_SPEED_SCALE * 1.35;
   const sourceY = G.player.y - getPlayerSize() * 0.4;
   for (let b = -1; b <= 1; b++) {
@@ -5953,7 +6131,6 @@ function resetAdaptivePerformance() {
 // keep their own calm pace. A slow phone is helped by cheaper drawing
 // (tuneAdaptivePerformance), never by removing enemies or shots.
 const SPAWN_INTERVAL_MULT = 0.7;   // 30% shorter wait between spawns
-const MAX_ENEMIES_MULT = 1.5;      // +50% enemies on screen
 
 function extraEnemies() {
   return !isTutorialActive() && !_guidedRun;
@@ -5965,7 +6142,7 @@ function adaptiveSpawnRate() {
 }
 
 function adaptiveMaxEnemies() {
-  return extraEnemies() ? Math.ceil(baseMaxEnemies * MAX_ENEMIES_MULT) : baseMaxEnemies;
+  return baseMaxEnemies;
 }
 
 function tuneAdaptivePerformance(ts = 0) {
@@ -6202,11 +6379,16 @@ export function initGame(levelNum, onComplete) {
   resetAdaptivePerformance();
   // Training and new-player practice: few, slowly arriving enemies.
   baseSpawnRate = (isTutorialActive() || _guidedRun) ? 170 : levelCfg.spawnRate;
-  baseMaxEnemies = (isTutorialActive() || _guidedRun) ? 2 : levelCfg.maxEnemies;
+  baseMaxEnemies = (isTutorialActive() || _guidedRun) ? 2
+    : schoolYearEnemyCap(getLevel(levelNum).maxEnemies, levelCfg.maxEnemies);
   spawnRate = baseSpawnRate;
   maxEnemies = baseMaxEnemies;
   spawnTimer = isTouchMobile() ? 22 : 60;
 
+  loadControlSensitivity();
+  _aimAngle = _aimTarget = 0;
+  _aimCursor = null;
+  _aimPadTouch = null;
   attachInputListeners();
   const shieldButton = document.getElementById('btn-player-shield');
   if (shieldButton) {
@@ -6286,6 +6468,7 @@ export function initGame(levelNum, onComplete) {
   // T-6 loading screen covers the level while it loads.
   _yellowLoader?.remove();
   _yellowLoader = showYellowLoader();
+  _levelLoading = true;
   const loader = _yellowLoader;
 
   function tryStart() {
@@ -6304,20 +6487,25 @@ export function initGame(levelNum, onComplete) {
       _loadRaf = requestAnimationFrame(loadTick);
     });
 
-    withTimeout(preloadBiome(levelCfg.biome, {
-      aircraftId: G.activeAircraft,
-      levelNum: levelCfg.num,
-      enemyTypes: [
-        ...RANDOM_ENEMY_TYPES,
-        ...(levelCfg.isBossLevel ? ['boss'] : []),
-      ],
-    }), 30000).catch(() => {}).then(() => ensureMapLoaded(levelCfg.biome, levelCfg.num)).then(() => {
+    // Planes, map, sounds and music are all downloaded before anything
+    // starts: the loading screen is silent and nothing moves underneath.
+    const musicKeys = levelCfg.isBossLevel ? ['dialogue', levelMusicKey()] : ['game'];
+    Promise.all([
+      withTimeout(preloadBiome(levelCfg.biome, {
+        aircraftId: G.activeAircraft,
+        levelNum: levelCfg.num,
+        enemyTypes: [
+          ...RANDOM_ENEMY_TYPES,
+          ...(levelCfg.isBossLevel ? ['boss'] : []),
+        ],
+      }), 30000).catch(() => {}).then(() => ensureMapLoaded(levelCfg.biome, levelCfg.num)),
+      withTimeout(SFX.preloadGame(musicKeys), 30000).catch(() => {}),
+    ]).then(() => {
       cancelAnimationFrame(_loadRaf);
       if (!_isActiveSid(sid)) { loader?.remove(); return; }
       initBackground(levelCfg.biome, levelCfg.num);
       initClouds(levelCfg.biome, canvas.width, canvas.height, levelCfg.weather?.id);
       initWeatherFx(levelCfg.weather, canvas.width, canvas.height);
-      SFX.weatherStart(levelCfg.weather?.id);
       initAirdrop(airdropSelected, canvas.width, canvas.height);
       if (airdropSelected) preloadSprite('ship-b2').catch(() => {});
       _qboxH = $('question-box').offsetHeight || 180;
@@ -6492,14 +6680,13 @@ export function initGame(levelNum, onComplete) {
         G.enemies.push(boss);
         updateBossHealthBar(boss);
         // Companions spawn via normal timer — set maxEnemies to companion count
-        baseMaxEnemies = levelCfg.bossCompanionMax;
+        baseMaxEnemies = schoolYearEnemyCap(levelCfg.bossCompanionMax);
         maxEnemies = baseMaxEnemies;
       }
 
       // The map is drawn once now (its scaled copy is built here), so the
       // game never starts on a blank or half-drawn background.
       drawCountdownSafeFrame();
-      _startGameLoop(sid);
       updateTutorialHUD();
       const startLevelFlowNow = () => {
         _cutsceneActive = true;
@@ -6530,13 +6717,19 @@ export function initGame(levelNum, onComplete) {
       // The level's music starts once loading is over (from the beginning,
       // for a new or replayed level).
       const startMusic = () => SFX.playMusic([10, 20, 30, 40, 50].includes(levelNum) ? 'dialogue' : 'game', { restart: true });
-      if (!loader) { startMusic(); afterLoading(); return; }
+      const startPlay = () => {
+        _levelLoading = false;
+        startMusic();
+        SFX.weatherStart(levelCfg.weather?.id);
+        _startGameLoop(sid);
+        afterLoading();
+      };
+      if (!loader) { startPlay(); return; }
       _cutsceneActive = true;
       loader.hide().then(() => {
         if (_yellowLoader === loader) _yellowLoader = null;
         if (!_isActiveSid(sid)) return;
-        startMusic();
-        afterLoading();
+        startPlay();
       });
     });
   }
@@ -6555,6 +6748,7 @@ export function initGame(levelNum, onComplete) {
 
   return () => {
     _yellowLoader?.remove(); _yellowLoader = null;
+    _levelLoading = false;
     _sessionId++;
     SFX.weatherStop();
     SFX.engineStop();

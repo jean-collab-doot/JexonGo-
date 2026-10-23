@@ -16218,3 +16218,73 @@ html:not(.touch-phone):not(.touch-tablet):not(.touch-mobile) #s-briefing .briefi
   html:not(.touch-phone):not(.touch-tablet):not(.touch-mobile) .cp-google { width: 44px; padding: 7px; }
   html:not(.touch-phone):not(.touch-tablet):not(.touch-mobile) .cp-perks { gap: 3px; }
 }
+
+
+/* "How to play" page VISER TES TIRS (intro-briefing.js, art 'aim'): the
+   dotted aim line swings left / right from the plane's nose, following the
+   mouse cursor (computer) or the aim joystick's knob (phone). */
+.ht-aim .ht-mini-t6.ht-still { animation: npProp .35s steps(5) infinite; }
+.ht-aim .ht-aim-line {
+  position: absolute; left: 50%; bottom: 52%;
+  width: 4px; height: 44%;
+  margin-left: -2px;
+  background: repeating-linear-gradient(0deg, #fff 0 7px, transparent 7px 13px);
+  filter: drop-shadow(0 0 1px #7a3a00) drop-shadow(0 0 1px #7a3a00);
+  transform-origin: 50% 100%;
+  animation: htAimSwing 3.2s ease-in-out infinite;
+}
+.ht-aim .ht-phone-screen .ht-aim-line { bottom: 58%; height: 36%; }
+.ht-aim .ht-aim-line::after {
+  content: ''; position: absolute; left: 50%; top: -7px;
+  border: 6px solid transparent; border-bottom: 9px solid #fff; border-top: 0;
+  transform: translateX(-50%);
+}
+.ht-aim-cursor {
+  position: absolute; top: 12%;
+  width: 18px; height: 18px;
+  border: 3px solid #fff; border-radius: 50%;
+  box-shadow: 0 0 0 1px #7a3a00, inset 0 0 0 1px #7a3a00;
+  transform: translateX(-50%);
+  animation: htAimCursor 3.2s ease-in-out infinite;
+}
+.ht-aim-cursor::before, .ht-aim-cursor::after {
+  content: ''; position: absolute; background: #fff; left: 50%; top: 50%;
+  box-shadow: 0 0 0 1px #7a3a00;
+}
+.ht-aim-cursor::before { width: 2px; height: 26px; transform: translate(-50%, -50%); }
+.ht-aim-cursor::after  { width: 26px; height: 2px; transform: translate(-50%, -50%); }
+.ht-aim-pad {
+  position: absolute; right: 8%; bottom: 5%;
+  width: 34%; aspect-ratio: 1; border-radius: 50%;
+  display: grid; place-items: center;
+  background: radial-gradient(circle, rgba(122,58,0,.35) 0 52%, transparent 53%),
+    linear-gradient(180deg, #ffab3d, #F5931E 55%, #E67612);
+  box-shadow: 0 2px 0 #C85F0C;
+}
+.ht-aim-pad i {
+  width: 42%; aspect-ratio: 1; border-radius: 50%;
+  background: linear-gradient(180deg, #FFD84D, #FFC21A 50%, #F0A500);
+  box-shadow: 0 2px 0 #A56A00;
+  animation: htAimKnob 3.2s ease-in-out infinite;
+}
+@keyframes htAimSwing {
+  0%, 10%   { transform: rotate(0deg); }
+  30%, 40%  { transform: rotate(-38deg); }
+  55%, 60%  { transform: rotate(0deg); }
+  80%, 90%  { transform: rotate(38deg); }
+  100%      { transform: rotate(0deg); }
+}
+@keyframes htAimCursor {
+  0%, 10%   { left: 50%; }
+  30%, 40%  { left: 18%; }
+  55%, 60%  { left: 50%; }
+  80%, 90%  { left: 82%; }
+  100%      { left: 50%; }
+}
+@keyframes htAimKnob {
+  0%, 10%   { transform: translate(0, -45%); }
+  30%, 40%  { transform: translate(-45%, -25%); }
+  55%, 60%  { transform: translate(0, -45%); }
+  80%, 90%  { transform: translate(45%, -25%); }
+  100%      { transform: translate(0, -45%); }
+}

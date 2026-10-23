@@ -248,8 +248,18 @@ export function updateEnemies(enemies, canvasW = 400, canvasH = 800, baseStep = 
 
 export const KAMIKAZE_LOCK_FRAMES = 66; // ~1.1 s warning before the charge
 const KAMIKAZE_TURN = 0.011;           // max heading change per frame (rad)
+const KAMIKAZE_BANK = 80;              // turn rate (rad/frame) -> bank signal
 
 function updateKamikaze(e, canvasW, canvasH, step, target) {
+  const prevHeading = e.headingAngle || 0;
+  _moveKamikaze(e, canvasW, canvasH, step, target);
+  // Banks into its turns (the F-5 bank sheet, see aircraft-draw.js): turning
+  // toward screen-right lowers headingAngle and gives a positive signal.
+  const turnRate = step ? ((e.headingAngle || 0) - prevHeading) / step : 0;
+  e.bankVis = (e.bankVis || 0) + (-turnRate * KAMIKAZE_BANK - (e.bankVis || 0)) * Math.min(1, 0.18 * step);
+}
+
+function _moveKamikaze(e, canvasW, canvasH, step, target) {
   e.kamikazeTimer += step;
   if (e.kamikazePhase === 'enter') {
     e.y += e.speed * 1.2 * step;

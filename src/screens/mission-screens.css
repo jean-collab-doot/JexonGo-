@@ -1,0 +1,361 @@
+/* =============================================================================
+   Mission screens in the lobby's orange & yellow style: the level briefing
+   (#s-briefing), the win screen (#s-result) and the game over screen
+   (#s-gameover). Same building blocks as lobby-redesign.css: the hangar
+   behind, orange pill bars, a yellow sheet with a thick orange border,
+   orange tiles with white pixel text, the big yellow JOUER-style button.
+   Loaded last; `html body #s-…` outranks the older dark rules in style.css.
+   ============================================================================= */
+
+html body #s-briefing,
+html body #s-result.rs-screen,
+html body #s-gameover {
+  background:
+    linear-gradient(180deg, rgba(0,0,0,.30), rgba(0,0,0,.12) 35%, rgba(0,0,0,.38)),
+    url('/assets/menu/lobby-hangar-bg.webp') center top / cover no-repeat,
+    #3b3a36;
+  image-rendering: pixelated;
+  font-family: var(--jx-font);
+}
+html body #s-result.rs-screen::before,
+html body #s-gameover::before { content: none; }
+html body #s-gameover .go-corner { display: none; }
+
+/* ---- shared pieces ---------------------------------------------------------- */
+html body #s-briefing .briefing-card,
+html body #s-briefing .briefing-conditions,
+html body #s-briefing .briefing-star-criteria,
+html body #s-result .rs-card,
+html body #s-gameover .gameover-panel {
+  font-family: var(--jx-font);
+}
+
+/* ============================== BRIEFING ==================================== */
+html body #s-briefing { padding-bottom: max(14px, env(safe-area-inset-bottom)); }
+html body #s-briefing > .briefing-topbar,
+html body #s-briefing > .briefing-card,
+html body #s-briefing > .briefing-conditions,
+html body #s-briefing > .briefing-star-criteria,
+html body #s-briefing > .briefing-fly-btn { align-self: stretch; box-sizing: border-box; }
+
+/* Top bar: the lobby's orange pill. */
+html body #s-briefing .briefing-topbar {
+  width: auto; margin: max(10px, env(safe-area-inset-top)) 3.5% 0;
+  padding: 0 14px; min-height: 50px;
+  background: linear-gradient(180deg, #ffab3d, var(--jx-orange) 55%, var(--jx-orange-deep));
+  border: 0; border-radius: 24px;
+  box-shadow: 0 3px 0 var(--jx-orange-dk), inset 0 2px 0 rgba(255,255,255,.35);
+}
+html body #s-briefing .briefing-topbar::after { content: none; }
+html body #s-briefing .briefing-topbar .btn-icon {
+  width: 40px; height: 36px; border: 0; border-radius: 14px;
+  background: linear-gradient(180deg, var(--jx-yellow-hi), var(--jx-yellow) 50%, #F0A500);
+  box-shadow: 0 3px 0 #A56A00, inset 0 2px 0 rgba(255,255,255,.5);
+  color: #fff; text-shadow: 2px 2px 0 var(--jx-ink); font-size: 18px;
+}
+html body #s-briefing .briefing-topbar-title {
+  flex: 1; text-align: center; margin-right: 40px;
+  font-family: var(--jx-font); font-size: clamp(14px, 3.6vw, 20px); letter-spacing: 2px;
+  color: #fff; text-shadow: 2px 2px 0 var(--jx-ink);
+}
+
+/* Pilot: an orange chip under the bar. */
+html body #s-briefing .briefing-pilot-row {
+  align-self: center; width: auto; max-width: 92%;
+  margin: 12px auto 0; padding: 6px 16px 6px 6px;
+  background: linear-gradient(180deg, #ffab3d, var(--jx-orange) 55%, var(--jx-orange-deep));
+  border: 0; border-radius: 22px;
+  box-shadow: 0 3px 0 var(--jx-orange-dk), inset 0 2px 0 rgba(255,255,255,.35);
+}
+html body #s-briefing .briefing-pilot-avatar {
+  background: var(--jx-yellow); border: 3px solid #fff; border-radius: 50%;
+  box-shadow: 0 2px 0 var(--jx-orange-dk); clip-path: none;
+}
+html body #s-briefing .briefing-pilot-name {
+  color: #fff !important; text-shadow: 2px 2px 0 var(--jx-ink);
+  font-family: var(--jx-font); letter-spacing: 1px;
+}
+html body #s-briefing .briefing-pilot-desc {
+  color: #fff3dc; text-shadow: 1px 1px 0 var(--jx-ink); font-family: var(--jx-font);
+}
+
+/* Mission story: the yellow sheet with the thick orange border. */
+html body #s-briefing .briefing-card {
+  width: auto; margin: 12px 3.5% 0;
+  padding: 14px 18px 16px;
+  background: var(--jx-yellow);
+  border: 7px solid var(--jx-orange); border-radius: 24px;
+  box-shadow: 0 5px 0 var(--jx-orange-dk);
+  clip-path: none;
+}
+html body #s-briefing .briefing-card::before,
+html body #s-briefing .briefing-card::after { content: none; }
+html body #s-briefing .briefing-mission-title {
+  font-family: var(--jx-font); font-size: clamp(16px, 4vw, 24px); letter-spacing: 2px;
+  color: #fff; text-shadow: 3px 3px 0 var(--jx-ink);
+  margin-bottom: 8px;
+}
+html body #s-briefing .briefing-mission-title::before { content: none; }
+html body #s-briefing .briefing-story {
+  font-family: var(--jx-font); font-size: clamp(12px, 1.9vw, 15px); line-height: 1.45;
+  color: var(--jx-ink); text-shadow: none;
+  border: 0; padding-left: 0;
+}
+html body #s-briefing .briefing-story * { color: inherit; border-color: transparent; }
+html body #s-briefing .briefing-new {
+  display: inline-block; padding: 1px 7px; border-radius: 8px;
+  background: var(--jx-orange); color: #fff !important; text-shadow: 1px 1px 0 var(--jx-ink);
+}
+
+/* Conditions: orange tiles like the hangar's slots. */
+html body #s-briefing .briefing-conditions { width: auto; margin: 12px 3.5% 0; }
+html body #s-briefing .briefing-condition-row {
+  background: var(--jx-slot);
+  border: 0; border-radius: 18px;
+  box-shadow: inset 0 0 0 3px rgba(0,0,0,.08), 0 4px 0 rgba(0,0,0,.18);
+  clip-path: none;
+}
+html body #s-briefing .briefing-condition-row::before,
+html body #s-briefing .briefing-condition-row::after { content: none; }
+html body #s-briefing .briefing-cond-icon {
+  background: var(--jx-yellow); color: var(--jx-ink);
+  border: 0; border-radius: 12px; clip-path: none;
+  box-shadow: 0 2px 0 var(--jx-orange-dk);
+  font-family: var(--jx-font); text-shadow: none;
+}
+html body #s-briefing .briefing-cond-label {
+  font-family: var(--jx-font); letter-spacing: 1px; font-size: clamp(9px, 1.3vw, 12px);
+  color: #fff3dc; text-shadow: 1px 1px 0 var(--jx-ink);
+}
+html body #s-briefing .briefing-cond-desc {
+  font-family: var(--jx-font); font-size: clamp(11px, 1.6vw, 15px);
+  color: #fff; text-shadow: 2px 2px 0 var(--jx-ink);
+}
+
+/* Stars to earn: one yellow strip, three rows. */
+html body #s-briefing .briefing-star-criteria {
+  width: auto; margin: 12px 3.5% 0; padding: 8px 14px;
+  background: var(--jx-yellow);
+  border: 5px solid var(--jx-orange); border-radius: 20px;
+  box-shadow: 0 4px 0 var(--jx-orange-dk);
+}
+html body #s-briefing .bsc-row {
+  background: transparent; border: 0; box-shadow: none; clip-path: none;
+}
+html body #s-briefing .bsc-row::before,
+html body #s-briefing .bsc-row::after { content: none; }
+html body #s-briefing .bsc-desc {
+  font-family: var(--jx-font); font-size: clamp(11px, 1.7vw, 14px);
+  color: var(--jx-ink); text-shadow: none;
+}
+html body #s-briefing .bsc-star { color: rgba(122,58,0,.35); text-shadow: none; filter: none; }
+html body #s-briefing .bsc-star.bsc-earned { color: #fff; filter: drop-shadow(2px 2px 0 var(--jx-orange-dk)); }
+
+/* DÉCOLLER: the lobby's JOUER button. */
+html body #s-briefing .briefing-fly-btn {
+  width: auto; margin: 16px 3.5% 0; min-height: 58px;
+  border: 0; border-radius: 20px;
+  font-family: var(--jx-font); font-size: clamp(18px, 4.4vw, 26px); letter-spacing: 2px;
+  color: #fff; text-shadow: 3px 3px 0 var(--jx-ink);
+  background: linear-gradient(180deg, var(--jx-yellow-hi), var(--jx-yellow) 45%, #F0A500);
+  box-shadow: 0 6px 0 #A56A00, 0 0 30px rgba(255,200,40,.55), inset 0 3px 0 rgba(255,255,255,.5);
+  animation: none;
+}
+html body #s-briefing .briefing-fly-btn::before,
+html body #s-briefing .briefing-fly-btn::after { content: none; }
+html body #s-briefing .briefing-fly-btn:active {
+  transform: translateY(3px);
+  box-shadow: 0 3px 0 #A56A00, 0 0 22px rgba(255,200,40,.5);
+}
+
+/* ============================== WIN SCREEN ================================== */
+html body #s-result .rs-wrap { padding: max(12px, env(safe-area-inset-top)) 3.5% max(12px, env(safe-area-inset-bottom)); }
+html body #s-result .rs-card {
+  background: var(--jx-yellow);
+  border: 9px solid var(--jx-orange); border-radius: 28px;
+  box-shadow: 0 6px 0 var(--jx-orange-dk), 0 14px 30px rgba(0,0,0,.35);
+  color: var(--jx-ink);
+  font-family: var(--jx-font);
+}
+/* Title: the orange pill across the top of the sheet. */
+html body #s-result .rs-head {
+  margin-top: 0; border-radius: 18px 18px 0 0;
+  background: linear-gradient(180deg, #ffab3d, var(--jx-orange) 55%, var(--jx-orange-deep));
+  border-bottom: 0;
+  box-shadow: 0 4px 0 var(--jx-orange-dk), inset 0 2px 0 rgba(255,255,255,.35);
+}
+html body #s-result .rs-title {
+  color: #fff; text-shadow: 3px 3px 0 var(--jx-ink); font-family: var(--jx-font);
+}
+html body #s-result .rs-level {
+  background: var(--jx-yellow); border: 3px solid #fff; border-radius: 12px;
+  color: var(--jx-ink); font-family: var(--jx-font);
+  box-shadow: 0 3px 0 var(--jx-orange-dk);
+}
+html body #s-result .rs-star { color: rgba(122,58,0,.22); text-shadow: none; }
+html body #s-result .rs-star.is-on {
+  color: #fff;
+  text-shadow: none; filter: drop-shadow(0 5px 0 var(--jx-orange-dk)) drop-shadow(0 0 14px rgba(255,255,255,.6));
+}
+/* Rewards and stats: orange tiles. */
+html body #s-result .rs-reward,
+html body #s-result .rs-stat {
+  background: var(--jx-slot);
+  border: 0; border-radius: 20px;
+  box-shadow: inset 0 0 0 3px rgba(0,0,0,.08), 0 4px 0 rgba(0,0,0,.18);
+}
+html body #s-result .rs-reward b,
+html body #s-result .rs-reward-xp b,
+html body #s-result .rs-reward-chest b,
+html body #s-result .rs-stat b {
+  color: #fff; text-shadow: 2px 2px 0 var(--jx-ink); font-family: var(--jx-font);
+}
+html body #s-result .rs-reward small,
+html body #s-result .rs-stat small {
+  color: #fff3dc; text-shadow: 1px 1px 0 var(--jx-ink); font-family: var(--jx-font);
+}
+html body #s-result .rs-reward-note { color: var(--jx-ink); }
+html body #s-result .rs-goal { border-radius: 14px; font-family: var(--jx-font); }
+html body #s-result .rs-goal.is-ok   { background: rgba(255,255,255,.45); color: #1d6b2f; }
+html body #s-result .rs-goal.is-miss { background: rgba(122,58,0,.12); color: var(--jx-ink); }
+html body #s-result .rs-goal.is-ok i   { background: #34c35f; color: #fff; }
+html body #s-result .rs-goal.is-miss i { background: var(--jx-orange-deep); color: #fff; }
+html body #s-result .rs-banner {
+  background: rgba(255,255,255,.45); border: 3px solid var(--jx-orange);
+  color: var(--jx-ink); border-radius: 16px;
+}
+html body #s-result .rs-banner-unlock { border-color: var(--jx-cyan); }
+/* CONTINUER = JOUER button, RECOMMENCER = orange button. */
+html body #s-result .rs-btn {
+  border: 0; border-radius: 20px;
+  font-family: var(--jx-font); letter-spacing: 1px;
+  color: #fff; text-shadow: 2px 2px 0 var(--jx-ink);
+  background: linear-gradient(180deg, var(--jx-yellow-hi), var(--jx-yellow) 45%, #F0A500);
+  box-shadow: 0 6px 0 #A56A00, inset 0 3px 0 rgba(255,255,255,.5);
+}
+html body #s-result .rs-btn-alt {
+  background: linear-gradient(180deg, #ffab3d, var(--jx-orange) 55%, var(--jx-orange-deep));
+  box-shadow: 0 6px 0 var(--jx-orange-dk), inset 0 2px 0 rgba(255,255,255,.35);
+}
+html body #s-result .rs-btn:active { transform: translateY(3px); box-shadow: 0 3px 0 #A56A00; }
+html body #s-result .rs-btn-alt:active { box-shadow: 0 3px 0 var(--jx-orange-dk); }
+html body #s-result .rs-foot { color: rgba(122,58,0,.7); font-family: var(--jx-font); }
+
+/* ============================== GAME OVER =================================== */
+html body #s-gameover .gameover-panel {
+  width: min(92vw, 480px); gap: 16px;
+  padding: 0 22px 24px;
+  background: var(--jx-yellow);
+  border: 9px solid var(--jx-orange); border-radius: 28px;
+  box-shadow: 0 6px 0 var(--jx-orange-dk), 0 14px 30px rgba(0,0,0,.35);
+}
+html body #s-gameover .gameover-icon-wrap { margin: 18px 0 0; width: clamp(76px, 18vw, 110px); height: clamp(76px, 18vw, 110px); }
+html body #s-gameover .gameover-ring { border-color: rgba(255,255,255,.9); }
+html body #s-gameover .gameover-icon {
+  display: grid; place-items: center;
+  width: 100%; height: 100%; border-radius: 50%;
+  background: linear-gradient(180deg, #ffab3d, var(--jx-orange) 55%, var(--jx-orange-deep));
+  box-shadow: 0 4px 0 var(--jx-orange-dk), inset 0 2px 0 rgba(255,255,255,.35);
+  color: #fff; text-shadow: none; font-size: clamp(36px, 8vw, 56px);
+  filter: drop-shadow(0 0 0 transparent);
+}
+html body #s-gameover #gameover-title {
+  width: 100%; box-sizing: border-box;
+  padding: 12px 18px;
+  font-family: var(--jx-font); font-size: clamp(18px, 5vw, 30px); letter-spacing: 2px;
+  color: #fff; text-shadow: 3px 3px 0 var(--jx-ink);
+  background: linear-gradient(180deg, #ffab3d, var(--jx-orange) 55%, var(--jx-orange-deep));
+  border: 0; border-radius: 20px;
+  box-shadow: 0 4px 0 var(--jx-orange-dk), inset 0 2px 0 rgba(255,255,255,.35);
+}
+html body #s-gameover #gameover-score {
+  font-family: var(--jx-font); font-size: clamp(12px, 2.6vw, 15px); line-height: 1.5;
+  color: var(--jx-ink); text-shadow: none;
+}
+html body #s-gameover .gameover-actions { width: 100%; }
+html body #s-gameover .gameover-btn {
+  width: 100%; min-width: 0; min-height: 54px;
+  border: 0; border-radius: 20px;
+  font-family: var(--jx-font); font-size: clamp(15px, 3.6vw, 20px); letter-spacing: 2px;
+  color: #fff; text-shadow: 2px 2px 0 var(--jx-ink);
+}
+html body #s-gameover .gameover-btn-primary {
+  background: linear-gradient(180deg, var(--jx-yellow-hi), var(--jx-yellow) 45%, #F0A500);
+  box-shadow: 0 6px 0 #A56A00, 0 0 24px rgba(255,200,40,.45), inset 0 3px 0 rgba(255,255,255,.5);
+}
+html body #s-gameover .gameover-btn-secondary {
+  background: linear-gradient(180deg, #ffab3d, var(--jx-orange) 55%, var(--jx-orange-deep));
+  box-shadow: 0 6px 0 var(--jx-orange-dk), inset 0 2px 0 rgba(255,255,255,.35);
+}
+html body #s-gameover .gameover-btn-primary:active { box-shadow: 0 3px 0 #A56A00 !important; }
+html body #s-gameover .gameover-btn-secondary:active { box-shadow: 0 3px 0 var(--jx-orange-dk) !important; }
+
+/* Readable sizes for the small labels on the yellow sheet. */
+html body #s-result .rs-stat small { font-size: clamp(8px, min(1.4vh, 2.4vw), 12px); letter-spacing: 0; }
+html body #s-result .rs-stat b { font-size: clamp(12px, min(2.6vh, 4vw), 22px); }
+html body #s-result .rs-goal { font-size: clamp(10px, min(1.9vh, 3vw), 15px); }
+html body #s-result .rs-foot { font-size: clamp(8px, 1.4vh, 12px); }
+
+/* Short screens (phones in landscape): the game over card fits. */
+@media (max-height: 500px) {
+  html body #s-gameover { justify-content: safe center; padding-top: 10px; padding-bottom: 10px; }
+  html body #s-gameover .gameover-panel { gap: 8px; padding: 0 18px 14px; border-width: 6px; }
+  html body #s-gameover .gameover-icon-wrap { display: none; }
+  html body #s-gameover #gameover-title { margin-top: 14px; padding: 8px 14px; font-size: 18px; }
+  html body #s-gameover .gameover-actions { flex-direction: row; gap: 10px; margin-top: 0; }
+  html body #s-gameover .gameover-btn { min-height: 44px; font-size: 14px; }
+}
+
+/* Score removed from the win screen (result.js): three stat tiles. */
+html body #s-result .rs-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
+/* Phones: every block fits the width and stays centred (a flex item's
+   default min-width let long words push the cards past the right edge). */
+html body #s-briefing > .briefing-topbar,
+html body #s-briefing > .briefing-pilot-row,
+html body #s-briefing > .briefing-card,
+html body #s-briefing > .briefing-conditions,
+html body #s-briefing > .briefing-star-criteria,
+html body #s-briefing > .briefing-fly-btn { min-width: 0; max-width: 100%; }
+html body #s-briefing > .briefing-topbar,
+html body #s-briefing > .briefing-card,
+html body #s-briefing > .briefing-conditions,
+html body #s-briefing > .briefing-star-criteria,
+html body #s-briefing > .briefing-fly-btn { width: auto !important; margin-left: 3% !important; margin-right: 3% !important; }
+html body #s-briefing .briefing-story,
+html body #s-briefing .briefing-cond-desc { overflow-wrap: anywhere; }
+
+/* Mission title: brown on the yellow card (white blurred on it). */
+html body #s-briefing .briefing-mission-title {
+  color: var(--jx-ink); text-shadow: 0 2px 0 rgba(255,255,255,.55);
+}
+/* Weather icon: its own colour (light grey for fog...) vanished on the
+   yellow square. */
+html body #s-briefing .briefing-cond-icon { color: var(--jx-ink) !important; }
+
+/* Game over: the card in the middle of the screen. */
+html body #s-gameover:not(.hidden) {
+  display: flex; flex-direction: column; align-items: center; justify-content: safe center;
+}
+/* No white rings around the warning sign, and the encouragement words as
+   plain text (no orange button shape behind them). */
+html body #s-gameover .gameover-ring { display: none; }
+html body #s-gameover #gameover-title {
+  background: none; box-shadow: none; padding: 4px 0;
+  color: #fff; text-shadow: 3px 3px 0 var(--jx-ink), 0 0 2px var(--jx-ink);
+}
+/* Older phone rules force the screens to the top (!important): auto margins
+   centre the card whatever the screen's justify-content says. */
+html body #s-gameover .gameover-panel { margin-top: auto !important; margin-bottom: auto !important; }
+/* Pilot chip: same side margins as the cards below it. */
+html body #s-briefing > .briefing-pilot-row { margin-left: 3% !important; margin-right: 3% !important; align-self: stretch; box-sizing: border-box; }
+
+/* DÉCOLLER sits in the page under the stars, never floating over them (the
+   page scrolls when it does not fit). */
+html body #s-briefing .briefing-fly-btn,
+html:not(.touch-phone):not(.touch-tablet):not(.touch-mobile) body #s-briefing .briefing-fly-btn {
+  position: static !important;
+  flex-shrink: 0;
+}
+/* Grade chip: exactly as wide as the cards (it ran past their right edge). */
+html body #s-briefing > .briefing-pilot-row { width: auto !important; max-width: none; }
