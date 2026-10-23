@@ -2023,8 +2023,15 @@ function updateAim() {
   }
   _aimAngle += (_aimTarget - _aimAngle) * Math.min(1, AIM_FOLLOW * _aimSensitivity * (_frameStep || 1));
   const show = aimVisible();
+  // Phones / tablets: the aim joystick stays on screen for the whole flight
+  // (pale between shots), so its corner never moves the plane by surprise.
   const pad = document.getElementById('aim-pad');
-  if (pad && isTouchMobile() && pad.classList.contains('hidden') === show) pad.classList.toggle('hidden', !show);
+  if (pad && isTouchMobile()) {
+    const onScreen = manualAimEnabled() && !_cutsceneActive && !_correctionWaiting && !_playerDestroyed
+      && _canvasQboxH() === 0;   // never over the answers
+    if (pad.classList.contains('hidden') === onScreen) pad.classList.toggle('hidden', !onScreen);
+    if (pad.classList.contains('is-idle') === show) pad.classList.toggle('is-idle', !show);
+  }
   if (canvas) canvas.classList.toggle('aiming', show && !isTouchMobile());
 }
 
@@ -2153,18 +2160,32 @@ function _killBoss() {
   if (levelCfg.isBossLevel) setTimeout(() => endLevel(true), BOSS_DEATH_MS);
 }
 
+// True when a touch lands on the aim joystick (#aim-pad): that finger aims
+// the shots and must never move the plane.
+function touchOnAimPad(t) {
+  const pad = document.getElementById('aim-pad');
+  if (!pad || pad.classList.contains('hidden')) return false;
+  if (pad.contains(t.target)) return true;
+  const r = pad.getBoundingClientRect();
+  return t.clientX >= r.left && t.clientX <= r.right && t.clientY >= r.top && t.clientY <= r.bottom;
+}
+
 function canvasPointer(e) {
   const r = _canvasRect || (_canvasRect = canvas.getBoundingClientRect());
   let src = e;
-  if (e.touches?.length) {
-    if (e.type === 'touchstart') _touchId = e.touches[0].identifier;
-    src = [...e.touches].find(t => t.identifier === _touchId) ?? e.touches[0];
-    if (e.type === 'touchend' || e.type === 'touchcancel') {
-      if (e.touches.length) {
-        _touchId = e.touches[0].identifier;
-        src = e.touches[0];
-      }
+  if (e.touches) {
+    // Only the finger that started on the map moves the plane: one finger at
+    // a time, never the aim joystick's (its touches are not on the canvas,
+    // and a touch on the canvas under the joystick is ignored too).
+    const onCanvas = [...(e.targetTouches || e.touches)];
+    if (e.type === 'touchstart') {
+      if (_touchId != null && onCanvas.some(t => t.identifier === _touchId)) return;
+      const fresh = [...e.changedTouches].find(t => !touchOnAimPad(t) && t.identifier !== _aimPadTouch);
+      if (!fresh) return;
+      _touchId = fresh.identifier;
     }
+    src = onCanvas.find(t => t.identifier === _touchId);
+    if (!src) return;
   }
   let x = src.clientX - r.left;
   let y = src.clientY - r.top;
@@ -2203,10 +2224,8 @@ function canvasPointer(e) {
 }
 
 function clearPointer(e) {
-  if (e?.touches?.length) {
-    _touchId = e.touches[0].identifier;
-    return;
-  }
+  // Another finger lifted (or the aim joystick's): keep moving with ours.
+  if (e?.touches && [...(e.targetTouches || e.touches)].some(t => t.identifier === _touchId)) return;
   pointerTarget = null;
   _jsOrigin = _jsCurrent = null;
   _touchId  = null;

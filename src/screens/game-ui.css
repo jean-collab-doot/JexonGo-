@@ -397,3 +397,13 @@ html body #s-game .aim-pad.aim-pad-left {
 }
 /* The joystick side only matters on phones and tablets. */
 html:not(.touch-mobile):not(.touch-tablet) .sett-touch-only { display: none !important; }
+
+/* Question box down to the very bottom of phones and tablets: the iPhone
+   home-bar space goes inside the yellow box (older rules lifted the whole
+   box above it, leaving a strip of map under the keypad). */
+html body #s-game #question-box:not(.correction-active) {
+  bottom: 0 !important;
+  padding-bottom: calc(10px + env(safe-area-inset-bottom)) !important;
+}
+/* Between shots the aim joystick stays visible but pale. */
+html body #s-game .aim-pad.is-idle { opacity: .4; filter: saturate(.6); }
