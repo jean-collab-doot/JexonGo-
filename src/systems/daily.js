@@ -1,6 +1,5 @@
 import { G, clampCoins, addLifetimeXp } from '../state.js';
 import { load, save } from '../utils/storage.js';
-import { unlockEligibleBadges } from '../data/badges.js';
 
 
 function todayStr() {
@@ -83,9 +82,8 @@ export const LOGIN_REWARDS = [
     desc: '300 COINS + 150 XP', descFr: '300 PIÈCES + 150 EXP' },
   { day: 4, coins: 0,    xp: 200, chestTier: 1, icon: chestIcon('/assets/chest/chest-blue.png'),
     desc: 'SILVER CHEST + 200 XP', descFr: 'COFFRE ARGENT + 200 EXP' },
-  { day: 5, coins: 500,  xp: 250, badgeId: 'steady_recruit',
-    icon: '<img class="jg-exp-icon" src="/assets/Badges/03_Recrue_Assidue_Commun.png" alt="Recrue Assidue">',
-    desc: '500 COINS + 250 XP + BADGE', descFr: '500 PIÈCES + 250 EXP + BADGE' },
+  { day: 5, coins: 700,  xp: 350, icon: 'coin',
+    desc: '700 COINS + 350 XP', descFr: '700 PIÈCES + 350 EXP' },
   { day: 6, coins: 0,    xp: 300, chestTier: 2, icon: chestIcon('/assets/chest/chest-purple.png'),
     desc: 'GOLD CHEST + 300 XP', descFr: 'COFFRE OR + 300 EXP' },
   { day: 7, coins: 1000, xp: 500, chestTier: 4,
@@ -226,7 +224,7 @@ export function checkDailyLogin() {
 
 export function claimDailyReward() {
   const daily = checkDailyLogin();
-  if (!daily.isNewDay) return { claimed: false, badges: [] };
+  if (!daily.isNewDay) return { claimed: false };
   const reward = daily.reward;
   G.coins           = clampCoins((G.coins || 0) + (reward.coins || 0));
   G.xp             += reward.xp    || 0;
@@ -236,7 +234,6 @@ export function claimDailyReward() {
   G.dailyLastClaimAt = Date.now();
   G.dailyLastLogin  = todayStr();
   if (G.dailyStreak >= 7) G.dailyStarterPlanComplete = true;
-  const badges = reward.badgeId ? unlockEligibleBadges({ source: 'daily-welcome' }) : [];
   save('coins',          G.coins);
   save('xp',             G.xp);
   save('totalXpEarned',  G.totalXpEarned);
@@ -244,7 +241,7 @@ export function claimDailyReward() {
   save('dailyLastClaimAt', G.dailyLastClaimAt);
   save('dailyLastLogin', G.dailyLastLogin);
   save('dailyStarterPlanComplete', G.dailyStarterPlanComplete);
-  return { claimed: true, badges };
+  return { claimed: true };
 }
 
 export function getMissions() {

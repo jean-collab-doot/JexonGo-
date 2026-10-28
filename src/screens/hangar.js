@@ -6,7 +6,6 @@ import { AIRCRAFT, AIRCRAFT_ORDER } from '../data/aircraft.js';
 import { paintPlaneInfoFisheye } from './plane-info-fisheye.js';
 import { t, getLang, applyI18n } from '../i18n.js';
 import { MISSILE_TYPES, SHOOTING_PLANS, renderShotPlanMiniCard, startShopPreview, stopShopPreview } from './shop.js';
-import { BADGES, unlockEligibleBadges, isNewBadge } from '../data/badges.js';
 import { coinIcon, uiIcon } from '../utils/icons.js';
 import { isMultiLobby, renderBotPanel, onHangarTabShown } from './multiplayer.js';
 import {
@@ -52,7 +51,7 @@ export const TYPE_LABELS = {
 };
 
 export function planeCost(plane) {
-  return G.activeBadge === 'collector' ? Math.ceil(plane.xpCost * 0.9) : plane.xpCost;
+  return plane.xpCost;
 }
 function canBuyAircraft(id) {
   const plane = AIRCRAFT[id];
@@ -188,7 +187,6 @@ export function renderHangar() {
 // Re-renders the hangar panel everywhere it is mounted (keeps the lobby drawer
 // and the full screen in sync).
 export function renderHangarPanels() {
-  unlockEligibleBadges();
   applyI18n();
   for (const scope of _panelScopes) {
     const root = document.querySelector(scope);
@@ -602,31 +600,3 @@ function chooseWeapon(planeId, weaponId) {
   saveUpgradePurchase(planeId, record);
 }
 
-// ── BADGES (rendered into an overlay opened from the settings drawer) ───────
-export function renderBadges(root) {
-  if (!root) return;
-  const owned = new Set(G.unlockedBadges || []);
-  root.innerHTML = `<div class="hangar-badges-head"><h2>BADGES</h2><span>${owned.size}/${BADGES.length}</span></div><div class="hangar-badge-grid">${BADGES.map(b => {
-    const unlocked = owned.has(b.id);
-    const active = G.activeBadge === b.id;
-    const [value, max] = b.progress?.({}) || [0, 1];
-    const fresh = unlocked && isNewBadge(b.id);   // won, not looked at yet
-    return `<article data-preview-badge="${b.id}" class="hangar-badge-card ${unlocked ? 'unlocked' : 'locked'} ${active ? 'active' : ''}${fresh ? ' is-new' : ''}">${fresh ? '<span class="missions-badge badge-card-alert" aria-label="Nouveau">!</span>' : ''}<img src="${b.image}" alt="${b.name}"><div><em>${b.rarity}</em><h3>${b.name}</h3><p>${b.goal}</p><strong>${b.reward}</strong><small>${active ? 'ÉQUIPÉ' : unlocked ? 'DÉBLOQUÉ' : `${value.toLocaleString()} / ${max.toLocaleString()}`}</small>${unlocked ? `<button type="button" class="hangar-equip-badge ${active ? 'is-equipped' : ''}" data-equip-badge="${b.id}">${active ? 'DÉSÉQUIPER' : 'ÉQUIPER'}</button>` : ''}</div></article>`;
-  }).join('')}</div>`;
-
-  root.querySelectorAll('[data-preview-badge]').forEach(button => button.addEventListener('click', () => {
-    const badgeId = button.dataset.previewBadge;
-    if (!owned.has(badgeId)) return;
-    const badge = BADGES.find(item => item.id === badgeId);
-    if (badge) window._previewBadgeUnlock?.(badge);
-  }));
-  root.querySelectorAll('[data-equip-badge]').forEach(button => button.addEventListener('click', event => {
-    event.stopPropagation();
-    // Only one badge can be equipped at a time; tapping the equipped one
-    // removes it (no badge equipped).
-    const badgeId = button.dataset.equipBadge;
-    G.activeBadge = G.activeBadge === badgeId ? null : badgeId;
-    save('activeBadge', G.activeBadge);
-    renderBadges(root);
-  }));
-}

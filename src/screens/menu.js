@@ -15,7 +15,6 @@ import { coinIcon, expIcon, uiIcon } from '../utils/icons.js';
 import { makeBottomSheet } from '../utils/bottomsheet.js';
 import { bindHangarTabs, renderHangarPanels, buyAircraftFromLobby, planeCost, meetsGradeRequirement } from './hangar.js';
 import { isMultiLobby, openMultiChoices } from './multiplayer.js';
-import { refreshBadgeAlerts } from '../data/badges.js';
 import { initLobbyTour } from './lobby-tour.js';
 import { askAgeBeforeSignIn } from './age-gate.js';
 
@@ -546,7 +545,8 @@ export function initMenu(nav) {
 export function renderMenu() {
   _updateLobbyHud();
   _updateMissionsBadge();
-  refreshBadgeAlerts();
+  // Badges were removed: drop a leftover "new badge" dot from older versions.
+  document.querySelectorAll('.badge-alert').forEach(dot => dot.remove());
   _updateFeatureLocks();
   _applyLang();
   const sheet = $('lobby-sheet');
@@ -754,7 +754,7 @@ export function showDailyReward(reward, streak, onClaim = null, viewOnly = false
       : (fr ? 'FERMER' : 'CLOSE');
     $('btn-daily-claim').onclick = () => {
       overlay.classList.add('hidden');
-      onClaim?.({ claimed: false, badges: [] });
+      onClaim?.({ claimed: false });
     };
     overlay.addEventListener('click', e => {
       if (e.target === overlay) overlay.classList.add('hidden');
@@ -769,7 +769,7 @@ export function showDailyReward(reward, streak, onClaim = null, viewOnly = false
     $('btn-daily-claim').onclick = () => {
       overlay.classList.add('hidden');
       _handleLogin('google');
-      onClaim?.({ claimed: false, requiresConnection: true, badges: [] });
+      onClaim?.({ claimed: false, requiresConnection: true });
     };
     overlay.addEventListener('click', e => {
       if (e.target === overlay) overlay.classList.add('hidden');
@@ -786,9 +786,6 @@ export function showDailyReward(reward, streak, onClaim = null, viewOnly = false
     // Chest days: open that chest (roulette) right away, then back to the lobby.
     if (reward.chestTier !== undefined && window._nav?.toChest) {
       window._nav.toChest(rollChestTier(reward.chestTier), 'menu');
-    }
-    if (result.badges?.length) {
-      setTimeout(() => window._previewBadgeUnlock?.(result.badges), 250);
     }
     onClaim?.(result);
   };

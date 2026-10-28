@@ -35,7 +35,7 @@ export function clampCoins(value) {
 export const MAX_GAME_COINS = 100;
 export const MAX_GAME_XP = 150;
 
-// Every XP gain also counts toward the "Fortune de Guerre" badge.
+// Every XP gain also counts toward the lifetime XP total.
 // Also feeds the TOP 20 leaderboard: the EXP of a game WON with a real
 // teammate (MULTI, any real player, not the bot) counts for the MULTIJOUEUR
 // board too - pickups, end-of-level bonus and that level's chest. G.coopWinXp
@@ -84,7 +84,7 @@ export const G = {
   unlockedAircraft: [...DEFAULT_UNLOCKED_AIRCRAFT],
   acquiredAircraft: [],
   activeAircraft: 't6',
-  unlockedBadges: [], activeBadge: null, totalCorrectAnswers: 0, bestAnswerStreak: 0, flawlessLevels: 0,
+  unlockedBadges: [], totalCorrectAnswers: 0, bestAnswerStreak: 0, flawlessLevels: 0,
   lifetimeXpEarned: 0,       // XP really earned since the player started (Fortune de Guerre badge)
   multiXpEarned: 0,
   coopWinXp: false,          // the game just won was with a real teammate (not saved)          // part of it earned in MULTI games with a real teammate (TOP 20 board)
@@ -240,7 +240,7 @@ export function loadSave() {
     G.blueprints = {}; G.chestsWithoutEpic = 0; G.levelStars = {};
     G.unlockedAircraft = withDefaultUnlockedAircraft(['t6']); G.activeAircraft = 't6';
     G.acquiredAircraft = [];
-    G.unlockedBadges = []; G.activeBadge = null; G.flawlessLevels = 0; G.lifetimeXpEarned = 0; G.multiXpEarned = 0;
+    G.unlockedBadges = []; G.flawlessLevels = 0; G.lifetimeXpEarned = 0; G.multiXpEarned = 0;
     G.ownedShootingPlans = ['default']; G.activeShootingPlan = 'default'; G.ownedMissileTypes = []; G.activeMissileType = 'default';
     G.planeUpgrades = {};
     G.botUpgrades = { aircraft: 't6', planes: ['t6'], fire: 1, hp: 3 };
@@ -295,15 +295,13 @@ export function loadSave() {
     G.activeAircraft = 't6';
     save('activeAircraft', G.activeAircraft);
   }
-  // The F-117 stays the player's for good once earned, whether the "Chasseur
-  // de Boss" badge is equipped or not.
+  // The F-117 stays the player's for good once earned (first boss beaten, or
+  // the old "Chasseur de Boss" badge from before badges were removed).
   if ((G.unlockedBadges.includes('boss_hunter') || G.acquiredAircraft.includes('f117'))
     && !G.unlockedAircraft.includes('f117')) {
     G.unlockedAircraft.push('f117');
     save('unlockedAircraft', G.unlockedAircraft);
   }
-  G.activeBadge = load('activeBadge', null);
-  if (!G.unlockedBadges.includes(G.activeBadge)) G.activeBadge = null;
   G.totalCorrectAnswers = load('totalCorrectAnswers', 0);
   G.bestAnswerStreak = load('bestAnswerStreak', 0);
   G.flawlessLevels = Number(load('flawlessLevels', 0)) || 0;
@@ -389,7 +387,7 @@ export function saveAll() {
   save('unlockedAircraft',  G.unlockedAircraft);
   save('acquiredAircraft',  G.acquiredAircraft);
   save('activeAircraft',    G.activeAircraft);
-  ['unlockedBadges','activeBadge','totalCorrectAnswers','bestAnswerStreak','flawlessLevels','lifetimeXpEarned','comboAcePermanent','secretAircraftUnlocked'].forEach(k=>save(k,G[k]));
+  ['unlockedBadges','totalCorrectAnswers','bestAnswerStreak','flawlessLevels','lifetimeXpEarned','comboAcePermanent','secretAircraftUnlocked'].forEach(k=>save(k,G[k]));
   save('ownedShootingPlans', G.ownedShootingPlans);
   save('activeShootingPlan', G.activeShootingPlan);
   save('ownedMissileTypes', G.ownedMissileTypes);
@@ -495,9 +493,9 @@ export function autoSave() {
   save('postTutorialConnectPrompt', G.postTutorialConnectPrompt);
 }
 
-// Hearts at the start of a level (badge, plane ability, hangar UPGRADE).
+// Hearts at the start of a level (plane ability, hangar UPGRADE).
 export function startingLives() {
-  return 3 + (G.activeBadge === 'steady_recruit' ? 1 : 0) + (AIRCRAFT[G.activeAircraft]?.ability?.extraLives || 0)
+  return 3 + (AIRCRAFT[G.activeAircraft]?.ability?.extraLives || 0)
     + Math.max(0, Math.min(3, G.planeUpgrades?.[G.activeAircraft]?.lives | 0)); // hangar UPGRADE (per aircraft)
 }
 

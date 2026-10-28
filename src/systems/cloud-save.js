@@ -69,7 +69,7 @@ const PERSIST_KEYS = [
   'onboardingStartMode', 'onboardingLevelLength', 'dailyGoalMinutes',
   'tutorialPlan', 'tutorialProgress', 'tutorialCompleted', 'postTutorialConnectPrompt', 'currentLevel',
   // Bought / earned items, so another device gets them too.
-  'acquiredAircraft', 'unlockedBadges', 'activeBadge', 'totalCorrectAnswers', 'bestAnswerStreak',
+  'acquiredAircraft', 'unlockedBadges', 'totalCorrectAnswers', 'bestAnswerStreak',
   'flawlessLevels', 'comboAcePermanent', 'secretAircraftUnlocked', 'ownedShootingPlans',
   'activeShootingPlan', 'ownedMissileTypes', 'activeMissileType', 'botUpgrades', 'hasSeenBriefing',
 ];
@@ -232,11 +232,10 @@ export function mergeSaveSnapshots(local, remote) {
     hp: Math.max(lb.hp || 3, rb.hp || 3),
   };
 
-  // Choices (plane, badge, weapon, profile look) follow the device that is
+  // Choices (plane, weapon, profile look) follow the device that is
   // further in the game: a brand-new device takes them from the account.
   if ((remote.highestLevel || 0) >= (local.highestLevel || 0)) {
     out.activeAircraft = remote.activeAircraft ?? local.activeAircraft;
-    out.activeBadge = remote.activeBadge ?? local.activeBadge;
     out.activeShootingPlan = remote.activeShootingPlan ?? local.activeShootingPlan;
     out.activeMissileType = remote.activeMissileType ?? local.activeMissileType;
     out.botUpgrades.aircraft = rb.aircraft ?? lb.aircraft;

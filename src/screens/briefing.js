@@ -163,7 +163,6 @@ function answerSeconds(levelCfg) {
   let s = levelCfg.timeLimit + (levelCfg.weather?.timeMod || 0);
   if (G.likesMath === false) s += 4;
   if (G.pendingPlacement) s += 2;
-  if (G.activeBadge === 'lightning_reflex') s += 5;
   s += AIRCRAFT[G.activeAircraft]?.ability?.extraAnswerTime || 0;
   return Math.max(3, s);
 }

@@ -65,13 +65,6 @@ const ENEMY_SPAWN_INTERVAL_SCALE = 0.9;
 // Eurofighter ('turner') = 3 s.
 const FIXED_ENEMY_FIRE_RATE = { basic: 300, fast: 300, turner: 180 };
 const MISSILE_SPEED_SCALE = 0.8;
-const PLAYER_SHIELD_DURATION_MS = 10000;
-const PLAYER_SHIELD_COOLDOWN_MS = 30000;
-let _playerShieldUntil = 0;
-let _playerShieldReadyAt = 0;
-let _playerShieldButtonHandler = null;
-let _lastShieldHudSecond = -1;
-let _shieldPausedAt = 0;   // paused during an equation (see syncAbilityPause)
 // Airdrop gadgets (X-ray / machine gun, protection field, air support) are
 // switched off while a question waits for its answer and switched back on
 // after it, with the time they had left. 0 = not paused.
@@ -82,45 +75,12 @@ function airdropWeaponActive(now = performance.now()) {
 }
 
 function playerShieldActive(now = performance.now()) {
-  return (G.activeBadge === 'good_student' && now < _playerShieldUntil && !_shieldPausedAt)
-    || (now < (G.airdropShieldUntil || 0) && !_gadgetPausedAt);   // airdrop "champ de protection"
-}
-
-function updatePlayerShieldButton(now = performance.now(), force = false) {
-  const button = document.getElementById('btn-player-shield');
-  const label = document.getElementById('player-shield-status');
-  if (!button || !label) return;
-  const available = G.activeBadge === 'good_student' && !isTutorialActive();
-  button.classList.toggle('hidden', !available);
-  if (!available) return;
-  const at = _shieldPausedAt || now;
-  const activeMs = Math.max(0, _playerShieldUntil - at);
-  const cooldownMs = Math.max(0, _playerShieldReadyAt - at);
-  const displaySecond = Math.ceil((activeMs || cooldownMs) / 1000);
-  if (!force && displaySecond === _lastShieldHudSecond) return;
-  _lastShieldHudSecond = displaySecond;
-  button.classList.toggle('active', activeMs > 0);
-  button.classList.toggle('paused', activeMs > 0 && Boolean(_shieldPausedAt));
-  button.classList.toggle('cooldown', activeMs <= 0 && cooldownMs > 0);
-  button.disabled = cooldownMs > 0;
-  label.textContent = activeMs > 0 ? `${Math.ceil(activeMs / 1000)}s` : cooldownMs > 0 ? `${Math.ceil(cooldownMs / 1000)}s` : 'SHIELD';
-}
-
-function activatePlayerShield() {
-  const now = performance.now();
-  if (G.activeBadge !== 'good_student' || now < _playerShieldReadyAt) return;
-  _shieldPausedAt = 0;
-  _playerShieldUntil = now + PLAYER_SHIELD_DURATION_MS;
-  // The 30-second recharge begins after the 10-second shield effect ends.
-  // Previously both timers started together, so the HUD showed only 20 seconds.
-  _playerShieldReadyAt = _playerShieldUntil + PLAYER_SHIELD_COOLDOWN_MS;
-  _lastShieldHudSecond = -1;
-  updatePlayerShieldButton(now, true);
+  return now < (G.airdropShieldUntil || 0) && !_gadgetPausedAt;   // airdrop "champ de protection"
 }
 
 // ── AIRCRAFT ABILITIES ──────────────────────────────────────────────────────
 // Activatable aircraft skills share one round button (#btn-aircraft-turbo),
-// same pattern as the "good_student" badge shield above. The recharge starts
+// the recharge starts
 // once the effect ends.
 //   SR-71 TURBO   — speed boost
 //   F-16 ESQUIVE  — enemy missiles swerve around the aircraft
@@ -151,17 +111,13 @@ function aircraftSkillActive(skillId, now = performance.now()) {
 }
 
 // Called every frame: starts or ends the pause of the aircraft skill and of
-// the "good_student" badge shield. On resume each one's end (and its cooldown
+// the airdrop gadgets. On resume each one's end (and its cooldown
 // after it) moves later by the time spent on the equation.
 function syncAbilityPause(paused, now = performance.now()) {
   if (paused) {
     if (!_skillPausedAt && now < _turboUntil) {
       _skillPausedAt = now;
       _lastTurboHudSecond = -1;
-    }
-    if (!_shieldPausedAt && now < _playerShieldUntil) {
-      _shieldPausedAt = now;
-      _lastShieldHudSecond = -1;
     }
     if (!_gadgetPausedAt && (now < (G.airdropXrayUntil || 0) || now < (G.airdropShieldUntil || 0)
       || (_airSupport && now < _airSupport.until))) {
@@ -186,13 +142,6 @@ function syncAbilityPause(paused, now = performance.now()) {
     _turboReadyAt += pausedMs;
     _skillPausedAt = 0;
     _lastTurboHudSecond = -1;
-  }
-  if (_shieldPausedAt) {
-    const pausedMs = now - _shieldPausedAt;
-    _playerShieldUntil += pausedMs;
-    _playerShieldReadyAt += pausedMs;
-    _shieldPausedAt = 0;
-    _lastShieldHudSecond = -1;
   }
 }
 
@@ -1966,9 +1915,8 @@ const LERP         = 0.12;
 const JS_RADIUS    = 72;     // max joystick drag radius (px on screen)
 
 function _moveSpeed() {
-  const badgeSpeed = G.activeBadge === 'first_takeoff' ? 1.05 : 1;
   const turboSpeed = aircraftTurboActive() ? SR71_TURBO_SPEED_MULT : 1;
-  return (isTouchMobile() ? 4.4 : MOVE_SPEED) * (AIRCRAFT[G.activeAircraft]?.ability?.moveSpeed || 1) * badgeSpeed * turboSpeed
+  return (isTouchMobile() ? 4.4 : MOVE_SPEED) * (AIRCRAFT[G.activeAircraft]?.ability?.moveSpeed || 1) * turboSpeed
     * _moveSensitivity;
 }
 
@@ -3443,7 +3391,6 @@ function frame(ts = 0) {
   const resumeOffset = resumePlaneOffset(ts || performance.now());
   const playerDrawX = G.player.x + playerFloat.x + resumeOffset.x;
   const playerDrawY = G.player.y + playerFloat.y + resumeOffset.y;
-  updatePlayerShieldButton(ts || performance.now());
   updateAircraftTurboButton(ts || performance.now());
   updateAircraftRegen(ts || performance.now());
   const shootingPlan = activeShootingPlan();
@@ -4972,11 +4919,10 @@ function onEnemyAircraftCollision(enemy) {
 const A10_BOSS_SHELL_DAMAGE = 0.4;
 function onMissileHit(enemy, missile) {
   SFX.explode();
-  const badgeDamage = G.activeBadge === 'flawless' ? 1.15 : (G.activeBadge === 'boss_hunter' && enemy.type === 'boss' ? 1.25 : 1);
-  let damage = (missile?.damage ?? 1) * badgeDamage;
+  let damage = missile?.damage ?? 1;
   // A-10 GAU-8 on a boss: each shell is weak, so a 5-shell burst does about
   // two normal missiles' worth instead of ten (it melted bosses in 2 bursts).
-  if (enemy.type === 'boss' && missile?.type === 'player-gau8') damage = A10_BOSS_SHELL_DAMAGE * badgeDamage;
+  if (enemy.type === 'boss' && missile?.type === 'player-gau8') damage = A10_BOSS_SHELL_DAMAGE;
   const destroyed = hitEnemy(enemy, damage);
   if (enemy.type === 'boss') updateBossHealthBar(enemy);
   if (destroyed) {
@@ -5191,7 +5137,6 @@ function startTimer(resetTime = true) {
   const adjustedBaseTime = isTutorialActive()
     ? Math.max(9, baseTime + 4)
     : G.practiceMode ? baseTime : baseTime + getOnboardingTimerBonus()
-      + (G.activeBadge === 'lightning_reflex' ? 5 : 0)
       + (AIRCRAFT[G.activeAircraft]?.ability?.extraAnswerTime || 0)
       + (coopBotAbility()?.extraAnswerTime || 0);
   const typedBonus = G.question?.typed ? TYPED_QUESTION_EXTRA_S : 0;
@@ -6253,10 +6198,6 @@ export function initGame(levelNum, onComplete) {
   document.getElementById('boss-health-wrap')?.classList.add('hidden');
   _invincible    = 0;
   _answerImmuneUntil = 0;
-  _playerShieldUntil = 0;
-  _playerShieldReadyAt = 0;
-  _shieldPausedAt = 0;
-  _lastShieldHudSecond = -1;
   _turboUntil = 0;
   _turboReadyAt = 0;
   _skillPausedAt = 0;
@@ -6409,12 +6350,6 @@ export function initGame(levelNum, onComplete) {
   _aimCursor = null;
   _aimPadTouch = null;
   attachInputListeners();
-  const shieldButton = document.getElementById('btn-player-shield');
-  if (shieldButton) {
-    _playerShieldButtonHandler = event => { event.preventDefault(); activatePlayerShield(); };
-    shieldButton.addEventListener('pointerdown', _playerShieldButtonHandler);
-    updatePlayerShieldButton(performance.now(), true);
-  }
   const turboButton = document.getElementById('btn-aircraft-turbo');
   if (turboButton) {
     _turboButtonHandler = event => { event.preventDefault(); activateAircraftTurbo(); };
@@ -6802,10 +6737,6 @@ export function initGame(levelNum, onComplete) {
     G.timerInterval = null;
     G.animFrame     = null;
     detachInputListeners();
-    const shieldButton = document.getElementById('btn-player-shield');
-    if (shieldButton && _playerShieldButtonHandler) shieldButton.removeEventListener('pointerdown', _playerShieldButtonHandler);
-    shieldButton?.classList.add('hidden');
-    _playerShieldButtonHandler = null;
     const turboButton = document.getElementById('btn-aircraft-turbo');
     if (turboButton && _turboButtonHandler) turboButton.removeEventListener('pointerdown', _turboButtonHandler);
     turboButton?.classList.add('hidden');

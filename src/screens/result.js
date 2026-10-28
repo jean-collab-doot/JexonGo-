@@ -10,83 +10,17 @@ import { getPilotGrade, getNextGrade } from '../data/pilots.js';
 import { t, getLang } from '../i18n.js';
 import { AIRCRAFT } from '../data/aircraft.js';
 import { coinIcon, expIcon, uiIcon } from '../utils/icons.js';
-import { badgeXpMultiplier, badgeCoinBonus, unlockEligibleBadges } from '../data/badges.js';
+import { unlockBossAircraft } from '../systems/secret-aircraft.js';
 
 let _prevHighestLevel = 0;
 
-// New-badge reveal: the screen fades in, the badge rises smoothly into place
-// and lights up (soft flash, shockwave, confetti in the badge's rarity color),
-// then its name, goal and reward slide in one by one. The badge stays still
-// (no drag, no scroll). Timings live in style.css (.bdg-reveal);
-// BADGE_IMPACT_MS matches the moment the badge lights up.
+// BADGE_IMPACT_MS matches the moment the plane reveal lights up
+// (timings in style.css, .bdg-reveal).
 const BADGE_IMPACT_MS = 1050;
-const BADGE_CONFETTI = 30;
 
-function showBadgeUnlockCelebrations(badges) {
-  const queue = [...(badges || [])];
-  const fr = getLang() === 'fr';
-  const showNext = () => {
-    const badge = queue.shift();
-    if (!badge) return;
-    const rarity = badge.rarity.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-    const confetti = Array.from({ length: BADGE_CONFETTI }, (_, i) => {
-      const angle = (i / BADGE_CONFETTI) * Math.PI * 2 + Math.random() * 0.4;
-      const dist = 120 + Math.random() * 170;
-      const dx = Math.round(Math.cos(angle) * dist);
-      const dy = Math.round(Math.sin(angle) * dist * 0.75 - 40);
-      const size = 5 + Math.round(Math.random() * 6);
-      const alt = i % 3 === 0 ? ' bdg-confetti-alt' : '';
-      return `<span class="bdg-confetti${alt}" style="--dx:${dx}px;--dy:${dy}px;--fall:${160 + Math.round(Math.random() * 140)}px;--rot:${Math.round(Math.random() * 720 - 360)}deg;--s:${size}px;--d:${(Math.random() * 0.12).toFixed(2)}s"></span>`;
-    }).join('');
-    const overlay = document.createElement('div');
-    overlay.className = `bdg-reveal bdg-rarity-${rarity}`;
-    overlay.innerHTML = `
-      <div class="bdg-beam"></div>
-      <div class="bdg-rays"></div>
-      <div class="bdg-flash"></div>
-      <div class="bdg-stage" role="dialog" aria-modal="true" aria-label="${fr ? 'Nouveau badge' : 'New badge'} : ${badge.name}">
-        <div class="bdg-ribbon"><span>${fr ? 'NOUVEAU BADGE' : 'NEW BADGE'}</span></div>
-        <div class="bdg-medal">
-          <span class="bdg-ring"></span><span class="bdg-ring bdg-ring-2"></span>
-          ${confetti}
-          <div class="bdg-drop"><img class="bdg-img" src="${badge.image}" alt="${badge.name}" draggable="false"><span class="bdg-shine"></span></div>
-        </div>
-        <em class="bdg-rarity">${badge.rarity}</em>
-        <h2 class="bdg-name">${badge.name}</h2>
-        <p class="bdg-goal">${badge.goal}</p>
-        <strong class="bdg-reward">${badge.reward}</strong>
-        <button type="button" class="bdg-continue">${fr ? 'CONTINUER' : 'CONTINUE'}</button>
-      </div>`;
-    // Keep everything still on phones: no page drag / pinch / image drag.
-    overlay.addEventListener('touchmove', e => e.preventDefault(), { passive: false });
-    overlay.addEventListener('dragstart', e => e.preventDefault());
-    document.body.appendChild(overlay);
-    document.documentElement.classList.add('badge-unlock-open');
-    requestAnimationFrame(() => overlay.classList.add('show'));
-    const impact = setTimeout(() => SFX.promoted?.(), BADGE_IMPACT_MS);
-    overlay.querySelector('.bdg-continue').onclick = () => {
-      clearTimeout(impact);
-      overlay.classList.add('closing');
-      setTimeout(() => {
-        overlay.remove();
-        document.documentElement.classList.remove('badge-unlock-open');
-        // A badge that gives a plane (Chasseur de Boss -> F-117): show it next.
-        if (badge.unlocksAircraft && AIRCRAFT[badge.unlocksAircraft]) {
-          showAircraftUnlockReveal(badge, showNext);
-        } else {
-          showNext();
-        }
-      }, 360);
-    };
-  };
-  showNext();
-}
-
-// Plane given by a badge: the badge flies into a black "???" silhouette,
-// which flashes and lights up as the real plane, then its name and ability
-// slide in. Same stage as the badge reveal (.bdg-reveal + .bdg-plane-reveal).
-function showAircraftUnlockReveal(badge, onDone) {
-  const id = badge.unlocksAircraft;
+// Secret plane won (F-117, first boss beaten): a black "???" silhouette
+// flashes and lights up as the real plane, then its name and ability slide in.
+function showAircraftUnlockReveal(id, onDone) {
   const plane = AIRCRAFT[id];
   const fr = getLang() === 'fr';
   const lang = fr ? 'fr' : 'en';
@@ -102,10 +36,9 @@ function showAircraftUnlockReveal(badge, onDone) {
       <div class="bpr-stage">
         <img class="bpr-plane" src="/assets/hangar/${id}.webp" alt="${plane.name}" draggable="false">
         <span class="bpr-mystery" aria-hidden="true">???</span>
-        <img class="bpr-badge" src="${badge.image}" alt="" draggable="false">
         <span class="bdg-ring"></span><span class="bdg-ring bdg-ring-2"></span>
       </div>
-      <em class="bdg-rarity">${fr ? `GRÂCE AU BADGE ${badge.name.toUpperCase()}` : `THANKS TO THE ${badge.name.toUpperCase()} BADGE`}</em>
+      <em class="bdg-rarity">${fr ? 'BOSS VAINCU' : 'BOSS DEFEATED'}</em>
       <h2 class="bdg-name">${plane.name}</h2>
       <p class="bdg-goal">${uiIcon(plane.ability?.icon)} ${plane.ability?.name?.[lang] || ''} : ${plane.ability?.description?.[lang] || ''}</p>
       <strong class="bdg-reward">${fr ? 'DANS TON HANGAR, POUR TOUJOURS' : 'IN YOUR HANGAR, FOR GOOD'}</strong>
@@ -138,11 +71,6 @@ function showAircraftUnlockReveal(badge, onDone) {
     close();
   };
 }
-
-// Preview hook used by the Hangar. It never unlocks a badge or grants rewards.
-window._previewBadgeUnlock = badgeOrBadges => showBadgeUnlockCelebrations(
-  Array.isArray(badgeOrBadges) ? badgeOrBadges : (badgeOrBadges ? [badgeOrBadges] : [])
-);
 
 export function initResult(nav) {
   $('btn-result-continue').onclick = () => {
@@ -197,7 +125,7 @@ export function showResult(won) {
   // (MAX_GAME_COINS / maxGameXp()), after what was picked up during play. The
   // hangar XP upgrade raises both the bonus and the cap.
   const collectedXpSoFar = G.practiceMode ? 0 : Math.max(0, G.airdropSessionXP || 0);
-  const xp    = Math.min(Math.round((G.sessionXP || 0) * badgeXpMultiplier() * xpUpgradeMultiplier()), Math.max(0, maxGameXp() - collectedXpSoFar));
+  const xp    = Math.min(Math.round((G.sessionXP || 0) * xpUpgradeMultiplier()), Math.max(0, maxGameXp() - collectedXpSoFar));
   const stars = calcStars(correct, answered, hits);
   const accuracy = answered > 0 ? Math.round((correct / answered) * 100) : 0;
 
@@ -207,7 +135,6 @@ export function showResult(won) {
   const collectedCoins = G.practiceMode ? 0 : Math.max(0, G.airdropSessionCoins || 0);
   const coinsEarned    = canEarnRewards
     ? Math.min((COINS_PER_STAR[stars] || 0) + levelBonus, Math.max(0, MAX_GAME_COINS - collectedCoins))
-      + badgeCoinBonus()
     : 0;
   const collectedXp = G.practiceMode ? 0 : Math.max(0, G.airdropSessionXP || 0);
   const totalCoinsGained = coinsEarned + collectedCoins;
@@ -248,17 +175,16 @@ export function showResult(won) {
     }
     autoSave();
     const averageResponseTime = (G.sessionResponseCount || 0) > 0 ? (G.sessionResponseTimeTotal || 0) / G.sessionResponseCount : Infinity;
-    const startingLives = 3 + (G.activeBadge === 'steady_recruit' ? 1 : 0) + (AIRCRAFT[G.activeAircraft]?.ability?.extraLives || 0)
+    const startingLives = 3 + (AIRCRAFT[G.activeAircraft]?.ability?.extraLives || 0)
       + Math.max(0, Math.min(3, G.planeUpgrades?.[G.activeAircraft]?.lives | 0)); // hangar UPGRADE (same as resetLevel)
     const livesLost = Math.max(0, startingLives - (G.lives || 0));
-    // "Sans-Faute" badge: levels finished without losing a life (2 needed).
+    // Levels finished without losing a life (kept for stats / cloud save).
     if (livesLost === 0) {
       G.flawlessLevels = (G.flawlessLevels || 0) + 1;
       save('flawlessLevels', G.flawlessLevels);
     }
-    const newlyUnlockedBadges = unlockEligibleBadges({ won: true, isBoss, accuracy, averageResponseTime, livesLost });
-    if (newlyUnlockedBadges.length) {
-      setTimeout(() => showBadgeUnlockCelebrations(newlyUnlockedBadges), 500);
+    if (unlockBossAircraft({ won: true, isBoss })) {
+      setTimeout(() => showAircraftUnlockReveal('f117'), 500);
     }
   } else if (!G.practiceMode) {
     window._currentLevelCfg = { isChestLevel: false };
