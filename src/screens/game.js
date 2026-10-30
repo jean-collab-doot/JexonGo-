@@ -748,8 +748,6 @@ const GUIDED_QUESTIONS = 10;
 const GUIDED_FREE_QUESTIONS = 5;
 const GUIDED_LIVES = 3;
 const GUIDED_TIME_S = 20;   // timer of questions 6-10 (generous for beginners)
-const GUIDED_ENEMY_SPEED = 0.7;    // enemies fly 30% slower
-const GUIDED_FIRE_SLOWER = 2;      // and shoot half as often
 let _guidedRun = false;
 let _guidedLives = GUIDED_LIVES;
 
@@ -2829,8 +2827,7 @@ function frame(ts = 0) {
   // while one of its planes is still on screen.
   const waveOnScreen = G.enemies.some(e => e.wave && e.active && !e.turncoat);
   if (!spawnPaused && !waveOnScreen && spawnTimer <= 0) {
-    // New-player practice: only lone F-15s (no formations, lasers or gunships).
-    const types = _guidedRun ? ['basic'] : RANDOM_ENEMY_TYPES;
+    const types = RANDOM_ENEMY_TYPES;
     let type = types[Math.floor(Math.random() * types.length)];
     if (type === 'tank' && (Math.random() > APACHE_KEEP_CHANCE
         || G.enemies.some(e => e.type === 'tank' && e.active && !e.turncoat))) {
@@ -2886,14 +2883,13 @@ function frame(ts = 0) {
     } else if (activeCount < normalCap) {
       // Independent enemies: F-15 straight runs and randomly turning Mirages.
       const e = spawnEnemy(canvas.width, type);
-      // Some F-15s carry a homing missile (see HOMING F-15 below). Not in the
-      // new-player practice, which only uses plain F-15s.
-      if (type === 'basic' && !_guidedRun && Math.random() < HOMING_F15_CHANCE) e.homingShooter = true;
+      // Some F-15s carry a homing missile (see HOMING F-15 below).
+      if (type === 'basic' && Math.random() < HOMING_F15_CHANCE) e.homingShooter = true;
       spawned.push(e);
     }
 
     for (const e of spawned) {
-      e.speed       *= levelCfg.enemySpeedMult * ENEMY_MOVEMENT_SPEED_SCALE * (_guidedRun ? GUIDED_ENEMY_SPEED : 1)
+      e.speed       *= levelCfg.enemySpeedMult * ENEMY_MOVEMENT_SPEED_SCALE
         * (isTouchMobile() ? TOUCH_ENEMY_SPEED_MULT * (e.type === 'fast' ? TOUCH_F5_EXTRA_SPEED : 1) : 1)
         * screenEnemySpeedMult();
       // Same cadence on phone, tablet and computer.
@@ -2903,7 +2899,7 @@ function frame(ts = 0) {
       // 5 s, Eurofighter (the 'turner' sprite) every 3 s.
       const fixedFireRate = FIXED_ENEMY_FIRE_RATE[e.type];
       if (fixedFireRate) {
-        e.fireRate = Math.round(fixedFireRate * (_guidedRun ? GUIDED_FIRE_SLOWER : 1));
+        e.fireRate = fixedFireRate;
         e.fireCooldown = Math.min(e.fireCooldown, fixedFireRate);
       }
       G.enemies.push(e);
@@ -6294,6 +6290,14 @@ export function initGame(levelNum, onComplete) {
   }
   // New-player practice: plain normal weather (no rain / storm / fog / snow).
   if (_guidedRun) levelCfg = { ...levelCfg, weather: WEATHER_TYPES.CLOUDY };
+  // New players' first runs (practice run after the questionnaire, placement
+  // tutorial): the same enemy planes as level 1 (number, arrival, speed, fire).
+  const enemyLevelNum = (_guidedRun || _tutorialActive) ? 1 : levelNum;
+  if (enemyLevelNum !== levelNum) {
+    const lvl1 = applyAgeModifiers(getLevel(1), G.playerAge);
+    levelCfg = { ...levelCfg, spawnRate: lvl1.spawnRate, maxEnemies: lvl1.maxEnemies,
+      enemySpeedMult: lvl1.enemySpeedMult, enemyFireRateMult: lvl1.enemyFireRateMult };
+  }
   _maxLives = G.lives;
   _lastHudLives = null;
   if (snap) {
@@ -6337,10 +6341,8 @@ export function initGame(levelNum, onComplete) {
   updateStreakHUD();
 
   resetAdaptivePerformance();
-  // Training and new-player practice: few, slowly arriving enemies.
-  baseSpawnRate = (isTutorialActive() || _guidedRun) ? 170 : levelCfg.spawnRate;
-  baseMaxEnemies = (isTutorialActive() || _guidedRun) ? 2
-    : schoolYearEnemyCap(getLevel(levelNum).maxEnemies, levelCfg.maxEnemies);
+  baseSpawnRate = levelCfg.spawnRate;
+  baseMaxEnemies = schoolYearEnemyCap(getLevel(enemyLevelNum).maxEnemies, levelCfg.maxEnemies);
   spawnRate = baseSpawnRate;
   maxEnemies = baseMaxEnemies;
   spawnTimer = isTouchMobile() ? 22 : 60;
