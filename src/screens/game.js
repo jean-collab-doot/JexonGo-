@@ -1959,22 +1959,24 @@ function aimVisible(now = performance.now()) {
 }
 
 // ── TUTORIAL OPENING (beginner practice, _guidedRun) ─────────────────────────
-// 1) FLY: 10 s without a question or enemy plane. Right, left, up, down, one
-//    at a time: a card shows the key (computer: arrow / W A S D) or the finger
-//    slide (phone, tablet) and an arrow points from the plane.
+// 1) FLY, without a question or enemy plane: right, left, up, down, one at
+//    a time. A card shows the key (computer: arrow / W A S D) or the finger
+//    slide (phone, tablet) and an arrow points from the plane. Each direction
+//    stays until the player has done it.
 // 2) The first question shows its answer: tapping it fires a missile.
 // 3) Shot 1, EXAMPLE: slow motion, the aim turns by itself (left, then right)
 //    while a ghost mouse / a ghost finger on the round aim joystick does it.
 // 4) Shot 2, YOUR TURN: slow motion, the ghost shows the move and the player
 //    turns the missiles to the left. Then the tutorial goes on normally.
 const INTRO_FLY_DIRS = ['right', 'left', 'up', 'down'];
-const INTRO_FLY_STEP_MS = 2500;   // 4 directions = 10 s
+const INTRO_FLY_BRAVO_MS = 900;   // "BRAVO!" before the next direction
+const INTRO_FLY_HOLD_MS = 450;    // or: the direction held this long (the plane may be at the edge)
 const AIM_EXAMPLE_MS = 5200;      // real time of the slow-motion example
 const AIM_TRY_MAX_MS = 20000;     // the "your turn" shot waits this long at most
 // Speed factor during the aim lessons. It goes into the eased _frameStep
 // (frame()), so the game ends up at about 30 % speed.
 const INTRO_SLOW = 0.55;
-let _introFly = null;             // { el, step, stepStart, x, y, done, endTimer }
+let _introFly = null;             // { el, sid, step, x, y, held, lastTs, doneAt }
 let _introFlyDone = false;
 let _aimLesson = null;            // { mode, el, ghost, start, done, hideAt, moved, lastX, padTouched }
 let _aimLessonShots = 0;
@@ -2009,25 +2011,25 @@ function startIntroFly() {
   if (_introFly) return;
   G.enemies = [];
   G.enemyMissiles = [];
-  const sid = _sessionId;
-  _introFly = { el: _ctlHintEl('ctl-move ctl-fly', ''), step: -1, stepStart: 0, x: 0, y: 0, done: false, endTimer: 0 };
+  _introFly = { el: _ctlHintEl('ctl-move ctl-fly', ''), sid: _sessionId, step: -1, x: 0, y: 0, held: 0, lastTs: 0, doneAt: 0 };
   nextIntroFlyStep();
-  _introFly.endTimer = setTimeout(() => {
-    if (_sessionId !== sid) return;
-    _introFly?.el?.remove();
-    _introFly = null;
-    _introFlyDone = true;
-    nextQuestion();
-  }, INTRO_FLY_DIRS.length * INTRO_FLY_STEP_MS);
+}
+
+// All 4 directions done: the first question.
+function finishIntroFly() {
+  const sid = _introFly?.sid;
+  _introFly?.el?.remove();
+  _introFly = null;
+  _introFlyDone = true;
+  setTimeout(() => { if (_sessionId === sid) nextQuestion(); }, 0);
 }
 
 function nextIntroFlyStep() {
   const fly = _introFly;
   if (!fly?.el || fly.step >= INTRO_FLY_DIRS.length - 1) return;
   fly.step++;
-  fly.stepStart = performance.now();
   fly.x = G.player.x; fly.y = G.player.y;
-  fly.done = false;
+  fly.held = 0; fly.lastTs = 0; fly.doneAt = 0;
   const dir = INTRO_FLY_DIRS[fly.step];
   const c = INTRO_FLY_COPY[dir];
   const fr = _ctlFr();
@@ -2040,14 +2042,30 @@ function nextIntroFlyStep() {
   fly.el.innerHTML = `<p><b>${fly.step + 1}/${INTRO_FLY_DIRS.length}</b> <strong class="ctl-title">${fr ? c.fr : c.en}</strong></p>${how}`;
 }
 
+// True while the player pushes the plane that way (keys or finger).
+function introFlyPushing(c) {
+  const keyX = (keys.ArrowRight || keys.d ? 1 : 0) - (keys.ArrowLeft || keys.a ? 1 : 0);
+  const keyY = (keys.ArrowDown || keys.s ? 1 : 0) - (keys.ArrowUp || keys.w ? 1 : 0);
+  const x = keyX || Math.sign(Math.round(_jsVelX * 10));
+  const y = keyY || Math.sign(Math.round(_jsVelY * 10));
+  return c.dx ? x === c.dx : y === c.dy;
+}
+
 function updateIntroFly(now) {
   const fly = _introFly;
   if (!fly) return;
-  if (now - fly.stepStart >= INTRO_FLY_STEP_MS) nextIntroFlyStep();
+  if (fly.doneAt) {
+    if (now - fly.doneAt < INTRO_FLY_BRAVO_MS) return;
+    if (fly.step >= INTRO_FLY_DIRS.length - 1) finishIntroFly();
+    else nextIntroFlyStep();
+    return;
+  }
   const c = INTRO_FLY_COPY[INTRO_FLY_DIRS[fly.step]];
+  if (fly.lastTs && introFlyPushing(c)) fly.held += Math.min(100, now - fly.lastTs);
+  fly.lastTs = now;
   const along = (G.player.x - fly.x) * c.dx + (G.player.y - fly.y) * c.dy;
-  if (!fly.done && along > getPlayerSize() * 0.6) {
-    fly.done = true;
+  if (along > getPlayerSize() * 0.6 || fly.held > INTRO_FLY_HOLD_MS) {
+    fly.doneAt = now;
     fly.el.classList.add('ctl-done');
     fly.el.innerHTML = `<p><strong class="ctl-title">${_ctlFr() ? 'BRAVO!' : 'GREAT!'}</strong></p>`;
   }
@@ -2056,7 +2074,7 @@ function updateIntroFly(now) {
 // Big pulsing arrow from the plane, in the direction being taught.
 function drawIntroFlyArrow(fromX, fromY) {
   const fly = _introFly;
-  if (!fly || fly.done || fly.step < 0) return;
+  if (!fly || fly.doneAt || fly.step < 0) return;
   const c = INTRO_FLY_COPY[INTRO_FLY_DIRS[fly.step]];
   const unit = Math.max(1, canvas.width / (canvas.clientWidth || canvas.width));
   const pulse = (performance.now() % 900) / 900;
@@ -2182,7 +2200,6 @@ function clearAimLesson() {
 }
 
 function clearControlHints() {
-  clearTimeout(_introFly?.endTimer);
   _introFly?.el?.remove(); _introFly = null;
   _introAnswerEl?.remove(); _introAnswerEl = null;
   clearAimLesson();
