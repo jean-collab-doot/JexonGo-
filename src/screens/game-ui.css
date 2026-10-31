@@ -408,18 +408,20 @@ html body #s-game #question-box:not(.correction-active) {
 /* Between shots the aim joystick stays visible but pale. */
 html body #s-game .aim-pad.is-idle { opacity: .4; filter: saturate(.6); }
 
-/* ---- Tutorial control demos (game.js startMoveHint / startAimDemo) -------
-   Beginner practice only: how to move the plane, then how to aim the first
-   3 shots (ghost mouse on a computer, ghost finger on the aim joystick). */
+/* ---- Tutorial opening (game.js startIntroFly / startAimLesson) -----------
+   Beginner practice only: the 4 directions (no question, no enemy), the
+   first answer shown, then two slow-motion aiming lessons (ghost mouse on a
+   computer, ghost finger on the round aim joystick on phones / tablets). */
 html body #s-game .ctl-hint {
   position: absolute; z-index: 26; pointer-events: none;
   font-family: var(--jx-font); color: var(--jx-ink); text-align: center;
 }
 html body #s-game .ctl-hint p { margin: 0; font-size: clamp(13px, 3.6vw, 17px); line-height: 1.35; }
-html body #s-game .ctl-hint b { color: #fff; background: var(--jx-orange-deep); border-radius: 6px; padding: 1px 6px; margin-right: 4px; }
+html body #s-game .ctl-hint b { color: #fff; background: var(--jx-orange-deep); border-radius: 6px; padding: 1px 6px; }
+html body #s-game .ctl-title { font-size: clamp(17px, 5vw, 24px); font-weight: normal; letter-spacing: 1px; }
 html body #s-game .ctl-move, html body #s-game .ctl-aim {
-  left: 50%; transform: translateX(-50%);
-  width: min(88vw, 420px); box-sizing: border-box;
+  left: 50%; top: 14%; transform: translateX(-50%);
+  width: min(88vw, 440px); box-sizing: border-box;
   padding: 10px 14px 12px;
   background: linear-gradient(180deg, var(--jx-yellow-hi), var(--jx-yellow));
   border: 3px solid var(--jx-orange-dk); border-radius: 14px;
@@ -427,31 +429,23 @@ html body #s-game .ctl-move, html body #s-game .ctl-aim {
   display: flex; flex-direction: column; align-items: center; gap: 8px;
   animation: ctl-pop .25s ease-out;
 }
-html body #s-game .ctl-move { top: 14%; }
-html body #s-game .ctl-aim { top: 14%; }
 html body #s-game .ctl-done { background: linear-gradient(180deg, #b8f28a, #7fd650); border-color: #3f8a1f; box-shadow: 0 4px 0 #3f8a1f; }
 @keyframes ctl-pop { from { opacity: 0; scale: .85; } }
 
-/* Keyboard: the four keys light up one after the other. */
+/* Keyboard: the key to press, pressed over and over. */
 html body #s-game .ctl-keyrow { display: flex; align-items: center; gap: 12px; }
 html body #s-game .ctl-or { font-size: 13px; }
-html body #s-game .ctl-keys { display: grid; grid-template-columns: repeat(3, 30px); grid-template-rows: repeat(2, 30px); gap: 4px; }
 html body #s-game .ctl-key {
-  display: grid; place-items: center; font-size: 13px; color: #fff;
-  background: #5b3410; border-radius: 6px; box-shadow: 0 3px 0 #2c1806;
-  animation: ctl-key 2.4s steps(1) infinite;
+  display: grid; place-items: center; color: #fff;
+  background: #5b3410; border-radius: 8px; box-shadow: 0 4px 0 #2c1806;
 }
-html body #s-game .k-up    { grid-column: 2; grid-row: 1; }
-html body #s-game .k-left  { grid-column: 1; grid-row: 2; animation-delay: .6s; }
-html body #s-game .k-down  { grid-column: 2; grid-row: 2; animation-delay: 1.2s; }
-html body #s-game .k-right { grid-column: 3; grid-row: 2; animation-delay: 1.8s; }
-@keyframes ctl-key {
-  0%  { background: var(--jx-orange-deep); transform: translateY(2px); box-shadow: 0 1px 0 #2c1806; }
-  25% { background: #5b3410; transform: none; box-shadow: 0 3px 0 #2c1806; }
+html body #s-game .ctl-key-big { width: 48px; height: 48px; font-size: 20px; animation: ctl-press .8s ease-in-out infinite; }
+@keyframes ctl-press {
+  0%, 100% { transform: none; box-shadow: 0 4px 0 #2c1806; background: #5b3410; }
+  45% { transform: translateY(3px); box-shadow: 0 1px 0 #2c1806; background: var(--jx-orange-deep); }
 }
 
-/* Touch: a finger dot sliding around, with a ring that pulses. */
-html body #s-game .ctl-drag { position: relative; width: 150px; height: 44px; }
+/* Touch: a finger dot sliding the way to go, with a pulsing ring. */
 html body #s-game .ctl-touch-dot {
   position: absolute; width: 26px; height: 26px; margin: -13px 0 0 -13px;
   border-radius: 50%; background: rgba(255,255,255,.95);
@@ -462,13 +456,37 @@ html body #s-game .ctl-touch-dot::after {
   border: 3px solid rgba(255,255,255,.8); animation: ctl-ring 1s ease-out infinite;
 }
 @keyframes ctl-ring { from { transform: scale(.5); opacity: 1; } to { transform: scale(1.4); opacity: 0; } }
-html body #s-game .ctl-drag .ctl-touch-dot { top: 50%; left: 20%; animation: ctl-drag 2.6s ease-in-out infinite; }
-@keyframes ctl-drag { 0%, 100% { left: 18%; top: 60%; } 35% { left: 82%; top: 40%; } 65% { left: 50%; top: 20%; } }
+html body #s-game .ctl-drag {
+  position: relative; width: 120px; height: 76px;
+  background: rgba(91,52,16,.18); border-radius: 12px;
+}
+html body #s-game .ctl-drag-arrow { position: absolute; font-size: 18px; color: var(--jx-orange-deep); opacity: .8; }
+html body #s-game .ctl-drag .ctl-touch-dot { left: 50%; top: 50%; animation: 1.3s ease-in-out infinite; }
+html body #s-game .ctl-drag-right .ctl-touch-dot { animation-name: ctl-slide-right; }
+html body #s-game .ctl-drag-left  .ctl-touch-dot { animation-name: ctl-slide-left; }
+html body #s-game .ctl-drag-up    .ctl-touch-dot { animation-name: ctl-slide-up; }
+html body #s-game .ctl-drag-down  .ctl-touch-dot { animation-name: ctl-slide-down; }
+html body #s-game .ctl-drag-right .ctl-drag-arrow { right: 6px; top: 50%; translate: 0 -50%; }
+html body #s-game .ctl-drag-left  .ctl-drag-arrow { left: 6px; top: 50%; translate: 0 -50%; }
+html body #s-game .ctl-drag-up    .ctl-drag-arrow { top: 2px; left: 50%; translate: -50% 0; }
+html body #s-game .ctl-drag-down  .ctl-drag-arrow { bottom: 2px; left: 50%; translate: -50% 0; }
+@keyframes ctl-slide-right { 0%, 15% { left: 30%; } 75%, 100% { left: 72%; } }
+@keyframes ctl-slide-left  { 0%, 15% { left: 70%; } 75%, 100% { left: 28%; } }
+@keyframes ctl-slide-up    { 0%, 15% { top: 72%; } 75%, 100% { top: 30%; } }
+@keyframes ctl-slide-down  { 0%, 15% { top: 28%; } 75%, 100% { top: 70%; } }
+
+/* First question: the right answer glows, the others wait. */
+html body #s-game #answer-buttons .answer-btn.intro-answer {
+  animation: intro-answer 1s ease-in-out infinite;
+  outline: 4px solid #fff; outline-offset: 2px;
+}
+html body #s-game #answer-buttons .answer-btn.intro-answer-off { opacity: .45; filter: saturate(.4); }
+@keyframes intro-answer { 50% { transform: scale(1.06); box-shadow: 0 0 22px 6px rgba(255,255,255,.85); } }
 
 /* Ghost finger on the aim joystick (placed by game.js each frame). */
 html body #s-game .ctl-ghost-touch { width: 0; height: 0; z-index: 27; }
 
-/* Ghost mouse along the bottom, sliding with the aim (game.js). */
+/* Ghost mouse along the bottom (moved by game.js). */
 html body #s-game .ctl-ghost-mouse { left: 50%; bottom: 36px; }
 html body #s-game .ctl-mouse {
   display: block; width: 34px; height: 50px; box-sizing: border-box; position: relative;
@@ -483,7 +501,8 @@ html body #s-game .ctl-ghost-mouse::before { content: "◀"; right: calc(100% + 
 html body #s-game .ctl-ghost-mouse::after { content: "▶"; left: calc(100% + 6px); }
 
 @media (prefers-reduced-motion: reduce) {
-  html body #s-game .ctl-key,
+  html body #s-game .ctl-key-big,
   html body #s-game .ctl-drag .ctl-touch-dot,
-  html body #s-game .ctl-touch-dot::after { animation: none; }
+  html body #s-game .ctl-touch-dot::after,
+  html body #s-game #answer-buttons .answer-btn.intro-answer { animation: none; }
 }
