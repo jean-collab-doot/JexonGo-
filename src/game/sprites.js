@@ -36,9 +36,10 @@ export const SPRITE_DEFS = {
   'ship-t6-turn-right': { path: '/assets/ships/player/t6-turn-right-animation.webp', frames: 20, frameCols: 5, frameRows: 4 },
   'ship-t6-turn-left':  { path: '/assets/ships/player/t6-turn-left-animation.webp',  frames: 20, frameCols: 5, frameRows: 4 },
   // Halloween 2026 livery (data/skins.js): same layout as the default T-6.
+  // ("v2" turn sheets: new file names so browsers drop the cached white-background ones.)
   'ship-t6-halloween2026':            { path: '/assets/ships/player/t6-halloween2026-animation.webp', frames: 10, frameCols: 5, frameRows: 2 },
-  'ship-t6-halloween2026-turn-right': { path: '/assets/ships/player/t6-halloween2026-turn-right-animation.webp', frames: 20, frameCols: 5, frameRows: 4 },
-  'ship-t6-halloween2026-turn-left':  { path: '/assets/ships/player/t6-halloween2026-turn-left-animation.webp',  frames: 20, frameCols: 5, frameRows: 4 },
+  'ship-t6-halloween2026-turn-right': { path: '/assets/ships/player/t6-halloween2026-v2-turn-right-animation.webp', frames: 20, frameCols: 5, frameRows: 4 },
+  'ship-t6-halloween2026-turn-left':  { path: '/assets/ships/player/t6-halloween2026-v2-turn-left-animation.webp',  frames: 20, frameCols: 5, frameRows: 4 },
   'ship-a10-turn-right': { path: '/assets/ships/player/a10-turn-right-animation.webp', frames: 20, frameCols: 5, frameRows: 4 },
   'ship-a10-turn-left':  { path: '/assets/ships/player/a10-turn-left-animation.webp',  frames: 20, frameCols: 5, frameRows: 4 },
   'ship-f16-turn-right': { path: '/assets/ships/player/f16-turn-right-animation.webp', frames: 20, frameCols: 5, frameRows: 4 },
