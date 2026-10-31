@@ -135,7 +135,7 @@ function renderTrainingSheet() {
     <div class="practice-timer-row">
       <span class="practice-timer-label">${getLang() === 'fr' ? 'NOMBRES' : 'NUMBERS'}</span>
       <label class="practice-number-field">
-        <span>${getLang() === 'fr' ? 'de 1 à' : 'from 1 to'}</span>
+        <span>${getLang() === 'fr' ? 'de 0 à' : 'from 0 to'}</span>
         <input id="training-number-max" class="practice-number-input" type="number" inputmode="numeric"
           min="${PRACTICE_NUMBER_MIN}" max="${PRACTICE_NUMBER_MAX}" placeholder="?"
           value="${G.practiceNumberMax || ''}">

@@ -80,15 +80,16 @@ function makeAlgebraQuestion(cap, tier = tierFromCap(cap)) {
   return { text: `${eq}, x = ?`, answer: x, a: x, b: 0, op: 'alg' };
 }
 
-// `mins` (optional, from the school year): smallest numbers in + − (add) and
-// in the × ÷ tables (table), so older players do not get 2 + 3 or 2 × 2.
+// `mins` (optional, from the school year): smallest numbers in + − (add, 0
+// allowed: "0 - 10") and in the × ÷ tables (table), so older players do not
+// get 2 + 3 or 2 × 2.
 function makeQuestion(ops, cap, multCap, tier, mins = {}) {
   const safeOps = normalizeOps(ops);
   const op = safeOps[rnd(0, safeOps.length - 1)];
   if (op === '^') return makeExponentQuestion(cap, tier);
   if (op === 'alg') return makeAlgebraQuestion(cap, tier);
   let a, b, answer;
-  const lo = Math.max(1, Math.min(mins.add || 1, Math.floor(cap / 2)));
+  const lo = Math.max(0, Math.min(mins.add ?? 1, Math.floor(cap / 2)));
   const mc = multCap || 12;
   const tlo = Math.max(2, Math.min(mins.table || 2, mc));
 

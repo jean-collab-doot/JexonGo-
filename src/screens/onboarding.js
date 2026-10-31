@@ -97,7 +97,7 @@ function buildCopy(lang) {
     welcome: fr ? 'Bienvenue dans' : 'Welcome to',
     start: fr ? 'Cliquer commencer!' : 'Click to start!',
     continue: fr ? 'CONTINUER' : 'CONTINUE',
-    rangeFrom: fr ? 'De 1 à' : 'From 1 to',
+    rangeFrom: fr ? 'De 0 à' : 'From 0 to',
     hudReady: fr ? 'PRET' : 'READY',
     pilotSetup: fr ? 'CONFIG PILOTE' : 'PILOT SETUP',
     steps: [
@@ -131,10 +131,10 @@ function buildCopy(lang) {
         key: 'numberRange',
         question: fr ? 'Avec quels nombres veux-tu travailler?' : 'Which numbers do you want to work with?',
         choices: [
-          { label: '1 - 10', value: 10 },
-          { label: '1 - 20', value: 20 },
-          { label: '1 - 50', value: 50 },
-          { label: '1 - 100', value: 100 },
+          { label: '0 - 10', value: 10 },
+          { label: '0 - 20', value: 20 },
+          { label: '0 - 50', value: 50 },
+          { label: '0 - 100', value: 100 },
           { label: fr ? 'AUTRE' : 'OTHER', custom: true },
         ],
       },
@@ -424,7 +424,7 @@ function showQuestionSteps(onComplete, options = {}) {
         if (busy || ok.disabled) return;
         answers[current.key] = index;
         answers[`${current.key}_max`] = Number(input.value);
-        answers[`${current.key}_value`] = `1 - ${input.value}`;
+        answers[`${current.key}_value`] = `0 - ${input.value}`;
         busy = true;
         next();
       };

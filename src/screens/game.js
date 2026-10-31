@@ -5033,7 +5033,8 @@ function nextQuestion() {
       const mathCfg = tutorialMathConfig(ops, cap, mCap);
       // Onboarding "which numbers" choice: numbers up to that max in + and -,
       // x / ÷ tables up to min(max, 12). Practice keeps its own difficulty.
-      // Practice: the number typed in its setup ("de 1 à N") does the same.
+      // Practice: the number typed in its setup ("de 0 à N") does the same;
+      // with a number limit, + and − start at 0.
       const numberMax = G.practiceMode ? G.practiceNumberMax : G.numberRangeMax;
       if (numberMax > 0) {
         mathCfg.cap = numberMax;
@@ -5053,7 +5054,7 @@ function nextQuestion() {
       G.question = Math.random() < extraShare
         ? newQuestion(extraOps, G.practiceMode ? (G.practiceNumberMax || rawCap) : extraTopicCap(rawCap), rawMCap,
           schoolQuestionPlan(G)?.tier)
-        : newQuestion(mathCfg.ops, mathCfg.cap, mathCfg.mCap);
+        : newQuestion(mathCfg.ops, mathCfg.cap, mathCfg.mCap, undefined, numberMax > 0 ? { add: 0 } : undefined);
     }
     $('question-text').textContent = G.question.text;
     G.question.typed = typedQuestionAllowed() && Math.random() < TYPED_QUESTION_SHARE;

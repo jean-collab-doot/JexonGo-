@@ -7,7 +7,7 @@
 //    level of their school year (+ in Seconde: big numbers). Nothing chosen:
 //    the year's own topics.
 //  - Each year also has smallest numbers (no 2 + 3 or 2 × 2 in high school).
-//  - Number limit (G.numberRangeMax, "1 - 100"...): only changes the size of
+//  - Number limit (G.numberRangeMax, "0 - 100"...): only changes the size of
 //    the numbers, never the kind of question.
 // No school year saved (old accounts): null, game.js keeps the old rule.
 // Pure (no game state import), so it can be tested on its own.
@@ -30,8 +30,8 @@ export function schoolYearOfLevel(level = '') {
 // (math-engine.js tier).
 const ARITH = { '+': 1, '-': 1, '*': 1, '/': 1 };
 const SCHOOL_YEAR_PROFILES = {
-  1:  { ops: { '+': 1 },                          cap: [5, 10],      mCap: [5, 5],   min: [1, 2],   tier: 1 },
-  2:  { ops: { '+': 1, '-': 1 },                  cap: [10, 20],     mCap: [5, 5],   min: [1, 2],   tier: 1 },
+  1:  { ops: { '+': 1 },                          cap: [5, 10],      mCap: [5, 5],   min: [0, 2],   tier: 1 },
+  2:  { ops: { '+': 1, '-': 1 },                  cap: [10, 20],     mCap: [5, 5],   min: [0, 2],   tier: 1 },
   3:  { ops: { '+': 1, '-': 1, '*': 1 },          cap: [20, 100],    mCap: [5, 5],   min: [5, 2],   tier: 1 },
   4:  { ops: ARITH,                               cap: [50, 100],    mCap: [6, 10],  min: [5, 2],   tier: 1 },
   5:  { ops: ARITH,                               cap: [100, 500],   mCap: [10, 12], min: [10, 3],  tier: 1 },
