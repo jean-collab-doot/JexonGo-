@@ -3,9 +3,9 @@
 // nextQuestion) and by the level description (briefing.js) so they agree.
 //  - The school year sets the kind of question and the size of the numbers;
 //    the level number only makes the numbers grow (up to level 30).
-//  - Topics chosen by the player (G.focusTopics) come up twice as often, and
-//    chosen topics outside the year are added; the year's own topics always
-//    stay (choosing + − × ÷ in Seconde still gives algebra).
+//  - Only the topics chosen by the player (G.focusTopics) are asked, at the
+//    level of their school year (+ in Seconde: big numbers). Nothing chosen:
+//    the year's own topics.
 //  - Each year also has smallest numbers (no 2 + 3 or 2 × 2 in high school).
 //  - Number limit (G.numberRangeMax, "1 - 100"...): only changes the size of
 //    the numbers, never the kind of question.
@@ -61,8 +61,7 @@ export function schoolQuestionPlan(state, levelNum = 1) {
   const p = SCHOOL_YEAR_PROFILES[Math.min(12, year)];
   if (!p) return null;
   const chosen = chosenOps(state);
-  const ops = Object.entries(p.ops).map(([op, w]) => [op, chosen.includes(op) ? w * 2 : w]);
-  for (const op of chosen) if (!p.ops[op]) ops.push([op, 1]);
+  const ops = chosen.length ? chosen.map(op => [op, p.ops[op] || 1]) : Object.entries(p.ops);
   const t = Math.min(1, Math.max(0, (levelNum - 1) / (FULL_SIZE_LEVEL - 1)));
   const grow = ([lo, hi]) => Math.round(lo + (hi - lo) * t);
   let cap = grow(p.cap);
