@@ -1952,6 +1952,136 @@ function aimVisible(now = performance.now()) {
     && (_shootingWindowUntil > now || airdropWeaponActive(now));
 }
 
+// ── TUTORIAL CONTROL DEMOS (beginner practice, _guidedRun) ───────────────────
+// 1) First question: how to move the plane. Computer: arrow keys / W A S D;
+//    phone / tablet: slide a finger on the map. Gone once the plane has moved.
+// 2) First 3 shots: the aim sweeps by itself while a ghost mouse (computer)
+//    or a ghost finger on the aim joystick (phone / tablet) does the gesture.
+//    Moving the mouse / touching the joystick hands the aim to the player.
+const AIM_DEMO_SHOTS = 3;
+const AIM_DEMO_GRACE_MS = 1500;   // mouse moves right after answering don't count
+let _moveHint = null;             // { el, x, y, until, doneAt }
+let _moveHintShown = false;
+let _aimDemo = null;              // { el, ghost, start, took, hideAt, moved, lastX }
+let _aimDemoShots = 0;
+
+function _ctlFr() { return getLang() === 'fr'; }
+
+function _ctlHintEl(className, html) {
+  const host = document.getElementById('aim-pad')?.parentElement;
+  if (!host) return null;
+  const el = document.createElement('div');
+  el.className = `ctl-hint ${className}`;
+  el.innerHTML = html;
+  host.appendChild(el);
+  return el;
+}
+
+function _ctlKeys(labels) {
+  const [up, left, down, right] = labels;
+  return `<div class="ctl-keys"><span class="ctl-key k-up">${up}</span><span class="ctl-key k-left">${left}</span><span class="ctl-key k-down">${down}</span><span class="ctl-key k-right">${right}</span></div>`;
+}
+
+function startMoveHint() {
+  if (!_guidedRun || _moveHintShown) return;
+  _moveHintShown = true;
+  const fr = _ctlFr();
+  const touch = isTouchMobile();
+  const html = touch
+    ? `<div class="ctl-drag" aria-hidden="true"><span class="ctl-touch-dot"></span></div>
+       <p>${fr ? 'Glisse ton doigt sur l’écran pour bouger ton avion' : 'Slide your finger on the screen to move your plane'}</p>`
+    : `<div class="ctl-keyrow" aria-hidden="true">${_ctlKeys(['▲', '◀', '▼', '▶'])}<span class="ctl-or">${fr ? 'ou' : 'or'}</span>${_ctlKeys(['W', 'A', 'S', 'D'])}</div>
+       <p>${fr ? 'Bouge ton avion avec les flèches ou W A S D' : 'Move your plane with the arrow keys or W A S D'}</p>`;
+  const el = _ctlHintEl(`ctl-move${touch ? ' ctl-touch' : ''}`, html);
+  if (!el) return;
+  _moveHint = { el, x: G.player.x, y: G.player.y, until: performance.now() + 12000, doneAt: 0 };
+}
+
+function startAimDemo(now) {
+  if (!_guidedRun || !manualAimEnabled() || _aimDemoShots >= AIM_DEMO_SHOTS) return;
+  _aimDemoShots++;
+  _aimDemo?.el?.remove(); _aimDemo?.ghost?.remove();
+  _moveHint?.el?.remove(); _moveHint = null;   // one card at a time
+  const fr = _ctlFr();
+  const touch = isTouchMobile();
+  const left = document.getElementById('aim-pad')?.classList.contains('aim-pad-left');
+  const text = touch
+    ? (fr ? `Glisse le curseur rond (en bas à ${left ? 'gauche' : 'droite'}) pour diriger tes missiles`
+          : `Slide the round joystick (bottom ${left ? 'left' : 'right'}) to aim your missiles`)
+    : (fr ? 'Bouge la souris à gauche ou à droite pour diriger tes missiles' : 'Move the mouse left or right to aim your missiles');
+  const el = _ctlHintEl(`ctl-aim${touch ? ' ctl-touch' : ''}`,
+    `<p><b>${fr ? 'VISER' : 'AIM'} ${_aimDemoShots}/${AIM_DEMO_SHOTS}</b> ${text}</p>`);
+  const ghost = _ctlHintEl(touch ? 'ctl-ghost-touch' : 'ctl-ghost-mouse',
+    touch ? '<span class="ctl-touch-dot"></span>' : '<span class="ctl-mouse"><i></i></span>');
+  _aimDemo = { el, ghost, start: now, took: false, hideAt: 0, moved: 0, lastX: null };
+}
+
+// The player aims by themselves: the demo hands over, with a short "bravo".
+function aimDemoTakeOver() {
+  if (!_aimDemo || _aimDemo.took) return;
+  _aimDemo.took = true;
+  _aimDemo.ghost?.remove(); _aimDemo.ghost = null;
+  if (_aimDemo.el) {
+    _aimDemo.el.classList.add('ctl-done');
+    _aimDemo.el.innerHTML = `<p>${_ctlFr() ? 'Bravo, c’est toi qui vises!' : 'Nice, you are aiming!'}</p>`;
+  }
+  _aimDemo.hideAt = performance.now() + 1300;
+}
+
+// The demo's own aim while the player has not taken over (null otherwise).
+function aimDemoTarget(now) {
+  if (!_aimDemo || _aimDemo.took || !(_shootingWindowUntil > now)) return null;
+  return Math.sin((now - _aimDemo.start) / 650) * 0.9;
+}
+
+function clearControlHints() {
+  _moveHint?.el?.remove(); _moveHint = null;
+  _aimDemo?.el?.remove(); _aimDemo?.ghost?.remove(); _aimDemo = null;
+}
+
+function updateControlHints(now) {
+  if (_moveHint) {
+    const moved = Math.hypot(G.player.x - _moveHint.x, G.player.y - _moveHint.y) > getPlayerSize() * 0.8;
+    if (moved && !_moveHint.doneAt) {
+      _moveHint.doneAt = now + 1000;
+      _moveHint.el.classList.add('ctl-done');
+      _moveHint.el.innerHTML = `<p>${_ctlFr() ? 'Super pilote!' : 'Great flying!'}</p>`;
+    }
+    if ((_moveHint.doneAt && now > _moveHint.doneAt) || now > _moveHint.until) {
+      _moveHint.el.remove(); _moveHint = null;
+    }
+  }
+  if (!_aimDemo) return;
+  const windowOpen = _shootingWindowUntil > now && !_correctionWaiting;
+  if ((_aimDemo.hideAt && now > _aimDemo.hideAt) || (!windowOpen && !_aimDemo.hideAt)) {
+    _aimDemo.el?.remove(); _aimDemo.ghost?.remove();
+    if (!_aimDemo.took && isTouchMobile()) {
+      const knob = document.querySelector('#aim-pad .aim-pad-knob');
+      if (knob && _aimPadTouch == null) knob.style.transform = '';
+    }
+    _aimDemo = null;
+    return;
+  }
+  if (_aimDemo.took || !_aimDemo.ghost) return;
+  // Ghost gesture, in step with the aim it is steering.
+  if (isTouchMobile()) {
+    const pad = document.getElementById('aim-pad');
+    const host = pad?.parentElement;
+    const visible = pad && !pad.classList.contains('hidden');
+    _aimDemo.ghost.style.display = visible ? '' : 'none';
+    if (!visible || !host) return;
+    const r = pad.getBoundingClientRect(), hr = host.getBoundingClientRect();
+    const reach = r.width * 0.32;
+    const dx = Math.sin(_aimAngle) * reach, dy = -Math.cos(_aimAngle) * reach;
+    const knob = pad.querySelector('.aim-pad-knob');
+    if (knob) knob.style.transform = `translate(${dx}px, ${dy}px)`;
+    _aimDemo.ghost.style.left = `${r.left - hr.left + r.width / 2 + dx}px`;
+    _aimDemo.ghost.style.top = `${r.top - hr.top + r.height / 2 + dy}px`;
+  } else {
+    _aimDemo.ghost.style.transform = `translateX(calc(-50% + ${(_aimAngle / AIM_MAX_ANGLE) * 32}vw))`;
+  }
+}
+
 function aimAngleTo(dx, dy) {
   return Math.max(-AIM_MAX_ANGLE, Math.min(AIM_MAX_ANGLE, Math.atan2(dx, -dy)));
 }
@@ -1961,7 +2091,10 @@ function updateAim() {
   // screen sets the angle (left edge = far left, middle = straight ahead,
   // right edge = far right), so moving the plane with the keys never
   // changes where the shots go.
-  if (_aimCursor && canvas?.width) {
+  const now = performance.now();
+  const demoAim = aimDemoTarget(now);   // tutorial: the aim shows itself first
+  if (demoAim !== null) _aimTarget = demoAim;
+  else if (_aimCursor && canvas?.width) {
     const across = Math.max(0, Math.min(1, _aimCursor.x / canvas.width)) * 2 - 1;
     _aimTarget = across * AIM_MAX_ANGLE;
   }
@@ -1977,6 +2110,7 @@ function updateAim() {
     if (pad.classList.contains('is-idle') === show) pad.classList.toggle('is-idle', !show);
   }
   if (canvas) canvas.classList.toggle('aiming', show && !isTouchMobile());
+  if (_moveHint || _aimDemo) updateControlHints(now);
 }
 
 // The extra angle every player shot gets (0 with homing weapons).
@@ -2019,6 +2153,13 @@ function canvasAimMove(e) {
   if (isTouchMobile()) return;
   const r = _canvasRect || (_canvasRect = canvas.getBoundingClientRect());
   _aimCursor = _cssToCanvas(e.clientX - r.left, e.clientY - r.top);
+  // Tutorial aim demo: a real mouse sweep (not the move back from the answer
+  // buttons right after answering) hands the aim to the player.
+  if (_aimDemo && !_aimDemo.took) {
+    if (_aimDemo.lastX != null) _aimDemo.moved += Math.abs(e.clientX - _aimDemo.lastX);
+    _aimDemo.lastX = e.clientX;
+    if (performance.now() - _aimDemo.start > AIM_DEMO_GRACE_MS && _aimDemo.moved > 60) aimDemoTakeOver();
+  }
 }
 function canvasAimLeave() { _aimCursor = null; }
 
@@ -2028,7 +2169,7 @@ function aimPadTouch(e) {
   if (e.cancelable) e.preventDefault();
   e.stopPropagation();
   let t = null;
-  if (e.type === 'touchstart') { t = e.changedTouches[0]; _aimPadTouch = t.identifier; }
+  if (e.type === 'touchstart') { t = e.changedTouches[0]; _aimPadTouch = t.identifier; aimDemoTakeOver(); }
   else t = [...e.touches].find(x => x.identifier === _aimPadTouch);
   if (!t) return;
   const r = pad.getBoundingClientRect();
@@ -4947,6 +5088,7 @@ function nextQuestion() {
   // second one used to swap the equation for another out of nowhere.
   if (G.question && !G.answerLocked) return;
   stopShootingWindow();
+  if (_guidedRun && G.questionsAnswered === 0) startMoveHint();   // tutorial: how to move
   const questionTarget = isTutorialActive() ? tutorialQuestionTarget()
     : _guidedRun ? GUIDED_QUESTIONS : levelCfg.questionCount;
   if (!levelCfg.isBossLevel && G.questionsAnswered >= questionTarget) {
@@ -5284,6 +5426,7 @@ function handleAnswer(choice, btn) {
     _invincible = Math.max(_invincible, CORRECT_ANSWER_INVINCIBLE_FRAMES);
     const cadenceMs = Math.max(0.35, shotDelaySeconds(Number(activeShootingPlan()?.cadence || 5) * (activeAircraftAbility().fireRate || 1))) * 1000;
     _shootingWindowUntil = now + GOOD_ANSWER_SHOOTING_WINDOW_MS;
+    startAimDemo(now);   // tutorial: first 3 shots show how to aim
     firePlayerShootingPlan();
     _nextPlayerShotAt = now + cadenceMs;
     G.correctAnswers++;
@@ -6238,6 +6381,9 @@ export function initGame(levelNum, onComplete) {
   G.coopWinXp = false;   // a new game: nothing won with a teammate yet
   G.onboardingPracticeRun = false;
   _guidedLives = GUIDED_LIVES;
+  clearControlHints();
+  _moveHintShown = false;
+  _aimDemoShots = 0;
   _guidedBreakDone = false;
   _guidedBreakUntil = 0;
   _tutorialStats = _tutorialActive ? (savedTutorial?.stats || emptyTutorialStats()) : null;
@@ -6727,6 +6873,7 @@ export function initGame(levelNum, onComplete) {
     G.coopSession = null;
     _countdownPlaneAnim = null;
     _planeWaitingOffscreen = false;
+    clearControlHints();
     if (_activeSessionId === sid) _activeSessionId = 0;
     _gamePausedFromQuit = false;
     G.pausedGameResume = null;
