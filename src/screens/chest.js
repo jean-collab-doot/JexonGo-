@@ -224,6 +224,12 @@ export function showChest(chestData) {
   contBtn.classList.add('hidden');
   box.classList.remove('hidden');
 
+  // Event skin: OBTENIR, which first needs the Google account (the chest
+  // keeps waiting and opens again in the lobby after signing in).
+  const skinNeedsGoogle = reward?.type === 'skin' && !G.playerRegistered;
+  if (reward?.type === 'skin') openBtn.textContent = getLang() === 'fr' ? 'OBTENIR' : 'GET IT';
+  if (skinNeedsGoogle) contBtn.classList.remove('hidden');
+
   // Refresh continue handler with current returnTo destination
   contBtn.onclick = () => {
     if (_chestBusy) return;
@@ -240,6 +246,10 @@ export function showChest(chestData) {
 
   openBtn.onclick = () => {
     if (_chestBusy) return;  // prevent spam click / double-open
+    if (reward?.type === 'skin' && !G.playerRegistered) {
+      window._openConnectPrompt?.('skin');
+      return;
+    }
     _chestBusy = true;
     openBtn.disabled = true;
 

@@ -4,7 +4,7 @@
 // once earned, a skin is kept forever. After the week, players who don't
 // have it no longer see it anywhere.
 import { G } from '../state.js';
-import { save } from '../utils/storage.js';
+import { save, load } from '../utils/storage.js';
 
 export const HALLOWEEN_2026 = 'halloween2026';
 
@@ -62,6 +62,20 @@ export function setActiveSkin(aircraftId, skinId) {
   save('aircraftSkins', G.aircraftSkins);
 }
 
+// "!" on the hangar: a skin this device's player has not looked at yet
+// (cleared when the skin picker of that plane is opened).
+export function hasNewSkin(aircraftId = null) {
+  const seen = load('seenSkins', []);
+  const ids = aircraftId ? [aircraftId] : Object.keys(AIRCRAFT_SKINS);
+  return ids.some(id => visibleSkins(id).some(s => s.id !== 'default' && !seen.includes(`${id}:${s.id}`)));
+}
+
+export function markSkinsSeen(aircraftId) {
+  const seen = new Set(load('seenSkins', []));
+  visibleSkins(aircraftId).forEach(s => seen.add(`${aircraftId}:${s.id}`));
+  save('seenSkins', [...seen]);
+}
+
 // Hangar / lobby picture of a plane, with its active skin.
 export function aircraftArt(aircraftId) {
   const skin = activeSkin(aircraftId);
@@ -72,6 +86,7 @@ export function aircraftArt(aircraftId) {
 // pilots by clearing a level without a mistake. Only during the event week.
 // The skin comes in a LEGENDARY chest (pendingSkinChest, opened next by
 // screens/chest.js); a chest earned in the week still opens after it.
+// Getting it out of the chest needs a Google account.
 export function earnHalloweenSkin() {
   const key = `t6:${HALLOWEEN_2026}`;
   if (!skinEventOpen(skinDef('t6', HALLOWEEN_2026)) || ownsSkin('t6', HALLOWEEN_2026) || G.pendingSkinChest === key) return false;

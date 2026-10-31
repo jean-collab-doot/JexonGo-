@@ -2021,3 +2021,20 @@ html:not(.touch-phone):not(.touch-tablet):not(.touch-mobile) #s-levelmap #levelm
 .skin-opt.is-locked > img { filter: grayscale(1) brightness(.55); }
 .skin-opt.is-locked em { color: #9aa29e; }
 .skin-opt:not(.is-locked):active { transform: translateY(2px); }
+
+/* "!" new skin alert (hangar.js updateSkinAlerts / T-6 card). */
+[data-hangar-tab="planes"], .jx-slot { position: relative; }
+.jx-new-alert {
+  position: absolute; top: -6px; right: -6px; z-index: 3;
+  min-width: 20px; height: 20px; padding: 0 5px; box-sizing: border-box;
+  display: grid; place-items: center; pointer-events: none;
+  font-family: var(--jx-font); font-size: 14px; line-height: 1; color: #fff;
+  background: #e5262b; border: 2px solid #fff; border-radius: 999px;
+  box-shadow: 0 2px 0 rgba(0,0,0,.35);
+  animation: jx-new-alert-pulse 1.2s ease-in-out infinite;
+}
+.jx-slot .jx-new-alert { top: 6px; right: auto; left: 6px; }
+/* The HANGAR handle is already positioned (absolute): the "!" sits beside its label. */
+#lobby-sheet .jx-sheet-grip .jx-new-alert { top: 50%; right: auto; left: calc(50% + 46px); margin-top: -10px; }
+@keyframes jx-new-alert-pulse { 50% { transform: scale(1.18); } }
+@media (prefers-reduced-motion: reduce) { .jx-new-alert { animation: none; } }

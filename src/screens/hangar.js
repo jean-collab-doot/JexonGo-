@@ -8,7 +8,7 @@ import { t, getLang, applyI18n } from '../i18n.js';
 import { MISSILE_TYPES, SHOOTING_PLANS, renderShotPlanMiniCard, startShopPreview, stopShopPreview } from './shop.js';
 import { coinIcon, uiIcon } from '../utils/icons.js';
 import { isMultiLobby, renderBotPanel, onHangarTabShown } from './multiplayer.js';
-import { visibleSkins, ownsSkin, activeSkin, setActiveSkin, skinEventOpen, aircraftArt } from '../data/skins.js';
+import { visibleSkins, ownsSkin, activeSkin, setActiveSkin, skinEventOpen, aircraftArt, hasNewSkin, markSkinsSeen } from '../data/skins.js';
 import {
   LIFE_UPGRADE_PRICES, SHOT_UPGRADE_PRICES, HOMING_UPGRADE_PRICES, XP_UPGRADE_PRICES, XP_BONUS_PERCENT, WEAPONS,
   AIRDROP_BOOST_ITEMS, AIRDROP_CHANCE_PRICES, AIRDROP_CHANCE_MULT, AIRDROP_TIME_PRICES, AIRDROP_TIME_BONUS_S, AIRDROP_BASE_DURATION_S,
@@ -214,6 +214,23 @@ export function renderHangarPanels() {
     else renderPlanes(body);
   }
   onHangarTabShown(_hangarTab);
+  updateSkinAlerts();
+}
+
+// "!" on the lobby HANGAR handle and the AVIONS tabs while a new skin is unseen.
+// (Next to the label, not inside it: applyI18n() rewrites the label text.)
+export function updateSkinAlerts() {
+  const on = hasNewSkin();
+  document.querySelectorAll('#lobby-sheet .jx-sheet-grip, [data-hangar-tab="planes"]').forEach(el => {
+    let dot = el.querySelector('.jx-new-alert');
+    if (on && !dot) {
+      dot = document.createElement('span');
+      dot.className = 'jx-new-alert';
+      dot.textContent = '!';
+      dot.setAttribute('aria-hidden', 'true');
+      el.appendChild(dot);
+    } else if (!on && dot) dot.remove();
+  });
 }
 
 // ── AVIONS ──────────────────────────────────────────────────────────────────
@@ -249,6 +266,7 @@ function renderPlanes(body) {
       <img src="${aircraftArt(id)}" alt="" style="${unlocked || secretLocked ? '' : 'opacity:.4'}">${secretLocked ? '<span class="jx-slot-mystery" aria-hidden="true">???</span>' : ''}
       <strong>${name}</strong>
       <em>${status}</em>
+      ${unlocked && hasNewSkin(id) ? '<span class="jx-new-alert" aria-label="Nouveau skin">!</span>' : ''}
     `;
 
     if (unlocked && visibleSkins(id).length > 1) {
@@ -340,6 +358,8 @@ function openSkinPicker(id) {
     });
   });
   document.body.appendChild(overlay);
+  markSkinsSeen(id);
+  renderHangarPanels();
 }
 
 // ── TIR DE MISSILE (shot plans + missile skins) ─────────────────────────────

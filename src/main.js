@@ -421,7 +421,7 @@ function cleanup() {
 
 window._nav = nav;
 // No account: tapping a level after level 1 opens the sign-in invitation.
-window._openConnectPrompt = () => openConnectPrompt('levels');
+window._openConnectPrompt = (reason = 'levels') => openConnectPrompt(reason);
 window._showFeedbackPopup  = () => showFeedbackPopup();
 window._resetNewPlayer     = _resetNewPlayer;
 window._testEmailNow       = _testEmailNow;

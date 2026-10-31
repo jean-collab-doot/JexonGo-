@@ -13,7 +13,7 @@ import { releaseSession } from '../systems/session-guard.js';
 import { SFX } from '../audio/sound.js';
 import { coinIcon, expIcon, uiIcon } from '../utils/icons.js';
 import { makeBottomSheet } from '../utils/bottomsheet.js';
-import { bindHangarTabs, renderHangarPanels, buyAircraftFromLobby, planeCost, meetsGradeRequirement } from './hangar.js';
+import { bindHangarTabs, renderHangarPanels, buyAircraftFromLobby, planeCost, meetsGradeRequirement, updateSkinAlerts } from './hangar.js';
 import { isMultiLobby, openMultiChoices } from './multiplayer.js';
 import { initLobbyTour } from './lobby-tour.js';
 import { askAgeBeforeSignIn } from './age-gate.js';
@@ -546,6 +546,7 @@ export function initMenu(nav) {
 
 export function renderMenu() {
   _updateLobbyHud();
+  setTimeout(updateSkinAlerts, 0);   // after the labels are translated below
   // An event skin earned during the last game (e.g. end of the tutorial) and
   // not opened yet: its LEGENDARY chest, once no other popup is open.
   if (G.pendingSkinChest) setTimeout(() => {

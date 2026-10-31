@@ -13,6 +13,7 @@ const GOOGLE_G = `<svg viewBox="0 0 48 48" aria-hidden="true">
 </svg>`;
 
 // reason 'levels': a player without an account reached the end of level 1.
+// reason 'skin': tapped OBTENIR on an event skin chest (screens/chest.js).
 export function showConnectPrompt({ onGoogle, onLater, onLegal, reason = '' } = {}) {
   document.getElementById('connect-prompt')?.remove();
   const fr = getLang() === 'fr';
@@ -27,7 +28,9 @@ export function showConnectPrompt({ onGoogle, onLater, onLegal, reason = '' } = 
     <div class="cp-plane"></div>
     <div class="cp-card">
       <div class="cp-title">${fr ? 'BRAVO PILOTE!' : 'GREAT JOB, PILOT!'}</div>
-      <div class="cp-sub">${levels
+      <div class="cp-sub">${reason === 'skin'
+        ? (fr ? 'Connecte-toi pour obtenir ton skin Halloween 2026!' : 'Sign in to get your Halloween 2026 skin!')
+        : levels
         ? (fr ? 'Pour jouer au niveau 2 et plus, connecte-toi!' : 'Sign in to play level 2 and beyond!')
         : (fr ? 'Tu as fini ta première pratique!' : 'You finished your first practice!')}</div>
       <div class="cp-google">${GOOGLE_G}</div>

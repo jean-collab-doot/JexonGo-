@@ -243,7 +243,7 @@ export function loadSave() {
     G.blueprints = {}; G.chestsWithoutEpic = 0; G.levelStars = {};
     G.unlockedAircraft = withDefaultUnlockedAircraft(['t6']); G.activeAircraft = 't6';
     G.acquiredAircraft = [];
-    G.ownedSkins = []; G.aircraftSkins = {}; G.pendingSkinChest = null;
+    G.ownedSkins = []; G.aircraftSkins = {}; G.pendingSkinChest = load('pendingSkinChest', null); // waits for Google sign-in
     G.unlockedBadges = []; G.flawlessLevels = 0; G.lifetimeXpEarned = 0; G.multiXpEarned = 0;
     G.ownedShootingPlans = ['default']; G.activeShootingPlan = 'default'; G.ownedMissileTypes = []; G.activeMissileType = 'default';
     G.planeUpgrades = {};
