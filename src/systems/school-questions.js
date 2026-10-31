@@ -1,0 +1,87 @@
+// Questions of the normal levels, set by the player's SCHOOL YEAR (the class
+// chosen at onboarding, G.schoolLevel). Used by the game (game.js
+// nextQuestion) and by the level description (briefing.js) so they agree.
+//  - The school year sets the kind of question and the size of the numbers;
+//    the level number only makes the numbers grow (up to level 30).
+//  - Topics chosen by the player (G.focusTopics) come up twice as often, and
+//    chosen topics outside the year are added; the year's own topics always
+//    stay (choosing + − × ÷ in Seconde still gives algebra).
+//  - Each year also has smallest numbers (no 2 + 3 or 2 × 2 in high school).
+//  - Number limit (G.numberRangeMax, "1 - 100"...): only changes the size of
+//    the numbers, never the kind of question.
+// No school year saved (old accounts): null, game.js keeps the old rule.
+// Pure (no game state import), so it can be tested on its own.
+import { newQuestion } from '../game/math-engine.js';
+
+// School year 1-12 from the onboarding class (qc-prim3, fr-2nde, us-10...);
+// 0 when unknown.
+export function schoolYearOfLevel(level = '') {
+  const qc = level.match(/^qc-(prim|sec)(\d)/);
+  if (qc) return qc[1] === 'sec' ? 6 + Number(qc[2]) : Number(qc[2]);
+  const us = level.match(/^us-(\d+)/);
+  if (us) return Number(us[1]);
+  const fr = { 'fr-cp': 1, 'fr-ce1': 2, 'fr-ce2': 3, 'fr-cm1': 4, 'fr-cm2': 5, 'fr-6e': 6, 'fr-5e': 7, 'fr-4e': 8, 'fr-3e': 9, 'fr-2nde': 10, 'fr-1re': 11, 'fr-term': 12 };
+  return fr[level] || 0;
+}
+
+// Per school year: topics with their weight (how often they come up), size
+// of + − numbers [level 1, level 30+], size of × ÷ tables, smallest numbers
+// (min: + − / × ÷ tables) and the kind of exponent / algebra question
+// (math-engine.js tier).
+const ARITH = { '+': 1, '-': 1, '*': 1, '/': 1 };
+const SCHOOL_YEAR_PROFILES = {
+  1:  { ops: { '+': 1 },                          cap: [5, 10],      mCap: [5, 5],   min: [1, 2],   tier: 1 },
+  2:  { ops: { '+': 1, '-': 1 },                  cap: [10, 20],     mCap: [5, 5],   min: [1, 2],   tier: 1 },
+  3:  { ops: { '+': 1, '-': 1, '*': 1 },          cap: [20, 100],    mCap: [5, 5],   min: [5, 2],   tier: 1 },
+  4:  { ops: ARITH,                               cap: [50, 100],    mCap: [6, 10],  min: [5, 2],   tier: 1 },
+  5:  { ops: ARITH,                               cap: [100, 500],   mCap: [10, 12], min: [10, 3],  tier: 1 },
+  6:  { ops: ARITH,                               cap: [100, 1000],  mCap: [12, 12], min: [10, 3],  tier: 1 },
+  7:  { ops: { ...ARITH, '^': 1 },                cap: [100, 1000],  mCap: [12, 12], min: [20, 4],  tier: 2 },
+  8:  { ops: { ...ARITH, '^': 1, alg: 2 },        cap: [200, 1000],  mCap: [12, 12], min: [20, 4],  tier: 2 },
+  9:  { ops: { ...ARITH, '^': 1, alg: 3 },        cap: [500, 1000],  mCap: [12, 15], min: [30, 5],  tier: 3 },
+  10: { ops: { '*': 1, '/': 1, '^': 2, alg: 4 },  cap: [500, 1000],  mCap: [12, 15], min: [50, 6],  tier: 4 },
+  11: { ops: { '*': 1, '/': 1, '^': 2, alg: 4 },  cap: [1000, 1000], mCap: [15, 15], min: [50, 6],  tier: 4 },
+  12: { ops: { '*': 1, '/': 1, '^': 2, alg: 4 },  cap: [1000, 1000], mCap: [15, 15], min: [50, 6],  tier: 4 },
+};
+const FULL_SIZE_LEVEL = 30;
+const TOPIC_OPS = { '+': '+', '-': '-', '*': '*', '/': '/', exponent: '^', algebra: 'alg' };
+
+// Topics the player chose (onboarding / equation settings), as ops.
+function chosenOps(state) {
+  const topics = state.focusTopics?.length ? state.focusTopics
+    : state.focusOperations?.length ? state.focusOperations
+    : state.focusOperation ? [state.focusOperation] : [];
+  return [...new Set(topics.map(t => TOPIC_OPS[t]).filter(Boolean))];
+}
+
+// What a level asks: { year, ops: [[op, weight]...], cap, mCap, mins, tier },
+// or null when the school year is unknown.
+export function schoolQuestionPlan(state, levelNum = 1) {
+  const year = schoolYearOfLevel(state.schoolLevel || '') || Number(state.playerGrade) || 0;
+  const p = SCHOOL_YEAR_PROFILES[Math.min(12, year)];
+  if (!p) return null;
+  const chosen = chosenOps(state);
+  const ops = Object.entries(p.ops).map(([op, w]) => [op, chosen.includes(op) ? w * 2 : w]);
+  for (const op of chosen) if (!p.ops[op]) ops.push([op, 1]);
+  const t = Math.min(1, Math.max(0, (levelNum - 1) / (FULL_SIZE_LEVEL - 1)));
+  const grow = ([lo, hi]) => Math.round(lo + (hi - lo) * t);
+  let cap = grow(p.cap);
+  let mCap = grow(p.mCap);
+  const limit = Number(state.numberRangeMax) || 0;
+  if (limit > 0) {
+    cap = limit;
+    mCap = Math.max(2, Math.min(limit, p.mCap[1]));
+  }
+  return { year, ops, cap, mCap, mins: { add: p.min[0], table: p.min[1] }, tier: p.tier };
+}
+
+export function planOps(plan) {
+  return plan.ops.map(([op]) => op);
+}
+
+export function questionFromPlan(plan) {
+  const total = plan.ops.reduce((sum, [, w]) => sum + w, 0);
+  let roll = Math.random() * total;
+  const [op] = plan.ops.find(([, w]) => (roll -= w) < 0) || plan.ops[0];
+  return newQuestion([op], plan.cap, plan.mCap, plan.tier, plan.mins);
+}

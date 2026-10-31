@@ -4,6 +4,7 @@ import { chosenBasicOpsForLevel, chosenExtraOps, extraTopicShare } from '../syst
 import { uiIcon } from '../utils/icons.js';
 import { $, showScreen } from '../utils/dom.js';
 import { newQuestion } from '../game/math-engine.js';
+import { schoolYearOfLevel, schoolQuestionPlan, questionFromPlan } from '../systems/school-questions.js';
 import { spawnEnemy, updateEnemies, hitEnemy, KAMIKAZE_LOCK_FRAMES } from '../game/enemies.js';
 import { shotDelaySeconds, activeWeapon, homingUpgradeOwned } from '../data/upgrades.js';
 import { createMissile, updateMissiles, drawMissiles } from '../game/missiles.js';
@@ -557,12 +558,7 @@ function selectedExtraTopicOps() {
 
 // School year (1-12) from the onboarding class (qc-sec2, fr-4e, us-8...).
 function schoolYearOf(level = G.schoolLevel || '') {
-  const qc = level.match(/^qc-(prim|sec)(\d)/);
-  if (qc) return qc[1] === 'sec' ? 6 + Number(qc[2]) : Number(qc[2]);
-  const us = level.match(/^us-(\d+)/);
-  if (us) return Number(us[1]);
-  const fr = { 'fr-cp': 1, 'fr-ce1': 2, 'fr-ce2': 3, 'fr-cm1': 4, 'fr-cm2': 5, 'fr-6e': 6, 'fr-5e': 7, 'fr-4e': 8, 'fr-3e': 9, 'fr-2nde': 10, 'fr-1re': 11, 'fr-term': 12 };
-  return fr[level] || 0;
+  return schoolYearOfLevel(level);
 }
 
 // Size of exponent / algebra questions in levels: the level's own number cap,
@@ -5021,33 +5017,44 @@ function nextQuestion() {
     reveal.classList.add('hidden');
     reveal.classList.remove('hiding');
 
-    // Swap in new question — apply grade filter
-    const rawOps  = G.practiceMode ? G.practiceOps : levelCfg.ops;
-    const practiceMath = PRACTICE_MATH_RANGE[G.practiceDifficulty] || PRACTICE_MATH_RANGE.normal;
-    const rawCap  = G.practiceMode ? practiceMath.cap : levelCfg.mathCap;
-    const rawMCap = G.practiceMode ? practiceMath.mCap : levelCfg.mathMultCap;
-    const { ops, cap, mCap } = applyGradeToQuestion(rawOps, rawCap, rawMCap, G.playerGrade);
-    const mathCfg = tutorialMathConfig(ops, cap, mCap);
-    // Onboarding "which numbers" choice: numbers up to that max in + and -,
-    // x / ÷ tables up to min(max, 12). Practice keeps its own difficulty.
-    // Practice: the number typed in its setup ("de 1 à N") does the same.
-    const numberMax = G.practiceMode ? G.practiceNumberMax : G.numberRangeMax;
-    if (numberMax > 0) {
-      mathCfg.cap = numberMax;
-      mathCfg.mCap = Math.max(2, Math.min(12, numberMax));
+    // Normal levels and the new-player practice run: questions of the
+    // player's school year (systems/school-questions.js). The rest below is
+    // for practice, the placement rounds and players without a school year.
+    const schoolPlan = (!G.practiceMode || _guidedRun) && !isTutorialActive()
+      ? schoolQuestionPlan(G, _guidedRun ? 1 : levelCfg.num) : null;
+    if (schoolPlan) {
+      G.question = questionFromPlan(schoolPlan);
+    } else {
+      const rawOps  = G.practiceMode ? G.practiceOps : levelCfg.ops;
+      const practiceMath = PRACTICE_MATH_RANGE[G.practiceDifficulty] || PRACTICE_MATH_RANGE.normal;
+      const rawCap  = G.practiceMode ? practiceMath.cap : levelCfg.mathCap;
+      const rawMCap = G.practiceMode ? practiceMath.mCap : levelCfg.mathMultCap;
+      const { ops, cap, mCap } = applyGradeToQuestion(rawOps, rawCap, rawMCap, G.playerGrade);
+      const mathCfg = tutorialMathConfig(ops, cap, mCap);
+      // Onboarding "which numbers" choice: numbers up to that max in + and -,
+      // x / ÷ tables up to min(max, 12). Practice keeps its own difficulty.
+      // Practice: the number typed in its setup ("de 1 à N") does the same.
+      const numberMax = G.practiceMode ? G.practiceNumberMax : G.numberRangeMax;
+      if (numberMax > 0) {
+        mathCfg.cap = numberMax;
+        mathCfg.mCap = Math.max(2, Math.min(12, numberMax));
+      }
+      // Extra topics: practice with only exponent/algebra selected asks only
+      // those; otherwise they replace part of the usual questions.
+      const extraOps = selectedExtraTopicOps();
+      // Only the chosen equations: no chosen + - x / means only exponent /
+      // algebra; otherwise each chosen equation comes up about as often.
+      const basicCount = G.practiceMode
+        ? (G.practiceOps || []).filter(op => ['+', '-', '*', '/'].includes(op)).length
+        : chosenBasicOpsForLevel(levelCfg.ops).length;
+      const extraShare = extraTopicShare(extraOps.length, basicCount);
+      // Exponent / algebra in practice: the kind of question of the player's
+      // school year, when known.
+      G.question = Math.random() < extraShare
+        ? newQuestion(extraOps, G.practiceMode ? (G.practiceNumberMax || rawCap) : extraTopicCap(rawCap), rawMCap,
+          schoolQuestionPlan(G)?.tier)
+        : newQuestion(mathCfg.ops, mathCfg.cap, mathCfg.mCap);
     }
-    // Extra topics: practice with only exponent/algebra selected asks only
-    // those; otherwise they replace part of the usual questions.
-    const extraOps = selectedExtraTopicOps();
-    // Only the chosen equations: no chosen + - x / means only exponent /
-    // algebra; otherwise each chosen equation comes up about as often.
-    const basicCount = G.practiceMode
-      ? (G.practiceOps || []).filter(op => ['+', '-', '*', '/'].includes(op)).length
-      : chosenBasicOpsForLevel(levelCfg.ops).length;
-    const extraShare = extraTopicShare(extraOps.length, basicCount);
-    G.question = Math.random() < extraShare
-      ? newQuestion(extraOps, G.practiceMode ? (G.practiceNumberMax || rawCap) : extraTopicCap(rawCap), rawMCap)
-      : newQuestion(mathCfg.ops, mathCfg.cap, mathCfg.mCap);
     $('question-text').textContent = G.question.text;
     G.question.typed = typedQuestionAllowed() && Math.random() < TYPED_QUESTION_SHARE;
     const btns = $('answer-buttons');

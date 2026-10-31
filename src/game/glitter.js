@@ -5,18 +5,14 @@
 // sparks, the player's plane), game.js (boss death, nuke) and the explosion
 // sound (audio/sound.js plays a sparkle instead).
 import { G } from '../state.js';
+import { schoolYearOfLevel } from '../systems/school-questions.js';
 
 const GENTLE_MAX_SCHOOL_YEAR = 4;
 
 // School year 1-12 from the onboarding class (qc-prim3, fr-ce2, us-3...);
 // 0 when unknown.
 export function schoolYear(level = G.schoolLevel || '') {
-  const qc = level.match(/^qc-(prim|sec)(\d)/);
-  if (qc) return qc[1] === 'sec' ? 6 + Number(qc[2]) : Number(qc[2]);
-  const us = level.match(/^us-(\d+)/);
-  if (us) return Number(us[1]);
-  const fr = { 'fr-cp': 1, 'fr-ce1': 2, 'fr-ce2': 3, 'fr-cm1': 4, 'fr-cm2': 5, 'fr-6e': 6, 'fr-5e': 7, 'fr-4e': 8, 'fr-3e': 9, 'fr-2nde': 10, 'fr-1re': 11, 'fr-term': 12 };
-  return fr[level] || 0;
+  return schoolYearOfLevel(level);
 }
 
 export function gentleFx() {

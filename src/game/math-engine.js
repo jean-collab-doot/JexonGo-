@@ -17,19 +17,28 @@ function normalizeOps(ops) {
 
 const SUPERSCRIPT = { 2: '²', 3: '³', 4: '⁴', 5: '⁵', 6: '⁶', 7: '⁷', 8: '⁸' };
 
-// Exponent: "3² = ?". Bigger `cap` (level / practice difficulty) = bigger
-// bases and higher powers.
-function makeExponentQuestion(cap) {
+// Kind of exponent / algebra question, 1 (easiest) to 4. Levels pass it from
+// the player's school year (systems/school-questions.js), so a small number
+// limit only makes the numbers smaller, never the question simpler. Without
+// it (practice), the kind follows the size of the numbers as before.
+function tierFromCap(cap) {
+  return cap <= 15 ? 1 : cap <= 30 ? 2 : 3;
+}
+
+// Exponent: "3² = ?". Tier 1 squares, 2 squares and cubes, 3-4 also powers
+// of 2. `cap` limits the base.
+function makeExponentQuestion(cap, tier = tierFromCap(cap)) {
   let base, exp;
   const roll = Math.random();
-  if (cap <= 15) {
-    base = rnd(2, 5); exp = 2;
-  } else if (cap <= 30) {
-    if (roll < 0.7) { base = rnd(2, 10); exp = 2; } else { base = rnd(2, 4); exp = 3; }
+  const top = n => Math.max(2, Math.min(n, cap));
+  if (tier <= 1) {
+    base = rnd(2, top(cap <= 15 ? 5 : 10)); exp = 2;
+  } else if (tier === 2) {
+    if (roll < 0.7) { base = rnd(2, top(10)); exp = 2; } else { base = rnd(2, top(4)); exp = 3; }
   } else if (roll < 0.5) {
-    base = rnd(2, 12); exp = 2;
+    base = rnd(2, top(tier >= 4 ? 15 : 12)); exp = 2;
   } else if (roll < 0.8) {
-    base = rnd(2, 5); exp = 3;
+    base = rnd(2, top(5)); exp = 3;
   } else {
     base = 2; exp = rnd(4, 8);
   }
@@ -37,53 +46,65 @@ function makeExponentQuestion(cap) {
   return { text: `${base}${SUPERSCRIPT[exp]} = ?`, answer, a: base, b: exp, op: '^' };
 }
 
-// Algebra: find x (always a whole number). Small caps = one-step + / −,
-// then one-step × / ÷, then two-step "ax + b = c".
-function makeAlgebraQuestion(cap) {
+// Algebra: find x (always a whole number). Tier 1 one-step + / −, tier 2
+// adds one-step × / ÷, tier 3 adds two-step "ax + b = c", tier 4 is mostly
+// two-step, with "a(x + b) = c". `cap` limits x and the numbers added.
+const ALGEBRA_KINDS = {
+  1: ['add', 'sub'],
+  2: ['add', 'sub', 'mul', 'div'],
+  3: ['add', 'sub', 'mul', 'div', 'two', 'two'],
+  4: ['mul', 'div', 'two', 'two', 'two', 'paren', 'paren'],
+};
+function makeAlgebraQuestion(cap, tier = tierFromCap(cap)) {
   const x = rnd(1, Math.max(5, Math.min(cap, 20)));
-  const kinds = cap <= 15 ? ['add', 'sub'] : cap <= 30 ? ['add', 'sub', 'mul', 'div'] : ['add', 'sub', 'mul', 'div', 'two', 'two'];
+  const kinds = ALGEBRA_KINDS[Math.max(1, Math.min(4, tier))];
   const kind = kinds[rnd(0, kinds.length - 1)];
+  const addMax = Math.max(5, Math.min(cap, tier >= 3 ? 50 : 20));
   let eq;
   if (kind === 'add') {
-    const a = rnd(1, cap); eq = `x + ${a} = ${x + a}`;
+    const a = rnd(1, addMax); eq = `x + ${a} = ${x + a}`;
   } else if (kind === 'sub') {
-    const a = rnd(1, cap); eq = `x − ${a} = ${x}`;
+    const a = rnd(1, addMax); eq = `x − ${a} = ${x}`;
     return { text: `${eq}, x = ?`, answer: x + a, a: x + a, b: a, op: 'alg' };
   } else if (kind === 'mul') {
     const a = rnd(2, 9); eq = `${a}x = ${a * x}`;
   } else if (kind === 'div') {
     const a = rnd(2, 9); eq = `x ÷ ${a} = ${x}`;
     return { text: `${eq}, x = ?`, answer: x * a, a: x * a, b: a, op: 'alg' };
+  } else if (kind === 'paren') {
+    const a = rnd(2, 6); const b = rnd(1, Math.min(addMax, 12)); eq = `${a}(x + ${b}) = ${a * (x + b)}`;
   } else {
-    const a = rnd(2, 6); const b = rnd(1, 15); eq = `${a}x + ${b} = ${a * x + b}`;
+    const a = rnd(2, tier >= 4 ? 9 : 6); const b = rnd(1, Math.min(addMax, tier >= 4 ? 30 : 15));
+    eq = `${a}x + ${b} = ${a * x + b}`;
   }
   return { text: `${eq}, x = ?`, answer: x, a: x, b: 0, op: 'alg' };
 }
 
-function makeQuestion(ops, cap, multCap) {
+// `mins` (optional, from the school year): smallest numbers in + − (add) and
+// in the × ÷ tables (table), so older players do not get 2 + 3 or 2 × 2.
+function makeQuestion(ops, cap, multCap, tier, mins = {}) {
   const safeOps = normalizeOps(ops);
   const op = safeOps[rnd(0, safeOps.length - 1)];
-  if (op === '^') return makeExponentQuestion(cap);
-  if (op === 'alg') return makeAlgebraQuestion(cap);
+  if (op === '^') return makeExponentQuestion(cap, tier);
+  if (op === 'alg') return makeAlgebraQuestion(cap, tier);
   let a, b, answer;
+  const lo = Math.max(1, Math.min(mins.add || 1, Math.floor(cap / 2)));
+  const mc = multCap || 12;
+  const tlo = Math.max(2, Math.min(mins.table || 2, mc));
 
   switch (op) {
     case '+':
-      a = rnd(1, cap);  b = rnd(1, cap);  answer = a + b;
+      a = rnd(lo, cap);  b = rnd(lo, cap);  answer = a + b;
       break;
     case '-':
-      a = rnd(2, cap);  b = rnd(1, a);    answer = a - b;
+      a = rnd(Math.max(2, lo), cap);  b = rnd(Math.min(Math.ceil(lo / 2), a), a);  answer = a - b;
       break;
-    case '*': {
-      const mc = multCap || 12;
-      a = rnd(2, mc);   b = rnd(2, mc);   answer = a * b;
+    case '*':
+      a = rnd(tlo, mc);   b = rnd(2, mc);   answer = a * b;
       break;
-    }
-    default: { // '/'  — always yields whole-number results
-      const mc = multCap || 12;
-      b = rnd(2, mc);   answer = rnd(1, mc);  a = b * answer;
+    default: // '/'  — always yields whole-number results
+      b = rnd(tlo, mc);   answer = rnd(Math.max(1, tlo - 1), mc);  a = b * answer;
       break;
-    }
   }
 
   const sym = op === '*' ? '×' : op === '/' ? '÷' : op;
@@ -102,8 +123,8 @@ function makeChoices(answer) {
   return [...set].sort(() => Math.random() - 0.5);
 }
 
-export function newQuestion(ops, cap, multCap) {
-  const q = makeQuestion(ops, cap, multCap);
+export function newQuestion(ops, cap, multCap, tier, mins) {
+  const q = makeQuestion(ops, cap, multCap, tier, mins);
   q.choices = makeChoices(q.answer);
   return q;
 }

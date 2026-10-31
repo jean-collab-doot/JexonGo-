@@ -2,6 +2,7 @@ import { G } from '../state.js';
 import { save } from '../utils/storage.js';
 import { getLang, setLang } from '../i18n.js';
 import { SFX } from '../audio/sound.js';
+import { schoolYearOfLevel as yearOfLevel } from '../systems/school-questions.js';
 
 function introLang() {
   return getLang();
@@ -178,12 +179,7 @@ const TOPIC_ORDER = ['+', '-', '*', '/', 'exponent', 'algebra'];
 const RANGE_PRESETS = [10, 20, 50, 100];
 
 function schoolYearOfLevel(level = G.schoolLevel || '') {
-  const qc = level.match(/^qc-(prim|sec)(\d)/);
-  if (qc) return qc[1] === 'sec' ? 6 + Number(qc[2]) : Number(qc[2]);
-  const us = level.match(/^us-(\d+)/);
-  if (us) return Number(us[1]);
-  const frYears = { 'fr-cp': 1, 'fr-ce1': 2, 'fr-ce2': 3, 'fr-cm1': 4, 'fr-cm2': 5, 'fr-6e': 6, 'fr-5e': 7, 'fr-4e': 8, 'fr-3e': 9, 'fr-2nde': 10, 'fr-1re': 11, 'fr-term': 12 };
-  return frYears[level] || 0;
+  return yearOfLevel(level);
 }
 
 export function showBriefingEquationOptions(onComplete) {

@@ -1,6 +1,7 @@
 import { $ } from '../utils/dom.js';
 import { uiIcon } from '../utils/icons.js';
 import { getLevel, equationExampleForLevel } from '../data/levels.js';
+import { schoolQuestionPlan, planOps, questionFromPlan } from '../systems/school-questions.js';
 import { getPilotInfo, getPilotGrade, getPilotGradeRank } from '../data/pilots.js';
 import { rankInsigniaSVG } from '../utils/rank-insignia.js';
 import { G } from '../state.js';
@@ -63,11 +64,15 @@ export function showBriefing(levelNum) {
   // only the pilot's chosen ones (+ - x / inside this level's set when some
   // are in it, plus exponent / algebra); nothing chosen = the level's set
   // limited by school grade.
+  // With a school year (systems/school-questions.js), the equations of that
+  // year, or the ones the player chose.
+  const schoolPlan = schoolQuestionPlan(G, levelNum);
   const chosenBasics = chosenBasicOpsForLevel(levelCfg.ops);
   const extras = chosenExtraOps();
   const gradeOps = GRADE_OPS[G.playerGrade];
   const byGrade = gradeOps ? levelCfg.ops.filter(op => gradeOps.includes(op)) : levelCfg.ops;
-  const opsToShow = chosenBasics.length || extras.length
+  const opsToShow = schoolPlan ? planOps(schoolPlan)
+    : chosenBasics.length || extras.length
     ? [...chosenBasics, ...extras]
     : (byGrade.length ? byGrade : ['+']);
 
@@ -93,7 +98,8 @@ export function showBriefing(levelNum) {
   // The sample equation must use the same operations actually shown above
   // (and actually asked in-game) — not the level's raw default ops — so it
   // never contradicts the MATH TYPE row when a focus operation is active.
-  const example = equationExampleForLevel(levelNum, opsToShow, levelCfg.mathCap, levelCfg.mathMultCap);
+  const example = schoolPlan ? questionFromPlan(schoolPlan)
+    : equationExampleForLevel(levelNum, opsToShow, levelCfg.mathCap, levelCfg.mathMultCap);
   $('briefing-example').textContent = example.text;
 
   $('briefing-pilot-avatar').innerHTML = rankInsigniaSVG(getPilotGradeRank(grade), grade.color);
