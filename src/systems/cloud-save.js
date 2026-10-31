@@ -56,7 +56,7 @@ export function previewSafeSnapshot(snap) {
 
 const PERSIST_KEYS = [
   'xp', 'totalXpEarned', 'coins', 'blueprints', 'chestsWithoutEpic', 'levelStars',
-  'unlockedAircraft', 'activeAircraft',
+  'unlockedAircraft', 'activeAircraft', 'ownedSkins', 'aircraftSkins',
   'planeUpgrades',
   'sr71Earned', 'sr71MissionClaimed', 'sr71WrongAnswers', 'sr71MissileHits',
   'sr71CleanLevels', 'highestLevel', 'lifetimeXpEarned', 'multiXpEarned', 'dailyLastLogin', 'dailyStreak', 'dailyLastClaimAt', 'dailyStarterPlanComplete', 'dailyMissions',
@@ -213,6 +213,8 @@ export function mergeSaveSnapshots(local, remote) {
   out.dailyStarterPlanComplete = !!(local.dailyStarterPlanComplete || remote.dailyStarterPlanComplete);
 
   out.acquiredAircraft   = _union(local.acquiredAircraft, remote.acquiredAircraft);
+  out.ownedSkins         = _union(local.ownedSkins, remote.ownedSkins);
+  out.aircraftSkins      = { ...(remote.aircraftSkins || {}), ...(local.aircraftSkins || {}) };
   out.unlockedBadges     = _union(local.unlockedBadges, remote.unlockedBadges);
   out.ownedShootingPlans = _union(local.ownedShootingPlans, remote.ownedShootingPlans);
   out.ownedMissileTypes  = _union(local.ownedMissileTypes, remote.ownedMissileTypes);

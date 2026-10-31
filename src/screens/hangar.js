@@ -8,6 +8,7 @@ import { t, getLang, applyI18n } from '../i18n.js';
 import { MISSILE_TYPES, SHOOTING_PLANS, renderShotPlanMiniCard, startShopPreview, stopShopPreview } from './shop.js';
 import { coinIcon, uiIcon } from '../utils/icons.js';
 import { isMultiLobby, renderBotPanel, onHangarTabShown } from './multiplayer.js';
+import { skinsFor, ownsSkin, activeSkin, setActiveSkin, skinEventOpen, aircraftArt } from '../data/skins.js';
 import {
   LIFE_UPGRADE_PRICES, SHOT_UPGRADE_PRICES, HOMING_UPGRADE_PRICES, XP_UPGRADE_PRICES, XP_BONUS_PERCENT, WEAPONS,
   AIRDROP_BOOST_ITEMS, AIRDROP_CHANCE_PRICES, AIRDROP_CHANCE_MULT, AIRDROP_TIME_PRICES, AIRDROP_TIME_BONUS_S, AIRDROP_BASE_DURATION_S,
@@ -115,7 +116,7 @@ function openPlaneInfo(id) {
   const canvas = $('plane-info-canvas');
   if (canvas) {
     canvas.setAttribute('aria-label', secretLocked ? '' : plane.name);
-    paintPlaneInfoFisheye(canvas, `/assets/hangar/${id}.webp`, secretLocked ? 'secret' : !unlocked);
+    paintPlaneInfoFisheye(canvas, aircraftArt(id), secretLocked ? 'secret' : !unlocked);
   }
   const typeLabel = TYPE_LABELS[plane.type]?.[lang] || (plane.type || '').toUpperCase();
   setText('plane-info-type', hide(typeLabel));
@@ -245,12 +246,15 @@ function renderPlanes(body) {
 
     card.innerHTML = `
       <button type="button" class="jx-slot-info-btn" data-plane-info="${id}" aria-label="Info">ⓘ</button>
-      <img src="/assets/hangar/${id}.webp" alt="" style="${unlocked || secretLocked ? '' : 'opacity:.4'}">${secretLocked ? '<span class="jx-slot-mystery" aria-hidden="true">???</span>' : ''}
+      <img src="${aircraftArt(id)}" alt="" style="${unlocked || secretLocked ? '' : 'opacity:.4'}">${secretLocked ? '<span class="jx-slot-mystery" aria-hidden="true">???</span>' : ''}
       <strong>${name}</strong>
       <em>${status}</em>
     `;
 
-    if (unlocked) {
+    if (unlocked && skinsFor(id).length > 1) {
+      // Planes with liveries (T-6): choose the skin, which also equips the plane.
+      card.addEventListener('click', () => openSkinPicker(id));
+    } else if (unlocked) {
       card.addEventListener('click', () => selectAircraft(id));
     } else if (canBuyAircraft(id)) {
       card.classList.remove('is-locked');
@@ -270,6 +274,73 @@ function renderPlanes(body) {
 
   body.innerHTML = '';
   body.appendChild(grid);
+}
+
+// ── SKINS (liveries) ────────────────────────────────────────────────────────
+// Opened by tapping a plane that has liveries: the default one and the event
+// ones (data/skins.js). An owned skin is worn and the plane equipped at once.
+function skinDates(skin, fr) {
+  const last = new Date(skin.eventEnd.getTime() - 86400000);
+  const fmt = d => d.toLocaleDateString(fr ? 'fr-CA' : 'en-US', { day: 'numeric', month: 'short' });
+  return `${fmt(skin.eventStart)} – ${fmt(last)} ${skin.eventEnd.getFullYear()}`;
+}
+
+function openSkinPicker(id) {
+  const plane = AIRCRAFT[id];
+  const fr = getLang() === 'fr';
+  const lang = fr ? 'fr' : 'en';
+  const worn = activeSkin(id);
+  document.getElementById('skin-picker')?.remove();
+  const overlay = document.createElement('div');
+  overlay.id = 'skin-picker';
+  overlay.className = 'sett-backdrop';
+  const options = skinsFor(id).map(skin => {
+    const owned = ownsSkin(id, skin.id);
+    const on = owned && worn === skin.id && G.activeAircraft === id;
+    let status;
+    if (on) status = fr ? 'ÉQUIPÉ' : 'EQUIPPED';
+    else if (owned) status = fr ? 'ÉQUIPER' : 'EQUIP';
+    else if (skinEventOpen(skin)) status = fr ? 'VERROUILLÉ' : 'LOCKED';
+    else status = fr ? 'ÉVÉNEMENT TERMINÉ' : 'EVENT OVER';
+    const art = skin.id === 'default' ? `/assets/hangar/${id}.webp` : `/assets/hangar/${id}-${skin.id}.webp`;
+    const event = skin.eventStart
+      ? `<span class="skin-opt-event">${fr ? 'Édition limitée' : 'Limited edition'} · ${skinDates(skin, fr)}</span>`
+      : '';
+    const legend = skin.legend
+      ? `<span class="skin-opt-legend">${skin.legend[lang]}${skin.editor ? `<br>${fr ? 'Éditeur' : 'Editor'} : ${skin.editor}` : ''}</span>`
+      : '';
+    const how = !owned && skin.how && skinEventOpen(skin) ? `<span class="skin-opt-how">${skin.how[lang]}</span>` : '';
+    return `
+      <button type="button" class="skin-opt${on ? ' is-on' : ''}${owned ? '' : ' is-locked'}" data-skin="${skin.id}" ${owned ? '' : 'disabled'}>
+        <img src="${art}" alt="">
+        <strong>${skin.name[lang]}</strong>
+        ${event}${legend}${how}
+        <em>${status}</em>
+      </button>`;
+  }).join('');
+  overlay.innerHTML = `
+    <div class="pi-card skin-card" role="dialog" aria-modal="true" aria-labelledby="skin-picker-title">
+      <div class="pi-head">
+        <h2 class="pi-title" id="skin-picker-title">SKINS · ${plane.name}</h2>
+        <button type="button" class="pi-close" aria-label="${fr ? 'Fermer' : 'Close'}">${uiIcon('x')}</button>
+      </div>
+      <div class="skin-opts">${options}</div>
+    </div>`;
+  const close = () => overlay.remove();
+  overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
+  overlay.querySelector('.pi-close').addEventListener('click', close);
+  overlay.querySelectorAll('.skin-opt:not(.is-locked)').forEach(btn => {
+    btn.addEventListener('click', () => {
+      SFX.click?.();
+      setActiveSkin(id, btn.dataset.skin);
+      close();
+      selectAircraft(id);
+      // Lobby showcase picture (menu.js) follows the new livery.
+      const lobbyImg = $('menu-selected-plane');
+      if (lobbyImg && lobbyImg.dataset.plane === id) lobbyImg.src = aircraftArt(id);
+    });
+  });
+  document.body.appendChild(overlay);
 }
 
 // ── TIR DE MISSILE (shot plans + missile skins) ─────────────────────────────

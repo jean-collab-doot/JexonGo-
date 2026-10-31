@@ -19,7 +19,8 @@ import {
 import { AIRCRAFT } from '../data/aircraft.js';
 import { getLevel } from '../data/levels.js';
 import { SFX } from '../audio/sound.js';
-import { preloadBiome, drawFrame, hasTurnArt, SPRITE_DEFS, AIRCRAFT_SPRITE, preloadSprite, biomeBgKey } from '../game/sprites.js';
+import { preloadBiome, drawFrame, hasTurnArt, shipSpriteKey, SPRITE_DEFS, AIRCRAFT_SPRITE, preloadSprite, biomeBgKey } from '../game/sprites.js';
+import { earnHalloweenSkin } from '../data/skins.js';
 import { showYellowLoader } from './new-player-intro.js';
 import { shouldShowIntroBriefing, showIntroBriefing } from './intro-briefing.js';
 import { SHOOTING_PLANS } from './shop.js';
@@ -1397,6 +1398,7 @@ function showTutorialAnalysis() {
   G.tutorialMode = false;
   G.postTutorialConnectPrompt = shouldConnectAfterTutorial;
   clearTutorialProgress(true);
+  earnHalloweenSkin();
   save('tutorialPlan', plan);
   save('focusOperation', G.focusOperation || '');
   save('focusOperations', G.focusOperations || []);
@@ -3425,10 +3427,10 @@ function frame(ts = 0) {
   if (!_playerDestroyed) {
     if (showTurnRightRollArt) {
       const sz = getPlayerSize();
-      drawFrame(ctx, `ship-${G.activeAircraft}-turn-right`, _turnRightFrame, playerDrawX, playerDrawY, sz, sz, { alpha: flashAlpha });
+      drawFrame(ctx, shipSpriteKey(G.activeAircraft, 'right'), _turnRightFrame, playerDrawX, playerDrawY, sz, sz, { alpha: flashAlpha });
     } else if (showTurnLeftRollArt) {
       const sz = getPlayerSize();
-      drawFrame(ctx, `ship-${G.activeAircraft}-turn-left`, _turnLeftFrame, playerDrawX, playerDrawY, sz, sz, { alpha: flashAlpha });
+      drawFrame(ctx, shipSpriteKey(G.activeAircraft, 'left'), _turnLeftFrame, playerDrawX, playerDrawY, sz, sz, { alpha: flashAlpha });
     } else {
       drawAircraftSprite(ctx, G.activeAircraft, playerDrawX, playerDrawY, _shipFrame, flashAlpha, bankAngle);
     }
@@ -4341,7 +4343,7 @@ function updateAndDrawCoop(now) {
   } else if (_coop.turnLeft > 0) {
     drawFrame(ctx, `ship-${_coop.aircraft}-turn-left`, _coop.turnLeft, _coop.x, _coop.y, size, size);
   } else {
-    drawAircraftSprite(ctx, _coop.aircraft, _coop.x, _coop.y, _shipFrame, 1, 0);
+    drawAircraftSprite(ctx, _coop.aircraft, _coop.x, _coop.y, _shipFrame, 1, 0, '', 'default');
   }
   ctx.globalAlpha = 1;
   if (skillOn && _coop.ability?.skill === 'evade') {
@@ -5909,6 +5911,8 @@ function finishLevel(won) {
   // Beginner practice won (last question or T key): main.js shows the Google
   // sign-in invitation to guests.
   G.beginnerPracticeDone = !!(won && _guidedRun);
+  // Halloween 2026 livery: a new pilot who finishes the full tutorial earns it.
+  if (G.beginnerPracticeDone) earnHalloweenSkin();
   // Won with a real teammate (even if they left before the end): this game's
   // EXP also counts for the MULTIJOUEUR TOP 20 (state.js addLifetimeXp).
   G.coopWinXp = !!(won && !G.practiceMode && G.coopSession?.mode === 'online');

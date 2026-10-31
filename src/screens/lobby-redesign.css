@@ -1995,3 +1995,29 @@ html:not(.touch-phone):not(.touch-tablet):not(.touch-mobile) #s-levelmap #levelm
 @keyframes ltOut { to { opacity: 0; } }
 @keyframes ltPop { from { opacity: 0; transform: scale(.85); } }
 @keyframes ltGlow { to { box-shadow: 0 0 0 9999px rgba(3, 8, 20, .82), 0 0 0 3px rgba(255, 230, 140, 1), 0 0 38px 10px rgba(255, 200, 0, .75); } }
+
+/* =====================================================================
+   SKIN PICKER (#skin-picker) - opened by tapping the T-6 in the hangar.
+   Same metal card as #plane-info-overlay (.pi-card), one row per livery.
+   ===================================================================== */
+#skin-picker { padding: 12px; box-sizing: border-box; }
+.skin-opts { display: flex; flex-direction: column; gap: 10px; overflow-y: auto; min-height: 0; }
+.skin-opt {
+  display: grid; grid-template-columns: 96px 1fr; grid-template-rows: auto;
+  column-gap: 12px; row-gap: 3px; align-items: center; text-align: left;
+  padding: 10px 12px; cursor: pointer;
+  font-family: var(--jx-font); color: #fff;
+  background: var(--pi-bar); border: 3px solid #3a403d; border-radius: 12px;
+  box-shadow: inset 0 0 0 2px #000;
+}
+.skin-opt > img { grid-row: 1 / span 4; width: 96px; aspect-ratio: 1376 / 768; object-fit: contain; }
+.skin-opt strong { font-size: 17px; font-weight: normal; letter-spacing: 1px; }
+.skin-opt-event { font-size: 12px; color: #ff9a3c; }
+.skin-opt-legend { font-size: 12px; line-height: 1.35; color: #fff; }
+.skin-opt-how { font-size: 12px; line-height: 1.35; color: #c9d0cc; }
+.skin-opt em { font-style: normal; font-size: 13px; color: var(--pi-gold); }
+.skin-opt.is-on { border-color: var(--pi-gold); box-shadow: inset 0 0 0 2px #000, 0 0 12px rgba(255,201,74,.35); }
+.skin-opt.is-locked { cursor: default; }
+.skin-opt.is-locked > img { filter: grayscale(1) brightness(.55); }
+.skin-opt.is-locked em { color: #9aa29e; }
+.skin-opt:not(.is-locked):active { transform: translateY(2px); }

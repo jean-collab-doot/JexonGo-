@@ -17,6 +17,8 @@ import { bindHangarTabs, renderHangarPanels, buyAircraftFromLobby, planeCost, me
 import { isMultiLobby, openMultiChoices } from './multiplayer.js';
 import { initLobbyTour } from './lobby-tour.js';
 import { askAgeBeforeSignIn } from './age-gate.js';
+import { aircraftArt } from '../data/skins.js';
+import { showPendingSkinReveal } from './skin-reveal.js';
 
 // ── GOOGLE SIGN-IN ───────────────────────────────────────────────────────────
 const GOOGLE_CLIENT_ID = '182729505930-rulb73m14t9qvfpjfbplknrcgn0fqvci.apps.googleusercontent.com';
@@ -287,7 +289,7 @@ export function updateSelectedPlaneShowcase(imgEl, nameEl) {
   const aircraftId = G.activeAircraft || 't6';
   const aircraft = AIRCRAFT[aircraftId] || AIRCRAFT.t6;
   if (imgEl) {
-    imgEl.src = `/assets/hangar/${aircraftId}.webp`;
+    imgEl.src = aircraftArt(aircraftId);
     imgEl.style.filter = '';
     imgEl.dataset.plane = aircraftId; // lets CSS give specific planes (e.g. the C-130) a bigger showcase size
   }
@@ -309,7 +311,7 @@ function renderLobbyPlane() {
   if (_lobbyPreview && G.unlockedAircraft.includes(_lobbyPreview)) _lobbyPreview = null;
   const id = _lobbyPreview || G.activeAircraft || 't6';
   if (img) {
-    img.src = `/assets/hangar/${id}.webp`;
+    img.src = aircraftArt(id);
     img.dataset.plane = id;
     img.classList.toggle('is-locked', !!_lobbyPreview);
   }
@@ -544,6 +546,10 @@ export function initMenu(nav) {
 
 export function renderMenu() {
   _updateLobbyHud();
+  // A livery earned during the last game (e.g. end of the tutorial).
+  if (G.pendingSkinReveal) setTimeout(() => {
+    if (!document.getElementById('s-menu')?.classList.contains('hidden')) showPendingSkinReveal();
+  }, 700);
   _updateMissionsBadge();
   // Badges were removed: drop a leftover "new badge" dot from older versions.
   document.querySelectorAll('.badge-alert').forEach(dot => dot.remove());

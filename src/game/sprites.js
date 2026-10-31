@@ -3,6 +3,7 @@
 // Every image is loaded once and cached; drawFrame() is the only draw primitive.
 
 import { isTouchMobile } from '../utils/device.js';
+import { activeSkin } from '../data/skins.js';
 
 const _images = new Map(); // path → HTMLImageElement
 
@@ -34,6 +35,10 @@ export const SPRITE_DEFS = {
   // rotated sprite for every other ship (see hasTurnArt() below).
   'ship-t6-turn-right': { path: '/assets/ships/player/t6-turn-right-animation.webp', frames: 20, frameCols: 5, frameRows: 4 },
   'ship-t6-turn-left':  { path: '/assets/ships/player/t6-turn-left-animation.webp',  frames: 20, frameCols: 5, frameRows: 4 },
+  // Halloween 2026 livery (data/skins.js): same layout as the default T-6.
+  'ship-t6-halloween2026':            { path: '/assets/ships/player/t6-halloween2026-animation.webp', frames: 10, frameCols: 5, frameRows: 2 },
+  'ship-t6-halloween2026-turn-right': { path: '/assets/ships/player/t6-halloween2026-turn-right-animation.webp', frames: 20, frameCols: 5, frameRows: 4 },
+  'ship-t6-halloween2026-turn-left':  { path: '/assets/ships/player/t6-halloween2026-turn-left-animation.webp',  frames: 20, frameCols: 5, frameRows: 4 },
   'ship-a10-turn-right': { path: '/assets/ships/player/a10-turn-right-animation.webp', frames: 20, frameCols: 5, frameRows: 4 },
   'ship-a10-turn-left':  { path: '/assets/ships/player/a10-turn-left-animation.webp',  frames: 20, frameCols: 5, frameRows: 4 },
   'ship-f16-turn-right': { path: '/assets/ships/player/f16-turn-right-animation.webp', frames: 20, frameCols: 5, frameRows: 4 },
@@ -244,6 +249,15 @@ export function hasTurnArt(aircraftId, dir) {
   return `ship-${aircraftId}-turn-${dir}` in SPRITE_DEFS;
 }
 
+// Sprite key of a plane with a livery (default: the one the player wears).
+// `dir` = 'right' / 'left' for the roll-turn sheets, '' for level flight.
+export function shipSpriteKey(aircraftId, dir = '', skin = activeSkin(aircraftId)) {
+  const turn = dir ? `-turn-${dir}` : '';
+  const skinned = `ship-${aircraftId}-${skin}${turn}`;
+  if (skin !== 'default' && skinned in SPRITE_DEFS) return skinned;
+  return dir ? `ship-${aircraftId}${turn}` : (AIRCRAFT_SPRITE[aircraftId] ?? 'ship-t6');
+}
+
 // Enemy type → sprite key
 export const ENEMY_SPRITE = {
   basic: 'enemy-basic-new',
@@ -273,8 +287,8 @@ export const BIOME_SPRITES = {
 
 /** Preload all ship sprites at app startup so the hangar renders immediately. */
 export function preloadShips(activeAircraft = 't6') {
-  const activeShip = AIRCRAFT_SPRITE[activeAircraft] ?? 'ship-t6';
-  const keys = isTouchMobile() ? [activeShip] : SHIP_KEYS;
+  const activeShip = shipSpriteKey(activeAircraft);
+  const keys = isTouchMobile() ? [activeShip] : [...new Set([...SHIP_KEYS, activeShip])];
   keys
     .forEach(k => {
       const def = SPRITE_DEFS[k];
@@ -292,7 +306,7 @@ const BOSS_SPRITES_BY_LEVEL = {
 
 /** Preload every sprite required for a biome. Missing files are warned, never thrown. */
 export async function preloadBiome(biome, options = {}) {
-  const activeShip = AIRCRAFT_SPRITE[options.aircraftId] ?? 'ship-t6';
+  const activeShip = shipSpriteKey(options.aircraftId);
   const enemyTypes = options.enemyTypes?.length ? options.enemyTypes : ['basic', 'fast', 'tank'];
   const mobileEnemyKeys = [...new Set(enemyTypes.map(type => ENEMY_SPRITE[type] ?? 'enemy-basic-new'))];
   const chainedEnemyKeys = [
@@ -308,8 +322,8 @@ export async function preloadBiome(biome, options = {}) {
   // just-in-time image fetch, and drawFrame() silently skips drawing while
   // it waits, which reads as the plane (or part of it) blinking out.
   const turnKeys = [
-    ...(hasTurnArt(options.aircraftId, 'right') ? [`ship-${options.aircraftId}-turn-right`] : []),
-    ...(hasTurnArt(options.aircraftId, 'left') ? [`ship-${options.aircraftId}-turn-left`] : []),
+    ...(hasTurnArt(options.aircraftId, 'right') ? [shipSpriteKey(options.aircraftId, 'right')] : []),
+    ...(hasTurnArt(options.aircraftId, 'left') ? [shipSpriteKey(options.aircraftId, 'left')] : []),
   ];
   const genericBgKey = `${biome || 'ocean'}-bg`;
   const bgKey = biomeBgKey(biome, options.levelNum);
@@ -327,6 +341,7 @@ export async function preloadBiome(biome, options = {}) {
     : [...new Set([
         ...(BIOME_SPRITES[biome] ?? Object.keys(SPRITE_DEFS)).map(k => k === genericBgKey ? bgKey : k)
           .filter(k => !k.startsWith('boss-') || chainedEnemyKeys.includes(k)),
+        activeShip,
         ...turnKeys,
       ])];
   await Promise.all(

@@ -11,6 +11,8 @@ import { t, getLang } from '../i18n.js';
 import { AIRCRAFT } from '../data/aircraft.js';
 import { coinIcon, expIcon, uiIcon } from '../utils/icons.js';
 import { unlockBossAircraft } from '../systems/secret-aircraft.js';
+import { earnHalloweenSkin } from '../data/skins.js';
+import { showPendingSkinReveal } from './skin-reveal.js';
 
 let _prevHighestLevel = 0;
 
@@ -183,6 +185,8 @@ export function showResult(won) {
       G.flawlessLevels = (G.flawlessLevels || 0) + 1;
       save('flawlessLevels', G.flawlessLevels);
     }
+    // Halloween 2026 livery: a level cleared without a single wrong answer.
+    if (G.questionsAnswered > 0 && G.correctAnswers === G.questionsAnswered) earnHalloweenSkin();
     if (unlockBossAircraft({ won: true, isBoss })) {
       setTimeout(() => showAircraftUnlockReveal('f117'), 500);
     }
@@ -237,6 +241,8 @@ export function showResult(won) {
   $('rs-foot').textContent = `${playerName} · ${aircraft.name || 'T-6 Texan II'}`;
 
   animateResultCounters($('s-result'));
+  // A livery just earned (perfect level, tutorial): popup over the results.
+  setTimeout(showPendingSkinReveal, 900);
 
   // SR-71 unlock: first-time completion of 30 levels with zero wrong answers
   const unlockBanner = $('result-unlock-banner');

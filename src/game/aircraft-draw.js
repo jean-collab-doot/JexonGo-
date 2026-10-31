@@ -1,5 +1,5 @@
 // ── SPRITE-ONLY AIRCRAFT RENDERING ───────────────────────────────────────────
-import { drawFrame, AIRCRAFT_SPRITE } from './sprites.js';
+import { drawFrame, shipSpriteKey } from './sprites.js';
 import { isPhone, isTablet, isTouchMobile } from '../utils/device.js';
 
 const ENGINE_OFFSETS = {
@@ -92,8 +92,8 @@ export function getEnemyDrawSize(enemy) {
 
 export { getPlayerSize };
 
-export function drawAircraftSprite(ctx, aircraftId, cx, cy, frame, alpha = 1, bankAngle = 0, skinFilter = '') {
-  const key = AIRCRAFT_SPRITE[aircraftId] ?? 'ship-t6';
+export function drawAircraftSprite(ctx, aircraftId, cx, cy, frame, alpha = 1, bankAngle = 0, skinFilter = '', skin = undefined) {
+  const key = shipSpriteKey(aircraftId, '', skin);
   ctx.save();
   ctx.imageSmoothingEnabled = true;
   if (alpha !== 1)  ctx.globalAlpha = alpha;
@@ -103,8 +103,8 @@ export function drawAircraftSprite(ctx, aircraftId, cx, cy, frame, alpha = 1, ba
   ctx.restore();
 }
 
-export function drawAircraftSpriteSized(ctx, aircraftId, cx, cy, size, frame, alpha = 1, bankAngle = 0, skinFilter = '') {
-  const key = AIRCRAFT_SPRITE[aircraftId] ?? 'ship-t6';
+export function drawAircraftSpriteSized(ctx, aircraftId, cx, cy, size, frame, alpha = 1, bankAngle = 0, skinFilter = '', skin = undefined) {
+  const key = shipSpriteKey(aircraftId, '', skin);
   ctx.save();
   ctx.imageSmoothingEnabled = true;
   if (alpha !== 1) ctx.globalAlpha = alpha;

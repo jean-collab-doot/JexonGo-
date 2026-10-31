@@ -84,6 +84,9 @@ export const G = {
   unlockedAircraft: [...DEFAULT_UNLOCKED_AIRCRAFT],
   acquiredAircraft: [],
   activeAircraft: 't6',
+  ownedSkins: [],            // earned liveries, 'plane:skin' (data/skins.js)
+  aircraftSkins: {},         // livery worn per plane, { t6: 'halloween2026' }
+  pendingSkinReveal: null,   // a livery just earned, shown once in a popup
   unlockedBadges: [], totalCorrectAnswers: 0, bestAnswerStreak: 0, flawlessLevels: 0,
   lifetimeXpEarned: 0,       // XP really earned since the player started (Fortune de Guerre badge)
   multiXpEarned: 0,
@@ -240,6 +243,7 @@ export function loadSave() {
     G.blueprints = {}; G.chestsWithoutEpic = 0; G.levelStars = {};
     G.unlockedAircraft = withDefaultUnlockedAircraft(['t6']); G.activeAircraft = 't6';
     G.acquiredAircraft = [];
+    G.ownedSkins = []; G.aircraftSkins = {}; G.pendingSkinReveal = null;
     G.unlockedBadges = []; G.flawlessLevels = 0; G.lifetimeXpEarned = 0; G.multiXpEarned = 0;
     G.ownedShootingPlans = ['default']; G.activeShootingPlan = 'default'; G.ownedMissileTypes = []; G.activeMissileType = 'default';
     G.planeUpgrades = {};
@@ -305,6 +309,10 @@ export function loadSave() {
   G.totalCorrectAnswers = load('totalCorrectAnswers', 0);
   G.bestAnswerStreak = load('bestAnswerStreak', 0);
   G.flawlessLevels = Number(load('flawlessLevels', 0)) || 0;
+  G.ownedSkins = load('ownedSkins', []);
+  if (!Array.isArray(G.ownedSkins)) G.ownedSkins = [];
+  G.aircraftSkins = load('aircraftSkins', {}) || {};
+  G.pendingSkinReveal = load('pendingSkinReveal', null);
   // First load after this counter was added: start from the XP already
   // earned (the saved total, unless it is the MAX_XP test value).
   const savedLifetimeXp = load('lifetimeXpEarned', null);
@@ -387,6 +395,8 @@ export function saveAll() {
   save('unlockedAircraft',  G.unlockedAircraft);
   save('acquiredAircraft',  G.acquiredAircraft);
   save('activeAircraft',    G.activeAircraft);
+  save('ownedSkins',        G.ownedSkins);
+  save('aircraftSkins',     G.aircraftSkins);
   ['unlockedBadges','totalCorrectAnswers','bestAnswerStreak','flawlessLevels','lifetimeXpEarned','comboAcePermanent','secretAircraftUnlocked'].forEach(k=>save(k,G[k]));
   save('ownedShootingPlans', G.ownedShootingPlans);
   save('activeShootingPlan', G.activeShootingPlan);
