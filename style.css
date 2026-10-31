@@ -6248,6 +6248,8 @@ html.touch-tablet .menu-top-left {
   line-height: 1;
   filter: drop-shadow(0 4px 10px rgba(0,0,0,0.5));
 }
+/* Event skin tile in the roulette (systems/chest.js skinChest). */
+.rl-skin-icon { width: 92px; height: 52px; object-fit: contain; display: block; }
 .crc-aircraft-icon {
   width: 90px; height: 90px;
   object-fit: contain;

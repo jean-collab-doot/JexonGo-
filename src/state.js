@@ -86,7 +86,7 @@ export const G = {
   activeAircraft: 't6',
   ownedSkins: [],            // earned liveries, 'plane:skin' (data/skins.js)
   aircraftSkins: {},         // livery worn per plane, { t6: 'halloween2026' }
-  pendingSkinReveal: null,   // a livery just earned, shown once in a popup
+  pendingSkinChest: null,    // a livery earned, waiting in a LEGENDARY chest
   unlockedBadges: [], totalCorrectAnswers: 0, bestAnswerStreak: 0, flawlessLevels: 0,
   lifetimeXpEarned: 0,       // XP really earned since the player started (Fortune de Guerre badge)
   multiXpEarned: 0,
@@ -243,7 +243,7 @@ export function loadSave() {
     G.blueprints = {}; G.chestsWithoutEpic = 0; G.levelStars = {};
     G.unlockedAircraft = withDefaultUnlockedAircraft(['t6']); G.activeAircraft = 't6';
     G.acquiredAircraft = [];
-    G.ownedSkins = []; G.aircraftSkins = {}; G.pendingSkinReveal = null;
+    G.ownedSkins = []; G.aircraftSkins = {}; G.pendingSkinChest = null;
     G.unlockedBadges = []; G.flawlessLevels = 0; G.lifetimeXpEarned = 0; G.multiXpEarned = 0;
     G.ownedShootingPlans = ['default']; G.activeShootingPlan = 'default'; G.ownedMissileTypes = []; G.activeMissileType = 'default';
     G.planeUpgrades = {};
@@ -312,7 +312,7 @@ export function loadSave() {
   G.ownedSkins = load('ownedSkins', []);
   if (!Array.isArray(G.ownedSkins)) G.ownedSkins = [];
   G.aircraftSkins = load('aircraftSkins', {}) || {};
-  G.pendingSkinReveal = load('pendingSkinReveal', null);
+  G.pendingSkinChest = load('pendingSkinChest', null);
   // First load after this counter was added: start from the XP already
   // earned (the saved total, unless it is the MAX_XP test value).
   const savedLifetimeXp = load('lifetimeXpEarned', null);

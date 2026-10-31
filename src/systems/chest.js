@@ -1,6 +1,7 @@
 import { G, clampCoins, addLifetimeXp } from '../state.js';
 import { coinIcon, uiIcon } from '../utils/icons.js';
 import { AIRCRAFT, AIRCRAFT_ORDER } from '../data/aircraft.js';
+import { skinDef, grantSkin } from '../data/skins.js';
 
 // ── CHEST TIERS (20 total — 4 milestone levels per rarity) ────────────────────
 // Levels …3,5, 8,10, 13,15… (see isChestLevel in data/levels.js): 2 chests
@@ -164,9 +165,28 @@ export function rollChestTier(tierIdx) {
   return { chestName: tier.name, chestColor: tier.color, chestImg: tier.img, reward, slot, tierIdx: t };
 }
 
+// Event livery (data/skins.js, G.pendingSkinChest): a LEGENDARY chest whose
+// roulette always stops on the skin.
+export function skinChest(key) {
+  const [aircraftId, skinId] = key.split(':');
+  const skin = skinDef(aircraftId, skinId);
+  const tier = CHEST_TIER_DEFS[4];
+  const slot = {
+    id: 'skin', label: 'SKIN', color: '#ff8a1f', rewardType: 'skin', rarityIdx: 3,
+    icon: `<img class="rl-skin-icon" src="/assets/hangar/${aircraftId}-${skinId}.webp" alt="">`,
+  };
+  const reward = { type: 'skin', rarity: 3, key, aircraft: aircraftId, skinId, name: skin?.name, slotId: 'skin' };
+  return { chestName: tier.name, chestColor: tier.color, chestImg: tier.img, reward, slot, tierIdx: 4 };
+}
+
 // ── APPLY REWARD TO STATE ─────────────────────────────────────────────────────
 export function applyReward(reward) {
   const newlyUnlocked = [];
+  // A skin is kept even by a guest (new pilot who just finished the tutorial).
+  if (reward.type === 'skin') {
+    grantSkin(reward.key);
+    return newlyUnlocked;
+  }
   if (!G.playerRegistered) {
     reward._locked = true;
     return newlyUnlocked;

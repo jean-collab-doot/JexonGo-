@@ -1,7 +1,8 @@
 // ── AIRCRAFT SKINS (liveries) ────────────────────────────────────────────────
 // A skin changes only how a plane looks (its sprite sheets and hangar art),
 // never its stats. Event skins can be earned only during their event week;
-// once earned, a skin is kept forever.
+// once earned, a skin is kept forever. After the week, players who don't
+// have it no longer see it anywhere.
 import { G } from '../state.js';
 import { save } from '../utils/storage.js';
 
@@ -43,6 +44,12 @@ export function skinEventOpen(skin, now = new Date()) {
   return !!skin?.eventStart && now >= skin.eventStart && now < skin.eventEnd;
 }
 
+// Skins shown in the hangar: the default one, the owned ones, and event
+// skins still earnable this week (gone for everyone else once it ends).
+export function visibleSkins(aircraftId) {
+  return skinsFor(aircraftId).filter(s => s.id === 'default' || ownsSkin(aircraftId, s.id) || skinEventOpen(s));
+}
+
 // The skin the player flies with this plane ('default' when none is owned).
 export function activeSkin(aircraftId) {
   const id = G.aircraftSkins?.[aircraftId];
@@ -63,15 +70,27 @@ export function aircraftArt(aircraftId) {
 
 // Halloween 2026: new pilots earn it by finishing the full tutorial, regular
 // pilots by clearing a level without a mistake. Only during the event week.
-// Returns true when the skin was just earned (the caller shows the reveal).
+// The skin comes in a LEGENDARY chest (pendingSkinChest, opened next by
+// screens/chest.js); a chest earned in the week still opens after it.
 export function earnHalloweenSkin() {
-  const skin = skinDef('t6', HALLOWEEN_2026);
-  if (!skinEventOpen(skin) || ownsSkin('t6', HALLOWEEN_2026)) return false;
-  G.ownedSkins = [...(G.ownedSkins || []), `t6:${HALLOWEEN_2026}`];
-  save('ownedSkins', G.ownedSkins);
-  // Worn right away: the player sees the reward on the next flight.
-  setActiveSkin('t6', HALLOWEEN_2026);
-  G.pendingSkinReveal = `t6:${HALLOWEEN_2026}`;
-  save('pendingSkinReveal', G.pendingSkinReveal);
+  const key = `t6:${HALLOWEEN_2026}`;
+  if (!skinEventOpen(skinDef('t6', HALLOWEEN_2026)) || ownsSkin('t6', HALLOWEEN_2026) || G.pendingSkinChest === key) return false;
+  G.pendingSkinChest = key;
+  save('pendingSkinChest', key);
   return true;
+}
+
+// Chest opened: the skin is owned for good and worn right away.
+export function grantSkin(key) {
+  const [aircraftId, skinId] = key.split(':');
+  if (!skinDef(aircraftId, skinId)) return;
+  if (!ownsSkin(aircraftId, skinId)) {
+    G.ownedSkins = [...(G.ownedSkins || []), key];
+    save('ownedSkins', G.ownedSkins);
+  }
+  setActiveSkin(aircraftId, skinId);
+  if (G.pendingSkinChest === key) {
+    G.pendingSkinChest = null;
+    save('pendingSkinChest', null);
+  }
 }

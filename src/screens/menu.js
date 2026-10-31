@@ -18,7 +18,7 @@ import { isMultiLobby, openMultiChoices } from './multiplayer.js';
 import { initLobbyTour } from './lobby-tour.js';
 import { askAgeBeforeSignIn } from './age-gate.js';
 import { aircraftArt } from '../data/skins.js';
-import { showPendingSkinReveal } from './skin-reveal.js';
+import { skinChest } from '../systems/chest.js';
 
 // ── GOOGLE SIGN-IN ───────────────────────────────────────────────────────────
 const GOOGLE_CLIENT_ID = '182729505930-rulb73m14t9qvfpjfbplknrcgn0fqvci.apps.googleusercontent.com';
@@ -546,9 +546,12 @@ export function initMenu(nav) {
 
 export function renderMenu() {
   _updateLobbyHud();
-  // A livery earned during the last game (e.g. end of the tutorial).
-  if (G.pendingSkinReveal) setTimeout(() => {
-    if (!document.getElementById('s-menu')?.classList.contains('hidden')) showPendingSkinReveal();
+  // An event skin earned during the last game (e.g. end of the tutorial) and
+  // not opened yet: its LEGENDARY chest, once no other popup is open.
+  if (G.pendingSkinChest) setTimeout(() => {
+    if (!G.pendingSkinChest || document.getElementById('s-menu')?.classList.contains('hidden')) return;
+    if (document.getElementById('connect-prompt') || document.querySelector('.bdg-reveal')) return;
+    window._nav?.toChest(skinChest(G.pendingSkinChest), 'menu');
   }, 700);
   _updateMissionsBadge();
   // Badges were removed: drop a leftover "new badge" dot from older versions.

@@ -2,10 +2,11 @@ import { $ } from '../utils/dom.js';
 import { G } from '../state.js';
 import { save } from '../utils/storage.js';
 import { SFX } from '../audio/sound.js';
-import { RARITIES, BLUEPRINT_COST, ROULETTE_SLOTS, SLOT_WEIGHTS_BY_TIER, applyReward } from '../systems/chest.js';
+import { RARITIES, BLUEPRINT_COST, ROULETTE_SLOTS, SLOT_WEIGHTS_BY_TIER, applyReward, skinChest } from '../systems/chest.js';
+import { skinDef } from '../data/skins.js';
 import { trackMission } from '../systems/daily.js';
 import { AIRCRAFT } from '../data/aircraft.js';
-import { t } from '../i18n.js';
+import { t, getLang } from '../i18n.js';
 import { coinIcon, expIcon, uiIcon } from '../utils/icons.js';
 
 // ── ROULETTE CONFIGURATION ────────────────────────────────────────────────────
@@ -14,7 +15,7 @@ const TILE_GAP  = 6;     // px gap between tiles
 const TILE_UNIT = TILE_W + TILE_GAP;
 const STRIP_REPS = 6;    // how many times to repeat the slot sequence
 
-function buildStrip(winSlotId, tierIdx = 0) {
+function buildStrip(winSlotId, tierIdx = 0, customSlot = null) {
   // Build a pool of tiles respecting tier-specific weights (100 tiles total)
   const weights = SLOT_WEIGHTS_BY_TIER[tierIdx] ?? SLOT_WEIGHTS_BY_TIER[0];
   const pool = [];
@@ -30,7 +31,8 @@ function buildStrip(winSlotId, tierIdx = 0) {
   }
 
   // Force the winning slot to appear at index ~50 (last quarter)
-  const winSlot = ROULETTE_SLOTS.find(s => s.id === winSlotId) || ROULETTE_SLOTS[0];
+  // A skin chest's slot is not in the usual roulette (systems/chest.js skinChest).
+  const winSlot = ROULETTE_SLOTS.find(s => s.id === winSlotId) || customSlot || ROULETTE_SLOTS[0];
   const targetIdx = Math.floor(strip.length * 0.75) + Math.floor(Math.random() * 5);
   strip[Math.min(targetIdx, strip.length - 1)] = winSlot;
 
@@ -52,7 +54,7 @@ function showRoulette(chestData, onDone) {
   const { reward, slot, tierIdx = 0 } = chestData;
   const winSlotId = slot?.id ?? reward?.slotId ?? 'common';
 
-  const { strip, targetIdx } = buildStrip(winSlotId, tierIdx);
+  const { strip, targetIdx } = buildStrip(winSlotId, tierIdx, slot);
 
   // Build HTML
   const vp    = $('rl-viewport');
@@ -155,6 +157,15 @@ function buildResultCard(reward) {
       title = ac?.name || reward.aircraft;
       sub   = `+${reward.pieces} PIECE${reward.pieces > 1 ? 'S' : ''}  ${bar}  ${have}/${needed}`;
     }
+  } else if (reward.type === 'skin') {
+    const fr = getLang() === 'fr';
+    const skin = skinDef(reward.aircraft, reward.skinId);
+    title = skin?.name?.[fr ? 'fr' : 'en'] || reward.skinId;
+    sub   = `${fr ? 'SKIN' : 'SKIN'} ${AIRCRAFT[reward.aircraft]?.name || ''}`
+      + (skin?.legend ? `<br>${skin.legend[fr ? 'fr' : 'en']}` : '')
+      + (skin?.editor ? `<br>${fr ? 'Éditeur' : 'Editor'} : ${skin.editor}` : '')
+      + `<br>${fr ? 'À toi pour toujours. Change-le dans le hangar en touchant le T-6.' : 'Yours for good. Change it in the hangar by tapping the T-6.'}`;
+    icon  = `<img src="/assets/hangar/${reward.aircraft}-${reward.skinId}.webp" alt="" class="crc-aircraft-icon">`;
   } else if (reward.type === 'aircraft') {
     const ac = AIRCRAFT[reward.aircraft];
     if (reward._converted) {
@@ -218,6 +229,11 @@ export function showChest(chestData) {
     if (_chestBusy) return;
     const dest = _returnTo;
     const nav  = _chestNav;
+    // An event skin waiting (perfect level on a chest level): its own chest next.
+    if (G.pendingSkinChest && chestData.reward?.type !== 'skin') {
+      nav.toChest(skinChest(G.pendingSkinChest), dest);
+      return;
+    }
     if (dest === 'menu') nav.toMenu();
     else nav.toMap();
   };

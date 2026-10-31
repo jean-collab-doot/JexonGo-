@@ -4,7 +4,7 @@ import { save, load } from '../utils/storage.js';
 import { SFX } from '../audio/sound.js';
 import { calcStars } from '../systems/xp.js';
 import { saveProgress, guestLevelCapped, GUEST_MAX_LEVEL } from '../systems/progression.js';
-import { rollChest } from '../systems/chest.js';
+import { rollChest, skinChest } from '../systems/chest.js';
 import { trackMission } from '../systems/daily.js';
 import { getPilotGrade, getNextGrade } from '../data/pilots.js';
 import { t, getLang } from '../i18n.js';
@@ -12,7 +12,6 @@ import { AIRCRAFT } from '../data/aircraft.js';
 import { coinIcon, expIcon, uiIcon } from '../utils/icons.js';
 import { unlockBossAircraft } from '../systems/secret-aircraft.js';
 import { earnHalloweenSkin } from '../data/skins.js';
-import { showPendingSkinReveal } from './skin-reveal.js';
 
 let _prevHighestLevel = 0;
 
@@ -76,9 +75,13 @@ function showAircraftUnlockReveal(id, onDone) {
 
 export function initResult(nav) {
   $('btn-result-continue').onclick = () => {
-    if (G.practiceMode) { nav.toMenu(); return; }
+    // Event skin earned (perfect level / tutorial): its LEGENDARY chest first
+    // (a level chest, if any, follows it: see screens/chest.js).
     const lvlCfg = window._currentLevelCfg;
-    if (lvlCfg && lvlCfg.isChestLevel) {
+    const levelChest = !G.practiceMode && lvlCfg && lvlCfg.isChestLevel;
+    if (G.pendingSkinChest && !levelChest) { nav.toChest(skinChest(G.pendingSkinChest), G.practiceMode ? 'menu' : 'map'); return; }
+    if (G.practiceMode) { nav.toMenu(); return; }
+    if (levelChest) {
       nav.toChest(rollChest(), 'map');
     } else {
       nav.toMap();
@@ -241,8 +244,6 @@ export function showResult(won) {
   $('rs-foot').textContent = `${playerName} · ${aircraft.name || 'T-6 Texan II'}`;
 
   animateResultCounters($('s-result'));
-  // A livery just earned (perfect level, tutorial): popup over the results.
-  setTimeout(showPendingSkinReveal, 900);
 
   // SR-71 unlock: first-time completion of 30 levels with zero wrong answers
   const unlockBanner = $('result-unlock-banner');

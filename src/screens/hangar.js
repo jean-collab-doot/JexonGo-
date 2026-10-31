@@ -8,7 +8,7 @@ import { t, getLang, applyI18n } from '../i18n.js';
 import { MISSILE_TYPES, SHOOTING_PLANS, renderShotPlanMiniCard, startShopPreview, stopShopPreview } from './shop.js';
 import { coinIcon, uiIcon } from '../utils/icons.js';
 import { isMultiLobby, renderBotPanel, onHangarTabShown } from './multiplayer.js';
-import { skinsFor, ownsSkin, activeSkin, setActiveSkin, skinEventOpen, aircraftArt } from '../data/skins.js';
+import { visibleSkins, ownsSkin, activeSkin, setActiveSkin, skinEventOpen, aircraftArt } from '../data/skins.js';
 import {
   LIFE_UPGRADE_PRICES, SHOT_UPGRADE_PRICES, HOMING_UPGRADE_PRICES, XP_UPGRADE_PRICES, XP_BONUS_PERCENT, WEAPONS,
   AIRDROP_BOOST_ITEMS, AIRDROP_CHANCE_PRICES, AIRDROP_CHANCE_MULT, AIRDROP_TIME_PRICES, AIRDROP_TIME_BONUS_S, AIRDROP_BASE_DURATION_S,
@@ -251,7 +251,7 @@ function renderPlanes(body) {
       <em>${status}</em>
     `;
 
-    if (unlocked && skinsFor(id).length > 1) {
+    if (unlocked && visibleSkins(id).length > 1) {
       // Planes with liveries (T-6): choose the skin, which also equips the plane.
       card.addEventListener('click', () => openSkinPicker(id));
     } else if (unlocked) {
@@ -294,14 +294,13 @@ function openSkinPicker(id) {
   const overlay = document.createElement('div');
   overlay.id = 'skin-picker';
   overlay.className = 'sett-backdrop';
-  const options = skinsFor(id).map(skin => {
+  const options = visibleSkins(id).map(skin => {
     const owned = ownsSkin(id, skin.id);
     const on = owned && worn === skin.id && G.activeAircraft === id;
     let status;
     if (on) status = fr ? 'ÉQUIPÉ' : 'EQUIPPED';
     else if (owned) status = fr ? 'ÉQUIPER' : 'EQUIP';
-    else if (skinEventOpen(skin)) status = fr ? 'VERROUILLÉ' : 'LOCKED';
-    else status = fr ? 'ÉVÉNEMENT TERMINÉ' : 'EVENT OVER';
+    else status = fr ? 'VERROUILLÉ' : 'LOCKED';
     const art = skin.id === 'default' ? `/assets/hangar/${id}.webp` : `/assets/hangar/${id}-${skin.id}.webp`;
     const event = skin.eventStart
       ? `<span class="skin-opt-event">${fr ? 'Édition limitée' : 'Limited edition'} · ${skinDates(skin, fr)}</span>`
