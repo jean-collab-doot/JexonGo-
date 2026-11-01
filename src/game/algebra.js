@@ -1,0 +1,146 @@
+// Algebra questions by SCHOOL YEAR (6e = 6 ... Terminale = 12), for mental
+// math: whole-number answers, at most two steps, friendly coefficients.
+// `limit` is the number range the player chose ("0 - 100"): every number in
+// the question and the answer stays at or under it; the school year only
+// picks the kind of equation. Each question also carries `steps`: the short
+// solution shown in the correction (game.js buildClearCorrectionSteps).
+//
+//   6  6e         missing number      □ + 7 = 15, □ × 6 = 42
+//   7  5e         one step + −        x + 12 = 30, x − 8 = 15
+//   8  4e         one step × ÷, ax+b  4x = 28, x ÷ 3 = 6, 2x + 3 = 11
+//   9  3e         two steps           3x − 4 = 11, 2(x + 3) = 14
+//  10  Seconde    x on both sides     3x + 5 = x + 13, a(x + b) = c
+//  11  Première   fractions, inequalities  x/4 + 3 = 8, (2/3)x = 10, 2x + 3 < 11 → x < ?
+//  12  Terminale  mix of 10 and 11
+
+function rnd(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
+function pick(list) { return list[rnd(0, list.length - 1)]; }
+
+// Biggest x for a range: small in small ranges, never above 20 (mental math);
+// in big ranges (over 100) constants become multiples of 10.
+function xMax(limit) { return Math.max(3, Math.min(20, Math.floor(limit / 2))); }
+function constant(lo, hi, limit) {
+  if (limit > 100 && hi >= 20) return pick([...Array(Math.floor(hi / 10)).keys()].map(i => (i + 1) * 10).filter(v => v >= lo)) ?? lo;
+  return rnd(lo, Math.max(lo, hi));
+}
+
+const FORMS = {
+  missingAdd(L) {
+    const x = rnd(1, Math.min(L - 1, 50)); const a = constant(1, L - x, L);
+    return { text: `□ + ${a} = ${x + a}, □ = ?`, answer: x, nums: [a, x + a], steps: [`□ = ${x + a} − ${a}`, `□ = ${x}`] };
+  },
+  missingSub(L) {
+    const a = constant(1, Math.floor(L / 2), L); const r = rnd(0, L - a);
+    return { text: `□ − ${a} = ${r}, □ = ?`, answer: r + a, nums: [a, r], steps: [`□ = ${r} + ${a}`, `□ = ${r + a}`] };
+  },
+  missingMul(L) {
+    const a = rnd(2, 10); const x = rnd(1, Math.max(1, Math.min(10, Math.floor(L / a))));
+    return { text: `${a} × □ = ${a * x}, □ = ?`, answer: x, nums: [a, a * x], div: [a, x], steps: [`□ = ${a * x} ÷ ${a}`, `□ = ${x}`] };
+  },
+  add(L) {
+    const x = rnd(1, Math.min(L - 1, 50)); const a = constant(1, L - x, L);
+    return { text: `x + ${a} = ${x + a}, x = ?`, answer: x, nums: [a, x + a], steps: [`x = ${x + a} − ${a}`, `x = ${x}`] };
+  },
+  sub(L) {
+    const a = constant(1, Math.floor(L / 2), L); const r = rnd(1, L - a);
+    return { text: `x − ${a} = ${r}, x = ?`, answer: r + a, nums: [a, r], steps: [`x = ${r} + ${a}`, `x = ${r + a}`] };
+  },
+  mul(L) {
+    const a = pick([2, 3, 4, 5, 6, 10]); const x = rnd(1, Math.max(1, Math.min(xMax(L), Math.floor(L / a))));
+    return { text: `${a}x = ${a * x}, x = ?`, answer: x, nums: [a, a * x], div: [a, x], steps: [`x = ${a * x} ÷ ${a}`, `x = ${x}`] };
+  },
+  div(L) {
+    const a = pick([2, 3, 4, 5, 10]); const r = rnd(1, Math.max(1, Math.min(xMax(L), Math.floor(L / a))));
+    return { text: `x ÷ ${a} = ${r}, x = ?`, answer: r * a, nums: [a, r], steps: [`x = ${r} × ${a}`, `x = ${r * a}`] };
+  },
+  // ax + b = c
+  twoStep(L) {
+    const a = pick([2, 3, 4, 5, 10]); const x = rnd(1, xMax(L)); const b = constant(1, Math.max(1, L - a * x), L);
+    return { text: `${a}x + ${b} = ${a * x + b}, x = ?`, answer: x, nums: [a, b, a * x + b], div: [a, x],
+      steps: [`${a}x = ${a * x + b} − ${b} = ${a * x}`, `x = ${a * x} ÷ ${a} = ${x}`] };
+  },
+  // ax − b = c
+  twoStepMinus(L) {
+    const a = pick([2, 3, 4, 5, 10]); const x = rnd(1, xMax(L)); const b = rnd(1, Math.max(1, Math.min(a * x - 1, 20)));
+    return { text: `${a}x − ${b} = ${a * x - b}, x = ?`, answer: x, nums: [a, b, a * x - b, a * x], div: [a, x],
+      steps: [`${a}x = ${a * x - b} + ${b} = ${a * x}`, `x = ${a * x} ÷ ${a} = ${x}`] };
+  },
+  // a(x + b) = c
+  paren(L) {
+    const a = pick([2, 3, 4, 5]); const x = rnd(1, xMax(L)); const b = rnd(1, Math.max(1, Math.min(10, Math.floor(L / a) - x)));
+    return { text: `${a}(x + ${b}) = ${a * (x + b)}, x = ?`, answer: x, nums: [a, b, a * (x + b)], div: [a, x + b],
+      steps: [`x + ${b} = ${a * (x + b)} ÷ ${a} = ${x + b}`, `x = ${x + b} − ${b} = ${x}`] };
+  },
+  // ax + b = cx + d (a > c)
+  bothSides(L) {
+    const c = rnd(1, 3); const k = pick([1, 2, 3, 4]); const a = c + k; const x = rnd(1, xMax(L));
+    const b = rnd(1, Math.max(1, Math.min(20, L - a * x))); const d = b + k * x;
+    const cx = c === 1 ? 'x' : `${c}x`;
+    return { text: `${a}x + ${b} = ${cx} + ${d}, x = ?`, answer: x, nums: [a, b, c, d, a * x + b], div: [k, x],
+      steps: k === 1 ? [`${a}x − ${cx} = ${d} − ${b}`, `x = ${x}`]
+        : [`${a}x − ${cx} = ${d} − ${b}  →  ${k}x = ${d - b}`, `x = ${d - b} ÷ ${k} = ${x}`] };
+  },
+  // x/a + b = c
+  fractionPlus(L) {
+    const a = pick([2, 3, 4, 5, 10]); const r = rnd(1, Math.max(1, Math.min(10, Math.floor(L / a)))); const b = rnd(1, Math.max(1, Math.min(20, L - r)));
+    return { text: `x/${a} + ${b} = ${r + b}, x = ?`, answer: r * a, nums: [a, b, r + b, r * a],
+      steps: [`x/${a} = ${r + b} − ${b} = ${r}`, `x = ${r} × ${a} = ${r * a}`] };
+  },
+  // (p/q)x = r
+  fractionTimes(L) {
+    const [p, q] = pick([[1, 2], [1, 3], [2, 3], [3, 4], [1, 4], [2, 5]]); const m = rnd(1, Math.max(1, Math.min(10, Math.floor(L / q))));
+    const x = q * m; const r = p * m;
+    return { text: `(${p}/${q})x = ${r}, x = ?`, answer: x, nums: [p, q, r, x], div: [p, x],
+      steps: p === 1 ? [`x = ${r} × ${q}`, `x = ${x}`] : [`x = ${r} × ${q} ÷ ${p}`, `x = ${r * q} ÷ ${p} = ${x}`] };
+  },
+  // ax + b < c → x < ? (answer: the bound)
+  inequality(L) {
+    const a = pick([2, 3, 4, 5]); const k = rnd(2, xMax(L)); const b = rnd(1, Math.max(1, Math.min(20, L - a * k)));
+    const sign = pick(['<', '>']);
+    return { text: `${a}x + ${b} ${sign} ${a * k + b}, x ${sign} ?`, answer: k, nums: [a, b, a * k + b], div: [a, k],
+      steps: [`${a}x ${sign} ${a * k + b} − ${b} = ${a * k}`, `x ${sign} ${a * k} ÷ ${a} = ${k}`] };
+  },
+};
+
+const YEAR_FORMS = {
+  6: ['missingAdd', 'missingSub', 'missingMul'],
+  7: ['add', 'sub', 'add', 'sub', 'missingMul'],
+  8: ['mul', 'div', 'twoStep'],
+  9: ['twoStep', 'twoStepMinus', 'paren'],
+  10: ['bothSides', 'bothSides', 'paren', 'twoStepMinus'],
+  11: ['fractionPlus', 'fractionTimes', 'inequality', 'bothSides'],
+  12: ['bothSides', 'fractionPlus', 'fractionTimes', 'inequality', 'paren'],
+};
+
+// Mental-math check: whole answer, every number in range, and the division
+// step stays in the times tables (÷ 3, 4, 6... only up to 12; ÷ 2, 5, 10 up
+// to 20).
+export function algebraQuestionOk(q, limit) {
+  if (!Number.isInteger(q.answer) || q.answer < 0) return false;
+  if (q.answer > limit) return false;
+  if (q.div) {
+    const [by, result] = q.div;
+    if (result > ([1, 2, 5, 10].includes(by) ? 20 : 12)) return false;
+  }
+  return q.nums.every(n => Number.isInteger(n) && n >= 0 && n <= limit);
+}
+
+// The equation with x replaced by the answer ("3 × 4 + 5 = 4 + 13"), shown
+// as the check of the correction. Inequalities just restate the bound.
+function checkLine(q) {
+  const eq = q.text.split(', ')[0];
+  if (/[<>]/.test(eq)) return q.text.replace('?', q.answer);
+  return eq.replace(/(\d|\))x/g, `$1 × ${q.answer}`).replace(/[x□]/g, String(q.answer));
+}
+
+export function makeSchoolAlgebraQuestion(year, limit) {
+  const forms = YEAR_FORMS[Math.max(6, Math.min(12, year))];
+  const L = Math.max(10, limit);
+  for (let i = 0; i < 60; i++) {
+    const q = FORMS[pick(forms)](L);
+    if (algebraQuestionOk(q, L)) return { ...q, check: checkLine(q), op: 'alg', a: q.answer, b: 0 };
+  }
+  // Very small range: the year's first form with its smallest numbers.
+  const q = FORMS[forms[0]](L);
+  return { ...q, check: checkLine(q), op: 'alg', a: q.answer, b: 0 };
+}

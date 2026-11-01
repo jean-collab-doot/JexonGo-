@@ -112,9 +112,16 @@ function makeQuestion(ops, cap, multCap, tier, mins = {}) {
   return { text: `${a} ${sym} ${b} = ?`, answer, a, b, op };
 }
 
-function makeChoices(answer) {
+// `max` (optional): the player's number range; wrong choices stay in it
+// when there is room.
+function makeChoices(answer, max = Infinity) {
   const set  = new Set([answer]);
   const pool = [-3,-2,-1,1,2,3,-4,4,-5,5,6,-6,7,-7].sort(() => Math.random() - 0.5);
+  for (const off of pool) {
+    if (set.size >= 4) break;
+    const c = answer + off;
+    if (c > 0 && c <= max && !set.has(c)) set.add(c);
+  }
   for (const off of pool) {
     if (set.size >= 4) break;
     const c = answer + off;
@@ -122,6 +129,12 @@ function makeChoices(answer) {
   }
   while (set.size < 4) set.add(answer + set.size * 11);
   return [...set].sort(() => Math.random() - 0.5);
+}
+
+// A question made elsewhere (game/algebra.js) gets its 4 choices here.
+export function withChoices(q, max) {
+  q.choices = makeChoices(q.answer, max);
+  return q;
 }
 
 export function newQuestion(ops, cap, multCap, tier, mins) {

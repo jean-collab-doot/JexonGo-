@@ -5825,6 +5825,16 @@ function buildClearCorrectionSteps(q, picked = null) {
   let setup = `${a} ${symbol} ${b}`;
   // Keep the complete calculation on one line for fast, unambiguous reading.
   setup = `${a} ${symbol} ${b} = ?`;
+  // Algebra (game/algebra.js): the equation and its two solving steps.
+  if (q.steps?.length) {
+    return [
+      buildCorrectionIntro(q, picked),
+      `${isFr ? "ETAPE 1 — L'EQUATION" : 'STEP 1 — THE EQUATION'}\n${q.text}`,
+      `${isFr ? 'ETAPE 2 — ISOLE x' : 'STEP 2 — GET x ALONE'}\n${q.steps.join('\n')}`,
+      `${isFr ? 'ETAPE 3 — VERIFIE' : 'STEP 3 — CHECK'}\n${q.check || q.text}`,
+      `${isFr ? 'BONNE REPONSE' : 'CORRECT ANSWER'} : ${answer}`,
+    ];
+  }
 
   let check;
   if (op === '+') check = `${answer} - ${b} = ${a}`;

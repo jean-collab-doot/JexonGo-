@@ -3,15 +3,18 @@
 // nextQuestion) and by the level description (briefing.js) so they agree.
 //  - The school year sets the kind of question and the size of the numbers;
 //    the level number only makes the numbers grow (up to level 30).
-//  - Only the topics chosen by the player (G.focusTopics) are asked, at the
-//    level of their school year (+ in Seconde: big numbers). Nothing chosen:
-//    the year's own topics.
+//  - Only the topics chosen by the player (G.focusTopics) are asked, each
+//    about as often as the others, at the level of their school year.
+//    Nothing chosen: the year's own topics.
+//  - Algebra comes from game/algebra.js: one kind of equation per school
+//    year, every number (question and answer) inside the number range.
 //  - Each year also has smallest numbers (no 2 + 3 or 2 × 2 in high school).
 //  - Number limit (G.numberRangeMax, "0 - 100"...): only changes the size of
 //    the numbers, never the kind of question.
 // No school year saved (old accounts): null, game.js keeps the old rule.
 // Pure (no game state import), so it can be tested on its own.
-import { newQuestion } from '../game/math-engine.js';
+import { newQuestion, withChoices } from '../game/math-engine.js';
+import { makeSchoolAlgebraQuestion } from '../game/algebra.js';
 
 // School year 1-12 from the onboarding class (qc-prim3, fr-2nde, us-10...);
 // 0 when unknown.
@@ -44,6 +47,8 @@ const SCHOOL_YEAR_PROFILES = {
   12: { ops: { '*': 1, '/': 1, '^': 2, alg: 4 },  cap: [1000, 1000], mCap: [15, 15], min: [50, 6],  tier: 4 },
 };
 const FULL_SIZE_LEVEL = 30;
+// Algebra number range without a chosen one: [level 1, level 30+].
+const ALGEBRA_RANGE = [30, 100];
 const TOPIC_OPS = { '+': '+', '-': '-', '*': '*', '/': '/', exponent: '^', algebra: 'alg' };
 
 // Topics the player chose (onboarding / equation settings), as ops.
@@ -54,33 +59,45 @@ function chosenOps(state) {
   return [...new Set(topics.map(t => TOPIC_OPS[t]).filter(Boolean))];
 }
 
-// What a level asks: { year, ops: [[op, weight]...], cap, mCap, mins, tier },
-// or null when the school year is unknown.
+// What a level asks: { year, ops: [[op, weight]...], cap, mCap, mins, tier,
+// algLimit }, or null when the school year is unknown.
 export function schoolQuestionPlan(state, levelNum = 1) {
   const year = schoolYearOfLevel(state.schoolLevel || '') || Number(state.playerGrade) || 0;
   const p = SCHOOL_YEAR_PROFILES[Math.min(12, year)];
   if (!p) return null;
   const chosen = chosenOps(state);
-  const ops = chosen.length ? chosen.map(op => [op, p.ops[op] || 1]) : Object.entries(p.ops);
+  const ops = chosen.length ? chosen.map(op => [op, 1]) : Object.entries(p.ops);
   const t = Math.min(1, Math.max(0, (levelNum - 1) / (FULL_SIZE_LEVEL - 1)));
   const grow = ([lo, hi]) => Math.round(lo + (hi - lo) * t);
   let cap = grow(p.cap);
   let mCap = grow(p.mCap);
+  let algLimit = grow(ALGEBRA_RANGE);
   const limit = Number(state.numberRangeMax) || 0;
   if (limit > 0) {
     cap = limit;
     mCap = Math.max(2, Math.min(limit, p.mCap[1]));
+    algLimit = limit;
   }
-  return { year, ops, cap, mCap, mins: { add: p.min[0], table: p.min[1] }, tier: p.tier };
+  return { year, ops, cap, mCap, mins: { add: p.min[0], table: p.min[1] }, tier: p.tier, algLimit };
 }
 
 export function planOps(plan) {
   return plan.ops.map(([op]) => op);
 }
 
-export function questionFromPlan(plan) {
+function makeOne(plan) {
   const total = plan.ops.reduce((sum, [, w]) => sum + w, 0);
   let roll = Math.random() * total;
   const [op] = plan.ops.find(([, w]) => (roll -= w) < 0) || plan.ops[0];
+  if (op === 'alg') return withChoices(makeSchoolAlgebraQuestion(plan.year, plan.algLimit), plan.algLimit);
   return newQuestion([op], plan.cap, plan.mCap, plan.tier, plan.mins);
+}
+
+// Every question must come from one of the plan's topics: anything else is
+// thrown away and drawn again.
+export function questionFromPlan(plan) {
+  const topics = planOps(plan);
+  let q = makeOne(plan);
+  for (let i = 0; i < 20 && !topics.includes(q.op); i++) q = makeOne(plan);
+  return q;
 }
