@@ -90,7 +90,7 @@ export function showBriefing(levelNum) {
   const flyBtn = $('btn-briefing-fly');
   if (flyBtn) flyBtn.textContent = t('fly');
 
-  const opSymbols = { '+': '+', '-': '-', '*': 'x', '/': '/', '^': 'x²', alg: 'x=?' };
+  const opSymbols = { '+': '+', '-': '-', '*': 'x', '/': '/', '^': 'x²', alg: 'x=?', frac: '½', pct: '%' };
   $('briefing-ops').textContent = opsToShow
     .map(op => `${opSymbols[op] || op} ${tOp(op)}`)
     .join('  ');
@@ -100,7 +100,7 @@ export function showBriefing(levelNum) {
   // never contradicts the MATH TYPE row when a focus operation is active.
   const example = schoolPlan ? questionFromPlan(schoolPlan)
     : equationExampleForLevel(levelNum, opsToShow, levelCfg.mathCap, levelCfg.mathMultCap);
-  $('briefing-example').textContent = isFr ? example.text.replace(/(\d)\.(\d)/g, '$1,$2') : example.text;
+  $('briefing-example').textContent = isFr ? example.text.replace(/(\d)\.(\d)/g, '$1,$2') : (example.textEn || example.text);
 
   $('briefing-pilot-avatar').innerHTML = rankInsigniaSVG(getPilotGradeRank(grade), grade.color);
   $('briefing-pilot-avatar').style.color = grade.color;
@@ -160,6 +160,7 @@ const OP_NAMES = {
   '+': ['addition', 'addition'], '-': ['soustraction', 'subtraction'],
   '*': ['multiplication', 'multiplication'], '/': ['division', 'division'],
   '^': ['exposant', 'exponent'], alg: ['algèbre', 'algebra'],
+  frac: ['fractions', 'fractions'], pct: ['pourcentages', 'percentages'],
 };
 // Level where each operation first appears (data/levels.js opsForLevel).
 const OP_FIRST_LEVEL = { '-': 16, '*': 26, '/': 36 };

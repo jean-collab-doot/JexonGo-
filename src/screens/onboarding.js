@@ -56,8 +56,21 @@ const RANGE_MAX = 1000;
 // Algebra is offered from the first year of secondary school (Quebec
 // secondaire 1, France 5e, US 7th grade = school year 7 and up).
 const ALGEBRA_FROM_SCHOOL_YEAR = 7;
+// Fractions from CE2 (Quebec 3e année), percentages from CM2 (5e année).
+const FRACTIONS_FROM_SCHOOL_YEAR = 3;
+const PERCENTAGES_FROM_SCHOOL_YEAR = 5;
+// Topics kept only from a school year (dropped when the class goes lower).
+const TOPIC_FROM_SCHOOL_YEAR = {
+  algebra: ALGEBRA_FROM_SCHOOL_YEAR, fractions: FRACTIONS_FROM_SCHOOL_YEAR, percentages: PERCENTAGES_FROM_SCHOOL_YEAR,
+};
 
 function topicSections(answers, fr) {
+  const year = answers.ageGroup_schoolYear || 0;
+  // Fractions / percentages side by side; alone, the button takes the row.
+  const newTopics = [
+    year >= FRACTIONS_FROM_SCHOOL_YEAR && { label: 'Fractions', value: 'fractions' },
+    year >= PERCENTAGES_FROM_SCHOOL_YEAR && { label: fr ? 'Pourcentages' : 'Percentages', value: 'percentages' },
+  ].filter(Boolean).map((choice, i, all) => (all.length === 1 ? { ...choice, wide: true } : choice));
   const sections = [{
     title: fr ? 'PRIMAIRE' : 'PRIMARY',
     choices: [
@@ -65,6 +78,7 @@ function topicSections(answers, fr) {
       { label: '−', value: '-', symbol: true },
       { label: '×', value: '*', symbol: true },
       { label: '÷', value: '/', symbol: true },
+      ...newTopics,
       { label: fr ? 'Exposant' : 'Exponent', value: 'exponent', wide: true },
     ],
   }];
@@ -233,10 +247,9 @@ function applyBriefingEquationAnswers(answers) {
     const topicChoices = topicSections(answers, getLang() === 'fr').flatMap(sec => sec.choices);
     G.focusTopics = answers.hardTopic.map(i => topicChoices[i]?.value).filter(Boolean);
   }
-  // Algebra only stays for secondary-school levels.
-  if (schoolYearOfLevel() < ALGEBRA_FROM_SCHOOL_YEAR) {
-    G.focusTopics = (G.focusTopics || []).filter(v => v !== 'algebra');
-  }
+  // Algebra, fractions and percentages only stay from their school year.
+  const year = schoolYearOfLevel();
+  G.focusTopics = (G.focusTopics || []).filter(v => !(year < (TOPIC_FROM_SCHOOL_YEAR[v] || 0)));
   G.focusOperations = (G.focusTopics || []).filter(v => ['+', '-', '*', '/'].includes(v));
   G.focusOperation = G.focusOperations[0] ?? null;
   if (answers.numberRange_max) G.numberRangeMax = answers.numberRange_max;
@@ -319,6 +332,14 @@ function showQuestionSteps(onComplete, options = {}) {
     busy = false;
     const current = steps[step];
     const all = stepChoices(current, answers);
+    // Topics depend on the class (fractions, algebra...): after going back to
+    // change it, the chosen topics are found again by value in the new list.
+    const chosenValues = answers[`${current.key}_values`];
+    if (current.multi && Array.isArray(chosenValues)) {
+      answers[current.key] = chosenValues.map(v => all.findIndex(c => c?.value === v)).filter(i => i >= 0);
+      answers[`${current.key}_values`] = answers[current.key].map(i => all[i].value);
+      answers[`${current.key}_value`] = answers[current.key].map(i => choiceLabel(all[i]));
+    }
     overlay.innerHTML = '';
     const stepWrap = document.createElement('div');
     stepWrap.className = 'ob-step obn-step';
@@ -530,9 +551,10 @@ function applyOnboardingAnswers(answers) {
   G.currentLevel = wantsPlacement ? (placementMap[grade] ?? 1) : 1;
   G.playerGrade = grade;
 
-  // Every chosen topic is remembered; only + - * / exist in the question
-  // generator today (exponent / algebra are for later).
-  G.focusTopics = answers.hardTopic_values || [];
+  // Every chosen topic is remembered (+ - * /, exponent, fractions,
+  // percentages, algebra), each only from its school year.
+  const year = answers.ageGroup_schoolYear || 0;
+  G.focusTopics = (answers.hardTopic_values || []).filter(v => !(year < (TOPIC_FROM_SCHOOL_YEAR[v] || 0)));
   G.focusOperations = G.focusTopics.filter(v => ['+', '-', '*', '/'].includes(v));
   G.focusOperation = G.focusOperations[0] ?? null;
   save('focusTopics', G.focusTopics);

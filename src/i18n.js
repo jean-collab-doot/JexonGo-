@@ -50,6 +50,8 @@ const STRINGS = {
       '/': 'Division',
       '^': 'Exponent',
       alg: 'Algebra',
+      frac: 'Fractions',
+      pct: 'Percentages',
     },
 
     // Game HUD
@@ -374,6 +376,8 @@ const STRINGS = {
       '/': 'Division',
       '^': 'Exposant',
       alg: 'Algèbre',
+      frac: 'Fractions',
+      pct: 'Pourcentages',
     },
 
     // Game HUD

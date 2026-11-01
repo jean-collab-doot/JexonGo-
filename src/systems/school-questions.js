@@ -10,6 +10,8 @@
 //    year, every number (question and answer) inside the number range.
 //  - + − × ÷ and exponent come from game/arithmetic.js: friendly numbers
 //    for mental math, simple decimals from 6e in small ranges.
+//  - Fractions (game/fractions.js) and percentages (game/percentages.js):
+//    only when chosen, at the level of the school year.
 //  - Negative numbers (game/negatives.js) are not a topic: they come inside
 //    the chosen topics, by school year. CM2-6e: some + − questions use them
 //    (thermometer); from 5e: some + − × ÷ questions and some equations (sign
@@ -23,6 +25,8 @@ import { withChoices } from '../game/math-engine.js';
 import { makeSchoolArithmetic, makeSchoolExponent } from '../game/arithmetic.js';
 import { makeSchoolAlgebraQuestion } from '../game/algebra.js';
 import { makeNegativeQuestion, NEGATIVES_FROM_SCHOOL_YEAR, SIGN_RULES_FROM_SCHOOL_YEAR } from '../game/negatives.js';
+import { makeFractionQuestion } from '../game/fractions.js';
+import { makePercentQuestion } from '../game/percentages.js';
 
 // School year 1-12 from the onboarding class (qc-prim3, fr-2nde, us-10...);
 // 0 when unknown.
@@ -59,7 +63,7 @@ const FULL_SIZE_LEVEL = 30;
 const ALGEBRA_RANGE = [30, 100];
 // From CM2, share of + − (and from 5e also × ÷) questions with negative numbers.
 const NEGATIVE_SHARE = 0.25;
-const TOPIC_OPS = { '+': '+', '-': '-', '*': '*', '/': '/', exponent: '^', algebra: 'alg' };
+const TOPIC_OPS = { '+': '+', '-': '-', '*': '*', '/': '/', exponent: '^', algebra: 'alg', fractions: 'frac', percentages: 'pct' };
 
 // Topics the player chose (onboarding / equation settings), as ops.
 function chosenOps(state) {
@@ -103,6 +107,9 @@ function makeOne(plan) {
     const q = makeSchoolAlgebraQuestion(plan.year, plan.algLimit);
     return q.choices ? q : withChoices(q, plan.algLimit);
   }
+  // Fractions and percentages (chosen topics only): numbers inside the range.
+  if (op === 'frac') return makeFractionQuestion(plan.year, plan.cap);
+  if (op === 'pct') return makePercentQuestion(plan.year, plan.cap);
   // Negative numbers inside the topic: + − from CM2 (thermometer), × ÷ from 5e.
   const negOps = plan.year >= SIGN_RULES_FROM_SCHOOL_YEAR ? ['+', '-', '*', '/']
     : plan.year >= NEGATIVES_FROM_SCHOOL_YEAR ? ['+', '-'] : [];

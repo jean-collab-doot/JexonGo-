@@ -368,9 +368,9 @@ let _practiceNumberMaxBeforeRun = null;
 let _skipConnectPromptAfterRun = false;   // run started from the BRIFING button
 function startPracticeFromOnboarding({ skipConnectPrompt = false } = {}) {
   _skipConnectPromptAfterRun = skipConnectPrompt;
-  const extra = { exponent: '^', algebra: 'alg' };
+  const extra = { exponent: '^', algebra: 'alg', fractions: 'frac', percentages: 'pct' };
   const ops = [...new Set((G.focusTopics || []).map(t => extra[t] || t)
-    .filter(op => ['+', '-', '*', '/', '^', 'alg'].includes(op)))];
+    .filter(op => ['+', '-', '*', '/', '^', 'alg', 'frac', 'pct'].includes(op)))];
   G.practiceOps = ops.length ? ops : ['+', '-', '*', '/'];
   // Only for this run: the player's own practice number range comes back
   // when the game ends (see the toGame end callback).

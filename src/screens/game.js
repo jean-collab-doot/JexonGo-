@@ -9,6 +9,8 @@ import { fmt as fmtNumber, NEGATIVES_FROM_SCHOOL_YEAR } from '../game/negatives.
 import { makeSchoolAlgebraQuestion } from '../game/algebra.js';
 import { makeSchoolExponent } from '../game/arithmetic.js';
 import { tipFor, tipLines } from '../game/tips.js';
+import { makeFractionQuestion } from '../game/fractions.js';
+import { makePercentQuestion } from '../game/percentages.js';
 import { spawnEnemy, updateEnemies, hitEnemy, KAMIKAZE_LOCK_FRAMES } from '../game/enemies.js';
 import { shotDelaySeconds, activeWeapon, homingUpgradeOwned } from '../data/upgrades.js';
 import { createMissile, updateMissiles, drawMissiles } from '../game/missiles.js';
@@ -556,7 +558,7 @@ function applyGradeToQuestion(ops, cap, mCap, grade) {
 // practice setup (G.practiceOps). Not part of any level's own op set, so they
 // are mixed in on top of it (see nextQuestion).
 function selectedExtraTopicOps() {
-  if (G.practiceMode) return (G.practiceOps || []).filter(op => op === '^' || op === 'alg');
+  if (G.practiceMode) return (G.practiceOps || []).filter(op => ['^', 'alg', 'frac', 'pct'].includes(op));
   if (isTutorialActive()) return [];   // placement rounds stay on + - x /
   return chosenExtraOps();
 }
@@ -5486,9 +5488,12 @@ function nextQuestion() {
         ? newQuestion(mathCfg.ops, mathCfg.cap, mathCfg.mCap, undefined, numberMax > 0 ? { add: 0 } : undefined)
         : year && extraOp === 'alg' ? ensureChoices(makeSchoolAlgebraQuestion(year, extraCap), extraCap)
         : year && extraOp === '^' ? makeSchoolExponent(year, extraCap)
+        // Fractions / percentages: at the school year's level (6e if unknown).
+        : extraOp === 'frac' ? makeFractionQuestion(year || 6, extraCap)
+        : extraOp === 'pct' ? makePercentQuestion(year || 6, extraCap)
         : newQuestion(extraOps, extraCap, rawMCap);
     }
-    $('question-text').textContent = localDecimals(G.question.text);
+    $('question-text').textContent = localDecimals(questionText(G.question));
     // Negative answers can be typed when the keypad has its minus key.
     // Decimal answers are always choices (the keypad has no comma).
     G.question.typed = typedQuestionAllowed() && Number.isInteger(G.question.answer)
@@ -5633,6 +5638,14 @@ function localDecimals(text) {
 }
 function showNum(n) {
   return localDecimals(fmtNumber(n));
+}
+// Fractions / percentages have words ("3/4 de 20", "3/4 of 20"): the
+// player's language. Other questions are the same in both.
+function questionText(q) {
+  return getLang() === 'fr' ? q.text : (q.textEn || q.text);
+}
+function questionCheck(q) {
+  return getLang() === 'fr' ? q.check : (q.checkEn || q.check);
 }
 
 // Minus key on the typed keypad: for every typed question of players who
@@ -5988,10 +6001,10 @@ function buildClearCorrectionSteps(q, picked = null) {
     return [
       buildCorrectionIntro(q, picked),
       alg ? `${isFr ? "ETAPE 1 — L'EQUATION" : 'STEP 1 — THE EQUATION'}\n${q.text}`
-        : `${isFr ? 'ETAPE 1 — LE CALCUL' : 'STEP 1 — THE CALCULATION'}\n${q.text}`,
+        : `${isFr ? 'ETAPE 1 — LE CALCUL' : 'STEP 1 — THE CALCULATION'}\n${questionText(q)}`,
       alg ? `${isFr ? 'ETAPE 2 — ISOLE x' : 'STEP 2 — GET x ALONE'}\n${tip}${q.steps.join('\n')}`
         : `${isFr ? 'ETAPE 2 — ASTUCE' : 'STEP 2 — TIP'}\n${tip}${q.steps.join('\n')}`,
-      `${isFr ? 'ETAPE 3 — VERIFIE' : 'STEP 3 — CHECK'}\n${q.check || q.text}`,
+      `${isFr ? 'ETAPE 3 — VERIFIE' : 'STEP 3 — CHECK'}\n${questionCheck(q) || questionText(q)}`,
       `${isFr ? 'BONNE REPONSE' : 'CORRECT ANSWER'} : ${fmtNumber(answer)}`,
     ].map(localDecimals);
   }
