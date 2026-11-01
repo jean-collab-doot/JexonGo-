@@ -20,6 +20,10 @@ const PRACTICE_OPS = [
   { op: '-', symbol: '−', color: '#60a5fa', labelKey: 'sub' },
   { op: '*', symbol: '×', color: '#ff8c00', labelKey: 'mul' },
   { op: '/', symbol: '÷', color: '#a855f7', labelKey: 'div' },
+  // Fractions / percentages: questions of the player's school year
+  // (game/fractions.js, game/percentages.js), same order as the topic screen.
+  { op: 'frac', symbol: '1/2', color: '#eab308', labelKey: 'fractions' },
+  { op: 'pct', symbol: '%', color: '#ec4899', labelKey: 'percentages' },
   { op: '^', symbol: 'x²', color: '#f43f5e', labelKey: 'expo' },
   { op: 'alg', symbol: 'x=?', color: '#14b8a6', labelKey: 'algebra' },
 ];
