@@ -100,7 +100,7 @@ export function showBriefing(levelNum) {
   // never contradicts the MATH TYPE row when a focus operation is active.
   const example = schoolPlan ? questionFromPlan(schoolPlan)
     : equationExampleForLevel(levelNum, opsToShow, levelCfg.mathCap, levelCfg.mathMultCap);
-  $('briefing-example').textContent = example.text;
+  $('briefing-example').textContent = isFr ? example.text.replace(/(\d)\.(\d)/g, '$1,$2') : example.text;
 
   $('briefing-pilot-avatar').innerHTML = rankInsigniaSVG(getPilotGradeRank(grade), grade.color);
   $('briefing-pilot-avatar').style.color = grade.color;

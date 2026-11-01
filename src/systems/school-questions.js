@@ -8,6 +8,8 @@
 //    Nothing chosen: the year's own topics.
 //  - Algebra comes from game/algebra.js: one kind of equation per school
 //    year, every number (question and answer) inside the number range.
+//  - + − × ÷ and exponent come from game/arithmetic.js: friendly numbers
+//    for mental math, simple decimals from 6e in small ranges.
 //  - Negative numbers (game/negatives.js) are not a topic: they come inside
 //    the chosen topics, by school year. CM2-6e: some + − questions use them
 //    (thermometer); from 5e: some + − × ÷ questions and some equations (sign
@@ -17,7 +19,8 @@
 //    the numbers, never the kind of question.
 // No school year saved (old accounts): null, game.js keeps the old rule.
 // Pure (no game state import), so it can be tested on its own.
-import { newQuestion, withChoices } from '../game/math-engine.js';
+import { withChoices } from '../game/math-engine.js';
+import { makeSchoolArithmetic, makeSchoolExponent } from '../game/arithmetic.js';
 import { makeSchoolAlgebraQuestion } from '../game/algebra.js';
 import { makeNegativeQuestion, NEGATIVES_FROM_SCHOOL_YEAR, SIGN_RULES_FROM_SCHOOL_YEAR } from '../game/negatives.js';
 
@@ -85,7 +88,7 @@ export function schoolQuestionPlan(state, levelNum = 1) {
     mCap = Math.max(2, Math.min(limit, p.mCap[1]));
     algLimit = limit;
   }
-  return { year, ops, cap, mCap, mins: { add: p.min[0], table: p.min[1] }, tier: p.tier, algLimit };
+  return { year, ops, cap, mCap, mins: { add: p.min[0], table: p.min[1] }, tier: p.tier, algLimit, limit };
 }
 
 export function planOps(plan) {
@@ -107,7 +110,8 @@ function makeOne(plan) {
     const q = makeNegativeQuestion(plan.year, plan.cap, op, { mins: plan.mins.add, mCap: plan.mCap });
     if (q) return q;
   }
-  return newQuestion([op], plan.cap, plan.mCap, plan.tier, plan.mins);
+  if (op === '^') return makeSchoolExponent(plan.year, plan.limit || 1024);
+  return makeSchoolArithmetic(op, plan);
 }
 
 // Every question must come from one of the plan's topics: anything else is

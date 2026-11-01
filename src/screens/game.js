@@ -3,9 +3,11 @@ import { gentleFx, drawGlitterBurst, schoolYear } from '../game/glitter.js';
 import { chosenBasicOpsForLevel, chosenExtraOps, extraTopicShare } from '../systems/question-topics.js';
 import { uiIcon } from '../utils/icons.js';
 import { $, showScreen } from '../utils/dom.js';
-import { newQuestion } from '../game/math-engine.js';
+import { newQuestion, withChoices } from '../game/math-engine.js';
 import { schoolYearOfLevel, schoolQuestionPlan, questionFromPlan } from '../systems/school-questions.js';
 import { fmt as fmtNumber, NEGATIVES_FROM_SCHOOL_YEAR } from '../game/negatives.js';
+import { makeSchoolAlgebraQuestion } from '../game/algebra.js';
+import { makeSchoolExponent } from '../game/arithmetic.js';
 import { spawnEnemy, updateEnemies, hitEnemy, KAMIKAZE_LOCK_FRAMES } from '../game/enemies.js';
 import { shotDelaySeconds, activeWeapon, homingUpgradeOwned } from '../data/upgrades.js';
 import { createMissile, updateMissiles, drawMissiles } from '../game/missiles.js';
@@ -5473,17 +5475,23 @@ function nextQuestion() {
         ? (G.practiceOps || []).filter(op => ['+', '-', '*', '/'].includes(op)).length
         : chosenBasicOpsForLevel(levelCfg.ops).length;
       const extraShare = extraTopicShare(extraOps.length, basicCount);
-      // Exponent / algebra in practice: the kind of question of the player's
-      // school year, when known.
-      G.question = Math.random() < extraShare
-        ? newQuestion(extraOps, G.practiceMode ? (G.practiceNumberMax || rawCap) : extraTopicCap(rawCap), rawMCap,
-          schoolQuestionPlan(G)?.tier)
-        : newQuestion(mathCfg.ops, mathCfg.cap, mathCfg.mCap, undefined, numberMax > 0 ? { add: 0 } : undefined);
+      // Exponent / algebra in practice: the questions of the player's school
+      // year (game/algebra.js, game/arithmetic.js) inside the practice range.
+      const year = schoolYearOf();
+      const extraCap = G.practiceMode ? (G.practiceNumberMax || rawCap) : extraTopicCap(rawCap);
+      const extraOp = extraOps[Math.floor(Math.random() * extraOps.length)];
+      const ensureChoices = (q, max) => (q.choices ? q : withChoices(q, max));
+      G.question = Math.random() >= extraShare
+        ? newQuestion(mathCfg.ops, mathCfg.cap, mathCfg.mCap, undefined, numberMax > 0 ? { add: 0 } : undefined)
+        : year && extraOp === 'alg' ? ensureChoices(makeSchoolAlgebraQuestion(year, extraCap), extraCap)
+        : year && extraOp === '^' ? makeSchoolExponent(year, extraCap)
+        : newQuestion(extraOps, extraCap, rawMCap);
     }
-    $('question-text').textContent = G.question.text;
+    $('question-text').textContent = localDecimals(G.question.text);
     // Negative answers can be typed when the keypad has its minus key.
-    G.question.typed = typedQuestionAllowed() && (G.question.answer >= 0 || typedMinusKey())
-      && Math.random() < TYPED_QUESTION_SHARE;
+    // Decimal answers are always choices (the keypad has no comma).
+    G.question.typed = typedQuestionAllowed() && Number.isInteger(G.question.answer)
+      && (G.question.answer >= 0 || typedMinusKey()) && Math.random() < TYPED_QUESTION_SHARE;
     const btns = $('answer-buttons');
     btns.innerHTML = '';
     btns.classList.toggle('typed-answer', G.question.typed);
@@ -5493,7 +5501,7 @@ function nextQuestion() {
       G.question.choices.forEach(c => {
         const btn = document.createElement('button');
         btn.className = 'answer-btn';
-        btn.textContent = fmtNumber(c);   // real minus sign: −15
+        btn.textContent = showNum(c);   // real minus sign (−15), decimal comma (2,5)
         btn.addEventListener('click', () => handleAnswer(c, btn));
         btns.appendChild(btn);
       });
@@ -5615,6 +5623,15 @@ let _typedValue = '';
 
 function typedQuestionAllowed() {
   return !_guidedRun && !isTutorialActive();
+}
+
+// Numbers as the player reads them: real minus sign (−15) and, in French,
+// a decimal comma (2,5).
+function localDecimals(text) {
+  return getLang() === 'fr' ? String(text).replace(/(\d)\.(\d)/g, '$1,$2') : String(text);
+}
+function showNum(n) {
+  return localDecimals(fmtNumber(n));
 }
 
 // Minus key on the typed keypad: for every typed question of players who
@@ -5968,7 +5985,7 @@ function buildClearCorrectionSteps(q, picked = null) {
         : `${isFr ? 'ETAPE 2 — ASTUCE' : 'STEP 2 — TIP'}\n${tip}${q.steps.join('\n')}`,
       `${isFr ? 'ETAPE 3 — VERIFIE' : 'STEP 3 — CHECK'}\n${q.check || q.text}`,
       `${isFr ? 'BONNE REPONSE' : 'CORRECT ANSWER'} : ${fmtNumber(answer)}`,
-    ];
+    ].map(localDecimals);
   }
 
   let check;
@@ -5995,7 +6012,7 @@ function revealCorrectAnswer(picked = null) {
     qbox.classList.add('correction-active');
     qbox.style.visibility = '';
   }
-  const correct = fmtNumber(G.question.answer).trim();
+  const correct = showNum(G.question.answer).trim();
   // Typed question: the display shows the right number (not a keypad digit).
   if (G.question.typed) {
     const display = document.querySelector('#answer-buttons .typed-display');

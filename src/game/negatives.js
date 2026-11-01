@@ -86,14 +86,14 @@ const SIGN_FORMS = {
       `${fmt(r)} + ${par(b)} = ${fmt(a)}`, [-r, a + b, -(a + b)], L);
   },
   mul(L, mins, mCap) {
-    const t = Math.max(2, Math.min(mCap, L));
+    const t = Math.max(2, Math.min(mCap, L, 12));   // times tables up to 12
     const a = (Math.random() < 0.6 ? -1 : 1) * rnd(2, t); const b = (a > 0 || Math.random() < 0.5 ? -1 : 1) * rnd(2, t); const r = a * b;
     return build('*', a, b, r, TIPS.signs,
       [`${Math.abs(a)} × ${Math.abs(b)} = ${Math.abs(r)}`, `${Math.sign(a) === Math.sign(b) ? '(− × −) → +' : '(+ × −) → −'}  ${fmt(r)}`],
       `${fmt(r)} ÷ ${par(b)} = ${fmt(a)}`, [-r, a + b, -(a + b)], Math.max(L, Math.abs(r)));
   },
   div(L, mins, mCap) {
-    const t = Math.max(2, Math.min(mCap, L));
+    const t = Math.max(2, Math.min(mCap, L, 12));   // times tables up to 12
     const b = (Math.random() < 0.5 ? -1 : 1) * rnd(2, t); const r = (b > 0 || Math.random() < 0.5 ? -1 : 1) * rnd(2, t); const a = b * r;
     return build('/', a, b, r, TIPS.signs,
       [`${Math.abs(a)} ÷ ${Math.abs(b)} = ${Math.abs(r)}`, `${Math.sign(a) === Math.sign(b) ? '(− ÷ −) → +' : '(+ ÷ −) → −'}  ${fmt(r)}`],
