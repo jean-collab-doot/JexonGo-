@@ -2110,8 +2110,11 @@ let _introAnswerEl = null;
 function markIntroAnswer(btns) {
   if (!_guidedRun || G.questionsAnswered !== 0 || !G.question || G.question.typed) return;
   const answer = G.question.answer;
-  btns.querySelectorAll('.answer-btn').forEach(btn => {
-    const right = String(btn.textContent).trim() === String(answer);
+  const shown = fmtNumber(answer);
+  // Compare the choices themselves (in button order), not the button text:
+  // a negative number is shown with a real minus sign (−), not "-".
+  btns.querySelectorAll('.answer-btn').forEach((btn, i) => {
+    const right = G.question.choices[i] === answer;
     btn.classList.add(right ? 'intro-answer' : 'intro-answer-off');
     if (!right) btn.disabled = true;
   });
@@ -2119,8 +2122,8 @@ function markIntroAnswer(btns) {
   const fr = _ctlFr();
   _introAnswerEl = _ctlHintEl('ctl-move ctl-answer',
     `<p><strong class="ctl-title">${fr ? 'TIRE UN MISSILE!' : 'FIRE A MISSILE!'}</strong></p>
-     <p>${fr ? `La bonne réponse est <b>${answer}</b>. ${isTouchMobile() ? 'Touche-la' : 'Clique dessus'} pour tirer!`
-             : `The right answer is <b>${answer}</b>. ${isTouchMobile() ? 'Tap it' : 'Click it'} to fire!`}</p>`);
+     <p>${fr ? `La bonne réponse est <b>${shown}</b>. ${isTouchMobile() ? 'Touche-la' : 'Clique dessus'} pour tirer!`
+             : `The right answer is <b>${shown}</b>. ${isTouchMobile() ? 'Tap it' : 'Click it'} to fire!`}</p>`);
 }
 
 // ---- 3) and 4) Aiming lessons on the first two shots ----
