@@ -1854,7 +1854,7 @@ function stopShootingWindow() {
 
 function advanceAfterCorrectAnswer(sid) {
   if (_sessionId !== sid) return;
-  // Tutorial "your turn" shot: keep firing until the player has aimed.
+  // Tutorial aiming lessons: keep firing until the marked plane is down.
   if (aimLessonHolds()) {
     _shootingWindowUntil = performance.now() + 1500;
     _revealTimer = setTimeout(() => advanceAfterCorrectAnswer(sid), 500);
@@ -1965,21 +1965,21 @@ function aimVisible(now = performance.now()) {
 //    slide (phone, tablet) and an arrow points from the plane. Each direction
 //    stays until the player has done it.
 // 2) The first question shows its answer: tapping it fires a missile.
-// 3) Shot 1, EXAMPLE: slow motion, the aim turns by itself (left, then right)
-//    while a ghost mouse / a ghost finger on the round aim joystick does it.
-// 4) Shot 2, YOUR TURN: slow motion, the ghost shows the move and the player
-//    turns the missiles to the left. Then the tutorial goes on normally.
+// 3) Shot 1, EXAMPLE: slow motion, no enemy fires; the game aims at one
+//    enemy plane by itself and shoots it down, while a ghost mouse / a ghost
+//    finger on the round aim joystick does the move.
+// 4) Shot 2, YOUR TURN: slow motion, no enemy fires; a plane on the left or
+//    the right is marked, the ghost shows the move and the player shoots it
+//    down. Then the tutorial goes on normally.
 const INTRO_FLY_DIRS = ['right', 'left', 'up', 'down'];
 const INTRO_FLY_BRAVO_MS = 900;   // "BRAVO!" before the next direction
 const INTRO_FLY_HOLD_MS = 450;    // or: the direction held this long (the plane may be at the edge)
-const AIM_EXAMPLE_MS = 5200;      // real time of the slow-motion example
-const AIM_TRY_MAX_MS = 20000;     // the "your turn" shot waits this long at most
 // Speed factor during the aim lessons. It goes into the eased _frameStep
 // (frame()), so the game ends up at about 30 % speed.
 const INTRO_SLOW = 0.55;
 let _introFly = null;             // { el, sid, step, x, y, held, lastTs, doneAt }
 let _introFlyDone = false;
-let _aimLesson = null;            // { mode, el, ghost, start, done, hideAt, moved, lastX, padTouched }
+let _aimLesson = null;            // { mode, el, ghost, start, done, hideAt, target, side, lastX, lastY, vx, vy }
 let _aimLessonShots = 0;
 let _introSlowBlend = 1;
 
@@ -2124,42 +2124,93 @@ function markIntroAnswer(btns) {
 }
 
 // ---- 3) and 4) Aiming lessons on the first two shots ----
+// No enemy fires during them. EXAMPLE: the game aims at one enemy plane
+// itself and shoots it down. YOUR TURN: a plane on the left or the right is
+// marked; the player aims at it and shoots it down.
 function startAimLesson(now) {
   _introAnswerEl?.remove(); _introAnswerEl = null;
   if (!_guidedRun || !manualAimEnabled() || _aimLessonShots >= 2) return;
   _aimLessonShots++;
   clearAimLesson();
-  const fr = _ctlFr();
-  const touch = isTouchMobile();
-  const left = document.getElementById('aim-pad')?.classList.contains('aim-pad-left');
-  const padWhere = fr ? `en bas à ${left ? 'gauche' : 'droite'}` : `bottom ${left ? 'left' : 'right'}`;
+  G.enemyMissiles = [];
   const example = _aimLessonShots === 1;
-  const text = example
-    ? (touch
-      ? (fr ? `Regarde: je glisse le curseur rond (${padWhere}) à gauche, puis à droite. Tes missiles suivent la ligne!`
-            : `Watch: I slide the round joystick (${padWhere}) left, then right. Your missiles follow the line!`)
-      : (fr ? 'Regarde: je bouge la souris à gauche, puis à droite. Tes missiles suivent la ligne!'
-            : 'Watch: I move the mouse left, then right. Your missiles follow the line!'))
-    : (touch
-      ? (fr ? `Glisse le curseur rond (${padWhere}) vers la gauche pour tourner tes missiles.`
-            : `Slide the round joystick (${padWhere}) to the left to turn your missiles.`)
-      : (fr ? 'Bouge la souris vers la gauche pour tourner tes missiles.'
-            : 'Move the mouse to the left to turn your missiles.'));
-  const el = _ctlHintEl('ctl-aim',
-    `<p><strong class="ctl-title">${example ? (fr ? 'EXEMPLE' : 'EXAMPLE') : (fr ? 'À TOI!' : 'YOUR TURN!')}</strong></p><p>${text}</p>`);
-  const ghost = _ctlHintEl(touch ? 'ctl-ghost-touch' : 'ctl-ghost-mouse',
-    touch ? '<span class="ctl-touch-dot"></span>' : '<span class="ctl-mouse"><i></i></span>');
+  // The player's turn starts aiming straight ahead (not where the example
+  // left the line); on a computer the mouse takes over as soon as it moves.
+  if (!example) { _aimTarget = 0; _aimAngle = 0; _aimCursor = null; }
+  const el = _ctlHintEl('ctl-aim', '');
+  const ghost = _ctlHintEl(isTouchMobile() ? 'ctl-ghost-touch' : 'ctl-ghost-mouse',
+    isTouchMobile() ? '<span class="ctl-touch-dot"></span>' : '<span class="ctl-mouse"><i></i></span>');
   _aimLesson = {
     mode: example ? 'example' : 'try', el, ghost, start: now, done: false, hideAt: 0,
-    moved: 0, lastX: null, padTouched: false,
+    target: null, side: '', lastX: 0, lastY: 0, vx: 0, vy: 0,
   };
+  pickAimLessonTarget();
+  renderAimLessonCard();
+}
+
+// No enemy fires from the first lesson shot until the player's turn is over
+// (between the two lessons too).
+function aimLessonHoldsFire() {
+  return !!_aimLesson || (_guidedRun && _aimLessonShots === 1);
+}
+
+function aimLessonTargetValid(e) {
+  return !!e && e.active && !e.turncoat && e.type !== 'boss'
+    && e.y > canvas.height * 0.06 && e.y < G.player.y - getPlayerSize()
+    && e.x > 0 && e.x < canvas.width;
+}
+
+// EXAMPLE: the plane closest to straight ahead. YOUR TURN: the plane the
+// most to one side, so the player has to turn the missiles to reach it.
+function pickAimLessonTarget() {
+  const lesson = _aimLesson;
+  if (!lesson) return;
+  const angleTo = e => Math.atan2(e.x - G.player.x, G.player.y - e.y);
+  const ready = G.enemies.filter(aimLessonTargetValid);
+  if (!ready.length) { lesson.target = null; lesson.side = ''; return; }
+  ready.sort((a, b) => lesson.mode === 'example'
+    ? Math.abs(angleTo(a)) - Math.abs(angleTo(b))
+    : Math.abs(angleTo(b)) - Math.abs(angleTo(a)));
+  lesson.target = ready[0];
+  lesson.side = angleTo(ready[0]) < 0 ? 'left' : 'right';
+  lesson.lastX = ready[0].x; lesson.lastY = ready[0].y;
+  lesson.vx = 0; lesson.vy = 0;
+}
+
+function renderAimLessonCard() {
+  const lesson = _aimLesson;
+  if (!lesson?.el || lesson.done) return;
+  const fr = _ctlFr();
+  const touch = isTouchMobile();
+  const padLeft = document.getElementById('aim-pad')?.classList.contains('aim-pad-left');
+  const padWhere = fr ? `en bas à ${padLeft ? 'gauche' : 'droite'}` : `bottom ${padLeft ? 'left' : 'right'}`;
+  const sideFr = lesson.side === 'left' ? 'gauche' : 'droite';
+  let title, text;
+  if (lesson.mode === 'example') {
+    title = fr ? 'EXEMPLE' : 'EXAMPLE';
+    text = touch
+      ? (fr ? `Regarde: je glisse le curseur rond (${padWhere}) vers l’avion marqué, et mes missiles le touchent!`
+            : `Watch: I slide the round joystick (${padWhere}) toward the marked plane, and my missiles hit it!`)
+      : (fr ? 'Regarde: je bouge la souris vers l’avion marqué, et mes missiles le touchent!'
+            : 'Watch: I move the mouse toward the marked plane, and my missiles hit it!');
+  } else {
+    title = fr ? 'À TOI!' : 'YOUR TURN!';
+    text = !lesson.target
+      ? (fr ? 'Attends le prochain avion...' : 'Wait for the next plane...')
+      : touch
+        ? (fr ? `Vise l’avion de ${sideFr}: glisse le curseur rond (${padWhere}) vers la ${sideFr}.`
+              : `Aim at the plane on the ${lesson.side}: slide the round joystick (${padWhere}) to the ${lesson.side}.`)
+        : (fr ? `Vise l’avion de ${sideFr}: bouge la souris vers la ${sideFr}.`
+              : `Aim at the plane on the ${lesson.side}: move the mouse to the ${lesson.side}.`);
+  }
+  lesson.el.innerHTML = `<p><strong class="ctl-title">${title}</strong></p><p>${text}</p>`;
 }
 
 function finishAimLesson(text) {
   const lesson = _aimLesson;
   if (!lesson || lesson.done) return;
   lesson.done = true;
-  if (lesson.mode === 'example') _aimTarget = 0;
+  if (lesson.mode === 'example') _aimTarget = 0;   // the player's turn starts from the middle
   lesson.ghost?.remove(); lesson.ghost = null;
   if (lesson.el) {
     lesson.el.classList.add('ctl-done');
@@ -2168,20 +2219,68 @@ function finishAimLesson(text) {
   lesson.hideAt = performance.now() + 1600;
 }
 
-// The example's own aim (null when the player aims). Once it ends, the aim
-// goes back to straight ahead (finishAimLesson), so the "your turn" shot
-// starts from the middle.
+// A player missile shot down this plane (onMissileHit).
+function aimLessonTargetDown(enemy) {
+  const lesson = _aimLesson;
+  if (!lesson || lesson.done || enemy !== lesson.target) return;
+  const fr = _ctlFr();
+  finishAimLesson(lesson.mode === 'example'
+    ? (fr ? 'TOUCHÉ! À TOI AU PROCHAIN TIR!' : 'HIT! YOUR TURN ON THE NEXT SHOT!')
+    : (fr ? 'BRAVO, TOUCHÉ!' : 'GREAT, A HIT!'));
+}
+
+// Angle from the plane to where the target will be when a missile gets there.
+function aimLessonAngle(e, lesson) {
+  const dx = e.x - G.player.x, dy = e.y - G.player.y;
+  const lead = Math.hypot(dx, dy) / 9;   // frames for a missile to get there (about)
+  return aimAngleTo(dx + lesson.vx * lead, dy + lesson.vy * lead);
+}
+
+// The example's own aim, at its target (null when the player aims).
 function aimLessonTarget(now) {
   const lesson = _aimLesson;
   if (!lesson || lesson.mode !== 'example' || lesson.done || !(_shootingWindowUntil > now)) return null;
-  return -Math.sin((now - lesson.start) / (AIM_EXAMPLE_MS / (2 * Math.PI))) * 0.95;   // left, then right
+  return lesson.target ? aimLessonAngle(lesson.target, lesson) : 0;
 }
 
-// "Your turn" shot: the next question waits until the player has turned the
-// missiles (or AIM_TRY_MAX_MS has gone by).
+// The next question waits until the lesson's plane is shot down (or this long).
+const AIM_LESSON_MAX_MS = { example: 14000, try: 25000 };
 function aimLessonHolds(now = performance.now()) {
   const lesson = _aimLesson;
-  return !!lesson && lesson.mode === 'try' && !lesson.done && now - lesson.start < AIM_TRY_MAX_MS;
+  return !!lesson && !lesson.done && now - lesson.start < AIM_LESSON_MAX_MS[lesson.mode];
+}
+
+// Marker on the lesson's plane: a pulsing red ring (+ "VISE!" on your turn).
+function drawAimLessonTarget() {
+  const lesson = _aimLesson;
+  const e = lesson?.target;
+  if (!e || lesson.done || !e.active) return;
+  const unit = Math.max(1, canvas.width / (canvas.clientWidth || canvas.width));
+  const pulse = (performance.now() % 800) / 800;
+  const r = getEnemyDrawSize(e) * 0.62 + pulse * 6 * unit;
+  ctx.save();
+  ctx.lineWidth = 4 * unit;
+  ctx.strokeStyle = `rgba(255,59,48,${0.95 - pulse * 0.4})`;
+  ctx.beginPath(); ctx.arc(e.x, e.y, r, 0, Math.PI * 2); ctx.stroke();
+  ctx.lineWidth = 3 * unit;
+  for (let i = 0; i < 4; i++) {
+    const a = i * Math.PI / 2;
+    ctx.beginPath();
+    ctx.moveTo(e.x + Math.cos(a) * (r - 8 * unit), e.y + Math.sin(a) * (r - 8 * unit));
+    ctx.lineTo(e.x + Math.cos(a) * (r + 8 * unit), e.y + Math.sin(a) * (r + 8 * unit));
+    ctx.stroke();
+  }
+  if (lesson.mode === 'try') {
+    ctx.font = `${14 * unit}px 'Pixelify Sans', monospace`;
+    ctx.textAlign = 'center';
+    ctx.lineWidth = 4 * unit;
+    ctx.strokeStyle = '#5b0f0b';
+    ctx.fillStyle = '#ffffff';
+    const label = _ctlFr() ? 'VISE!' : 'AIM!';
+    ctx.strokeText(label, e.x, e.y - r - 8 * unit);
+    ctx.fillText(label, e.x, e.y - r - 8 * unit);
+  }
+  ctx.restore();
 }
 
 // Game speed during the lessons (eased, so the slow motion fades in and out).
@@ -2214,25 +2313,37 @@ function updateControlHints(now) {
   if (lesson.hideAt && now > lesson.hideAt) { clearAimLesson(); return; }
   const fr = _ctlFr();
   if (!lesson.done) {
-    if (lesson.mode === 'example' && now - lesson.start > AIM_EXAMPLE_MS) {
-      finishAimLesson(fr ? 'À TOI AU PROCHAIN TIR!' : 'YOUR TURN ON THE NEXT SHOT!');
-    } else if (lesson.mode === 'try') {
-      const turned = _aimTarget < -0.45 && (isTouchMobile() ? lesson.padTouched : lesson.moved > 60);
-      if (turned) finishAimLesson(fr ? 'BRAVO, TES MISSILES TOURNENT!' : 'GREAT, YOUR MISSILES TURN!');
-      else if (!aimLessonHolds(now)) finishAimLesson(fr ? 'ON CONTINUE!' : 'LET’S GO ON!');
+    // The marked plane flew away (or another shot got it): mark another one.
+    if (!aimLessonTargetValid(lesson.target)) {
+      const had = lesson.target;
+      pickAimLessonTarget();
+      if (lesson.target !== had) renderAimLessonCard();
+    } else {
+      // Its speed, for aiming a little ahead of it.
+      const step = _frameStep || 1;
+      lesson.vx += ((lesson.target.x - lesson.lastX) / step - lesson.vx) * 0.3;
+      lesson.vy += ((lesson.target.y - lesson.lastY) / step - lesson.vy) * 0.3;
+      lesson.lastX = lesson.target.x; lesson.lastY = lesson.target.y;
+    }
+    if (!aimLessonHolds(now)) {
+      finishAimLesson(lesson.mode === 'example'
+        ? (fr ? 'À TOI AU PROCHAIN TIR!' : 'YOUR TURN ON THE NEXT SHOT!')
+        : (fr ? 'ON CONTINUE!' : 'LET’S GO ON!'));
     }
   }
   if (lesson.done || !lesson.ghost) return;
   // Ghost gesture. Example: in step with the aim it steers. Your turn: the
-  // move to make (to the left), over and over; the aim stays the player's.
+  // move to make toward the marked plane, over and over (the aim stays the
+  // player's).
   const t = ((now - lesson.start) % 1600) / 1600;
   const ease = t < 0.7 ? Math.sin((t / 0.7) * Math.PI / 2) : 1;
-  const angle = lesson.mode === 'example' ? _aimAngle : -0.85 * ease;
+  const towards = lesson.target ? aimLessonAngle(lesson.target, lesson) : 0;
+  const angle = lesson.mode === 'example' ? _aimAngle : towards * ease;
   if (isTouchMobile()) {
     const pad = document.getElementById('aim-pad');
     const host = pad?.parentElement;
     const visible = pad && !pad.classList.contains('hidden');
-    lesson.ghost.style.display = visible ? '' : 'none';
+    lesson.ghost.style.display = visible && (lesson.mode === 'example' || lesson.target) ? '' : 'none';
     if (!visible || !host) return;
     const r = pad.getBoundingClientRect(), hr = host.getBoundingClientRect();
     const reach = r.width * 0.32;
@@ -2244,6 +2355,7 @@ function updateControlHints(now) {
     lesson.ghost.style.left = `${r.left - hr.left + r.width / 2 + dx}px`;
     lesson.ghost.style.top = `${r.top - hr.top + r.height / 2 + dy}px`;
   } else {
+    lesson.ghost.style.display = lesson.mode === 'example' || lesson.target ? '' : 'none';
     lesson.ghost.style.transform = `translateX(calc(-50% + ${(angle / AIM_MAX_ANGLE) * 32}vw))`;
   }
 }
@@ -2319,12 +2431,6 @@ function canvasAimMove(e) {
   if (isTouchMobile()) return;
   const r = _canvasRect || (_canvasRect = canvas.getBoundingClientRect());
   _aimCursor = _cssToCanvas(e.clientX - r.left, e.clientY - r.top);
-  // Tutorial "your turn" shot: only a real mouse sweep counts (not the move
-  // back from the answer buttons).
-  if (_aimLesson && _aimLesson.mode === 'try' && !_aimLesson.done) {
-    if (_aimLesson.lastX != null) _aimLesson.moved += Math.abs(e.clientX - _aimLesson.lastX);
-    _aimLesson.lastX = e.clientX;
-  }
 }
 function canvasAimLeave() { _aimCursor = null; }
 
@@ -2334,7 +2440,7 @@ function aimPadTouch(e) {
   if (e.cancelable) e.preventDefault();
   e.stopPropagation();
   let t = null;
-  if (e.type === 'touchstart') { t = e.changedTouches[0]; _aimPadTouch = t.identifier; if (_aimLesson) _aimLesson.padTouched = true; }
+  if (e.type === 'touchstart') { t = e.changedTouches[0]; _aimPadTouch = t.identifier; }
   else t = [...e.touches].find(x => x.identifier === _aimPadTouch);
   if (!t) return;
   const r = pad.getBoundingClientRect();
@@ -3398,8 +3504,9 @@ function frame(ts = 0) {
       const fireTop = canvas.height * 0.08;
       const fireBot = Math.min(canvas.height * 0.78, G.player.y - 80);
       const inFireZone = e.y > fireTop && e.y < fireBot;
-      if (guidedBreakActive()) {
-        // Beginner practice break after question 5: enemies fly, none fires.
+      if (guidedBreakActive() || aimLessonHoldsFire()) {
+        // Beginner practice break after question 5, and the two aiming
+        // lessons: enemies fly, none fires.
       } else if (e.type === 'interceptor') {
         // F-14 exclusive weapon: one straight red laser every 0.2 seconds
         // (12 simulation frames), in 3 s volleys separated by 3 s pauses
@@ -3797,6 +3904,7 @@ function frame(ts = 0) {
   updateAim();
   if (!_playerDestroyed) drawAimLine(playerDrawX, playerDrawY);
   if (!_playerDestroyed && _introFly) drawIntroFlyArrow(playerDrawX, playerDrawY);
+  if (_aimLesson) drawAimLessonTarget();
 
   // ── Weather (rain, storm, fog, snow…) over the whole playfield ──────────
   const weatherTarget = !_cutsceneActive && !_playerDestroyed ? G.player : null;
@@ -5226,6 +5334,7 @@ function onMissileHit(enemy, missile) {
   // two normal missiles' worth instead of ten (it melted bosses in 2 bursts).
   if (enemy.type === 'boss' && missile?.type === 'player-gau8') damage = A10_BOSS_SHELL_DAMAGE;
   const destroyed = hitEnemy(enemy, damage);
+  if (destroyed) aimLessonTargetDown(enemy);   // tutorial: the marked plane
   if (enemy.type === 'boss') updateBossHealthBar(enemy);
   if (destroyed) {
     if (enemy.type === 'boss') startBossDeath(enemy);
