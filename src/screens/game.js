@@ -8,7 +8,7 @@ import { schoolYearOfLevel, schoolQuestionPlan, questionFromPlan } from '../syst
 import { fmt as fmtNumber, NEGATIVES_FROM_SCHOOL_YEAR } from '../game/negatives.js';
 import { makeSchoolAlgebraQuestion } from '../game/algebra.js';
 import { makeSchoolExponent } from '../game/arithmetic.js';
-import { tipFor } from '../game/tips.js';
+import { tipFor, tipLines } from '../game/tips.js';
 import { spawnEnemy, updateEnemies, hitEnemy, KAMIKAZE_LOCK_FRAMES } from '../game/enemies.js';
 import { shotDelaySeconds, activeWeapon, homingUpgradeOwned } from '../data/upgrades.js';
 import { createMissile, updateMissiles, drawMissiles } from '../game/missiles.js';
@@ -5962,7 +5962,7 @@ function ensureCorrectionRevealMarkup() {
 function buildClearCorrectionSteps(q, picked = null) {
   const { a, b, op, answer } = q;
   const isFr = getLang() === 'fr';
-  const symbol = op === '*' ? '×' : op === '/' ? '÷' : op;
+  const symbol = op === '*' ? '×' : op === '/' ? '÷' : op === '-' ? '−' : op;
   const explanation = buildExplanation(q, picked)
     .replace(/^.*?(?:Your answer was|Ta reponse etait).*?\.\s*/i, '')
     .trim();
@@ -5977,6 +5977,9 @@ function buildClearCorrectionSteps(q, picked = null) {
   // moitié de × 10"), first line of step 2.
   const tipText = tipFor(q);
   const tip = tipText ? `${isFr ? tipText.fr : tipText.en}\n` : '';
+  // + − × ÷: the tip's calculation, one step per line (12 × 10 = 120 /
+  // 120 ÷ 2 = 60), instead of the long sentence.
+  const methodLines = tipLines(q);
   // Algebra (game/algebra.js), negative numbers (game/negatives.js), decimals
   // and exponent (game/arithmetic.js): the question, the tip and solving
   // steps, then the check.
@@ -5994,7 +5997,7 @@ function buildClearCorrectionSteps(q, picked = null) {
   }
 
   let check;
-  if (op === '+') check = `${answer} - ${b} = ${a}`;
+  if (op === '+') check = `${answer} − ${b} = ${a}`;
   else if (op === '-') check = `${answer} + ${b} = ${a}`;
   else if (op === '*') check = `${answer} ÷ ${b} = ${a}`;
   else if (op === '/') check = `${answer} × ${b} = ${a}`;
@@ -6003,7 +6006,7 @@ function buildClearCorrectionSteps(q, picked = null) {
   return [
     buildCorrectionIntro(q, picked),
     `${isFr ? 'ETAPE 1 — PLACE LES NOMBRES' : 'STEP 1 — SET UP THE NUMBERS'}\n${setup}`,
-    `${isFr ? 'ETAPE 2 — CALCULE' : 'STEP 2 — CALCULATE'}\n${tip}${method1}${method2 ? `. ${method2}` : ''}`,
+    `${isFr ? 'ETAPE 2 — CALCULE' : 'STEP 2 — CALCULATE'}\n${tip}${methodLines?.length ? methodLines.join('\n') : `${method1}${method2 ? `. ${method2}` : ''}`}`,
     `${isFr ? 'ETAPE 3 — VERIFIE' : 'STEP 3 — CHECK'}\n${check}`,
     `${isFr ? 'BONNE REPONSE' : 'CORRECT ANSWER'} : ${answer}`,
   ];
