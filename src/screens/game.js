@@ -5,7 +5,7 @@ import { uiIcon } from '../utils/icons.js';
 import { $, showScreen } from '../utils/dom.js';
 import { newQuestion } from '../game/math-engine.js';
 import { schoolYearOfLevel, schoolQuestionPlan, questionFromPlan } from '../systems/school-questions.js';
-import { fmt as fmtNumber } from '../game/negatives.js';
+import { fmt as fmtNumber, NEGATIVES_FROM_SCHOOL_YEAR } from '../game/negatives.js';
 import { spawnEnemy, updateEnemies, hitEnemy, KAMIKAZE_LOCK_FRAMES } from '../game/enemies.js';
 import { shotDelaySeconds, activeWeapon, homingUpgradeOwned } from '../data/upgrades.js';
 import { createMissile, updateMissiles, drawMissiles } from '../game/missiles.js';
@@ -5369,8 +5369,9 @@ function nextQuestion() {
         : newQuestion(mathCfg.ops, mathCfg.cap, mathCfg.mCap, undefined, numberMax > 0 ? { add: 0 } : undefined);
     }
     $('question-text').textContent = G.question.text;
-    // The typed keypad has no minus key: negative answers are always choices.
-    G.question.typed = typedQuestionAllowed() && G.question.answer >= 0 && Math.random() < TYPED_QUESTION_SHARE;
+    // Negative answers can be typed when the keypad has its minus key.
+    G.question.typed = typedQuestionAllowed() && (G.question.answer >= 0 || typedMinusKey())
+      && Math.random() < TYPED_QUESTION_SHARE;
     const btns = $('answer-buttons');
     btns.innerHTML = '';
     btns.classList.toggle('typed-answer', G.question.typed);
@@ -5504,6 +5505,13 @@ function typedQuestionAllowed() {
   return !_guidedRun && !isTutorialActive();
 }
 
+// Minus key on the typed keypad: for every typed question of players who
+// can get negative answers (from CM2, game/negatives.js), so its presence
+// never gives the answer's sign away.
+function typedMinusKey() {
+  return !G.practiceMode && schoolYearOf() >= NEGATIVES_FROM_SCHOOL_YEAR;
+}
+
 function renderTypedAnswer(btns) {
   _typedValue = '';
   const fr = getLang() === 'fr';
@@ -5512,14 +5520,17 @@ function renderTypedAnswer(btns) {
   display.setAttribute('aria-live', 'polite');
   btns.appendChild(display);
   const keypad = document.createElement('div');
-  keypad.className = 'typed-keypad';
-  ['1', '2', '3', '4', '5', 'del', '6', '7', '8', '9', '0', 'ok'].forEach(key => {
+  const minus = typedMinusKey();
+  keypad.className = `typed-keypad${minus ? ' has-minus' : ''}`;
+  (minus ? ['1', '2', '3', '4', '5', 'neg', 'del', '6', '7', '8', '9', '0', 'ok']
+    : ['1', '2', '3', '4', '5', 'del', '6', '7', '8', '9', '0', 'ok']).forEach(key => {
     const btn = document.createElement('button');
     btn.type = 'button';
-    btn.className = `answer-btn typed-key${key === 'ok' ? ' typed-ok' : key === 'del' ? ' typed-del' : ''}`;
+    btn.className = `answer-btn typed-key${key === 'ok' ? ' typed-ok' : key === 'del' ? ' typed-del' : key === 'neg' ? ' typed-neg' : ''}`;
     btn.dataset.key = key;
-    btn.textContent = key === 'ok' ? 'OK' : key === 'del' ? '⌫' : key;
+    btn.textContent = key === 'ok' ? 'OK' : key === 'del' ? '⌫' : key === 'neg' ? '−' : key;
     if (key === 'del') btn.setAttribute('aria-label', fr ? 'Effacer' : 'Erase');
+    if (key === 'neg') btn.setAttribute('aria-label', fr ? 'Signe moins' : 'Minus sign');
     btn.addEventListener('click', () => typedPress(key));
     keypad.appendChild(btn);
   });
@@ -5530,22 +5541,26 @@ function renderTypedAnswer(btns) {
 function updateTypedDisplay() {
   const display = document.querySelector('#answer-buttons .typed-display');
   if (display) {
-    display.textContent = _typedValue || (getLang() === 'fr' ? 'ÉCRIS TA RÉPONSE' : 'TYPE YOUR ANSWER');
+    display.textContent = _typedValue.replace('-', '−') || (getLang() === 'fr' ? 'ÉCRIS TA RÉPONSE' : 'TYPE YOUR ANSWER');
     display.classList.toggle('is-empty', !_typedValue);
   }
   const ok = document.querySelector('#answer-buttons .typed-ok');
-  if (ok && !G.answerLocked) ok.disabled = !_typedValue;
+  if (ok && !G.answerLocked) ok.disabled = !_typedValue || _typedValue === '-';
 }
 
 function typedPress(key) {
   if (G.answerLocked || !G.question?.typed) return;
   if (key === 'ok') {
-    if (!_typedValue) return;
+    if (!_typedValue || _typedValue === '-') return;
     handleAnswer(Number(_typedValue), document.querySelector('#answer-buttons .typed-ok'));
     return;
   }
-  if (key === 'del') _typedValue = _typedValue.slice(0, -1);
-  else if (_typedValue.length < String(G.question.answer).length + 2) _typedValue = (_typedValue + key).replace(/^0+(?=\d)/, '');
+  // Minus key: puts the sign in front of the number, or takes it away.
+  if (key === 'neg') _typedValue = _typedValue.startsWith('-') ? _typedValue.slice(1) : `-${_typedValue}`;
+  else if (key === 'del') _typedValue = _typedValue.slice(0, -1);
+  else if (_typedValue.replace('-', '').length < String(Math.abs(G.question.answer)).length + 2) {
+    _typedValue = (_typedValue + key).replace(/^(-?)0+(?=\d)/, '$1');
+  }
   SFX.click?.();
   updateTypedDisplay();
 }
@@ -5556,6 +5571,7 @@ function typedAnswerKey(e) {
   const key = /^[0-9]$/.test(e.key) ? e.key
     : e.key === 'Backspace' ? 'del'
     : e.key === 'Enter' ? 'ok'
+    : (e.key === '-' || e.key === 'Subtract') && typedMinusKey() ? 'neg'
     : null;
   if (!key) return false;
   e.preventDefault();
