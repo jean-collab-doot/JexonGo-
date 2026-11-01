@@ -1984,7 +1984,7 @@ const INTRO_FLY_HOLD_MS = 450;    // or: the direction held this long (the plane
 const INTRO_SLOW = 0.55;
 let _introFly = null;             // { el, sid, step, x, y, held, lastTs, doneAt }
 let _introFlyDone = false;
-let _aimLesson = null;            // { mode, el, ghost, start, done, hideAt, target, side, lastX, lastY, vx, vy }
+let _aimLesson = null;            // { mode, el, ghost, start, done, hideAt, target, side, lastX, lastY, vx, vy, plane, planeSpeed }
 let _aimLessonShots = 0;
 let _introSlowBlend = 1;
 
@@ -2150,10 +2150,38 @@ function startAimLesson(now) {
     isTouchMobile() ? '<span class="ctl-touch-dot"></span>' : '<span class="ctl-mouse"><i></i></span>');
   _aimLesson = {
     mode: example ? 'example' : 'try', el, ghost, start: now, done: false, hideAt: 0,
-    target: null, side: '', lastX: 0, lastY: 0, vx: 0, vy: 0,
+    target: null, side: '', lastX: 0, lastY: 0, vx: 0, vy: 0, plane: null, planeSpeed: 0,
   };
-  pickAimLessonTarget();
+  // A plane to shoot right away: the example takes one already on screen if
+  // there is one; the player's turn always gets its own, on the left or right.
+  if (example) pickAimLessonTarget();
+  if (!_aimLesson.target) spawnAimLessonPlane(example ? 'ahead' : (Math.random() < 0.5 ? 'left' : 'right'));
   renderAimLessonCard();
+}
+
+// An F-15 that appears in view at once and waits there (speed 0) until the
+// lesson is over, so there is always something to shoot.
+function spawnAimLessonPlane(where) {
+  const lesson = _aimLesson;
+  if (!lesson) return;
+  const e = spawnEnemy(canvas.width, 'basic');
+  const x = where === 'left' ? 0.22 : where === 'right' ? 0.78
+    : Math.max(0.3, Math.min(0.7, G.player.x / canvas.width));
+  e.x = canvas.width * x;
+  e.y = Math.min(canvas.height * 0.42, G.player.y - getPlayerSize() * 2.5);   // under the card
+  lesson.planeSpeed = e.speed;
+  e.speed = 0;
+  G.enemies.push(e);
+  lesson.plane = e;
+  lesson.target = e;
+  lesson.side = where === 'left' ? 'left' : 'right';
+  lesson.lastX = e.x; lesson.lastY = e.y;
+  lesson.vx = 0; lesson.vy = 0;
+}
+
+// Lesson over: its waiting plane (if still up) flies on like the others.
+function releaseAimLessonPlane(lesson) {
+  if (lesson?.plane?.active && lesson.plane.speed === 0) lesson.plane.speed = lesson.planeSpeed;
 }
 
 // No enemy fires from the first lesson shot until the player's turn is over
@@ -2218,6 +2246,7 @@ function finishAimLesson(text) {
   const lesson = _aimLesson;
   if (!lesson || lesson.done) return;
   lesson.done = true;
+  releaseAimLessonPlane(lesson);
   if (lesson.mode === 'example') _aimTarget = 0;   // the player's turn starts from the middle
   lesson.ghost?.remove(); lesson.ghost = null;
   if (lesson.el) {
@@ -2299,6 +2328,7 @@ function introSlowScale(frameMs) {
 }
 
 function clearAimLesson() {
+  releaseAimLessonPlane(_aimLesson);
   _aimLesson?.el?.remove(); _aimLesson?.ghost?.remove();
   if (_aimLesson && isTouchMobile() && _aimPadTouch == null) {
     const knob = document.querySelector('#aim-pad .aim-pad-knob');
@@ -2322,7 +2352,10 @@ function updateControlHints(now) {
   const fr = _ctlFr();
   if (!lesson.done) {
     // The marked plane flew away (or another shot got it): mark another one.
-    if (!aimLessonTargetValid(lesson.target)) {
+    // The lesson's own waiting plane stays the target while it is up.
+    const keep = lesson.target && lesson.target === lesson.plane
+      ? lesson.target.active : aimLessonTargetValid(lesson.target);
+    if (!keep) {
       const had = lesson.target;
       pickAimLessonTarget();
       if (lesson.target !== had) renderAimLessonCard();
