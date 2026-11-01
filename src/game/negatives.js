@@ -112,22 +112,20 @@ function ok(q, limit) {
   return q.nums.every(n => Number.isInteger(n) && Math.abs(n) <= bound);
 }
 
-// op: '+', '-', '*', '/' to stay inside that topic, or 'neg' (the topic
-// "Nombres négatifs": any of them). mins: smallest size of + − numbers.
-export function makeNegativeQuestion(year, limit, op = 'neg', { mins = 1, mCap = 10 } = {}) {
+// op: '+', '-', '*', '/', the topic the question stays in (× ÷ only from
+// 5e). mins: smallest size of + − numbers.
+export function makeNegativeQuestion(year, limit, op, { mins = 1, mCap = 10 } = {}) {
   const L = Math.max(10, limit);
   for (let i = 0; i < 60; i++) {
     let q;
     if (year < SIGN_RULES_FROM_SCHOOL_YEAR) {
       q = thermometer(L);
-      if (op !== 'neg' && q.op !== op) continue;
+      if (q.op !== op) continue;
     } else {
-      const form = op === 'neg' ? pick(['add', 'sub', 'add', 'sub', 'mul', 'div'])
-        : { '+': 'add', '-': 'sub', '*': 'mul', '/': 'div' }[op];
+      const form = { '+': 'add', '-': 'sub', '*': 'mul', '/': 'div' }[op];
       q = SIGN_FORMS[form](L, Math.max(1, Math.min(mins, Math.floor(L / 4))), mCap);
     }
-    if (ok(q, L)) return { ...q, op: op === 'neg' ? 'neg' : q.op };
+    if (ok(q, L)) return q;
   }
-  const q = thermometer(Math.min(L, 10));
-  return { ...q, op: op === 'neg' ? 'neg' : q.op };
+  return null;   // nothing fitting: the caller asks a plain question
 }

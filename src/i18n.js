@@ -50,7 +50,6 @@ const STRINGS = {
       '/': 'Division',
       '^': 'Exponent',
       alg: 'Algebra',
-      neg: 'Negative numbers',
     },
 
     // Game HUD
@@ -375,7 +374,6 @@ const STRINGS = {
       '/': 'Division',
       '^': 'Exposant',
       alg: 'Algèbre',
-      neg: 'Nombres négatifs',
     },
 
     // Game HUD

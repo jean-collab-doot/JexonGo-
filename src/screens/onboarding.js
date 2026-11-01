@@ -3,7 +3,6 @@ import { save } from '../utils/storage.js';
 import { getLang, setLang } from '../i18n.js';
 import { SFX } from '../audio/sound.js';
 import { schoolYearOfLevel as yearOfLevel } from '../systems/school-questions.js';
-import { NEGATIVES_FROM_SCHOOL_YEAR } from '../game/negatives.js';
 
 function introLang() {
   return getLang();
@@ -67,9 +66,6 @@ function topicSections(answers, fr) {
       { label: '×', value: '*', symbol: true },
       { label: '÷', value: '/', symbol: true },
       { label: fr ? 'Exposant' : 'Exponent', value: 'exponent', wide: true },
-      // Negative numbers: from CM2 / 5th grade only.
-      ...((answers.ageGroup_schoolYear || 0) >= NEGATIVES_FROM_SCHOOL_YEAR
-        ? [{ label: fr ? 'Nombres négatifs' : 'Negative numbers', value: 'negative', wide: true }] : []),
     ],
   }];
   if ((answers.ageGroup_schoolYear || 0) >= ALGEBRA_FROM_SCHOOL_YEAR) {
@@ -240,10 +236,6 @@ function applyBriefingEquationAnswers(answers) {
   // Algebra only stays for secondary-school levels.
   if (schoolYearOfLevel() < ALGEBRA_FROM_SCHOOL_YEAR) {
     G.focusTopics = (G.focusTopics || []).filter(v => v !== 'algebra');
-  }
-  // Negative numbers only from CM2 / 5th grade.
-  if (schoolYearOfLevel() < NEGATIVES_FROM_SCHOOL_YEAR) {
-    G.focusTopics = (G.focusTopics || []).filter(v => v !== 'negative');
   }
   G.focusOperations = (G.focusTopics || []).filter(v => ['+', '-', '*', '/'].includes(v));
   G.focusOperation = G.focusOperations[0] ?? null;
