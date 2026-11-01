@@ -8,6 +8,9 @@
 //    Nothing chosen: the year's own topics.
 //  - Algebra comes from game/algebra.js: one kind of equation per school
 //    year, every number (question and answer) inside the number range.
+//  - Negative numbers (game/negatives.js): the topic "Nombres négatifs" from
+//    CM2 (thermometer), and from 5e some + − × ÷ questions use them too.
+//    Range "0 - 100" becomes −100 ... 100.
 //  - Each year also has smallest numbers (no 2 + 3 or 2 × 2 in high school).
 //  - Number limit (G.numberRangeMax, "0 - 100"...): only changes the size of
 //    the numbers, never the kind of question.
@@ -15,6 +18,7 @@
 // Pure (no game state import), so it can be tested on its own.
 import { newQuestion, withChoices } from '../game/math-engine.js';
 import { makeSchoolAlgebraQuestion } from '../game/algebra.js';
+import { makeNegativeQuestion, NEGATIVES_FROM_SCHOOL_YEAR, SIGN_RULES_FROM_SCHOOL_YEAR } from '../game/negatives.js';
 
 // School year 1-12 from the onboarding class (qc-prim3, fr-2nde, us-10...);
 // 0 when unknown.
@@ -47,9 +51,11 @@ const SCHOOL_YEAR_PROFILES = {
   12: { ops: { '*': 1, '/': 1, '^': 2, alg: 4 },  cap: [1000, 1000], mCap: [15, 15], min: [50, 6],  tier: 4 },
 };
 const FULL_SIZE_LEVEL = 30;
-// Algebra number range without a chosen one: [level 1, level 30+].
+// Algebra and negative numbers range without a chosen one: [level 1, level 30+].
 const ALGEBRA_RANGE = [30, 100];
-const TOPIC_OPS = { '+': '+', '-': '-', '*': '*', '/': '/', exponent: '^', algebra: 'alg' };
+// From 5e, share of + − × ÷ questions that use negative numbers.
+const NEGATIVE_SHARE = 0.25;
+const TOPIC_OPS = { '+': '+', '-': '-', '*': '*', '/': '/', exponent: '^', algebra: 'alg', negative: 'neg' };
 
 // Topics the player chose (onboarding / equation settings), as ops.
 function chosenOps(state) {
@@ -65,7 +71,8 @@ export function schoolQuestionPlan(state, levelNum = 1) {
   const year = schoolYearOfLevel(state.schoolLevel || '') || Number(state.playerGrade) || 0;
   const p = SCHOOL_YEAR_PROFILES[Math.min(12, year)];
   if (!p) return null;
-  const chosen = chosenOps(state);
+  // Negative numbers never before CM2.
+  const chosen = chosenOps(state).filter(op => op !== 'neg' || year >= NEGATIVES_FROM_SCHOOL_YEAR);
   const ops = chosen.length ? chosen.map(op => [op, 1]) : Object.entries(p.ops);
   const t = Math.min(1, Math.max(0, (levelNum - 1) / (FULL_SIZE_LEVEL - 1)));
   const grow = ([lo, hi]) => Math.round(lo + (hi - lo) * t);
@@ -89,7 +96,14 @@ function makeOne(plan) {
   const total = plan.ops.reduce((sum, [, w]) => sum + w, 0);
   let roll = Math.random() * total;
   const [op] = plan.ops.find(([, w]) => (roll -= w) < 0) || plan.ops[0];
-  if (op === 'alg') return withChoices(makeSchoolAlgebraQuestion(plan.year, plan.algLimit), plan.algLimit);
+  if (op === 'alg') {
+    const q = makeSchoolAlgebraQuestion(plan.year, plan.algLimit);
+    return q.choices ? q : withChoices(q, plan.algLimit);
+  }
+  if (op === 'neg') return makeNegativeQuestion(plan.year, plan.algLimit, 'neg', { mins: 1, mCap: plan.mCap });
+  if (plan.year >= SIGN_RULES_FROM_SCHOOL_YEAR && ['+', '-', '*', '/'].includes(op) && Math.random() < NEGATIVE_SHARE) {
+    return makeNegativeQuestion(plan.year, plan.cap, op, { mins: plan.mins.add, mCap: plan.mCap });
+  }
   return newQuestion([op], plan.cap, plan.mCap, plan.tier, plan.mins);
 }
 

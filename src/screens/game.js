@@ -5,6 +5,7 @@ import { uiIcon } from '../utils/icons.js';
 import { $, showScreen } from '../utils/dom.js';
 import { newQuestion } from '../game/math-engine.js';
 import { schoolYearOfLevel, schoolQuestionPlan, questionFromPlan } from '../systems/school-questions.js';
+import { fmt as fmtNumber } from '../game/negatives.js';
 import { spawnEnemy, updateEnemies, hitEnemy, KAMIKAZE_LOCK_FRAMES } from '../game/enemies.js';
 import { shotDelaySeconds, activeWeapon, homingUpgradeOwned } from '../data/upgrades.js';
 import { createMissile, updateMissiles, drawMissiles } from '../game/missiles.js';
@@ -5368,7 +5369,8 @@ function nextQuestion() {
         : newQuestion(mathCfg.ops, mathCfg.cap, mathCfg.mCap, undefined, numberMax > 0 ? { add: 0 } : undefined);
     }
     $('question-text').textContent = G.question.text;
-    G.question.typed = typedQuestionAllowed() && Math.random() < TYPED_QUESTION_SHARE;
+    // The typed keypad has no minus key: negative answers are always choices.
+    G.question.typed = typedQuestionAllowed() && G.question.answer >= 0 && Math.random() < TYPED_QUESTION_SHARE;
     const btns = $('answer-buttons');
     btns.innerHTML = '';
     btns.classList.toggle('typed-answer', G.question.typed);
@@ -5378,7 +5380,7 @@ function nextQuestion() {
       G.question.choices.forEach(c => {
         const btn = document.createElement('button');
         btn.className = 'answer-btn';
-        btn.textContent = c;
+        btn.textContent = fmtNumber(c);   // real minus sign: −15
         btn.addEventListener('click', () => handleAnswer(c, btn));
         btns.appendChild(btn);
       });
@@ -5825,14 +5827,19 @@ function buildClearCorrectionSteps(q, picked = null) {
   let setup = `${a} ${symbol} ${b}`;
   // Keep the complete calculation on one line for fast, unambiguous reading.
   setup = `${a} ${symbol} ${b} = ?`;
-  // Algebra (game/algebra.js): the equation and its two solving steps.
+  // Algebra (game/algebra.js) and negative numbers (game/negatives.js): the
+  // question, its one-line tip and solving steps, then the check.
   if (q.steps?.length) {
+    const alg = q.op === 'alg';
+    const tip = q.tip ? `${isFr ? q.tip.fr : q.tip.en}\n` : '';
     return [
       buildCorrectionIntro(q, picked),
-      `${isFr ? "ETAPE 1 — L'EQUATION" : 'STEP 1 — THE EQUATION'}\n${q.text}`,
-      `${isFr ? 'ETAPE 2 — ISOLE x' : 'STEP 2 — GET x ALONE'}\n${q.steps.join('\n')}`,
+      alg ? `${isFr ? "ETAPE 1 — L'EQUATION" : 'STEP 1 — THE EQUATION'}\n${q.text}`
+        : `${isFr ? 'ETAPE 1 — LE CALCUL' : 'STEP 1 — THE CALCULATION'}\n${q.text}`,
+      alg ? `${isFr ? 'ETAPE 2 — ISOLE x' : 'STEP 2 — GET x ALONE'}\n${tip}${q.steps.join('\n')}`
+        : `${isFr ? 'ETAPE 2 — ASTUCE' : 'STEP 2 — TIP'}\n${tip}${q.steps.join('\n')}`,
       `${isFr ? 'ETAPE 3 — VERIFIE' : 'STEP 3 — CHECK'}\n${q.check || q.text}`,
-      `${isFr ? 'BONNE REPONSE' : 'CORRECT ANSWER'} : ${answer}`,
+      `${isFr ? 'BONNE REPONSE' : 'CORRECT ANSWER'} : ${fmtNumber(answer)}`,
     ];
   }
 
@@ -5860,7 +5867,7 @@ function revealCorrectAnswer(picked = null) {
     qbox.classList.add('correction-active');
     qbox.style.visibility = '';
   }
-  const correct = String(G.question.answer).trim();
+  const correct = fmtNumber(G.question.answer).trim();
   // Typed question: the display shows the right number (not a keypad digit).
   if (G.question.typed) {
     const display = document.querySelector('#answer-buttons .typed-display');

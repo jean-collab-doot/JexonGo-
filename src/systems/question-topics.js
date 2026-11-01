@@ -8,7 +8,7 @@
 //  - Nothing chosen: the level's own operations (limited by school grade).
 import { G } from '../state.js';
 
-export const EXTRA_TOPIC_OPS = { exponent: '^', algebra: 'alg' };
+export const EXTRA_TOPIC_OPS = { exponent: '^', algebra: 'alg', negative: 'neg' };
 const BASIC_OPS = ['+', '-', '*', '/'];
 
 export function chosenBasicOps() {

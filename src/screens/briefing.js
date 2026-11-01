@@ -90,7 +90,7 @@ export function showBriefing(levelNum) {
   const flyBtn = $('btn-briefing-fly');
   if (flyBtn) flyBtn.textContent = t('fly');
 
-  const opSymbols = { '+': '+', '-': '-', '*': 'x', '/': '/', '^': 'x²', alg: 'x=?' };
+  const opSymbols = { '+': '+', '-': '-', '*': 'x', '/': '/', '^': 'x²', alg: 'x=?', neg: '−3' };
   $('briefing-ops').textContent = opsToShow
     .map(op => `${opSymbols[op] || op} ${tOp(op)}`)
     .join('  ');
@@ -159,7 +159,7 @@ const GRADE_OPS = { 1: ['+'], 2: ['+', '-'], 3: ['+', '-', '*'], 4: ['+', '-', '
 const OP_NAMES = {
   '+': ['addition', 'addition'], '-': ['soustraction', 'subtraction'],
   '*': ['multiplication', 'multiplication'], '/': ['division', 'division'],
-  '^': ['exposant', 'exponent'], alg: ['algèbre', 'algebra'],
+  '^': ['exposant', 'exponent'], alg: ['algèbre', 'algebra'], neg: ['nombres négatifs', 'negative numbers'],
 };
 // Level where each operation first appears (data/levels.js opsForLevel).
 const OP_FIRST_LEVEL = { '-': 16, '*': 26, '/': 36 };

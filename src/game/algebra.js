@@ -13,6 +13,8 @@
 //  11  Première   fractions, inequalities  x/4 + 3 = 8, (2/3)x = 10, 2x + 3 < 11 → x < ?
 //  12  Terminale  mix of 10 and 11
 
+import { fmt, signChoices, SIGN_RULES_FROM_SCHOOL_YEAR } from './negatives.js';
+
 function rnd(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
 function pick(list) { return list[rnd(0, list.length - 1)]; }
 
@@ -93,6 +95,18 @@ const FORMS = {
     return { text: `(${p}/${q})x = ${r}, x = ?`, answer: x, nums: [p, q, r, x], div: [p, x],
       steps: p === 1 ? [`x = ${r} × ${q}`, `x = ${x}`] : [`x = ${r} × ${q} ÷ ${p}`, `x = ${r * q} ÷ ${p} = ${x}`] };
   },
+  // Negative solution (5e and up): x + a = b with b < a, e.g. x + 7 = 2.
+  addNeg(L) {
+    const x = -rnd(1, Math.min(xMax(L), 10)); const a = rnd(-x + 1, Math.min(L, -x + 20));
+    return { text: `x + ${a} = ${x + a}, x = ?`, answer: x, nums: [a, x + a], negative: true,
+      steps: [`x = ${x + a} − ${a}`, `x = ${fmt(x)}`] };
+  },
+  // Negative solution, two steps (3e and up): ax + b = c, e.g. 2x + 10 = 4.
+  twoStepNeg(L) {
+    const a = pick([2, 3, 4, 5]); const x = -rnd(1, Math.min(xMax(L), 6)); const b = rnd(1, Math.min(L, 20)); const c = a * x + b;
+    return { text: `${a}x + ${b} = ${fmt(c)}, x = ?`, answer: x, nums: [a, b, c, a * x], negative: true, div: [a, x],
+      steps: [`${a}x = ${fmt(c)} − ${b} = ${fmt(a * x)}`, `x = ${fmt(a * x)} ÷ ${a} = ${fmt(x)}`] };
+  },
   // ax + b < c → x < ? (answer: the bound)
   inequality(L) {
     const a = pick([2, 3, 4, 5]); const k = rnd(2, xMax(L)); const b = rnd(1, Math.max(1, Math.min(20, L - a * k)));
@@ -104,25 +118,25 @@ const FORMS = {
 
 const YEAR_FORMS = {
   6: ['missingAdd', 'missingSub', 'missingMul'],
-  7: ['add', 'sub', 'add', 'sub', 'missingMul'],
-  8: ['mul', 'div', 'twoStep'],
-  9: ['twoStep', 'twoStepMinus', 'paren'],
-  10: ['bothSides', 'bothSides', 'paren', 'twoStepMinus'],
-  11: ['fractionPlus', 'fractionTimes', 'inequality', 'bothSides'],
-  12: ['bothSides', 'fractionPlus', 'fractionTimes', 'inequality', 'paren'],
+  7: ['add', 'sub', 'add', 'sub', 'missingMul', 'addNeg'],
+  8: ['mul', 'div', 'twoStep', 'addNeg'],
+  9: ['twoStep', 'twoStepMinus', 'paren', 'twoStepNeg'],
+  10: ['bothSides', 'bothSides', 'paren', 'twoStepMinus', 'twoStepNeg'],
+  11: ['fractionPlus', 'fractionTimes', 'inequality', 'bothSides', 'twoStepNeg'],
+  12: ['bothSides', 'fractionPlus', 'fractionTimes', 'inequality', 'paren', 'twoStepNeg'],
 };
 
-// Mental-math check: whole answer, every number in range, and the division
-// step stays in the times tables (÷ 3, 4, 6... only up to 12; ÷ 2, 5, 10 up
-// to 20).
+// Mental-math check: whole answer, every number in range (−limit ... limit
+// for the negative forms), and the division step stays in the times tables
+// (÷ 3, 4, 6... only up to 12; ÷ 2, 5, 10 up to 20).
 export function algebraQuestionOk(q, limit) {
-  if (!Number.isInteger(q.answer) || q.answer < 0) return false;
-  if (q.answer > limit) return false;
+  const low = q.negative ? -limit : 0;
+  if (!Number.isInteger(q.answer) || q.answer < low || q.answer > limit) return false;
   if (q.div) {
     const [by, result] = q.div;
-    if (result > ([1, 2, 5, 10].includes(by) ? 20 : 12)) return false;
+    if (Math.abs(result) > ([1, 2, 5, 10].includes(by) ? 20 : 12)) return false;
   }
-  return q.nums.every(n => Number.isInteger(n) && n >= 0 && n <= limit);
+  return q.nums.every(n => Number.isInteger(n) && n >= low && n <= limit);
 }
 
 // The equation with x replaced by the answer ("3 × 4 + 5 = 4 + 13"), shown
@@ -130,17 +144,25 @@ export function algebraQuestionOk(q, limit) {
 function checkLine(q) {
   const eq = q.text.split(', ')[0];
   if (/[<>]/.test(eq)) return q.text.replace('?', q.answer);
-  return eq.replace(/(\d|\))x/g, `$1 × ${q.answer}`).replace(/[x□]/g, String(q.answer));
+  const v = q.answer < 0 ? `(${fmt(q.answer)})` : String(q.answer);
+  return eq.replace(/(\d|\))x/g, `$1 × ${v}`).replace(/[x□]/g, fmt(q.answer));
+}
+
+// Negative answers get wrong choices from sign mistakes (−5 → 5, −4, −6).
+function finish(q, L) {
+  const out = { ...q, check: checkLine(q), op: 'alg', a: q.answer, b: 0 };
+  if (q.negative) out.choices = signChoices(q.answer, [-q.answer, q.answer + 1, q.answer - 1], L);
+  return out;
 }
 
 export function makeSchoolAlgebraQuestion(year, limit) {
-  const forms = YEAR_FORMS[Math.max(6, Math.min(12, year))];
+  const forms = YEAR_FORMS[Math.max(6, Math.min(12, year))]
+    .filter(f => year >= SIGN_RULES_FROM_SCHOOL_YEAR || !f.endsWith('Neg'));
   const L = Math.max(10, limit);
   for (let i = 0; i < 60; i++) {
     const q = FORMS[pick(forms)](L);
-    if (algebraQuestionOk(q, L)) return { ...q, check: checkLine(q), op: 'alg', a: q.answer, b: 0 };
+    if (algebraQuestionOk(q, L)) return finish(q, L);
   }
   // Very small range: the year's first form with its smallest numbers.
-  const q = FORMS[forms[0]](L);
-  return { ...q, check: checkLine(q), op: 'alg', a: q.answer, b: 0 };
+  return finish(FORMS[forms[0]](L), L);
 }

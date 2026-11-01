@@ -108,7 +108,8 @@ function makeQuestion(ops, cap, multCap, tier, mins = {}) {
       break;
   }
 
-  const sym = op === '*' ? '×' : op === '/' ? '÷' : op;
+  // Real minus sign (−): wider and easier to read than '-', on phones too.
+  const sym = op === '*' ? '×' : op === '/' ? '÷' : op === '-' ? '−' : op;
   return { text: `${a} ${sym} ${b} = ?`, answer, a, b, op };
 }
 

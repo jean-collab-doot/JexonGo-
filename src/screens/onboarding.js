@@ -3,6 +3,7 @@ import { save } from '../utils/storage.js';
 import { getLang, setLang } from '../i18n.js';
 import { SFX } from '../audio/sound.js';
 import { schoolYearOfLevel as yearOfLevel } from '../systems/school-questions.js';
+import { NEGATIVES_FROM_SCHOOL_YEAR } from '../game/negatives.js';
 
 function introLang() {
   return getLang();
@@ -66,6 +67,9 @@ function topicSections(answers, fr) {
       { label: '×', value: '*', symbol: true },
       { label: '÷', value: '/', symbol: true },
       { label: fr ? 'Exposant' : 'Exponent', value: 'exponent', wide: true },
+      // Negative numbers: from CM2 / 5th grade only.
+      ...((answers.ageGroup_schoolYear || 0) >= NEGATIVES_FROM_SCHOOL_YEAR
+        ? [{ label: fr ? 'Nombres négatifs' : 'Negative numbers', value: 'negative', wide: true }] : []),
     ],
   }];
   if ((answers.ageGroup_schoolYear || 0) >= ALGEBRA_FROM_SCHOOL_YEAR) {
@@ -175,7 +179,6 @@ export function showEquationConfig(onComplete) {
 // BRIFING button: change the equations first (topics + number range, same
 // yellow screens as the questionnaire), then main.js shows the briefing and
 // the beginner practice.
-const TOPIC_ORDER = ['+', '-', '*', '/', 'exponent', 'algebra'];
 const RANGE_PRESETS = [10, 20, 50, 100];
 
 function schoolYearOfLevel(level = G.schoolLevel || '') {
@@ -198,7 +201,9 @@ export function showBriefingEquationOptions(onComplete) {
     answers.ageGroup_grade = levels[levelIndex].grade;
   }
   const topics = (G.focusTopics?.length ? G.focusTopics : (G.focusOperations || []));
-  answers.hardTopic = topics.map(v => TOPIC_ORDER.indexOf(v)).filter(i => i >= 0 && (i < 5 || answers.ageGroup_schoolYear >= ALGEBRA_FROM_SCHOOL_YEAR));
+  // Indexes in the buttons really shown for this school year.
+  const topicChoices = topicSections(answers, getLang() === 'fr').flatMap(sec => sec.choices);
+  answers.hardTopic = topics.map(v => topicChoices.findIndex(c => c.value === v)).filter(i => i >= 0);
   const preset = RANGE_PRESETS.indexOf(G.numberRangeMax);
   if (preset >= 0) answers.numberRange = preset;
   showQuestionSteps(onComplete, {
@@ -229,11 +234,16 @@ function applyBriefingEquationAnswers(answers) {
   if (answers.hardTopic_values) {
     G.focusTopics = answers.hardTopic_values;
   } else if (Array.isArray(answers.hardTopic)) {
-    G.focusTopics = answers.hardTopic.map(i => TOPIC_ORDER[i]).filter(Boolean);
+    const topicChoices = topicSections(answers, getLang() === 'fr').flatMap(sec => sec.choices);
+    G.focusTopics = answers.hardTopic.map(i => topicChoices[i]?.value).filter(Boolean);
   }
   // Algebra only stays for secondary-school levels.
   if (schoolYearOfLevel() < ALGEBRA_FROM_SCHOOL_YEAR) {
     G.focusTopics = (G.focusTopics || []).filter(v => v !== 'algebra');
+  }
+  // Negative numbers only from CM2 / 5th grade.
+  if (schoolYearOfLevel() < NEGATIVES_FROM_SCHOOL_YEAR) {
+    G.focusTopics = (G.focusTopics || []).filter(v => v !== 'negative');
   }
   G.focusOperations = (G.focusTopics || []).filter(v => ['+', '-', '*', '/'].includes(v));
   G.focusOperation = G.focusOperations[0] ?? null;
