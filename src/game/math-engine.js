@@ -1,3 +1,5 @@
+import { mistakeChoices } from './tips.js';
+
 function rnd(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
 
 function normalizeOps(ops) {
@@ -138,9 +140,10 @@ export function withChoices(q, max) {
   return q;
 }
 
+// Wrong choices of + − × ÷ and exponent: classic mistakes (game/tips.js).
 export function newQuestion(ops, cap, multCap, tier, mins) {
   const q = makeQuestion(ops, cap, multCap, tier, mins);
-  q.choices = makeChoices(q.answer);
+  q.choices = q.op === 'alg' ? makeChoices(q.answer) : mistakeChoices(q);
   return q;
 }
 

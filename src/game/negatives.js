@@ -8,6 +8,8 @@
 // the correction (game.js buildClearCorrectionSteps), and wrong choices made
 // from classic sign mistakes.
 
+import { NEGATIVE_TIPS } from './tips.js';
+
 export const NEGATIVES_FROM_SCHOOL_YEAR = 5;
 export const SIGN_RULES_FROM_SCHOOL_YEAR = 7;
 
@@ -19,10 +21,8 @@ function pick(list) { return list[rnd(0, list.length - 1)]; }
 export function fmt(n) { return n < 0 ? `−${-n}` : String(n); }
 function par(n) { return n < 0 ? `(${fmt(n)})` : fmt(n); }
 
-const TIPS = {
-  thermo: { fr: 'Imagine un thermomètre : + monte, − descend.', en: 'Picture a thermometer: + goes up, − goes down.' },
-  signs: { fr: 'Deux signes pareils donnent +, deux signes différents donnent −.', en: 'Same signs give +, different signs give −.' },
-};
+// One-line tips: game/tips.js (NEGATIVE_TIPS), with the other tips.
+const TIPS = NEGATIVE_TIPS;
 
 // A nonzero whole number with |n| <= max, often friendly in big ranges.
 function magnitude(lo, max) {

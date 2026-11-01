@@ -14,6 +14,8 @@
 //    range when one is chosen.
 // Every question goes through mentalOk; anything too hard is drawn again.
 
+import { mistakeChoices } from './tips.js';
+
 function rnd(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
 function pick(list) { return list[rnd(0, list.length - 1)]; }
 const round2 = n => Math.round(n * 100) / 100;
@@ -24,20 +26,6 @@ function question(op, a, b, answer, extra = {}) {
   const sym = { '+': '+', '-': '−', '*': '×', '/': '÷' }[op];
   return { text: `${a} ${sym} ${b} = ?`, answer: round2(answer), a, b, op,
     ...(extra.steps ? { check: `${a} ${sym} ${b} = ${round2(answer)}` } : {}), ...extra };
-}
-
-// Wrong choices close to the answer, inside the range when possible.
-function choicesFor(answer, cap) {
-  const step = Number.isInteger(answer) ? 1 : 0.5;
-  const set = new Set([answer]);
-  const offs = [1, -1, 2, -2, 3, -3, 10, -10, 5, -5].map(k => k * step).sort(() => Math.random() - 0.5);
-  for (const off of offs) {
-    if (set.size >= 4) break;
-    const c = round2(answer + off);
-    if (c >= 0 && c <= Math.max(cap, answer + 3) && !set.has(c)) set.add(c);
-  }
-  for (let k = 4; set.size < 4; k++) set.add(round2(answer + k * step));
-  return [...set].sort(() => Math.random() - 0.5);
 }
 
 // A whole number from lo to hi; over 100, often a multiple of 10.
@@ -131,10 +119,11 @@ export function makeSchoolArithmetic(op, plan) {
   for (let i = 0; i < 60; i++) {
     const q = FORMS[op](p);
     if (op === '*') q.answer = round2(q.a * q.b);
-    if (mentalOk(q, p)) return { ...q, choices: choicesFor(q.answer, op === '+' || op === '-' ? p.cap : Infinity) };
+    // Wrong choices from classic mistakes (game/tips.js), + − inside the range.
+    if (mentalOk(q, p)) return { ...q, choices: mistakeChoices(q, { high: op === '+' || op === '-' ? p.cap : Infinity }) };
   }
   const a = Math.min(2, p.cap); const q = question(op === '-' ? '+' : op, a, 1, op === '*' ? a : op === '/' ? a : a + 1);
-  return { ...q, op, choices: choicesFor(q.answer, p.cap) };
+  return { ...q, op, choices: mistakeChoices({ ...q, op }, { high: Math.max(p.cap, q.answer + 3) }) };
 }
 
 // Exponent: base and power by school year; answer <= limit when a range is
@@ -151,9 +140,10 @@ export function makeSchoolExponent(year, limit) {
     const [base, exp] = pick(forms)();
     const answer = base ** exp;
     if (answer <= Math.max(limit, 4)) {
-      return { text: `${base}${SUPERSCRIPT[exp]} = ?`, answer, a: base, b: exp, op: '^', choices: choicesFor(answer, limit),
+      return { text: `${base}${SUPERSCRIPT[exp]} = ?`, answer, a: base, b: exp, op: '^',
+        choices: mistakeChoices({ a: base, b: exp, answer, op: '^' }, { high: Math.max(limit, answer + 3) }),
         steps: [`${base}${SUPERSCRIPT[exp]} = ${Array(exp).fill(base).join(' × ')}`, `= ${answer}`], check: `${base}${SUPERSCRIPT[exp]} = ${answer}` };
     }
   }
-  return { text: '2² = ?', answer: 4, a: 2, b: 2, op: '^', choices: choicesFor(4, limit), steps: ['2² = 2 × 2', '= 4'] };
+  return { text: '2² = ?', answer: 4, a: 2, b: 2, op: '^', choices: [4, 2, 8, 6].sort(() => Math.random() - 0.5), steps: ['2² = 2 × 2', '= 4'] };
 }

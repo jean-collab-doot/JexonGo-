@@ -13,7 +13,8 @@
 //  11  Première   fractions, inequalities  x/4 + 3 = 8, (2/3)x = 10, 2x + 3 < 11 → x < ?
 //  12  Terminale  mix of 10 and 11
 
-import { fmt, signChoices, SIGN_RULES_FROM_SCHOOL_YEAR } from './negatives.js';
+import { fmt, SIGN_RULES_FROM_SCHOOL_YEAR } from './negatives.js';
+import { mistakeChoices, ALGEBRA_TIPS, ALGEBRA_FORM_TIP } from './tips.js';
 
 function rnd(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
 function pick(list) { return list[rnd(0, list.length - 1)]; }
@@ -116,6 +117,28 @@ const FORMS = {
   },
 };
 
+// Classic mistakes of each kind of equation (wrong choices), from its
+// numbers (q.nums, in the order of the form above) and its answer x.
+// Wrong inverse operation, forgotten step, sign forgotten, off by one.
+const MISTAKES = {
+  missingAdd: ([a, c], x) => [c + a, x + 1, x - 1],
+  add: ([a, c], x) => [c + a, x + 1, x - 1],
+  missingSub: ([a, r], x) => [r - a, r, x + 1, x - 1],
+  sub: ([a, r], x) => [r - a, r, x + 1, x - 1],
+  missingMul: ([a, c], x) => [c - a, c, x + 1, x - 1],
+  mul: ([a, c], x) => [c - a, c, x + 1, x - 1],
+  div: ([a, r], x) => [r, r + a, x - a, x + a],
+  twoStep: ([a, b, c], x) => [(c + b) / a, c - b, x + 1, x - 1],
+  twoStepMinus: ([a, b, c], x) => [(c - b) / a, c + b, x + 1, x - 1],
+  paren: ([a, b, c], x) => [c / a + b, c / a, (c - b) / a, x + 1],
+  bothSides: ([a, b, c, d], x) => [(d - b) / (a + c), d - b, (d + b) / (a - c), x + 1],
+  fractionPlus: ([a, b, c], x) => [c - b, c * a - b, (c + b) * a, x + a],
+  fractionTimes: ([p, q, r], x) => [r * p / q, p === 1 ? r : r * q, r, x + q],
+  addNeg: ([a, c], x) => [-x, c + a, x + 1, x - 1],
+  twoStepNeg: ([a, b, c], x) => [-x, (c + b) / a, c - b, x + 1],
+  inequality: ([a, b, c], k) => [(c + b) / a, c - b, k + 1, k - 1],
+};
+
 const YEAR_FORMS = {
   6: ['missingAdd', 'missingSub', 'missingMul'],
   7: ['add', 'sub', 'add', 'sub', 'missingMul', 'addNeg'],
@@ -148,10 +171,11 @@ function checkLine(q) {
   return eq.replace(/(\d|\))x/g, `$1 × ${v}`).replace(/[x□]/g, fmt(q.answer));
 }
 
-// Negative answers get wrong choices from sign mistakes (−5 → 5, −4, −6).
-function finish(q, L) {
-  const out = { ...q, check: checkLine(q), op: 'alg', a: q.answer, b: 0 };
-  if (q.negative) out.choices = signChoices(q.answer, [-q.answer, q.answer + 1, q.answer - 1], L);
+// Check line, one-line tip (game/tips.js) and wrong choices from the classic
+// mistakes of the form; negative answers start with the sign mistake (−5 → 5).
+function finish(q, L, form) {
+  const out = { ...q, form, check: checkLine(q), op: 'alg', a: q.answer, b: 0, tip: ALGEBRA_TIPS[ALGEBRA_FORM_TIP[form]] };
+  out.choices = mistakeChoices(out, { low: q.negative ? -L : 0, high: L, mistakes: MISTAKES[form](q.nums, q.answer) });
   return out;
 }
 
@@ -160,9 +184,10 @@ export function makeSchoolAlgebraQuestion(year, limit) {
     .filter(f => year >= SIGN_RULES_FROM_SCHOOL_YEAR || !f.endsWith('Neg'));
   const L = Math.max(10, limit);
   for (let i = 0; i < 60; i++) {
-    const q = FORMS[pick(forms)](L);
-    if (algebraQuestionOk(q, L)) return finish(q, L);
+    const form = pick(forms);
+    const q = FORMS[form](L);
+    if (algebraQuestionOk(q, L)) return finish(q, L, form);
   }
   // Very small range: the year's first form with its smallest numbers.
-  return finish(FORMS[forms[0]](L), L);
+  return finish(FORMS[forms[0]](L), L, forms[0]);
 }

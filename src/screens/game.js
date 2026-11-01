@@ -8,6 +8,7 @@ import { schoolYearOfLevel, schoolQuestionPlan, questionFromPlan } from '../syst
 import { fmt as fmtNumber, NEGATIVES_FROM_SCHOOL_YEAR } from '../game/negatives.js';
 import { makeSchoolAlgebraQuestion } from '../game/algebra.js';
 import { makeSchoolExponent } from '../game/arithmetic.js';
+import { tipFor } from '../game/tips.js';
 import { spawnEnemy, updateEnemies, hitEnemy, KAMIKAZE_LOCK_FRAMES } from '../game/enemies.js';
 import { shotDelaySeconds, activeWeapon, homingUpgradeOwned } from '../data/upgrades.js';
 import { createMissile, updateMissiles, drawMissiles } from '../game/missiles.js';
@@ -5972,11 +5973,15 @@ function buildClearCorrectionSteps(q, picked = null) {
   let setup = `${a} ${symbol} ${b}`;
   // Keep the complete calculation on one line for fast, unambiguous reading.
   setup = `${a} ${symbol} ${b} = ?`;
-  // Algebra (game/algebra.js) and negative numbers (game/negatives.js): the
-  // question, its one-line tip and solving steps, then the check.
+  // One-line method tip after a mistake (game/tips.js: "× 5, c'est la
+  // moitié de × 10"), first line of step 2.
+  const tipText = tipFor(q);
+  const tip = tipText ? `${isFr ? tipText.fr : tipText.en}\n` : '';
+  // Algebra (game/algebra.js), negative numbers (game/negatives.js), decimals
+  // and exponent (game/arithmetic.js): the question, the tip and solving
+  // steps, then the check.
   if (q.steps?.length) {
     const alg = q.op === 'alg';
-    const tip = q.tip ? `${isFr ? q.tip.fr : q.tip.en}\n` : '';
     return [
       buildCorrectionIntro(q, picked),
       alg ? `${isFr ? "ETAPE 1 — L'EQUATION" : 'STEP 1 — THE EQUATION'}\n${q.text}`
@@ -5998,7 +6003,7 @@ function buildClearCorrectionSteps(q, picked = null) {
   return [
     buildCorrectionIntro(q, picked),
     `${isFr ? 'ETAPE 1 — PLACE LES NOMBRES' : 'STEP 1 — SET UP THE NUMBERS'}\n${setup}`,
-    `${isFr ? 'ETAPE 2 — CALCULE' : 'STEP 2 — CALCULATE'}\n${method1}${method2 ? `. ${method2}` : ''}`,
+    `${isFr ? 'ETAPE 2 — CALCULE' : 'STEP 2 — CALCULATE'}\n${tip}${method1}${method2 ? `. ${method2}` : ''}`,
     `${isFr ? 'ETAPE 3 — VERIFIE' : 'STEP 3 — CHECK'}\n${check}`,
     `${isFr ? 'BONNE REPONSE' : 'CORRECT ANSWER'} : ${answer}`,
   ];
