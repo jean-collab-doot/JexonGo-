@@ -11,7 +11,7 @@ import { makeSchoolExponent } from '../game/arithmetic.js';
 import { tipFor, tipLines } from '../game/tips.js';
 import { makeFractionQuestion } from '../game/fractions.js';
 import { makePercentQuestion } from '../game/percentages.js';
-import { startSessionReport, recordAnswer } from '../systems/session-report.js';
+import { startSessionReport, recordAnswer, mistakesToReplay, markReplayed } from '../systems/session-report.js';
 import { spawnEnemy, updateEnemies, hitEnemy, KAMIKAZE_LOCK_FRAMES } from '../game/enemies.js';
 import { shotDelaySeconds, activeWeapon, homingUpgradeOwned } from '../data/upgrades.js';
 import { createMissile, updateMissiles, drawMissiles } from '../game/missiles.js';
@@ -753,6 +753,10 @@ const GUIDED_FREE_QUESTIONS = 5;
 const GUIDED_LIVES = 3;
 const GUIDED_TIME_S = 20;   // timer of questions 6-10 (generous for beginners)
 let _guidedRun = false;
+// Mistake review game (lobby ERREURS button): its questions, in order.
+const MISTAKES_RUN_MAX = 10;
+let _mistakesRun = false;
+let _mistakesQueue = [];
 let _guidedLives = GUIDED_LIVES;
 
 // True once the free questions are done (the next question uses the 3 lives).
@@ -5497,7 +5501,11 @@ function nextQuestion() {
     const practiceRun = G.practiceMode && !_guidedRun;
     const schoolPlan = !isTutorialActive()
       ? schoolQuestionPlan(practiceRun ? practiceQuestionState() : G, _guidedRun ? 1 : levelCfg.num) : null;
-    if (schoolPlan) {
+    if (_mistakesRun) {
+      // Old mistake, with its choices in a new order.
+      const old = _mistakesQueue[Math.min(G.questionsAnswered, _mistakesQueue.length - 1)];
+      G.question = { ...old, choices: [...(old.choices || [old.answer])].sort(() => Math.random() - 0.5) };
+    } else if (schoolPlan) {
       G.question = questionFromPlan(schoolPlan);
     } else {
       const rawOps  = G.practiceMode ? G.practiceOps : levelCfg.ops;
@@ -5796,6 +5804,7 @@ function handleAnswer(choice, btn) {
 
   const correct = choice === G.question.answer;
   recordAnswer(G.question, correct ? 'correct' : 'wrong', answerSeconds());
+  if (_mistakesRun && correct) markReplayed(G.question, true);   // it leaves the notebook
   G.sessionResponseTimeTotal = (G.sessionResponseTimeTotal || 0) + Math.max(0, _timerTotal - G.timeLeft);
   G.sessionResponseCount = (G.sessionResponseCount || 0) + 1;
   btn.classList.add(correct ? 'correct' : 'wrong');
@@ -6862,6 +6871,16 @@ export function initGame(levelNum, onComplete) {
   }
   // New-player practice: plain normal weather (no rain / storm / fog / snow).
   if (_guidedRun) levelCfg = { ...levelCfg, weather: WEATHER_TYPES.CLOUDY };
+  // Lobby ERREURS button (screens/mistakes-lobby.js): a practice game whose
+  // questions are the player's old mistakes, one each, then the end.
+  // (A continued game keeps its questions.)
+  if (!(snap && G.mistakesReviewRun && _mistakesQueue.length)) {
+    _mistakesQueue = G.practiceMode && G.mistakesReview ? mistakesToReplay(MISTAKES_RUN_MAX) : [];
+  }
+  _mistakesRun = _mistakesQueue.length > 0;
+  G.mistakesReview = false;
+  G.mistakesReviewRun = _mistakesRun;
+  if (_mistakesRun) levelCfg = { ...levelCfg, questionCount: _mistakesQueue.length };
   // New players' first runs (practice run after the questionnaire, placement
   // tutorial): the same enemy planes as level 1 (number, arrival, speed, fire).
   const enemyLevelNum = (_guidedRun || _tutorialActive) ? 1 : levelNum;

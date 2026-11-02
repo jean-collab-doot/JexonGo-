@@ -12,6 +12,7 @@ import { initLevelMap, renderLevelMap, setMapFocusLevel, setLevelMapPicker, getL
 import { initHangar, renderHangar } from './screens/hangar.js';
 import { initShop, renderShop } from './screens/shop.js';
 import { initTraining, renderTraining, practiceLevelNumber } from './screens/training.js';
+import { initMistakesLobby } from './screens/mistakes-lobby.js';
 import { initGame, leaveCoopLink } from './screens/game.js';
 import { initResult, showResult } from './screens/result.js';
 import { initChest, showChest, setChestReturn } from './screens/chest.js';
@@ -598,6 +599,11 @@ initLeaderboard();
 document.getElementById('btn-lobby-multi')?.addEventListener('click', () => {
   if (isMultiLobby()) exitMultiplayer();
   else nav.toMulti();
+});
+// ERREURS: a practice game with the player's old mistakes (game.js).
+initMistakesLobby(() => {
+  G.mistakesReview = true;
+  nav.toGame(practiceLevelNumber(), true);
 });
 initGradeScreen();
 initLegalScreens();

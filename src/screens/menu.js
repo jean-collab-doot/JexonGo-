@@ -19,6 +19,7 @@ import { initLobbyTour } from './lobby-tour.js';
 import { askAgeBeforeSignIn } from './age-gate.js';
 import { aircraftArt } from '../data/skins.js';
 import { skinChest } from '../systems/chest.js';
+import { updateMistakesButton } from './mistakes-lobby.js';
 
 // ── GOOGLE SIGN-IN ───────────────────────────────────────────────────────────
 const GOOGLE_CLIENT_ID = '182729505930-rulb73m14t9qvfpjfbplknrcgn0fqvci.apps.googleusercontent.com';
@@ -555,6 +556,7 @@ export function renderMenu() {
     window._nav?.toChest(skinChest(G.pendingSkinChest), 'menu');
   }, 700);
   _updateMissionsBadge();
+  updateMistakesButton();   // ERREURS: how many old mistakes are waiting
   // Badges were removed: drop a leftover "new badge" dot from older versions.
   document.querySelectorAll('.badge-alert').forEach(dot => dot.remove());
   _updateFeatureLocks();

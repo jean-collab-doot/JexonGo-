@@ -13,6 +13,7 @@ import { coinIcon, expIcon, uiIcon } from '../utils/icons.js';
 import { unlockBossAircraft } from '../systems/secret-aircraft.js';
 import { earnHalloweenSkin } from '../data/skins.js';
 import { reportTiles, mountReportDetails } from './mistake-review.js';
+import { notebookSize } from '../systems/session-report.js';
 
 let _prevHighestLevel = 0;
 
@@ -92,7 +93,15 @@ export function initResult(nav) {
       setTimeout(() => window._openConnectPrompt?.(), 500);
     }
   };
-  $('btn-result-retry').onclick = () => nav.toGame(G.currentLevel, G.practiceMode);
+  $('btn-result-retry').onclick = () => {
+    // Mistake review (lobby ERREURS): again with the mistakes left, or the
+    // lobby when there are none.
+    if (G.mistakesReviewRun) {
+      if (!notebookSize()) { nav.toMenu(); return; }
+      G.mistakesReview = true;
+    }
+    nav.toGame(G.currentLevel, G.practiceMode);
+  };
 }
 
 // Numbers in the result card count up from 0 once the card has appeared.
@@ -198,9 +207,10 @@ export function showResult(won) {
   }
 
   const fr = getLang() === 'fr';
-  $('rs-title').textContent = G.practiceMode ? t('practiceComplete') : t('missionComplete');
-  $('rs-level').textContent = G.practiceMode
-    ? (fr ? 'ENTRAÎNEMENT' : 'PRACTICE')
+  $('rs-title').textContent = G.mistakesReviewRun ? (fr ? 'RÉVISION TERMINÉE' : 'REVIEW COMPLETE')
+    : G.practiceMode ? t('practiceComplete') : t('missionComplete');
+  $('rs-level').textContent = G.mistakesReviewRun ? (fr ? 'MES ERREURS' : 'MY MISTAKES')
+    : G.practiceMode ? (fr ? 'ENTRAÎNEMENT' : 'PRACTICE')
     : `${fr ? 'NIVEAU' : 'LEVEL'} ${G.currentLevel}`;
   $('rs-stars').innerHTML = [0, 1, 2].map(i =>
     `<span class="rs-star ${i < stars ? 'is-on' : ''}" style="--i:${i}">${uiIcon('star')}</span>`).join('');

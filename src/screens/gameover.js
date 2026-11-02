@@ -3,6 +3,7 @@ import { G } from '../state.js';
 import { t } from '../i18n.js';
 import { SFX } from '../audio/sound.js';
 import { reportTiles, mountReportDetails } from './mistake-review.js';
+import { notebookSize } from '../systems/session-report.js';
 
 export function initGameover(nav) {
   $('btn-continue-game')?.addEventListener('click', () => {
@@ -16,6 +17,11 @@ export function initGameover(nav) {
     G.pausedGameResume = null;
     G.continueState = null;
     G.coopRetry = true;   // MULTI: replay with the same teammate (main.js toGame)
+    // Mistake review (lobby ERREURS): again with the mistakes left.
+    if (G.mistakesReviewRun) {
+      if (!notebookSize()) { nav.toMenu(); return; }
+      G.mistakesReview = true;
+    }
     nav.toGame(G.currentLevel, G.practiceMode);
   };
 

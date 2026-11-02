@@ -4,21 +4,34 @@
 //    questions, the success %, the average answer time, the best theme and
 //    the theme to work on again.
 //  - Missed questions (wrong answer or time out) go into the notebook, kept
-//    for the whole visit (memory only: nothing is saved, nothing is sent).
-//    At the end of a game a few of them can be played again; a question
-//    answered right in the replay leaves the notebook.
-// Pure (no game state import), so it can be tested on its own.
+//    on this device only (localStorage 'jexongo_mistakeNotebook': not in the
+//    cloud save, never sent; cleared with the account data on sign-out).
+//    At the end of a game a few of them can be played again, and the lobby
+//    ERREURS button plays a whole game of them; a question answered right
+//    there leaves the notebook.
+// No game state import, so it can be tested on its own.
+import { save, load } from '../utils/storage.js';
 
 const NOTEBOOK_MAX = 20;
+const NOTEBOOK_KEY = 'mistakeNotebook';
 export const REPLAY_COUNT = 3;
 
 let _answers = [];      // this game: { op, outcome: 'correct' | 'wrong' | 'timeout' | 'hit', seconds }
-let _notebook = [];     // missed questions, newest first: { q, misses, game }
-let _game = 0;          // number of the current game (this game's misses are replayed first)
+let _game = 0;          // id of the current game (this game's misses are replayed first)
+// Missed questions, newest first: { q, misses, game }.
+let _notebook = (() => {
+  const saved = load(NOTEBOOK_KEY, []);
+  return Array.isArray(saved) ? saved.filter(e => e?.q?.text && e.q.answer !== undefined).slice(0, NOTEBOOK_MAX) : [];
+})();
+const keepNotebook = () => save(NOTEBOOK_KEY, _notebook);
 
 export function startSessionReport() {
   _answers = [];
-  _game++;
+  _game = Date.now();
+}
+
+export function notebookSize() {
+  return _notebook.length;
 }
 
 // outcome: 'correct', 'wrong', 'timeout' or 'hit' (a missile took the
@@ -34,6 +47,7 @@ export function recordAnswer(q, outcome, seconds) {
   const { typed, ...copy } = q;   // replayed with its choices, never typed
   _notebook.unshift({ q: copy, misses, game: _game });
   _notebook.length = Math.min(_notebook.length, NOTEBOOK_MAX);
+  keepNotebook();
 }
 
 // { total, correct, successPct, avgSeconds, best, rework, mistakes }
@@ -81,4 +95,5 @@ export function markReplayed(q, correct) {
   if (!correct) return;
   const key = `${q.text}|${q.answer}`;
   _notebook = _notebook.filter(e => `${e.q.text}|${e.q.answer}` !== key);
+  keepNotebook();
 }

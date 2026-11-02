@@ -2038,3 +2038,26 @@ html:not(.touch-phone):not(.touch-tablet):not(.touch-mobile) #s-levelmap #levelm
 #lobby-sheet .jx-sheet-grip .jx-new-alert { top: 50%; right: auto; left: calc(50% + 46px); margin-top: -10px; }
 @keyframes jx-new-alert-pulse { 50% { transform: scale(1.18); } }
 @media (prefers-reduced-motion: reduce) { .jx-new-alert { animation: none; } }
+
+/* ---- ERREURS (mistakes-lobby.js): under TOP 20, green, with a notebook ---- */
+.jx-mistakes-btn { top: 186px; }
+@media (min-width: 700px) { .jx-mistakes-btn { top: 136px; left: 14px; } }
+.jx-mistakes-btn {
+  background: linear-gradient(180deg, #4fd27a, #2fb35b 55%, #1f8f45);
+  box-shadow: 0 5px 0 #17703a, 0 0 18px rgba(60,200,110,.5), inset 0 3px 0 rgba(255,255,255,.4);
+}
+.jx-mistakes-btn:active { box-shadow: 0 2px 0 #17703a; }
+.jx-mistakes-btn.is-empty { filter: grayscale(.6) brightness(.9); }
+.jx-mistakes-ico { width: 34px; height: 31px; overflow: visible; filter: drop-shadow(1px 2px 0 rgba(0,0,0,.45)); }
+/* How many mistakes wait (red badge in the corner). */
+.jx-mistakes-count {
+  position: absolute; top: -7px; right: -7px;
+  min-width: 22px; height: 22px; padding: 0 5px; box-sizing: border-box;
+  display: grid; place-items: center; border-radius: 11px;
+  font-family: 'Arial Rounded MT Bold', 'Trebuchet MS', 'Segoe UI', system-ui, sans-serif; font-weight: 800;
+  font-size: 13px; line-height: 1; color: #fff; text-shadow: none;
+  background: #e04848; border: 2px solid #fff; box-shadow: 0 2px 0 rgba(0,0,0,.3);
+}
+.jx-mistakes-count.hidden { display: none; }
+/* MULTI mode: the review is a solo game. */
+#s-menu.is-multi .jx-mistakes-btn { display: none; }
