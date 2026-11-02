@@ -1,28 +1,37 @@
-// Percentages, for mental math (about 10 seconds), by SCHOOL YEAR. Only 10,
-// 20, 25, 50 and 75 % of easy numbers, whole answers inside the range the
-// player chose. Each question carries a one-line tip, the calculation lines
-// of the correction and wrong choices made from classic mistakes (25 % de 80
-// → 55: took away 25; 8: did 10 % ; 40: did 50 %).
+// Percentages, for mental math (about 10 seconds), by SCHOOL YEAR: the tens
+// from 10 % to 100 %, plus 25 % and 75 %, of easy numbers, whole answers
+// inside the range the player chose. Each question carries a one-line tip,
+// the calculation lines of the correction and wrong choices made from
+// classic mistakes (30 % de 70 → 49: the rest; 7: only 10 %; 40: took 30).
 //
-//   CP-CM1    50 % (then 10 %) of a number         50 % de 30
-//   CM2-6e    10, 25, 50 %                          25 % de 80
-//   5e-3e     all five, price going down / up       75 % de 40, 60 − 25 %
-//   lycée     and the other way round               25 % de ? = 20, 15 = ? % de 60
+//   CP-CE2    50 %, 100 %                               50 % de 30
+//   CM1       10 %, 50 %, 100 %                         10 % de 60
+//   CM2       10, 20, 25, 50, 100 %                     20 % de 40
+//   6e        every ten 10 % ... 100 %, 25 %            30 % de 70
+//   5e-3e     and 75 %, price going down / up           75 % de 40, 60 − 30 %
+//   lycée     and the other way round                   30 % de ? = 12, 14 = ? % de 20
 
 function rnd(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
 function pick(list) { return list[rnd(0, list.length - 1)]; }
 
 export const PERCENT_TIPS = {
   of: { fr: '10 %, c\'est diviser par 10 ; 50 %, c\'est la moitié ; 25 %, c\'est le quart.', en: '10% is dividing by 10; 50% is half; 25% is a quarter.' },
+  tens: { fr: '30 %, c\'est 3 fois 10 % : divise par 10, puis multiplie.', en: '30% is 3 times 10%: divide by 10, then multiply.' },
+  whole: { fr: '100 %, c\'est le nombre en entier.', en: '100% is the whole number.' },
   change: { fr: 'Calcule d\'abord le pourcentage, puis enlève-le (ou ajoute-le).', en: 'Work out the percentage first, then take it away (or add it).' },
-  reverse: { fr: '25 % c\'est le quart : le tout, c\'est 4 fois plus.', en: '25% is a quarter: the whole is 4 times as much.' },
-  which: { fr: 'Cherche la fraction : la moitié = 50 %, le quart = 25 %, le dixième = 10 %.', en: 'Find the fraction: half = 50%, a quarter = 25%, a tenth = 10%.' },
+  reverse: { fr: 'Retrouve 10 % (ou 25 %), puis le tout : 100 %.', en: 'Find 10% (or 25%) first, then the whole: 100%.' },
+  which: { fr: 'Cherche combien de fois 10 % (ou la moitié, le quart) ça fait.', en: 'Count how many times 10% (or half, a quarter) it makes.' },
 };
 
-// What p % is, as a fraction of 1: [divide by, multiply by].
-const PARTS = { 10: [10, 1], 20: [10, 2], 25: [4, 1], 50: [2, 1], 75: [4, 3] };
+const TENS = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100];
 
-// An easy number for p %: multiples of 10 up to 100, of 20 / 100 above.
+// What p % is, as a fraction of 1: [divide by, multiply by].
+// 30 % = ÷ 10 × 3, 25 % = ÷ 4, 50 % = ÷ 2, 75 % = ÷ 4 × 3, 100 % = × 1.
+const PARTS = { 25: [4, 1], 50: [2, 1], 75: [4, 3], 100: [1, 1] };
+TENS.forEach(p => { if (!PARTS[p]) PARTS[p] = [10, p / 10]; });
+
+// An easy number for p %: multiples of 10 up to 100 (of 2 for 50 %, of 4
+// in the tables or of 20 for 25 / 75 %), then hundreds.
 function base(p, L) {
   const [by] = PARTS[p];
   const step = by === 4 ? 4 : by === 2 ? 2 : 10;
@@ -36,48 +45,55 @@ function base(p, L) {
 }
 function part(p, n) { const [by, times] = PARTS[p]; return (n / by) * times; }
 function partLines(p, n) {
+  if (p === 100) return [`100 % = 100/100 = 1`, `1 × ${n} = ${n}`];
   const [by, times] = PARTS[p];
   return times === 1 ? [`${n} ÷ ${by} = ${n / by}`] : [`${n} ÷ ${by} = ${n / by}`, `${n / by} × ${times} = ${part(p, n)}`];
 }
+const tipOf = p => (p === 100 ? 'whole' : PARTS[p][0] === 10 && p !== 10 ? 'tens' : 'of');
 
 const FORMS = {
-  // 25 % de 80
+  // 30 % de 70
   of(L, pcts) {
-    const p = pick(pcts); const n = base(p, L); const r = part(p, n);
-    return { text: `${p} % de ${n} = ?`, textEn: `${p}% of ${n} = ?`, answer: r, nums: [n], tip: 'of',
-      lines: partLines(p, n), mistakes: [n - p, p === 50 ? n / 10 : n / 2, p === 10 ? n / 2 : n / 10, n - r, r * 10] };
+    const p = pick(pcts); const n = base(p, L); const r = part(p, n); const t = n / 10;
+    return { text: `${p} % de ${n} = ?`, textEn: `${p}% of ${n} = ?`, answer: r, nums: [n], tip: tipOf(p),
+      lines: partLines(p, n), mistakes: [n - r, p === 10 ? n / 2 : t, n - p, r + t, p === 50 ? t : n / 2, r * 10] };
   },
-  // 60 − 25 % (a price going down), 50 + 10 % (going up)
+  // 60 − 30 % (a price going down), 50 + 10 % (going up)
   change(L, pcts) {
-    const p = pick(pcts.filter(v => v !== 75)); const n = base(p, L); const r = part(p, n); const up = Math.random() < 0.4;
+    const p = pick(pcts.filter(v => v !== 100)); const n = base(p, L); const r = part(p, n); const up = Math.random() < 0.4;
     const answer = up ? n + r : n - r;
     return { text: `${n} ${up ? '+' : '−'} ${p} % = ?`, answer, nums: [n, answer], tip: 'change',
       lines: [...partLines(p, n), `${n} ${up ? '+' : '−'} ${r} = ${answer}`],
       mistakes: [r, up ? n + p : n - p, up ? n - r : n + r, up ? n + r * 2 : n - r * 2] };
   },
-  // 25 % de ? = 20
+  // 30 % de ? = 12
   reverse(L, pcts) {
-    const p = pick(pcts.filter(v => v !== 75)); const n = base(p, L); const r = part(p, n);
+    const p = pick(pcts.filter(v => v !== 100)); const n = base(p, L); const r = part(p, n);
     const [by, times] = PARTS[p];
     return { text: `${p} % de ? = ${r}`, textEn: `${p}% of ? = ${r}`, answer: n, nums: [n, r], tip: 'reverse',
       lines: times === 1 ? [`${r} × ${by} = ${n}`] : [`${r} ÷ ${times} = ${r / times}`, `${r / times} × ${by} = ${n}`],
-      mistakes: [r / by, r + p, n / 2, r * 2] };
+      mistakes: [r * by, r / times, r + p, r * 2, n / 2] };
   },
-  // 15 = ? % de 60
-  which(L) {
-    const p = pick([10, 25, 50, 75, 20]); const n = base(p, L); const r = part(p, n);
+  // 14 = ? % de 20
+  which(L, pcts) {
+    const p = pick(pcts.filter(v => v !== 100)); const n = base(p, L); const r = part(p, n);
+    const [by] = PARTS[p];
+    const lines = by === 10
+      ? [`10 % de ${n} = ${n / 10}`, `${r} ÷ ${n / 10} = ${p / 10} → ${p} %`]
+      : n % r === 0 ? [`${n} ÷ ${r} = ${n / r}`, `1/${n / r} = ${p} %`] : [`${n} ÷ 4 = ${n / 4}`, `${r} = 3 × ${n / 4} → 3/4 = 75 %`];
     return { text: `${r} = ? % de ${n}`, textEn: `${r} = ?% of ${n}`, answer: p, nums: [n, r], tip: 'which',
-      lines: n % r === 0 ? [`${n} ÷ ${r} = ${n / r}`, `1/${n / r} = ${p} %`] : [`${n} ÷ 4 = ${n / 4}`, `${r} = 3 × ${n / 4} → 3/4 = 75 %`],
-      mistakes: [r, 100 - p, n / r, p * 2] };
+      lines, mistakes: [r, 100 - p, n / r, p + 10, p - 10, p * 2] };
   },
 };
 
+// The others twice in the short lists: 100 % (too easy) comes up less often.
 function plan(year) {
-  if (year <= 3) return { forms: ['of'], pcts: [50] };
-  if (year <= 4) return { forms: ['of'], pcts: [50, 10] };
-  if (year <= 6) return { forms: ['of'], pcts: [10, 25, 50] };
-  if (year <= 9) return { forms: ['of', 'of', 'change'], pcts: [10, 20, 25, 50, 75] };
-  return { forms: ['of', 'change', 'reverse', 'which'], pcts: [10, 20, 25, 50, 75] };
+  if (year <= 3) return { forms: ['of'], pcts: [50, 50, 100] };
+  if (year <= 4) return { forms: ['of'], pcts: [10, 10, 50, 50, 100] };
+  if (year <= 5) return { forms: ['of'], pcts: [10, 10, 20, 20, 25, 25, 50, 50, 100] };
+  if (year <= 6) return { forms: ['of'], pcts: [...TENS, 25] };
+  if (year <= 9) return { forms: ['of', 'of', 'change'], pcts: [...TENS, 25, 75] };
+  return { forms: ['of', 'change', 'reverse', 'which'], pcts: [...TENS, 25, 75] };
 }
 
 // Four choices: the answer and classic mistakes, whole numbers inside the range.
