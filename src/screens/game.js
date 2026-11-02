@@ -5479,11 +5479,13 @@ function nextQuestion() {
     reveal.classList.add('hidden');
     reveal.classList.remove('hiding');
 
-    // Normal levels and the new-player practice run: questions of the
-    // player's school year (systems/school-questions.js). The rest below is
-    // for practice, the placement rounds and players without a school year.
-    const schoolPlan = (!G.practiceMode || _guidedRun) && !isTutorialActive()
-      ? schoolQuestionPlan(G, _guidedRun ? 1 : levelCfg.num) : null;
+    // Normal levels, the new-player practice run and practice (Entraînement,
+    // with its own operations and range): questions of the player's school
+    // year (systems/school-questions.js). The rest below is for the placement
+    // rounds and players without a school year.
+    const practiceRun = G.practiceMode && !_guidedRun;
+    const schoolPlan = !isTutorialActive()
+      ? schoolQuestionPlan(practiceRun ? practiceQuestionState() : G, _guidedRun ? 1 : levelCfg.num) : null;
     if (schoolPlan) {
       G.question = questionFromPlan(schoolPlan);
     } else {
@@ -5682,10 +5684,22 @@ function questionCheck(q) {
 }
 
 // Minus key on the typed keypad: for every typed question of players who
-// can get negative answers (from CM2, game/negatives.js), so its presence
-// never gives the answer's sign away.
+// can get negative answers (from CM2, game/negatives.js; levels and
+// practice), so its presence never gives the answer's sign away.
 function typedMinusKey() {
-  return !G.practiceMode && schoolYearOf() >= NEGATIVES_FROM_SCHOOL_YEAR;
+  return schoolYearOf() >= NEGATIVES_FROM_SCHOOL_YEAR;
+}
+
+// Practice (Entraînement) asks the school-year questions of its own choices:
+// the operations ticked in its setup (G.practiceOps) and its "de 0 à N".
+const PRACTICE_TOPIC_OF_OP = { '^': 'exponent', alg: 'algebra', frac: 'fractions', pct: 'percentages' };
+function practiceQuestionState() {
+  return {
+    schoolLevel: G.schoolLevel,
+    playerGrade: G.playerGrade,
+    focusTopics: (G.practiceOps || []).map(op => PRACTICE_TOPIC_OF_OP[op] || op),
+    numberRangeMax: G.practiceNumberMax || 0,
+  };
 }
 
 function renderTypedAnswer(btns) {
