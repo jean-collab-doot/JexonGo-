@@ -724,6 +724,23 @@
   width: 100%;
 }
 #settings-panel .jx-sub { display: none; padding: 4px 4px 14px; }
+/* SUIS-MOI: YouTube, TikTok, Instagram one under the other, full width like
+   the pills (the tilted drawer runs past the right edge, so content stays
+   centered), in their colors. */
+#settings-panel .jx-follow { display: flex; flex-direction: column; gap: 10px; }
+#settings-panel .jx-follow-btn {
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  min-height: 50px; padding: 8px 14px; border-radius: 22px; text-decoration: none;
+  font-family: var(--jx-font); font-size: 12px; letter-spacing: .5px;
+  color: #fff; text-shadow: 1px 1px 0 rgba(0,0,0,.45);
+  box-shadow: 0 4px 0 rgba(0,0,0,.28);
+}
+#settings-panel .jx-follow-btn svg { width: 26px; height: 26px; flex: none; }
+#settings-panel .jx-follow-btn:active { transform: translateY(2px); box-shadow: 0 2px 0 rgba(0,0,0,.28); }
+#settings-panel .jx-follow-yt { background: #ff0000; }
+#settings-panel .jx-follow-tt { background: #111; }
+#settings-panel .jx-follow-tt svg { filter: drop-shadow(-1.5px -1px 0 #25f4ee) drop-shadow(1.5px 1px 0 #fe2c55); }
+#settings-panel .jx-follow-ig { background: radial-gradient(circle at 30% 107%, #fdf497 0%, #fd5949 45%, #d6249f 60%, #285aeb 90%); }
 #settings-panel .jx-sub.is-open { display: block; }
 #settings-panel .jx-sub .sett-row { margin-bottom: 10px; }
 #settings-panel .jx-sub .sett-label,

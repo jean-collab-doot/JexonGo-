@@ -17,7 +17,6 @@ const LINK_PARAMS = ['niveau', 'level', 'theme', 'topic'];
 const norm = s => String(s || '').toLowerCase().normalize('NFD')
   .replace(/[̀-ͯ]/g, '').replace(/[\s_.-]/g, '');
 
-// The first word of each class is the one the link maker writes.
 const FRANCE = {
   cp: 'fr-cp', ce1: 'fr-ce1', ce2: 'fr-ce2', cm1: 'fr-cm1', cm2: 'fr-cm2',
   '6e': 'fr-6e', '6eme': 'fr-6e', '5e': 'fr-5e', '5eme': 'fr-5e', '4e': 'fr-4e', '4eme': 'fr-4e', '3e': 'fr-3e', '3eme': 'fr-3e',
@@ -68,33 +67,6 @@ export function readDirectLink(search = location.search) {
     schoolYear: level ? schoolYearOfLevel(level) : 0,
     topics: [...new Set(words.map(topicFromLink).filter(Boolean))],
   };
-}
-
-// Link maker (settings, screens/link-maker.js): the word of a class in the
-// link (fr-5e → 5e, qc-prim1 → 1re-annee, qc-sec2 → sec2, us-7 → grade7).
-export function levelLinkWord(level) {
-  const france = Object.keys(FRANCE).find(word => FRANCE[word] === level);
-  if (france) return france;
-  let m = level.match(/^qc-prim(\d)$/);
-  if (m) return `${m[1]}${m[1] === '1' ? 're' : 'e'}-annee`;
-  m = level.match(/^qc-sec(\d)$/);
-  if (m) return `sec${m[1]}`;
-  m = level.match(/^us-(\d+)$/);
-  return m ? `grade${m[1]}` : level;
-}
-
-const TOPIC_WORDS = {
-  '+': ['addition', 'addition'], '-': ['soustraction', 'subtraction'],
-  '*': ['multiplication', 'multiplication'], '/': ['division', 'division'],
-  fractions: ['fractions', 'fractions'], percentages: ['pourcentages', 'percentages'],
-  exponent: ['exposant', 'exponent'], algebra: ['algebre', 'algebra'],
-};
-
-// The whole link: origin (https://jexongo.app) + class + topics (none: the
-// player picks them in the questionnaire). Topic words in French or English.
-export function buildDirectLink(origin, level, topics = [], fr = true) {
-  const words = topics.map(t => TOPIC_WORDS[t]?.[fr ? 0 : 1]).filter(Boolean);
-  return `${origin}/?niveau=${levelLinkWord(level)}${words.length ? `&theme=${words.join(',')}` : ''}`;
 }
 
 // Questionnaire done: the address loses niveau / theme (other parts stay).

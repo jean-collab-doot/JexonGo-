@@ -2,7 +2,7 @@ import { SFX } from '../audio/sound.js';
 import { t, getLang, setLang, applyI18n } from '../i18n.js';
 import { resetIntroBriefing } from './intro-briefing.js';
 import { showEquationConfig } from './onboarding.js';
-import { openLinkMaker } from './link-maker.js';
+import { openShareGame } from './share-game.js';
 import { updateDrawerProfile } from './menu.js';
 
 const KEY = 'jexongo_settings';
@@ -201,10 +201,10 @@ export function initSettings() {
     }
   });
 
-  // LIEN DIRECT: build a link that starts new players on a class and topics.
-  document.getElementById('btn-direct-link')?.addEventListener('click', () => {
+  // LIEN DU JEU: the game's address to copy or share (share-game.js).
+  document.getElementById('btn-share-game')?.addEventListener('click', () => {
     _closeDrawer();
-    openLinkMaker();
+    openShareGame();
   });
 
   document.getElementById('btn-change-equations')?.addEventListener('click', () => {
