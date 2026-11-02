@@ -2,7 +2,7 @@ import { G } from '../state.js';
 import { save } from '../utils/storage.js';
 import { getLang, setLang } from '../i18n.js';
 import { SFX } from '../audio/sound.js';
-import { schoolYearOfLevel as yearOfLevel } from '../systems/school-questions.js';
+import { schoolYearOfLevel as yearOfLevel, topicFromSchoolYear, numberRangeMaxForYear } from '../systems/school-questions.js';
 
 function introLang() {
   return getLang();
@@ -48,29 +48,25 @@ function schoolSections(country, fr) {
       lvl(fr ? `Secondaire ${n}` : `Secondary ${n}`, `qc-sec${n}`, 6 + n)) },
   ];
 }
-// Values saved for the topic step, in answer-index order.
-// "Which numbers" step: custom range limits for the AUTRE field.
+// "Which numbers" step: smallest number for the AUTRE field (the biggest
+// depends on the class, see numberRangeMaxForYear).
 const RANGE_MIN = 5;
-const RANGE_MAX = 1000;
+const RANGE_PRESETS = [10, 20, 50, 100];
 
-// Algebra is offered from the first year of secondary school (Quebec
-// secondaire 1, France 5e, US 7th grade = school year 7 and up).
-const ALGEBRA_FROM_SCHOOL_YEAR = 7;
-// Fractions from CE2 (Quebec 3e année), percentages from CM2 (5e année).
-const FRACTIONS_FROM_SCHOOL_YEAR = 3;
-const PERCENTAGES_FROM_SCHOOL_YEAR = 5;
-// Topics kept only from a school year (dropped when the class goes lower).
-const TOPIC_FROM_SCHOOL_YEAR = {
-  algebra: ALGEBRA_FROM_SCHOOL_YEAR, fractions: FRACTIONS_FROM_SCHOOL_YEAR, percentages: PERCENTAGES_FROM_SCHOOL_YEAR,
-};
+// Topics kept only from their school year (school-questions.js): × ÷ from
+// CE2, algebra from 5e... Their button is hidden before, and a choice is
+// dropped when the class goes lower.
+function topicTaught(value, year) {
+  return year >= topicFromSchoolYear(value);
+}
 
 function topicSections(answers, fr) {
   const year = answers.ageGroup_schoolYear || 0;
   // Fractions / percentages side by side; alone, the button takes the row.
   const newTopics = [
-    year >= FRACTIONS_FROM_SCHOOL_YEAR && { label: 'Fractions', value: 'fractions' },
-    year >= PERCENTAGES_FROM_SCHOOL_YEAR && { label: fr ? 'Pourcentages' : 'Percentages', value: 'percentages' },
-  ].filter(Boolean).map((choice, i, all) => (all.length === 1 ? { ...choice, wide: true } : choice));
+    { label: 'Fractions', value: 'fractions' },
+    { label: fr ? 'Pourcentages' : 'Percentages', value: 'percentages' },
+  ].filter(c => topicTaught(c.value, year)).map((choice, i, all) => (all.length === 1 ? { ...choice, wide: true } : choice));
   const sections = [{
     title: fr ? 'PRIMAIRE' : 'PRIMARY',
     choices: [
@@ -80,9 +76,9 @@ function topicSections(answers, fr) {
       { label: '÷', value: '/', symbol: true },
       ...newTopics,
       { label: fr ? 'Exposant' : 'Exponent', value: 'exponent', wide: true },
-    ],
+    ].filter(c => topicTaught(c.value, year)),
   }];
-  if ((answers.ageGroup_schoolYear || 0) >= ALGEBRA_FROM_SCHOOL_YEAR) {
+  if (topicTaught('algebra', year)) {
     const country = COUNTRY_VALUES[answers.country];
     sections.push({
       title: country === 'france' ? (fr ? 'COLLÈGE / LYCÉE' : 'MIDDLE / HIGH SCHOOL')
@@ -92,6 +88,16 @@ function topicSections(answers, fr) {
     });
   }
   return sections;
+}
+
+// "Which numbers" buttons: only the ranges of the class (CP up to 20, CE1
+// up to 100), then AUTRE.
+function rangeChoices(answers, fr) {
+  const max = numberRangeMaxForYear(answers.ageGroup_schoolYear || 0);
+  return [
+    ...RANGE_PRESETS.filter(n => n <= max).map(n => ({ label: `0 - ${n}`, value: n })),
+    { label: fr ? 'AUTRE' : 'OTHER', custom: true },
+  ];
 }
 const COUNTRY_VALUES = ['quebec', 'france', 'usa', 'other'];
 
@@ -144,13 +150,8 @@ function buildCopy(lang) {
       {
         key: 'numberRange',
         question: fr ? 'Avec quels nombres veux-tu travailler?' : 'Which numbers do you want to work with?',
-        choices: [
-          { label: '0 - 10', value: 10 },
-          { label: '0 - 20', value: 20 },
-          { label: '0 - 50', value: 50 },
-          { label: '0 - 100', value: 100 },
-          { label: fr ? 'AUTRE' : 'OTHER', custom: true },
-        ],
+        // Built from the class (see rangeChoices).
+        sectionsFor: answers => [{ choices: rangeChoices(answers, fr) }],
       },
       {
         key: 'startMode',
@@ -189,8 +190,6 @@ export function showEquationConfig(onComplete) {
 // BRIFING button: change the equations first (topics + number range, same
 // yellow screens as the questionnaire), then main.js shows the briefing and
 // the beginner practice.
-const RANGE_PRESETS = [10, 20, 50, 100];
-
 function schoolYearOfLevel(level = G.schoolLevel || '') {
   return yearOfLevel(level);
 }
@@ -214,8 +213,8 @@ export function showBriefingEquationOptions(onComplete) {
   // Indexes in the buttons really shown for this school year.
   const topicChoices = topicSections(answers, getLang() === 'fr').flatMap(sec => sec.choices);
   answers.hardTopic = topics.map(v => topicChoices.findIndex(c => c.value === v)).filter(i => i >= 0);
-  const preset = RANGE_PRESETS.indexOf(G.numberRangeMax);
-  if (preset >= 0) answers.numberRange = preset;
+  // Saved range pre-selected by value (its button depends on the class).
+  if (RANGE_PRESETS.includes(G.numberRangeMax)) answers.numberRange_max = G.numberRangeMax;
   showQuestionSteps(onComplete, {
     keys: ['country', 'ageGroup', 'hardTopic', 'numberRange'],
     initialAnswers: answers,
@@ -247,9 +246,10 @@ function applyBriefingEquationAnswers(answers) {
     const topicChoices = topicSections(answers, getLang() === 'fr').flatMap(sec => sec.choices);
     G.focusTopics = answers.hardTopic.map(i => topicChoices[i]?.value).filter(Boolean);
   }
-  // Algebra, fractions and percentages only stay from their school year.
+  // × ÷, exponent, fractions, percentages and algebra only stay from their
+  // school year.
   const year = schoolYearOfLevel();
-  G.focusTopics = (G.focusTopics || []).filter(v => !(year < (TOPIC_FROM_SCHOOL_YEAR[v] || 0)));
+  G.focusTopics = (G.focusTopics || []).filter(v => topicTaught(v, year));
   G.focusOperations = (G.focusTopics || []).filter(v => ['+', '-', '*', '/'].includes(v));
   G.focusOperation = G.focusOperations[0] ?? null;
   if (answers.numberRange_max) G.numberRangeMax = answers.numberRange_max;
@@ -340,6 +340,14 @@ function showQuestionSteps(onComplete, options = {}) {
       answers[`${current.key}_values`] = answers[current.key].map(i => all[i].value);
       answers[`${current.key}_value`] = answers[current.key].map(i => choiceLabel(all[i]));
     }
+    // Same for the number range: no button selected when it is too big for
+    // the class.
+    const chosenMax = answers[`${current.key}_max`];
+    if (!current.multi && chosenMax !== undefined) {
+      const i = all.findIndex(c => c?.value === chosenMax);
+      if (i >= 0) answers[current.key] = i;
+      else delete answers[current.key];
+    }
     overlay.innerHTML = '';
     const stepWrap = document.createElement('div');
     stepWrap.className = 'ob-step obn-step';
@@ -424,14 +432,16 @@ function showQuestionSteps(onComplete, options = {}) {
       return btn;
     };
 
-    // AUTRE: the player types the biggest number (5 to 1000).
+    // AUTRE: the player types the biggest number (5 to 20 in CP, 100 in
+    // CE1, 1000 after).
     const showCustomRange = (index) => {
+      const rangeMax = numberRangeMaxForYear(answers.ageGroup_schoolYear || 0);
       body.querySelector('.obn-custom')?.remove();
       const row = document.createElement('div');
       row.className = 'obn-custom';
       row.innerHTML = `
         <label class="obn-custom-label">${copy.rangeFrom}
-          <input class="obn-custom-input" type="number" inputmode="numeric" min="${RANGE_MIN}" max="${RANGE_MAX}" placeholder="30">
+          <input class="obn-custom-input" type="number" inputmode="numeric" min="${RANGE_MIN}" max="${rangeMax}" placeholder="${rangeMax < 30 ? 15 : 30}">
         </label>
         <button type="button" class="obn-btn obn-custom-ok">OK</button>`;
       body.appendChild(row);
@@ -439,7 +449,7 @@ function showQuestionSteps(onComplete, options = {}) {
       const ok = row.querySelector('button');
       const refresh = () => {
         const n = Number(input.value);
-        ok.disabled = !(Number.isInteger(n) && n >= RANGE_MIN && n <= RANGE_MAX);
+        ok.disabled = !(Number.isInteger(n) && n >= RANGE_MIN && n <= rangeMax);
       };
       refresh();
       input.addEventListener('input', refresh);
@@ -489,10 +499,13 @@ function showQuestionSteps(onComplete, options = {}) {
 
 function currentEquationConfigAnswers() {
   const topicIndex = { '+': 0, '-': 1, '*': 2, '/': 3 };
-  const selected = Array.isArray(G.focusOperations) && G.focusOperations.length
+  // The topic buttons of the player's class (no × ÷ before CE2).
+  const year = schoolYearOfLevel() || Number(G.playerGrade) || 0;
+  const selected = (Array.isArray(G.focusOperations) && G.focusOperations.length
     ? G.focusOperations
-    : G.focusOperation ? [G.focusOperation] : [];
+    : G.focusOperation ? [G.focusOperation] : []).filter(op => topicTaught(op, year));
   return {
+    ageGroup_schoolYear: year,
     hardTopic: selected.map(op => topicIndex[op]).filter(i => i !== undefined),
     startMode: G.onboardingStartMode === 'placement' || G.pendingPlacement ? 1 : 0,
   };
@@ -554,7 +567,7 @@ function applyOnboardingAnswers(answers) {
   // Every chosen topic is remembered (+ - * /, exponent, fractions,
   // percentages, algebra), each only from its school year.
   const year = answers.ageGroup_schoolYear || 0;
-  G.focusTopics = (answers.hardTopic_values || []).filter(v => !(year < (TOPIC_FROM_SCHOOL_YEAR[v] || 0)));
+  G.focusTopics = (answers.hardTopic_values || []).filter(v => topicTaught(v, year));
   G.focusOperations = G.focusTopics.filter(v => ['+', '-', '*', '/'].includes(v));
   G.focusOperation = G.focusOperations[0] ?? null;
   save('focusTopics', G.focusTopics);

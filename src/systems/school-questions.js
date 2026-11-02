@@ -5,7 +5,8 @@
 //    the level number only makes the numbers grow (up to level 30).
 //  - Only the topics chosen by the player (G.focusTopics) are asked, each
 //    about as often as the others, at the level of their school year.
-//    Nothing chosen: the year's own topics.
+//    Nothing chosen: the year's own topics. A topic not taught yet in the
+//    year (× ÷ before CE2...) is never asked, even from an old choice.
 //  - Algebra comes from game/algebra.js: one kind of equation per school
 //    year, every number (question and answer) inside the number range.
 //  - + − × ÷ and exponent come from game/arithmetic.js: friendly numbers
@@ -18,7 +19,8 @@
 //    rules). Range "0 - 100" becomes −100 ... 100.
 //  - Each year also has smallest numbers (no 2 + 3 or 2 × 2 in high school).
 //  - Number limit (G.numberRangeMax, "0 - 100"...): only changes the size of
-//    the numbers, never the kind of question.
+//    the numbers, never the kind of question; capped by the class
+//    (numberRangeMaxForYear: 20 in CP, 100 in CE1).
 // No school year saved (old accounts): null, game.js keeps the old rule.
 // Pure (no game state import), so it can be tested on its own.
 import { withChoices } from '../game/math-engine.js';
@@ -64,6 +66,23 @@ const ALGEBRA_RANGE = [30, 100];
 // From CM2, share of + − (and from 5e also × ÷) questions with negative numbers.
 const NEGATIVE_SHARE = 0.25;
 const TOPIC_OPS = { '+': '+', '-': '-', '*': '*', '/': '/', exponent: '^', algebra: 'alg', fractions: 'frac', percentages: 'pct' };
+// First school year a topic can be chosen (onboarding, BRIFING, practice).
+// Before it the button is hidden and an old choice is ignored: × ÷ and
+// fractions from CE2 / 3e année / 3rd grade, percentages from CM2 / 5e
+// année, exponent from 6e année / 6th grade, algebra from 5e / secondaire 1
+// / 7th grade.
+const TOPIC_FROM_SCHOOL_YEAR = { '*': 3, '/': 3, frac: 3, pct: 5, '^': 6, alg: 7 };
+
+// Topic name (fractions...) or op (frac...): its first school year.
+export function topicFromSchoolYear(topic) {
+  return TOPIC_FROM_SCHOOL_YEAR[TOPIC_OPS[topic] || topic] || 0;
+}
+
+// Biggest number a class can choose ("Avec quels nombres", practice "de 0
+// à"): CP / 1re année up to 20, CE1 / 2e année up to 100, then 1000.
+export function numberRangeMaxForYear(year) {
+  return year === 1 ? 20 : year === 2 ? 100 : 1000;
+}
 
 // Topics the player chose (onboarding / equation settings), as ops.
 function chosenOps(state) {
@@ -79,14 +98,15 @@ export function schoolQuestionPlan(state, levelNum = 1) {
   const year = schoolYearOfLevel(state.schoolLevel || '') || Number(state.playerGrade) || 0;
   const p = SCHOOL_YEAR_PROFILES[Math.min(12, year)];
   if (!p) return null;
-  const chosen = chosenOps(state);
+  // A topic chosen before it is taught (old save, other class) is left out.
+  const chosen = chosenOps(state).filter(op => year >= topicFromSchoolYear(op));
   const ops = chosen.length ? chosen.map(op => [op, 1]) : Object.entries(p.ops);
   const t = Math.min(1, Math.max(0, (levelNum - 1) / (FULL_SIZE_LEVEL - 1)));
   const grow = ([lo, hi]) => Math.round(lo + (hi - lo) * t);
   let cap = grow(p.cap);
   let mCap = grow(p.mCap);
   let algLimit = grow(ALGEBRA_RANGE);
-  const limit = Number(state.numberRangeMax) || 0;
+  const limit = Math.min(Number(state.numberRangeMax) || 0, numberRangeMaxForYear(year));
   if (limit > 0) {
     cap = limit;
     mCap = Math.max(2, Math.min(limit, p.mCap[1]));

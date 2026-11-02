@@ -8,6 +8,7 @@ import { AIRCRAFT } from '../data/aircraft.js';
 import { makeBottomSheet } from '../utils/bottomsheet.js';
 import { BIOMES, BIOME_META } from '../data/levels.js';
 import { weatherOptionsForBiome } from '../data/weather.js';
+import { schoolYearOfLevel, topicFromSchoolYear, numberRangeMaxForYear } from '../systems/school-questions.js';
 
 // Same 4 operations/colors the old standalone "PRATIQUE" popup
 // (#practice-select in index.html, now retired) used to show.
@@ -117,7 +118,17 @@ export function initTraining(nav) {
 function renderTrainingSheet() {
   const body = $('training-sheet-body');
   if (!body) return;
-  if (!G.practiceOps?.length) G.practiceOps = ['+', '-', '*', '/'];
+  // Only the topics and numbers of the player's class (school-questions.js:
+  // no × ÷ before CE2, up to 20 in CP...); unknown class: everything.
+  const year = schoolYearOfLevel(G.schoolLevel || '') || Number(G.playerGrade) || 0;
+  const ops = PRACTICE_OPS.filter(({ op }) => !year || year >= topicFromSchoolYear(op));
+  const numberMax = year ? numberRangeMaxForYear(year) : PRACTICE_NUMBER_MAX;
+  G.practiceOps = (G.practiceOps || []).filter(op => ops.some(item => item.op === op));
+  if (!G.practiceOps.length) G.practiceOps = ops.filter(item => ['+', '-', '*', '/'].includes(item.op)).map(item => item.op);
+  if (G.practiceNumberMax > numberMax) {
+    G.practiceNumberMax = numberMax;
+    save('practiceNumberMax', numberMax);
+  }
 
   body.innerHTML = `
     <div class="practice-subtitle">${t('chooseOps')}</div>
@@ -141,7 +152,7 @@ function renderTrainingSheet() {
       <label class="practice-number-field">
         <span>${getLang() === 'fr' ? 'de 0 à' : 'from 0 to'}</span>
         <input id="training-number-max" class="practice-number-input" type="number" inputmode="numeric"
-          min="${PRACTICE_NUMBER_MIN}" max="${PRACTICE_NUMBER_MAX}" placeholder="?"
+          min="${PRACTICE_NUMBER_MIN}" max="${numberMax}" placeholder="?"
           value="${G.practiceNumberMax || ''}">
       </label>
     </div>
@@ -169,7 +180,7 @@ function renderTrainingSheet() {
   `;
 
   const opsGrid = body.querySelector('#training-ops');
-  PRACTICE_OPS.forEach(({ op, symbol, color, labelKey }) => {
+  ops.forEach(({ op, symbol, color, labelKey }) => {
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = `practice-op-btn${G.practiceOps.includes(op) ? ' pob-active' : ''}`;
@@ -190,7 +201,7 @@ function renderTrainingSheet() {
   });
 
   body.querySelector('#btn-training-all').addEventListener('click', () => {
-    G.practiceOps = PRACTICE_OPS.map(item => item.op);
+    G.practiceOps = ops.map(item => item.op);
     opsGrid.querySelectorAll('.practice-op-btn').forEach(b => b.classList.add('pob-active'));
   });
 
@@ -264,13 +275,14 @@ function renderTrainingSheet() {
   renderWeatherBtns();
 
   // Typed number range: empty = the difficulty's usual numbers; otherwise
-  // whole numbers from 5 to 1000 (anything else blocks START until fixed).
+  // whole numbers from 5 to the class maximum (anything else blocks START
+  // until fixed).
   const numberInput = body.querySelector('#training-number-max');
   const readNumberMax = () => {
     const raw = numberInput.value.trim();
     if (!raw) return 0;
     const n = Number(raw);
-    return Number.isInteger(n) && n >= PRACTICE_NUMBER_MIN && n <= PRACTICE_NUMBER_MAX ? n : null;
+    return Number.isInteger(n) && n >= PRACTICE_NUMBER_MIN && n <= numberMax ? n : null;
   };
   numberInput.addEventListener('input', () => {
     const n = readNumberMax();
