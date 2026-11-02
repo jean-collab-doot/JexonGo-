@@ -1885,6 +1885,20 @@ function advanceAfterCorrectAnswer(sid) {
   else endLevel(true);
 }
 
+// Every question of the game is answered (levels, practice, beginner
+// practice, mistake review; not the placement rounds, not a boss level).
+function gameQuestionsDone() {
+  if (isTutorialActive() || levelCfg.isBossLevel) return false;
+  return G.questionsAnswered >= (_guidedRun ? GUIDED_QUESTIONS : levelCfg.questionCount);
+}
+
+// After an answer: the next question after `delayMs`, or, when it was the
+// last one, the end of the game at once (endLevel: nobody fires any more).
+function nextQuestionOrEnd(sid, delayMs) {
+  if (gameQuestionsDone()) { endLevel(true); return; }
+  setTimeout(() => { if (_sessionId === sid) nextQuestion(); }, delayMs);
+}
+
 // Every 5 good answers: same dynamic banner as the level START (letters drop
 // in, light sweep, speed streaks, zoom-out) with the "5 / 10 / 15... GOOD
 // ANSWERS" line. The answer that ends the level gets MISSION COMPLETE instead.
@@ -2169,26 +2183,36 @@ function startAimLesson(now) {
   // A plane to shoot right away: the example takes one already on screen if
   // there is one; the player's turn always gets its own, on the left or right.
   if (example) pickAimLessonTarget();
-  if (!_aimLesson.target) spawnAimLessonPlane(example ? 'ahead' : (Math.random() < 0.5 ? 'left' : 'right'));
+  if (!_aimLesson.target) spawnAimLessonPlane(example ? 'anywhere' : (Math.random() < 0.5 ? 'left' : 'right'));
   renderAimLessonCard();
 }
 
 // An F-15 that appears in view at once and waits there (speed 0) until the
-// lesson is over, so there is always something to shoot.
+// lesson is over, so there is always something to shoot. EXAMPLE
+// ('anywhere'): a random place in front, never straight ahead, so the aim
+// visibly turns; YOUR TURN: on the left or the right.
 function spawnAimLessonPlane(where) {
   const lesson = _aimLesson;
   if (!lesson) return;
   const e = spawnEnemy(canvas.width, 'basic');
-  const x = where === 'left' ? 0.22 : where === 'right' ? 0.78
-    : Math.max(0.3, Math.min(0.7, G.player.x / canvas.width));
+  const playerX = G.player.x / canvas.width;
+  let x = where === 'left' ? 0.22 : 0.78;
+  if (where === 'anywhere') {
+    for (let i = 0; i < 20; i++) {
+      x = 0.15 + Math.random() * 0.7;
+      if (Math.abs(x - playerX) >= 0.12) break;
+    }
+  }
+  const lowY = Math.min(canvas.height * 0.42, G.player.y - getPlayerSize() * 2.5);   // under the card
+  const highY = Math.min(lowY, canvas.height * 0.3);
   e.x = canvas.width * x;
-  e.y = Math.min(canvas.height * 0.42, G.player.y - getPlayerSize() * 2.5);   // under the card
+  e.y = where === 'anywhere' ? highY + Math.random() * (lowY - highY) : lowY;
   lesson.planeSpeed = e.speed;
   e.speed = 0;
   G.enemies.push(e);
   lesson.plane = e;
   lesson.target = e;
-  lesson.side = where === 'left' ? 'left' : 'right';
+  lesson.side = where === 'anywhere' ? (x < playerX ? 'left' : 'right') : where;
   lesson.lastX = e.x; lesson.lastY = e.y;
   lesson.vx = 0; lesson.vy = 0;
 }
@@ -2210,17 +2234,17 @@ function aimLessonTargetValid(e) {
     && e.x > 0 && e.x < canvas.width;
 }
 
-// EXAMPLE: the plane closest to straight ahead. YOUR TURN: the plane the
-// most to one side, so the player has to turn the missiles to reach it.
+// EXAMPLE: any plane on screen (not always the one straight ahead). YOUR
+// TURN: the plane the most to one side, so the player has to turn the
+// missiles to reach it.
 function pickAimLessonTarget() {
   const lesson = _aimLesson;
   if (!lesson) return;
   const angleTo = e => Math.atan2(e.x - G.player.x, G.player.y - e.y);
   const ready = G.enemies.filter(aimLessonTargetValid);
   if (!ready.length) { lesson.target = null; lesson.side = ''; return; }
-  ready.sort((a, b) => lesson.mode === 'example'
-    ? Math.abs(angleTo(a)) - Math.abs(angleTo(b))
-    : Math.abs(angleTo(b)) - Math.abs(angleTo(a)));
+  if (lesson.mode === 'example') ready.sort(() => Math.random() - 0.5);
+  else ready.sort((a, b) => Math.abs(angleTo(b)) - Math.abs(angleTo(a)));
   lesson.target = ready[0];
   lesson.side = angleTo(ready[0]) < 0 ? 'left' : 'right';
   lesson.lastX = ready[0].x; lesson.lastY = ready[0].y;
@@ -3559,9 +3583,9 @@ function frame(ts = 0) {
       const fireTop = canvas.height * 0.08;
       const fireBot = Math.min(canvas.height * 0.78, G.player.y - 80);
       const inFireZone = e.y > fireTop && e.y < fireBot;
-      if (guidedBreakActive() || aimLessonHoldsFire()) {
-        // Beginner practice break after question 5, and the two aiming
-        // lessons: enemies fly, none fires.
+      if (guidedBreakActive() || aimLessonHoldsFire() || _levelEnding) {
+        // Beginner practice break after question 5, the two aiming lessons
+        // and the end of the game (MISSION COMPLETE): enemies fly, none fires.
       } else if (e.type === 'interceptor') {
         // F-14 exclusive weapon: one straight red laser every 0.2 seconds
         // (12 simulation frames), in 3 s volleys separated by 3 s pauses
@@ -5823,22 +5847,27 @@ function handleAnswer(choice, btn) {
     });
     _invincible = Math.max(_invincible, CORRECT_ANSWER_INVINCIBLE_FRAMES);
     const cadenceMs = Math.max(0.35, shotDelaySeconds(Number(activeShootingPlan()?.cadence || 5) * (activeAircraftAbility().fireRate || 1))) * 1000;
-    _shootingWindowUntil = now + GOOD_ANSWER_SHOOTING_WINDOW_MS;
-    startAimLesson(now);   // tutorial: first 2 shots teach how to aim
-    firePlayerShootingPlan();
-    _nextPlayerShotAt = now + cadenceMs;
+    // The last question of the game: the end starts at once, no more shots.
+    const lastQuestion = !isTutorialActive() && !levelCfg.isBossLevel
+      && G.questionsAnswered + 1 >= (_guidedRun ? GUIDED_QUESTIONS : levelCfg.questionCount);
+    if (!lastQuestion) {
+      _shootingWindowUntil = now + GOOD_ANSWER_SHOOTING_WINDOW_MS;
+      startAimLesson(now);   // tutorial: first 2 shots teach how to aim
+      firePlayerShootingPlan();
+      _nextPlayerShotAt = now + cadenceMs;
+    }
     G.correctAnswers++;
     coopOnCorrectAnswer();
     // Coins are earned only by answering correctly. A missed, timed-out, or
     // incorrect question never releases a collectible coin.
     releaseCorrectAnswerCoins();
-    const endsLevel = !isTutorialActive() && !levelCfg.isBossLevel
-      && G.questionsAnswered + 1 >= levelCfg.questionCount;
     const startsGuidedBreak = _guidedRun && G.questionsAnswered + 1 === GUIDED_FREE_QUESTIONS && !_guidedBreakDone;
-    if (G.correctAnswers > 0 && G.correctAnswers % 5 === 0 && !endsLevel && !startsGuidedBreak) showAnswerCelebration();
-    maybeLaunchB2Nuke();
-    maybeTurnEnemies();
-    coopMaybeNuke();
+    if (G.correctAnswers > 0 && G.correctAnswers % 5 === 0 && !lastQuestion && !startsGuidedBreak) showAnswerCelebration();
+    if (!lastQuestion) {
+      maybeLaunchB2Nuke();
+      maybeTurnEnemies();
+      coopMaybeNuke();
+    }
     G.questionsAnswered++;
     recordTutorialAnswer(G.question.op, true);
     showTutorialFeedback(true);
@@ -5882,8 +5911,10 @@ function handleAnswer(choice, btn) {
         if (_sessionId === sid) qbox.style.visibility = 'hidden';
       }, 620);
     }
-    // Beginner practice, question 5: the break starts at once.
-    if (guidedBreakDue()) startGuidedBreak();
+    // Last question: MISSION COMPLETE right away. Beginner practice,
+    // question 5: the break starts at once.
+    if (gameQuestionsDone()) endLevel(true);
+    else if (guidedBreakDue()) startGuidedBreak();
     else _revealTimer = setTimeout(() => advanceAfterCorrectAnswer(sid), GOOD_ANSWER_SHOOTING_WINDOW_MS);
   }
 
@@ -6355,8 +6386,7 @@ function loseLife({ resumeDelayMs = 900, fromEnemyHit = false } = {}) {
     updateStreakHUD();
     // Question 5 wrong: the break starts as soon as CONTINUE is pressed.
     if (guidedBreakDue()) { startGuidedBreak(); return; }
-    const sid = _sessionId;
-    setTimeout(() => { if (_sessionId === sid) nextQuestion(); }, 650);
+    nextQuestionOrEnd(_sessionId, 650);   // last question: the end at once
     return;
   }
   if (isTutorialActive()) {
@@ -6371,12 +6401,7 @@ function loseLife({ resumeDelayMs = 900, fromEnemyHit = false } = {}) {
   if (_godMode) {
     shakeFrames = 8;
     _invincible = 120;
-    const sid = _sessionId;
-    setTimeout(() => {
-      if (_sessionId !== sid) return;
-      if (levelCfg.isBossLevel || G.questionsAnswered < levelCfg.questionCount) nextQuestion();
-      else endLevel(true);
-    }, 900);
+    nextQuestionOrEnd(_sessionId, 900);
     return;
   }
   // Practice without hearts — just shake, next question
@@ -6384,20 +6409,14 @@ function loseLife({ resumeDelayMs = 900, fromEnemyHit = false } = {}) {
     shakeFrames = 8;
     G.streak = 0;
     updateStreakHUD();
-    const sid = _sessionId;
-    setTimeout(() => { if (_sessionId === sid) nextQuestion(); }, 900);
+    nextQuestionOrEnd(_sessionId, 900);
     return;
   }
   if (G.lives <= 0) return;
   if (playerShieldActive()) {
     _invincible = 180;
     updateLivesHUD();
-    const sid = _sessionId;
-    setTimeout(() => {
-      if (_sessionId !== sid) return;
-      if (levelCfg.isBossLevel || G.questionsAnswered < levelCfg.questionCount) nextQuestion();
-      else endLevel(true);
-    }, Math.min(resumeDelayMs, 900));
+    nextQuestionOrEnd(_sessionId, Math.min(resumeDelayMs, 900));
     return;
   }
   G.lives--;
@@ -6429,6 +6448,8 @@ function loseLife({ resumeDelayMs = 900, fromEnemyHit = false } = {}) {
     }, 520);
     return;
   }
+  // That was the last question: the end at once, no recovery wait.
+  if (gameQuestionsDone()) { endLevel(true); return; }
   // Keep the aircraft protected throughout longer recovery sequences, such as
   // the three-second regeneration period after an enemy missile hit.
   _invincible = Math.max(120, Math.ceil(resumeDelayMs / (1000 / 60)));
@@ -6570,6 +6591,9 @@ function endLevel(won) {
   G.timerInterval = null;
   G.enemyMissiles = [];
   clearQuestionUI();
+  // Ended right after a correction: no dim left over the end animation.
+  $('game-pause-overlay')?.classList.remove('dimmed', 'correction-dimmed');
+  _smoothResumeAfterCorrection = false;
 
   const qbox = document.getElementById('question-box');
   const timer = document.getElementById('timer-bar-wrap');
