@@ -471,3 +471,25 @@ html body .mr-next {
   box-shadow: 0 5px 0 #A56A00, inset 0 3px 0 rgba(255,255,255,.5);
 }
 html body .mr-next:active { transform: translateY(2px); box-shadow: 0 3px 0 #A56A00; }
+
+/* Win screen with the end-of-game report:
+   - the orange title bar starts at the very top of the page (no dark strip
+     and card border above it);
+   - always some space between the blocks (they touched on computers);
+   - wide screens: best theme / to work on / replay on one row, and both
+     star goals on one row, so the card still fits the page height. */
+html body #s-result .rs-wrap { padding-top: 0; }
+html body #s-result .rs-card { border-top-width: 0; border-top-left-radius: 0; border-top-right-radius: 0; gap: clamp(8px, 1.4vh, 14px); }
+html body #s-result .rs-head { border-radius: 0; }
+@media (min-width: 700px) {
+  html body #s-result .jx-report-details { flex-direction: row; align-items: stretch; }
+  html body #s-result .jx-report-line { flex: 1 1 0; min-width: 0; }
+  html body #s-result .jx-report-replay { flex: 0 0 auto; }
+  html body #s-result .rs-goals { flex-direction: row; }
+  html body #s-result .rs-goal { flex: 1 1 0; }
+}
+@media (max-height: 500px) and (orientation: landscape) {
+  html body #s-result .jx-report-details { flex-direction: row; align-items: stretch; gap: 6px; }
+  html body #s-result .jx-report-line { flex: 1 1 0; min-width: 0; font-size: 8px; padding: 4px 8px; }
+  html body #s-result .jx-report-replay { flex: 0 0 auto; min-height: 30px; font-size: 9px; padding: 4px 10px; }
+}
