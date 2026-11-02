@@ -11,6 +11,7 @@ import { makeSchoolExponent } from '../game/arithmetic.js';
 import { tipFor, tipLines } from '../game/tips.js';
 import { makeFractionQuestion } from '../game/fractions.js';
 import { makePercentQuestion } from '../game/percentages.js';
+import { startSessionReport, recordAnswer } from '../systems/session-report.js';
 import { spawnEnemy, updateEnemies, hitEnemy, KAMIKAZE_LOCK_FRAMES } from '../game/enemies.js';
 import { shotDelaySeconds, activeWeapon, homingUpgradeOwned } from '../data/upgrades.js';
 import { createMissile, updateMissiles, drawMissiles } from '../game/missiles.js';
@@ -1418,6 +1419,15 @@ function showTutorialAnalysis() {
 
 let canvas, ctx, levelCfg;
 let _timerTotal = 10;
+let _questionShownAt = 0;   // performance.now() when the question appeared
+
+// Seconds the player took on this question (end-of-game report): from the
+// timer, or from the clock when there is none (practice ∞, the first
+// beginner questions). A paused game cannot make it longer than 60 s.
+function answerSeconds() {
+  if (_timerTotal < 9999) return Math.max(0, _timerTotal - G.timeLeft);
+  return _questionShownAt ? Math.min(60, (performance.now() - _questionShownAt) / 1000) : 0;
+}
 let tick        = 0;
 let shakeFrames = 0;
 let _onComplete = null;
@@ -5307,6 +5317,7 @@ function onEnemyMissileHit() {
   if (!G.answerLocked && G.question) {
     G.answerLocked = true;
     G.questionsAnswered++;
+    recordAnswer(G.question, 'hit', 0);   // counted, but not a math mistake
     recordTutorialAnswer(G.question.op, false);
     showTutorialFeedback(false);
     G.streak = 0;
@@ -5568,6 +5579,7 @@ function nextQuestion() {
       const appearMs = resumeFromCorrection ? 920 : 730;
       setTimeout(() => { qbox.classList.remove(appearClass); _transitioning = false; }, appearMs);
       updateTutorialHUD();
+      _questionShownAt = performance.now();
       startTimer();
     };
     if (returnDuration) setTimeout(revealQuestionPanel, returnDuration + 40);
@@ -5783,6 +5795,7 @@ function handleAnswer(choice, btn) {
   });
 
   const correct = choice === G.question.answer;
+  recordAnswer(G.question, correct ? 'correct' : 'wrong', answerSeconds());
   G.sessionResponseTimeTotal = (G.sessionResponseTimeTotal || 0) + Math.max(0, _timerTotal - G.timeLeft);
   G.sessionResponseCount = (G.sessionResponseCount || 0) + 1;
   btn.classList.add(correct ? 'correct' : 'wrong');
@@ -6189,6 +6202,7 @@ function handleTimeout() {
   G.answerLocked = true;
   _answerImmuneUntil = performance.now() + ANSWER_IMMUNE_MS;
   G.questionsAnswered++;
+  recordAnswer(G.question, 'timeout', answerSeconds());
   recordTutorialAnswer(G.question?.op || '+', false, true);
   showTutorialFeedback(false, true);
   G.streak = 0;
@@ -6811,6 +6825,8 @@ export function initGame(levelNum, onComplete) {
   const snap = G.continueState;
   G.continueState = null;
   resetLevel();
+  // End-of-game report: a new game starts a new count (a continued one keeps it).
+  if (!snap) startSessionReport();
   _timedXpElapsedMs = 0;
   G.airdropSessionCoins = 0;
   G.airdropSessionXP = 0;
@@ -6962,6 +6978,8 @@ export function initGame(levelNum, onComplete) {
     $('gameover-score').textContent = getLang() === 'fr'
       ? 'Choisis continuer, recommencer ou retourner au lobby.'
       : 'Choose continue, restart, or go back to the lobby.';
+    // Paused, not finished: no end-of-game report here.
+    $('gameover-report')?.replaceChildren();
     const continueBtn = $('btn-continue-game');
     if (continueBtn) {
       continueBtn.classList.remove('hidden');

@@ -12,6 +12,7 @@ import { AIRCRAFT } from '../data/aircraft.js';
 import { coinIcon, expIcon, uiIcon } from '../utils/icons.js';
 import { unlockBossAircraft } from '../systems/secret-aircraft.js';
 import { earnHalloweenSkin } from '../data/skins.js';
+import { reportTiles, mountReportDetails } from './mistake-review.js';
 
 let _prevHighestLevel = 0;
 
@@ -132,7 +133,6 @@ export function showResult(won) {
   const collectedXpSoFar = G.practiceMode ? 0 : Math.max(0, G.airdropSessionXP || 0);
   const xp    = Math.min(Math.round((G.sessionXP || 0) * xpUpgradeMultiplier()), Math.max(0, maxGameXp() - collectedXpSoFar));
   const stars = calcStars(correct, answered, hits);
-  const accuracy = answered > 0 ? Math.round((correct / answered) * 100) : 0;
 
   // Coins earned: scale by stars and level
   const COINS_PER_STAR = [0, 15, 35, 60];
@@ -212,7 +212,8 @@ export function showResult(won) {
   const goal = (ok, text) => `<div class="rs-goal ${ok ? 'is-ok' : 'is-miss'}"><i>${uiIcon(ok ? 'check' : 'x')}</i><span>${text}</span></div>`;
   $('rs-goals').innerHTML =
     goal(got2Star, fr ? `70 %+ de bonnes réponses (${Math.round(pct * 100)} %)` : `70%+ correct answers (${Math.round(pct * 100)}%)`)
-    + goal(got3Star, fr ? '100 % de bonnes réponses sans être touché' : '100% correct without being hit');
+    + goal(got3Star, (fr ? '100 % de bonnes réponses sans être touché' : '100% correct without being hit')
+      + (hits ? (fr ? ` (touché ${hits}×)` : ` (hit ${hits}×)`) : ''));
 
   // Rewards: coins + EXP tiles (counting up), plus a chest tile on chest levels.
   const rewardLockLabel = fr ? 'CONNECTE-TOI POUR GAGNER' : 'SIGN IN TO EARN';
@@ -231,13 +232,12 @@ export function showResult(won) {
         : ''}`;
   }
 
-  // Stats
-  const total = isBoss ? answered : 10;
-  $('rs-stats').innerHTML = [
-    [fr ? 'RÉPONSES' : 'ANSWERS', `${correct}/${total}`],
-    [fr ? 'PRÉCISION' : 'ACCURACY', `${accuracy}%`],
-    [fr ? 'TOUCHÉ' : 'HITS', String(hits)],
-  ].map(([label, value]) => `<div class="rs-stat"><small>${label}</small><b>${value}</b></div>`).join('');
+  // End-of-game report (screens/mistake-review.js): questions, success,
+  // average time; then best theme, theme to work on and the mistake replay.
+  // (Hits are in the 3-star goal above.)
+  $('rs-stats').innerHTML = reportTiles()
+    .map(([label, value]) => `<div class="rs-stat"><small>${label}</small><b>${value}</b></div>`).join('');
+  mountReportDetails($('rs-report'));
 
   const aircraft = AIRCRAFT[G.activeAircraft] || AIRCRAFT.t6;
   const playerName = (G.playerName && G.playerName !== 'PILOT') ? G.playerName : (fr ? 'PILOTE JEXONGO' : 'JEXONGO PILOT');

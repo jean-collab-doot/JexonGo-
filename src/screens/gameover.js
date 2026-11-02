@@ -2,6 +2,7 @@ import { $ } from '../utils/dom.js';
 import { G } from '../state.js';
 import { t } from '../i18n.js';
 import { SFX } from '../audio/sound.js';
+import { reportTiles, mountReportDetails } from './mistake-review.js';
 
 export function initGameover(nav) {
   $('btn-continue-game')?.addEventListener('click', () => {
@@ -40,6 +41,7 @@ export function showGameover() {
   const key = POSITIVE_KEYS[Math.floor(Math.random() * POSITIVE_KEYS.length)];
   $('gameover-title').textContent = t(key);
   $('gameover-score').textContent = `${G.correctAnswers} ${t('correctKeepPracticing')}`;
+  renderGameoverReport();
 
   // Update button labels to current language
   const continueBtn = $('btn-continue-game');
@@ -48,4 +50,16 @@ export function showGameover() {
   if (retryBtn) retryBtn.textContent = t('retry');
   const mapBtn = $('btn-go-map');
   if (mapBtn) mapBtn.textContent = t('backToMenu');
+}
+
+// End-of-game report (screens/mistake-review.js): questions, success,
+// average time, best theme, theme to work on, and the mistake replay.
+function renderGameoverReport() {
+  const el = $('gameover-report');
+  if (!el) return;
+  el.innerHTML = `
+    <div class="jx-report-tiles">${reportTiles().map(([label, value]) =>
+      `<div class="jx-report-tile"><small>${label}</small><b>${value}</b></div>`).join('')}</div>
+    <div class="jx-report-details"></div>`;
+  mountReportDetails(el.querySelector('.jx-report-details'), renderGameoverReport);
 }
