@@ -1,8 +1,9 @@
 import { G } from '../state.js';
-import { save } from '../utils/storage.js';
+import { save, load } from '../utils/storage.js';
 import { getLang, setLang } from '../i18n.js';
 import { SFX } from '../audio/sound.js';
 import { schoolYearOfLevel as yearOfLevel, topicFromSchoolYear, numberRangeMaxForYear } from '../systems/school-questions.js';
+import { readDirectLink, clearDirectLink } from '../systems/direct-link.js';
 
 function introLang() {
   return getLang();
@@ -174,9 +175,48 @@ function introCopy() {
   return INTRO_COPY[introLang()];
 }
 
+// Direct link (?niveau=5e&theme=fractions, systems/direct-link.js): only for
+// a player who had not done the questionnaire when the page opened, and
+// only once. A player who already did it keeps their class and topics.
+let _directLink = load('hasSeenOnboarding', false) ? null : readDirectLink();
+
 export function showOnboarding(onComplete, { skipWelcome = false } = {}) {
-  if (skipWelcome) showQuestionSteps(onComplete);
-  else showWelcome(() => showQuestionSteps(onComplete));
+  const link = _directLink?.level || _directLink?.topics.length ? _directLink : null;
+  _directLink = null;
+  const done = () => {
+    if (link) clearDirectLink();
+    onComplete?.();
+  };
+  if (skipWelcome) showQuestionSteps(done, { link });
+  else showWelcome(() => showQuestionSteps(done, { link }));
+}
+
+// The class of the link answers the country and class screens.
+function linkClassAnswers(link) {
+  if (!link?.level) return {};
+  const levels = schoolSections(link.country, introLang() === 'fr').flatMap(sec => sec.choices);
+  const index = levels.findIndex(choice => choice.level === link.level);
+  if (index < 0) return {};
+  const choice = levels[index];
+  return {
+    country: COUNTRY_VALUES.indexOf(link.country), country_value: link.country.toUpperCase(),
+    ageGroup: index, ageGroup_value: choice.label, ageGroup_level: choice.level,
+    ageGroup_grade: choice.grade, ageGroup_schoolYear: choice.schoolYear,
+  };
+}
+
+// True when the link already answers this screen (so it is skipped). The
+// topics only count once the class is known and teaches them (no × in CP);
+// they are then written in the answers.
+function answeredByLink(link, key, answers) {
+  if (!link) return false;
+  if (key === 'country' || key === 'ageGroup') return !!link.level && answers.ageGroup_level === link.level;
+  if (key !== 'hardTopic') return false;
+  const year = answers.ageGroup_schoolYear || 0;
+  const topics = link.topics.filter(v => topicTaught(v, year));
+  if (!topics.length) return false;
+  answers.hardTopic_values = topics;
+  return true;
 }
 
 export function showEquationConfig(onComplete) {
@@ -305,18 +345,22 @@ function choiceLabel(choice) {
 
 function showQuestionSteps(onComplete, options = {}) {
   let copy = introCopy();
+  const answers = { ...(options.initialAnswers || {}), ...linkClassAnswers(options.link) };
+  // Screens already answered by a direct link are left out.
+  const linked = step => answeredByLink(options.link, step.key, answers);
   const pickSteps = () => (options.keys?.length
     ? copy.steps.filter(s => options.keys.includes(s.key))
-    : copy.steps.filter(s => s.onboarding !== false));
+    : copy.steps.filter(s => s.onboarding !== false && !linked(s)));
   let steps = pickSteps();
   const overlay = createOverlay();
   overlay.classList.add('obn');
   let step = 0;
   let busy = false;
-  const answers = { ...(options.initialAnswers || {}) };
 
   const next = () => {
     step++;
+    // Topics of the link: known once the class has been chosen.
+    while (step < steps.length && linked(steps[step])) step++;
     if (step >= steps.length) {
       (options.apply || applyOnboardingAnswers)(answers);
       exitCurrentStep(overlay, () => {
