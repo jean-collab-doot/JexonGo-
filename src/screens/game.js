@@ -6563,10 +6563,10 @@ function endLevel(won) {
   clearQuestionUI();
 
   const qbox = document.getElementById('question-box');
-  const hud = document.getElementById('game-hud');
   const timer = document.getElementById('timer-bar-wrap');
   if (qbox) qbox.style.visibility = 'hidden';
-  if (hud) hud.style.visibility = 'hidden';
+  // The top bar stays: hidden, it kept its place and left an empty brown
+  // band over the map during the MISSION COMPLETE animation.
   if (timer) timer.style.visibility = 'hidden';
   timer?.classList.add('timer-finished');
 
