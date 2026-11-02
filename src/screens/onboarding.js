@@ -18,7 +18,8 @@ function introLang() {
 // age: Quebec 1re annee = France CP = US 1st grade); questions stop at grade 6
 // for now. `level` is the exact class, saved as G.schoolLevel.
 const lvl = (label, level, grade) => ({ label, level, grade: Math.min(6, grade), schoolYear: grade });
-function schoolSections(country, fr) {
+// Also the class list of the direct link maker (link-maker.js).
+export function schoolSections(country, fr) {
   if (country === 'france') {
     return [
       { title: fr ? 'PRIMAIRE' : 'PRIMARY', choices: [

@@ -2,6 +2,7 @@ import { SFX } from '../audio/sound.js';
 import { t, getLang, setLang, applyI18n } from '../i18n.js';
 import { resetIntroBriefing } from './intro-briefing.js';
 import { showEquationConfig } from './onboarding.js';
+import { openLinkMaker } from './link-maker.js';
 import { updateDrawerProfile } from './menu.js';
 
 const KEY = 'jexongo_settings';
@@ -198,6 +199,12 @@ export function initSettings() {
       resetIntroBriefing();
       window._showToast?.('Briefing will replay on Level 1.');
     }
+  });
+
+  // LIEN DIRECT: build a link that starts new players on a class and topics.
+  document.getElementById('btn-direct-link')?.addEventListener('click', () => {
+    _closeDrawer();
+    openLinkMaker();
   });
 
   document.getElementById('btn-change-equations')?.addEventListener('click', () => {
