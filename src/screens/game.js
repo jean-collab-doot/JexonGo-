@@ -5,7 +5,7 @@ import { uiIcon } from '../utils/icons.js';
 import { $, showScreen } from '../utils/dom.js';
 import { newQuestion, withChoices } from '../game/math-engine.js';
 import { schoolYearOfLevel, schoolQuestionPlan, questionFromPlan } from '../systems/school-questions.js';
-import { fmt as fmtNumber, NEGATIVES_FROM_SCHOOL_YEAR } from '../game/negatives.js';
+import { fmt as fmtNumber } from '../game/negatives.js';
 import { makeSchoolAlgebraQuestion } from '../game/algebra.js';
 import { makeSchoolExponent } from '../game/arithmetic.js';
 import { tipFor, tipLines } from '../game/tips.js';
@@ -2947,7 +2947,9 @@ function resize() {
   const lowerLimit = _playerLowerLimitY();
   const y = G.player.y || lowerLimit;
   G.player.y = Math.max(bh * 0.08, Math.min(bh - 16, y));
-  if (!_cutsceneActive) _queueFrame();
+  // A resized canvas is blank (black): the MISSION COMPLETE animation keeps
+  // drawing (the question box leaving resizes it at that moment).
+  if (!_cutsceneActive || _levelEnding) _queueFrame();
 }
 
 function placePlayer() {
@@ -5572,10 +5574,10 @@ function nextQuestion() {
         : newQuestion(extraOps, extraCap, rawMCap);
     }
     $('question-text').textContent = localDecimals(questionText(G.question));
-    // Negative answers can be typed when the keypad has its minus key.
-    // Decimal answers are always choices (the keypad has no comma).
+    // Negative answers can be typed too (minus key). Decimal answers are
+    // always choices (the keypad has no comma).
     G.question.typed = typedQuestionAllowed() && Number.isInteger(G.question.answer)
-      && (G.question.answer >= 0 || typedMinusKey()) && Math.random() < TYPED_QUESTION_SHARE;
+      && Math.random() < TYPED_QUESTION_SHARE;
     const btns = $('answer-buttons');
     btns.innerHTML = '';
     btns.classList.toggle('typed-answer', G.question.typed);
@@ -5727,13 +5729,6 @@ function questionCheck(q) {
   return getLang() === 'fr' ? q.check : (q.checkEn || q.check);
 }
 
-// Minus key on the typed keypad: for every typed question of players who
-// can get negative answers (from CM2, game/negatives.js; levels and
-// practice), so its presence never gives the answer's sign away.
-function typedMinusKey() {
-  return schoolYearOf() >= NEGATIVES_FROM_SCHOOL_YEAR;
-}
-
 // Practice (Entraînement) asks the school-year questions of its own choices:
 // the operations ticked in its setup (G.practiceOps) and its "de 0 à N".
 const PRACTICE_TOPIC_OF_OP = { '^': 'exponent', alg: 'algebra', frac: 'fractions', pct: 'percentages' };
@@ -5754,10 +5749,10 @@ function renderTypedAnswer(btns) {
   display.setAttribute('aria-live', 'polite');
   btns.appendChild(display);
   const keypad = document.createElement('div');
-  const minus = typedMinusKey();
-  keypad.className = `typed-keypad${minus ? ' has-minus' : ''}`;
-  (minus ? ['1', '2', '3', '4', '5', 'neg', 'del', '6', '7', '8', '9', '0', 'ok']
-    : ['1', '2', '3', '4', '5', 'del', '6', '7', '8', '9', '0', 'ok']).forEach(key => {
+  // The minus key is always there (every class, levels and practice), so
+  // its presence never gives the answer's sign away.
+  keypad.className = 'typed-keypad has-minus';
+  ['1', '2', '3', '4', '5', 'neg', 'del', '6', '7', '8', '9', '0', 'ok'].forEach(key => {
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = `answer-btn typed-key${key === 'ok' ? ' typed-ok' : key === 'del' ? ' typed-del' : key === 'neg' ? ' typed-neg' : ''}`;
@@ -5805,7 +5800,7 @@ function typedAnswerKey(e) {
   const key = /^[0-9]$/.test(e.key) ? e.key
     : e.key === 'Backspace' ? 'del'
     : e.key === 'Enter' ? 'ok'
-    : (e.key === '-' || e.key === 'Subtract') && typedMinusKey() ? 'neg'
+    : e.key === '-' || e.key === 'Subtract' ? 'neg'
     : null;
   if (!key) return false;
   e.preventDefault();
