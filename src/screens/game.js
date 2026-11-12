@@ -50,7 +50,6 @@ import {
 } from '../utils/device.js';
 import { setSpriteCanvasWidth } from '../game/aircraft-draw.js';
 import { FULL_UNLOCK } from '../utils/test-mode.js';
-import { guestLevelCapped, GUEST_MAX_LEVEL } from '../systems/progression.js';
 import { coopOn as wsOn, coopSend as wsSend, coopDisconnect as wsDisconnect } from '../online/coop-realtime.js';
 
 const ENEMY_MOVEMENT_SPEED_SCALE = 0.82;
@@ -485,13 +484,6 @@ function schoolYearEnemyCap(levelCap, ageCap = levelCap) {
   if (year <= 3) return Math.max(2, levelCap - 4);
   if (year <= 6) return Math.max(3, levelCap - 2);
   return levelCap;
-}
-
-// No account: level 1 only (systems/progression.js). Practice and the
-// training stay open.
-function hasGuestTrialLeft(levelNum = G.currentLevel || 1) {
-  if (G.practiceMode || isTutorialActive() || G.tutorialMode) return true;
-  return !guestLevelCapped() || levelNum <= GUEST_MAX_LEVEL;
 }
 
 function recordGuestGamePlayed() {
@@ -6750,12 +6742,6 @@ function drawSpeedLines(ctx, cw, ch) {
 }
 
 export function initGame(levelNum, onComplete) {
-  if (!hasGuestTrialLeft(levelNum)) {
-    if (window._showToast) window._showToast(t('signInAlert'));
-    window._nav?.toMenu?.();
-    window._openConnectPrompt?.();
-    return () => {};
-  }
   _sessionId++;
   const airdropSelected = rollAirdropForLevel({ practice: G.practiceMode, tutorial: !!G.tutorialMode && !G.practiceMode });
   _activeSessionId = _sessionId;

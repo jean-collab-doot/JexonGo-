@@ -210,17 +210,6 @@ const nav = {
         openConnectPrompt();
         return;
       }
-      if (won && G.postTutorialConnectPrompt && !G.playerRegistered && guestTrialUsed()) {
-        renderMenu();
-        showScreen('s-menu');
-        trackVirtualPage('/lobby', { source: 'guest-limit' });
-        SFX.playMusic('menu');
-        const level = G.tutorialPlan?.startLevel || G.currentLevel || 1;
-        _showLoginToast(deviceIntroLang() === 'fr'
-          ? `La connexion est importante. Connecte-toi avec ton compte JexonGo pour continuer au niveau ${level}.`
-          : `Connection is important. Sign in with your JexonGo account to continue at level ${level}.`, 5200);
-        return;
-      }
       if (won) {
         showResult(true);
         showScreen('s-result');
@@ -345,10 +334,6 @@ function deviceIntroLang() {
   return getLang();
 }
 
-function guestTrialUsed() {
-  return !G.playerRegistered && (Number(load('guestGamesPlayed', 0)) || 0) >= 5;
-}
-
 function showNewPlayerIntroFlow(onDone = null, options = {}) {
   renderMenu();
   showScreen('s-menu');   // no music: the questionnaire and briefing are silent
@@ -406,7 +391,7 @@ function openConnectPrompt(reason = '') {
     reason,
     onGoogle: () => handleGoogleLogin('google'),
     onLegal: kind => {
-      _reopenConnectPrompt = true;
+      _reopenConnectPrompt = { reason };
       showScreen(kind === 'terms' ? 's-terms' : 's-privacy');
     },
   });
@@ -421,8 +406,8 @@ function cleanup() {
 }
 
 window._nav = nav;
-// No account: tapping a level after level 1 opens the sign-in invitation.
-window._openConnectPrompt = (reason = 'levels') => openConnectPrompt(reason);
+// No account: tapping MULTI or TOP 20 opens the sign-in invitation (menu.js).
+window._openConnectPrompt = (reason = '') => openConnectPrompt(reason);
 window._showFeedbackPopup  = () => showFeedbackPopup();
 window._resetNewPlayer     = _resetNewPlayer;
 window._testEmailNow       = _testEmailNow;
@@ -641,8 +626,9 @@ document.addEventListener('click', e => {
     e.preventDefault();
     nav.toMenu();
     if (_reopenConnectPrompt) {
+      const { reason } = _reopenConnectPrompt;
       _reopenConnectPrompt = false;
-      openConnectPrompt();
+      openConnectPrompt(reason);
     }
   }
 }, true);

@@ -1,5 +1,5 @@
 import { $, showScreen } from '../utils/dom.js';
-import { TEST_UNLOCK, FULL_UNLOCK } from '../utils/test-mode.js';
+import { TEST_UNLOCK, FULL_UNLOCK, DEV_SERVER } from '../utils/test-mode.js';
 import { rollChestTier } from '../systems/chest.js';
 import { G, loadSave, saveAll, clampCoins, MAX_COINS } from '../state.js';
 import { LOGIN_REWARDS, claimDailyReward, getMissions, claimMission,
@@ -597,20 +597,29 @@ function _updateLobbyHud() {
 // MULTI opens once level 3 is completed, the TOP 20 once level 5 is (same
 // rule as the planes' "LEVEL N REQUIRED": G.highestLevel = last level won).
 // Before that the button is greyed with a padlock and a tap explains why.
+// Both also need an account (the rest of the game is open to everyone):
+// without one the padlock reads COMPTE and a tap opens the sign-in invitation.
 export const MULTI_UNLOCK_LEVEL = 3;
 export const TOP20_UNLOCK_LEVEL = 5;
 const FEATURE_LOCKS = [
-  { id: 'btn-lobby-multi', level: MULTI_UNLOCK_LEVEL, fr: 'Le multijoueur se débloque au niveau', en: 'Multiplayer unlocks at level' },
-  { id: 'btn-lobby-top20', level: TOP20_UNLOCK_LEVEL, fr: 'Le TOP 20 se débloque au niveau', en: 'The TOP 20 unlocks at level' },
+  { id: 'btn-lobby-multi', level: MULTI_UNLOCK_LEVEL, reason: 'multi', fr: 'Le multijoueur se débloque au niveau', en: 'Multiplayer unlocks at level' },
+  { id: 'btn-lobby-top20', level: TOP20_UNLOCK_LEVEL, reason: 'top20', fr: 'Le TOP 20 se débloque au niveau', en: 'The TOP 20 unlocks at level' },
 ];
 
-function featureLocked(lock) {
-  // Preview / dev server: open for testing, e.g. a second device joining a
-  // co-op game as a guest (one account can only be signed in on one device).
+function featureLevelLocked(lock) {
+  // Preview / dev server: every level is open for testing.
   if (TEST_UNLOCK) return false;
   // Never lock the way back out of MULTI mode (the button then reads SOLO).
   if (lock.id === 'btn-lobby-multi' && isMultiLobby()) return false;
   return (G.highestLevel || 0) < lock.level;
+}
+
+function featureNeedsAccount(lock) {
+  // Local dev server only: open without an account, e.g. a second device
+  // joining a co-op game (one account can only be signed in on one device).
+  if (DEV_SERVER) return false;
+  if (lock.id === 'btn-lobby-multi' && isMultiLobby()) return false;
+  return !G.playerRegistered;
 }
 
 function _updateFeatureLocks() {
@@ -618,13 +627,14 @@ function _updateFeatureLocks() {
   for (const lock of FEATURE_LOCKS) {
     const btn = $(lock.id);
     if (!btn) continue;
-    const locked = featureLocked(lock);
+    const levelLocked = featureLevelLocked(lock);
+    const locked = levelLocked || featureNeedsAccount(lock);
     btn.classList.toggle('is-locked', locked);
     btn.querySelector('.jx-lock-tag')?.remove();
     if (locked) {
       const tag = document.createElement('span');
       tag.className = 'jx-lock-tag';
-      tag.innerHTML = `${uiIcon('lock')}${fr ? 'NIV' : 'LV'} ${lock.level}`;
+      tag.innerHTML = `${uiIcon('lock')}${levelLocked ? `${fr ? 'NIV' : 'LV'} ${lock.level}` : (fr ? 'COMPTE' : 'ACCOUNT')}`;
       btn.appendChild(tag);
     }
   }
@@ -636,12 +646,18 @@ document.addEventListener('click', e => {
   const btn = e.target.closest?.('#btn-lobby-multi, #btn-lobby-top20');
   if (!btn) return;
   const lock = FEATURE_LOCKS.find(l => l.id === btn.id);
-  if (!lock || !featureLocked(lock)) return;
+  if (!lock) return;
+  const levelLocked = featureLevelLocked(lock);
+  if (!levelLocked && !featureNeedsAccount(lock)) return;
   e.stopImmediatePropagation();
   e.preventDefault();
   SFX.noMoney?.();
-  const fr = getLang() === 'fr';
-  _showToast(`${fr ? lock.fr : lock.en} ${lock.level}`);
+  if (levelLocked) {
+    const fr = getLang() === 'fr';
+    _showToast(`${fr ? lock.fr : lock.en} ${lock.level}`);
+  } else {
+    window._openConnectPrompt?.(lock.reason);
+  }
 }, true);
 
 function _updateMissionsBadge() {

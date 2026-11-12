@@ -12,27 +12,33 @@ const GOOGLE_G = `<svg viewBox="0 0 48 48" aria-hidden="true">
   <path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.7-6c-2.2 1.5-5 2.3-8.2 2.3-6.2 0-11.5-4.1-13.4-9.8l-7.9 6.1C6.6 42.6 14.6 48 24 48z"/>
 </svg>`;
 
-// reason 'levels': a player without an account reached the end of level 1.
-// reason 'skin': tapped OBTENIR on an event skin chest (screens/chest.js).
+// reason 'multi' / 'top20': a player without an account tapped MULTI or
+// TOP 20 in the lobby (menu.js). reason 'skin': tapped OBTENIR on an event
+// skin chest (screens/chest.js).
+const REASON_SUB = {
+  multi: ['Connecte-toi pour jouer en multijoueur!', 'Sign in to play multiplayer!'],
+  top20: ['Connecte-toi pour voir le TOP 20!', 'Sign in to see the TOP 20!'],
+  skin: ['Connecte-toi pour obtenir ton skin Halloween 2026!', 'Sign in to get your Halloween 2026 skin!'],
+};
+
 export function showConnectPrompt({ onGoogle, onLater, onLegal, reason = '' } = {}) {
   document.getElementById('connect-prompt')?.remove();
   const fr = getLang() === 'fr';
-  const levels = reason === 'levels';
+  // What an account gives: everything else is open to every player.
   const perks = fr
-    ? [['star', 'Tous les niveaux débloqués'], ['save', 'Ta progression est sauvegardée'], ['coin', 'Garde tes pièces et tes avions'], ['phone', 'Joue sur tous tes appareils']]
-    : [['star', 'Every level unlocked'], ['save', 'Your progress is saved'], ['coin', 'Keep your coins and planes'], ['phone', 'Play on all your devices']];
+    ? [['swords', 'Le multijoueur'], ['crown', 'Ton nom dans le TOP 20'], ['save', 'Ta progression, tes pièces et tes avions sauvegardés'], ['phone', 'Joue sur tous tes appareils']]
+    : [['swords', 'Multiplayer'], ['crown', 'Your name in the TOP 20'], ['save', 'Your progress, coins and planes saved'], ['phone', 'Play on all your devices']];
   const overlay = document.createElement('div');
   overlay.id = 'connect-prompt';
   overlay.className = 'cp';
   overlay.innerHTML = `
     <div class="cp-plane"></div>
     <div class="cp-card">
-      <div class="cp-title">${fr ? 'BRAVO PILOTE!' : 'GREAT JOB, PILOT!'}</div>
-      <div class="cp-sub">${reason === 'skin'
-        ? (fr ? 'Connecte-toi pour obtenir ton skin Halloween 2026!' : 'Sign in to get your Halloween 2026 skin!')
-        : levels
-        ? (fr ? 'Pour jouer au niveau 2 et plus, connecte-toi!' : 'Sign in to play level 2 and beyond!')
-        : (fr ? 'Tu as fini ta première pratique!' : 'You finished your first practice!')}</div>
+      <div class="cp-title">${reason === 'multi' || reason === 'top20'
+        ? (fr ? 'COMPTE REQUIS' : 'ACCOUNT NEEDED')
+        : (fr ? 'BRAVO PILOTE!' : 'GREAT JOB, PILOT!')}</div>
+      <div class="cp-sub">${REASON_SUB[reason]?.[fr ? 0 : 1]
+        || (fr ? 'Tu as fini ta première pratique!' : 'You finished your first practice!')}</div>
       <div class="cp-google">${GOOGLE_G}</div>
       <div class="cp-ask">${fr ? 'Connecte-toi avec ton compte Google. C’est gratuit!' : 'Sign in with your Google account. It’s free!'}</div>
       <ul class="cp-perks">

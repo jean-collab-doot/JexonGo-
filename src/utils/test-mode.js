@@ -12,6 +12,9 @@ export const TEST_UNLOCK = !!import.meta.env?.DEV
 export const FULL_UNLOCK = !!import.meta.env?.DEV
   || (typeof __FULL_UNLOCK__ !== 'undefined' && __FULL_UNLOCK__ === true);
 
+// The local dev server only (e.g. MULTI without an account, menu.js).
+export const DEV_SERVER = !!import.meta.env?.DEV;
+
 // That deployment shares the real Supabase project: its max coins / EXP must
 // never reach a real account's save or the public TOP 20.
 export const NO_ACCOUNT_WRITES = FULL_UNLOCK && !import.meta.env?.DEV;
