@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">JexonGo</string>
+    <string name="title_activity_main">JexonGo</string>
+    <string name="package_name">com.jexongo.app</string>
+    <string name="custom_url_scheme">com.jexongo.app</string>
+</resources>

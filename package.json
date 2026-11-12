@@ -8,7 +8,9 @@
     "preview": "vite preview",
     "server": "node server.js",
     "cap:sync": "vite build && npx cap sync ios",
-    "cap:open:ios": "npx cap open ios"
+    "cap:open:ios": "npx cap open ios",
+    "cap:sync:android": "vite build && npx cap sync android",
+    "cap:open:android": "npx cap open android"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.0",
@@ -18,6 +20,7 @@
     "ws": "^8.18.0"
   },
   "devDependencies": {
+    "@capacitor/android": "8.5.0",
     "@capacitor/cli": "^8.5.0",
     "@capacitor/core": "^8.5.0",
     "@capacitor/ios": "^8.5.0",
