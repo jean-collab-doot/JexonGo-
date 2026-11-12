@@ -54,6 +54,23 @@ function isEmail(value) {
     && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
 
+// One welcome per account, once it is confirmed. The Supabase webhook can
+// watch either table:
+//  - auth.users: when the e-mail becomes confirmed — already at the INSERT
+//    for Google, with the 6-digit code for an e-mail account (UPDATE that
+//    sets email_confirmed_at; the webhook needs its UPDATE event too).
+//    Adding Google or a password later never confirms it again.
+//  - public.saves (one row per e-mail) or another table: its INSERT.
+function shouldWelcome(body) {
+  if (body?.schema === 'auth' && body?.table === 'users') {
+    const confirmed = Boolean(body.record?.email_confirmed_at);
+    if (body.type === 'INSERT') return confirmed;
+    if (body.type === 'UPDATE') return confirmed && !body.old_record?.email_confirmed_at;
+    return false;
+  }
+  return !body?.type || body.type === 'INSERT';
+}
+
 function welcomeHtml() {
   return `<!doctype html>
 <html lang="fr">
@@ -100,7 +117,12 @@ export default async function handler(req, res) {
     return json(res, 401, { ok: false, error: 'unauthorized' });
   }
 
-  const email = String(requestBody(req)?.record?.email || '').trim().toLowerCase();
+  const body = requestBody(req);
+  if (!shouldWelcome(body)) {
+    return json(res, 200, { ok: true, skipped: true });
+  }
+
+  const email = String(body?.record?.email || '').trim().toLowerCase();
   if (!isEmail(email)) {
     return json(res, 400, { ok: false, error: 'invalid_email' });
   }

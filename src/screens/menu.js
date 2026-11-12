@@ -718,12 +718,14 @@ function closeWeekTracker() { $('week-overlay')?.classList.add('hidden'); }
 // ── DRAWER PROFILE (called from settings.js when the drawer opens) ───────────
 export function updateDrawerProfile() {
   const loginBtn  = document.getElementById('btn-login-google');
+  const emailBtn  = document.getElementById('btn-login-email');
   const nameEl    = document.getElementById('menu-profile-name');
   const signoutEl = document.getElementById('btn-google-signout');
   const deleteEl  = document.getElementById('btn-menu-delete-account');
   const isLoggedIn = !!G.playerRegistered;
 
   if (loginBtn)  loginBtn.hidden  = isLoggedIn;
+  if (emailBtn)  emailBtn.hidden  = isLoggedIn;
   if (signoutEl) signoutEl.hidden = !isLoggedIn;
   if (deleteEl)  deleteEl.hidden  = !isLoggedIn;
   if (nameEl) {

@@ -105,7 +105,7 @@ export async function enterArena(opts = {}) {
   $('btn-arena-rematch')?.classList.remove('hidden');
   if ($('btn-arena-lobby')) $('btn-arena-lobby').textContent = 'LOBBY';
 
-  _myName  = publicPilotName(G.playerName, 14);
+  _myName  = publicPilotName(G.playerName, 20);
   _oppName = '???';
   _updateNameplates();
   _updateHP();
@@ -351,7 +351,7 @@ function _registerHandlers(sid) {
   wsOn('matched', msg => {
     if (_session !== sid) return;
     _isP1    = msg.isP1;
-    _myName  = publicPilotName(G.playerName, 14);
+    _myName  = publicPilotName(G.playerName, 20);
     _oppName = msg.opponentName;
     _oppLP   = msg.opponentLP || 0;
     _hideStatus();

@@ -15955,6 +15955,58 @@ html.np-boot .np-intro.np-static { display: block; }
 }
 .pnp-idea:active { transform: translateY(2px); }
 .pnp-reroll { font-family: 'Segoe UI Symbol', sans-serif; font-size: 14px; padding: 4px 10px; }
+/* "Disponible" / "Déjà pris" under a player name (pilot-name-prompt.js). */
+.ea-status { min-height: 1.4em; font-size: clamp(7px, 2.2vw, 9px); line-height: 1.6; }
+.ea-status.is-free { color: #1d7a34; }
+.ea-status.is-taken { color: #d4232a; }
+
+/* E-mail + password sign-in (email-auth.js): the pilot name prompt's card
+   with labelled fields; views change without replaying the entrance. */
+.ea .ea-card {
+  gap: 8px;
+  justify-items: stretch;
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+}
+.ea .cp-title, .ea .cp-sub, .ea .cp-btn, .ea .cp-later { animation: none; }
+.ea .cp-title { text-align: center; }
+.ea .cp-sub b { color: #1f3b73; word-break: break-all; }
+.ea-field { display: grid; gap: 5px; text-align: left; }
+.ea-label { font-size: clamp(7px, 2.2vw, 9px); color: #7a4300; line-height: 1.5; }
+.ea-hint { font-size: clamp(6px, 1.9vw, 8px); color: #a0651b; line-height: 1.6; }
+.ea-input-wrap { position: relative; display: block; }
+.ea .ea-input {
+  padding: 10px 12px;
+  font-family: 'Arial Rounded MT Bold', 'Trebuchet MS', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  font-weight: 700;
+  font-size: 16px;   /* 16px: phones don't zoom on the field */
+  text-align: left;
+  text-transform: none;
+}
+.ea .ea-input[type="password"], .ea .ea-input[type="email"] { letter-spacing: .02em; }
+.ea #ea-name { text-transform: uppercase; }
+.ea #ea-code { text-align: center; letter-spacing: .4em; font-size: 20px; }
+.ea-input-wrap:has(.ea-eye) .ea-input { padding-right: 46px; }
+.ea-eye {
+  position: absolute; top: 50%; right: 6px; transform: translateY(-50%);
+  width: 36px; height: 36px; border: 0; border-radius: 10px; cursor: pointer;
+  background: #ffe9a8; font-size: 18px; line-height: 1;
+}
+.ea-eye[aria-pressed="true"] { background: #ffc94d; }
+.ea .pnp-error { min-height: 1.4em; text-align: center; }
+.ea .cp-btn { justify-content: center; margin-top: 2px; }
+.ea .ea-main {
+  padding: 13px 18px;
+  color: #fff;
+  text-shadow: 2px 2px 0 rgba(120,60,0,.45);
+  background: linear-gradient(180deg, #ffab3d, #ff8a00 55%, #f07400);
+  border-color: #e07000;
+  box-shadow: 0 5px 0 #b35900;
+}
+.ea .ea-main:active { transform: translateY(3px); box-shadow: 0 2px 0 #b35900; }
+.ea .ea-main:disabled { opacity: .6; cursor: progress; }
+.ea .ea-link { justify-self: center; padding: 4px 6px; font-size: 8px; }
+.ea .ea-link:disabled { color: #c9a26b; text-decoration: none; cursor: default; }
 @keyframes pnpShake { 20%, 60% { transform: translateX(-6px); } 40%, 80% { transform: translateX(6px); } }
 
 /* Terms / privacy links at the bottom of the Google invitation. */

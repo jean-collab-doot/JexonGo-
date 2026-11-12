@@ -1,10 +1,49 @@
-// "Choose your pilot name" after a Google sign-in: other players (leaderboard,
-// arena, co-op) see a nickname, never the real name from the Google account.
+// "Choose your pilot name" after a Google sign-in (or when an account's old
+// name is now someone else's): other players (leaderboard, co-op) see a
+// nickname, never the real name from the Google account.
+// Names are unique (systems/player-names.js): the prompt says while typing
+// whether a name is free, and reserves it for the account on CONFIRM.
 import { getLang } from '../i18n.js';
 import { isPilotNameAllowed } from '../utils/pilot-name.js';
+import { isPlayerNameAvailable, claimPlayerName } from '../systems/player-names.js';
 
 export const PILOT_NAME_MIN = 3;
-export const PILOT_NAME_MAX = 14;
+export const PILOT_NAME_MAX = 20;
+
+/** Name as it is kept: capitals, one space between words. */
+export function cleanPilotName(name) {
+  return String(name || '').replace(/\s+/g, ' ').trim().toUpperCase();
+}
+
+/**
+ * Shows "free" / "already taken" in el for the name being typed (checked a
+ * moment after the last key). Returns the function to call on each change.
+ */
+export function watchNameAvailability(el, getName, isValid) {
+  let timer = null;
+  let asked = '';
+  return () => {
+    clearTimeout(timer);
+    el.textContent = '';
+    el.className = el.className.replace(/\s*is-(free|taken)/g, '');
+    const name = getName();
+    if (!isValid(name)) return;
+    timer = setTimeout(async () => {
+      asked = name;
+      const free = await isPlayerNameAvailable(name);
+      if (asked !== getName() || free === null) return;
+      const fr = getLang() === 'fr';
+      el.textContent = free ? (fr ? '✓ Disponible' : '✓ Available') : (fr ? '✗ Déjà pris' : '✗ Already taken');
+      el.classList.add(free ? 'is-free' : 'is-taken');
+    }, 450);
+  };
+}
+
+export function nameTakenMessage() {
+  return getLang() === 'fr'
+    ? 'Ce nom est déjà pris. Choisis-en un autre.'
+    : 'This name is already taken. Pick another one.';
+}
 
 const SUGGEST_WORDS = [
   'FAUCON', 'AIGLE', 'COMETE', 'ECLAIR', 'TONNERRE', 'ORAGE', 'METEORE', 'TURBO',
@@ -63,22 +102,28 @@ function suggestions(count, realNames) {
 
 /**
  * Asks for a pilot name. Cannot be skipped: onDone(name) runs once a valid
- * name is confirmed. realNames: the Google first / last name and e-mail.
+ * name is confirmed (and reserved when the account can be checked).
+ * realNames: the Google first / last name and e-mail. takenName: the
+ * player's old name, now someone else's.
  */
-export function showPilotNamePrompt({ realNames = [], onDone } = {}) {
+export function showPilotNamePrompt({ realNames = [], takenName = '', onDone } = {}) {
   document.getElementById('pilot-name-prompt')?.remove();
   const fr = getLang() === 'fr';
   const overlay = document.createElement('div');
   overlay.id = 'pilot-name-prompt';
   overlay.className = 'cp pnp';
+  const safeTaken = String(takenName).replace(/[<>&"]/g, '');
   overlay.innerHTML = `
     <div class="cp-card pnp-card">
       <div class="cp-title">${fr ? 'TON PSEUDO' : 'YOUR PILOT NAME'}</div>
-      <div class="cp-sub">${fr
-        ? 'C’est le nom que les autres joueurs verront.<br>N’écris pas ton vrai nom.'
-        : 'This is the name other players will see.<br>Don’t use your real name.'}</div>
+      <div class="cp-sub">${takenName
+        ? (fr ? `Ton pseudo ${safeTaken} est déjà pris par un autre joueur.<br>Choisis-en un nouveau.`
+          : `Your name ${safeTaken} is already taken by another player.<br>Pick a new one.`)
+        : (fr ? 'C’est le nom que les autres joueurs verront.<br>N’écris pas ton vrai nom.'
+          : 'This is the name other players will see.<br>Don’t use your real name.')}</div>
       <input class="pnp-input" type="text" maxlength="${PILOT_NAME_MAX}" autocomplete="off" autocapitalize="characters" spellcheck="false"
         placeholder="${fr ? 'EX. : FAUCON 27' : 'E.G. FALCON 27'}" aria-label="${fr ? 'Pseudo' : 'Pilot name'}">
+      <div class="ea-status pnp-status" aria-live="polite"></div>
       <div class="pnp-error" role="alert"></div>
       <div class="pnp-ideas-label">${fr ? 'Besoin d’une idée?' : 'Need an idea?'}</div>
       <div class="pnp-ideas"></div>
@@ -95,29 +140,43 @@ export function showPilotNamePrompt({ realNames = [], onDone } = {}) {
       + `<button type="button" class="pnp-idea pnp-reroll" aria-label="${fr ? 'Autres idées' : 'More ideas'}">↻</button>`;
   };
   renderIdeas();
+  const checkAvailability = watchNameAvailability(overlay.querySelector('.pnp-status'),
+    () => cleanPilotName(input.value), name => !pilotNameError(name, realNames));
   ideas.addEventListener('click', e => {
     const btn = e.target.closest('.pnp-idea');
     if (!btn) return;
     if (btn.classList.contains('pnp-reroll')) { renderIdeas(); return; }
     input.value = btn.textContent;
     error.textContent = '';
+    checkAvailability();
   });
   input.addEventListener('input', () => {
     const upper = input.value.toUpperCase();
     if (upper !== input.value) input.value = upper;
     error.textContent = '';
+    checkAvailability();
   });
 
+  const okBtn = overlay.querySelector('.pnp-ok');
+  const shake = msg => {
+    error.textContent = msg;
+    input.classList.remove('pnp-shake'); void input.offsetWidth; input.classList.add('pnp-shake');
+  };
   let done = false;
-  const confirm = () => {
-    if (done) return;
-    const name = input.value.replace(/\s+/g, ' ').trim().toUpperCase();
+  let busy = false;
+  const confirm = async () => {
+    if (done || busy) return;
+    const name = cleanPilotName(input.value);
     const msg = pilotNameError(name, realNames);
-    if (msg) {
-      error.textContent = msg;
-      input.classList.remove('pnp-shake'); void input.offsetWidth; input.classList.add('pnp-shake');
-      return;
-    }
+    if (msg) { shake(msg); return; }
+    // Reserved for the account; can't be checked (no account, offline,
+    // migration not run): the name is kept as before.
+    busy = true;
+    okBtn.disabled = true;
+    const result = await claimPlayerName(name);
+    busy = false;
+    okBtn.disabled = false;
+    if (result === 'taken') { shake(nameTakenMessage()); return; }
     done = true;
     overlay.classList.add('cp-leave');
     setTimeout(() => { overlay.remove(); onDone?.(name); }, 350);

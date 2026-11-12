@@ -92,7 +92,7 @@ function _onMessage(msg) {
   }
 
   if (_role === 'host' && msg.type === 'join') {
-    const name = publicPilotName(msg.name, 14);
+    const name = publicPilotName(msg.name, 20);
     _emit('coop_progress', { step: 'join_request', name });
     // Same teammate asking again (its request was repeated): answer again.
     if (_partnerId && msg.from === _partnerId) {
@@ -225,7 +225,7 @@ async function _create(msg) {
   coopDisconnect();
   _role = 'host';
   _host = {
-    name: publicPilotName(msg.name, 14),
+    name: publicPilotName(msg.name, 20),
     aircraft: _aircraft(msg.aircraft),
     level: Math.max(1, Math.min(50, Number(msg.level) || 1)),
     hearts: _hearts(msg.hearts),
@@ -256,7 +256,7 @@ async function _join(msg) {
   }
   if (!_channel) return;                          // cancelled meanwhile
   const session = _session;
-  const request = { type: 'join', name: publicPilotName(msg.name, 14), aircraft: _aircraft(msg.aircraft), maxLevel: Number(msg.maxLevel) || 1,
+  const request = { type: 'join', name: publicPilotName(msg.name, 20), aircraft: _aircraft(msg.aircraft), maxLevel: Number(msg.maxLevel) || 1,
     hearts: _hearts(msg.hearts), build: BUILD };
   const start = Date.now();
   let hostSeen = false;
@@ -280,21 +280,21 @@ async function _join(msg) {
   if (answer?.type === 'outdated' || (answer?.type === 'accept' && answer.build !== BUILD)) {
     if (answer.type === 'accept') _post({ type: 'bye', to: answer.from });
     coopDisconnect();
-    _emit('coop_version', { name: publicPilotName(answer.hostName, 14) });
+    _emit('coop_version', { name: publicPilotName(answer.hostName, 20) });
     return;
   }
   if (answer?.type === 'accept') {
     _partnerId = answer.from;
     _emit('coop_start', {
       level: Math.max(1, Math.min(50, Number(answer.level) || 1)),
-      partnerName: publicPilotName(answer.hostName, 14),
+      partnerName: publicPilotName(answer.hostName, 20),
       partnerAircraft: _aircraft(answer.hostAircraft),
       partnerHearts: _hearts(answer.hostHearts),
     });
     return;
   }
   coopDisconnect();
-  if (answer?.type === 'locked') _emit('coop_locked', { level: Number(answer.level) || 1, hostName: publicPilotName(answer.hostName, 14) });
+  if (answer?.type === 'locked') _emit('coop_locked', { level: Number(answer.level) || 1, hostName: publicPilotName(answer.hostName, 20) });
   else _emit('coop_invalid');   // no game with this code, or it already has a teammate
 }
 

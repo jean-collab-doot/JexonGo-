@@ -63,7 +63,7 @@ export function isPilotNameAllowed(name) {
 }
 
 /** The name as other players may see it: cleaned, capped, never offensive. */
-export function publicPilotName(name, maxLength = 16) {
+export function publicPilotName(name, maxLength = 20) {
   const cleaned = String(name || '')
     .replace(/<[^>]*>/g, '')
     .toUpperCase()

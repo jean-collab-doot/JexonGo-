@@ -511,7 +511,7 @@ async function createGame(level) {
   _waiting = true;
   showWaiting(fr() ? 'CRÉATION...' : 'CREATING...', fr() ? 'Connexion au serveur' : 'Connecting to the server');
   if (!(await connect()) || !_waiting) return;
-  wsSend({ type: 'coop_create', name: publicPilotName(G.playerName, 14), aircraft: G.activeAircraft, level: _hostLevel, hearts: startingLives() });
+  wsSend({ type: 'coop_create', name: publicPilotName(G.playerName, 20), aircraft: G.activeAircraft, level: _hostLevel, hearts: startingLives() });
 }
 
 async function joinGame(code) {
@@ -521,7 +521,7 @@ async function joinGame(code) {
     ? 'Recherche de la partie. Ton ami doit avoir JexonGo ouvert à l’écran.'
     : 'Looking for the game. Your friend must have JexonGo open on screen.');
   if (!(await connect()) || !_waiting) return;
-  wsSend({ type: 'coop_join', code, name: publicPilotName(G.playerName, 14), aircraft: G.activeAircraft, maxLevel: maxUnlockedLevel(), hearts: startingLives() });
+  wsSend({ type: 'coop_join', code, name: publicPilotName(G.playerName, 20), aircraft: G.activeAircraft, maxLevel: maxUnlockedLevel(), hearts: startingLives() });
 }
 
 function cancelWaiting() {

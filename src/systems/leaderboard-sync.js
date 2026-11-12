@@ -25,7 +25,7 @@ async function push() {
     if (!supabase || !userId) return;
     const row = {
       user_id: userId,
-      name: publicPilotName(G.playerName, 16),
+      name: publicPilotName(G.playerName, 20),
       xp: Math.max(0, Math.floor(G.lifetimeXpEarned || 0)),
       multi_xp: Math.max(0, Math.floor(G.multiXpEarned || 0)),
       updated_at: new Date().toISOString(),

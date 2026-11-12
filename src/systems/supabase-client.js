@@ -65,6 +65,51 @@ export async function signInWithGoogleIdToken(idToken) {
   return data;
 }
 
+// ── E-mail + password accounts (screens/email-auth.js) ────────────────────
+// Each returns Supabase's { data, error }; the screen turns errors into
+// messages. "Confirm email" is on: the account is confirmed with the 6-digit
+// code of the e-mail (its template shows {{ .Token }}), not with a link.
+
+async function authCall(run) {
+  const supabase = await getSupabaseClient();
+  if (!supabase) return { data: null, error: { code: 'unavailable' } };
+  try {
+    return await run(supabase.auth);
+  } catch (error) {
+    return { data: null, error: { code: 'network', message: String(error?.message || error) } };
+  }
+}
+
+export function signUpWithEmail(email, password, playerName, lang) {
+  return authCall(auth => auth.signUp({
+    email,
+    password,
+    options: { data: { player_name: playerName, lang } },
+  }));
+}
+
+/** type 'email' confirms a new account, 'recovery' a forgotten password. */
+export function verifyEmailCode(email, token, type) {
+  return authCall(auth => auth.verifyOtp({ email, token, type }));
+}
+
+export function resendSignupCode(email) {
+  return authCall(auth => auth.resend({ type: 'signup', email }));
+}
+
+export function signInWithEmail(email, password) {
+  return authCall(auth => auth.signInWithPassword({ email, password }));
+}
+
+export function sendPasswordResetCode(email) {
+  return authCall(auth => auth.resetPasswordForEmail(email));
+}
+
+/** New password for the signed-in account (after the recovery code). */
+export function updatePassword(password) {
+  return authCall(auth => auth.updateUser({ password }));
+}
+
 export function clearSupabaseBrowserSession() {
   const authKeys = new Set([
     SUPABASE_REF ? `sb-${SUPABASE_REF}-auth-token` : '',

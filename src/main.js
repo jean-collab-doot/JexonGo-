@@ -29,7 +29,10 @@ import { checkDailyLogin, recordPlayMinute, LOGIN_REWARDS, DAILY_INTERVAL_MS } f
 import { showDailyReward } from './screens/menu.js';
 import { canSendFeedback, markFeedbackSent, sendFeedback, sendNewPlayerNotification, _resetNewPlayer, _testEmailNow } from './systems/feedback.js';
 import { t, getLang, applyI18n } from './i18n.js';
-import { syncAccountFromCloud, flushCloudSave, pushCloudSave, fetchCloudSave } from './systems/cloud-save.js';
+import { syncAccountFromCloud, flushCloudSave, pushCloudSave, fetchCloudSave, exportSaveSnapshot, applySaveSnapshot, mergeSaveSnapshots } from './systems/cloud-save.js';
+import { reservedPlayerName, claimPlayerName } from './systems/player-names.js';
+import { openEmailAuth } from './screens/email-auth.js';
+import { askAgeBeforeSignIn } from './screens/age-gate.js';
 import { signInWithGoogleIdToken, signOutSupabase } from './systems/supabase-client.js';
 import { claimSessionOrBlock, sessionBlockedMessage, sessionLostMessage, askTakeover, onSessionLost } from './systems/session-guard.js';
 import { applyDeviceClasses } from './utils/device.js';
@@ -390,6 +393,7 @@ function openConnectPrompt(reason = '') {
   showConnectPrompt({
     reason,
     onGoogle: () => handleGoogleLogin('google'),
+    onEmail: () => openEmailSignIn('signup'),
     onLegal: kind => {
       _reopenConnectPrompt = { reason };
       showScreen(kind === 'terms' ? 's-terms' : 's-privacy');
@@ -442,9 +446,10 @@ function _showLoginToast(msg, duration = 2800) {
 }
 
 // Pilot name prompt (cannot be skipped); saves locally and to the account.
-function askPilotName(realNames) {
+function askPilotName(realNames, takenName = '') {
   return new Promise(resolve => showPilotNamePrompt({
     realNames,
+    takenName,
     onDone: pilotName => {
       G.playerName = pilotName;
       G.pilotNameChosen = true;
@@ -455,6 +460,94 @@ function askPilotName(realNames) {
       resolve(pilotName);
     },
   }));
+}
+
+// Player names are unique (systems/player-names.js). The account's reserved
+// name is its name; a pilot name chosen before names were unique is kept
+// when it is still free (the first player to sign in again keeps it),
+// otherwise the player picks a new one. Nothing to check (migration 008 not
+// run, offline): as before.
+const _blockingOverlays = ['np-intro', 'onboarding-overlay', 'connect-prompt', 'email-auth', 'pilot-name-prompt'];
+async function ensureUniquePlayerName(realNames = []) {
+  const reserved = await reservedPlayerName();
+  if (reserved === null) return;
+  if (reserved) {
+    if (reserved !== G.playerName || !G.pilotNameChosen) {
+      G.playerName = reserved;
+      G.pilotNameChosen = true;
+      save('playerName', reserved);
+      save('pilotNameChosen', true);
+      pushCloudSave().catch(() => {});
+      renderMenu();
+    }
+    return;
+  }
+  const oldName = G.pilotNameChosen ? G.playerName : '';
+  if (oldName) {
+    const result = await claimPlayerName(oldName);
+    if (result === 'ok' || result === 'unknown') return;
+  }
+  while (_blockingOverlays.some(id => document.getElementById(id))) await new Promise(r => setTimeout(r, 300));
+  await askPilotName(realNames, oldName);
+}
+
+// ── E-MAIL + PASSWORD SIGN-IN (screens/email-auth.js) ────────────────────────
+// The same age check first as Google (parent agreement under 13).
+async function openEmailSignIn(view = 'login') {
+  if (!(await askAgeBeforeSignIn())) return;
+  openEmailAuth({ view, onSignedIn: finishEmailLogin, onGoogle: () => handleGoogleLogin('google') });
+}
+window._openEmailSignIn = openEmailSignIn;
+
+// Signed in with an e-mail: the same steps as a Google sign-in (one device at
+// a time, the account's save, a unique player name). A guest's progress of
+// this visit (never saved on the device) goes into the account: nothing is
+// lost, the account keeps the best of both.
+async function finishEmailLogin({ email, playerName = '' }) {
+  document.getElementById('settings-panel')?.classList.add('hidden');
+  let { blocked } = await claimSessionOrBlock();
+  if (blocked && await askTakeover()) ({ blocked } = await claimSessionOrBlock({ takeover: true }));
+  if (blocked) {
+    await signOutSupabase().catch(() => {});
+    _showLoginToast(sessionBlockedMessage(), 4200);
+    return;
+  }
+
+  const wasRegistered = G.playerRegistered;
+  const guestProgress = wasRegistered ? null : exportSaveSnapshot();
+  const reserved = await reservedPlayerName();
+  const name = reserved || playerName || 'PILOT';
+  G.playerName       = name;
+  G.pilotNameChosen  = !!(reserved || playerName);
+  G.playerEmail      = email;
+  G.playerAuthType   = 'email';
+  G.playerPhoto      = '';
+  G.playerRegistered = true;
+  save('playerName',       name);
+  save('pilotNameChosen',  G.pilotNameChosen);
+  save('playerEmail',      email);
+  save('playerAuthType',   'email');
+  save('playerPhoto',      '');
+  save('playerRegistered', true);
+
+  loadSave();
+  if (guestProgress) applySaveSnapshot(mergeSaveSnapshots(exportSaveSnapshot(), guestProgress));
+  const sync = await syncAccountFromCloud({ authType: 'email', onApplied: () => renderMenu() });
+  await ensureUniquePlayerName([email.split('@')[0]]);
+  if (sync.offline) _showLoginToast(t('syncOffline') || 'Account connected - progress saves on this device.');
+  else if (sync.merged) _showLoginToast(t('syncOk') || 'Progress synced from your account.');
+
+  if (wasRegistered) {
+    renderMenu();
+    _showLoginToast(t('welcomeBack').replace('{name}', G.playerName));
+  } else if (!G.playerGrade) {
+    startNewPlayerAnimation();
+  } else {
+    nav.toMenu();
+    setTimeout(() => _showLoginToast((sync.merged ? t('welcomeBack') : t('welcomeNew')).replace('{name}', G.playerName)), 300);
+    const _daily = checkDailyLogin();
+    if (_daily.isNewDay) setTimeout(() => showDailyReward(_daily.reward, _daily.streak), 700);
+  }
 }
 
 window._onGoogleCredential = async function(response) {
@@ -580,6 +673,8 @@ initBriefing(nav);
 initArena(nav);
 initMultiplayer(nav);
 initLeaderboard();
+// RÉGLAGE > SE CONNECTER AVEC UN COURRIEL (beside the Google button).
+document.getElementById('btn-login-email')?.addEventListener('click', () => openEmailSignIn('login'));
 // MULTI enters multiplayer mode; in that mode the same button reads SOLO.
 document.getElementById('btn-lobby-multi')?.addEventListener('click', () => {
   if (isMultiLobby()) exitMultiplayer();
@@ -873,13 +968,14 @@ if (G.playerRegistered && G.playerEmail) {
     }
     if (blocked) { _forceSignOutBlocked(); return; }
     return syncAccountFromCloud({ remote: tookOver ? null : remoteSave, onApplied: () => renderMenu() }).then(async sync => {
-      // Google players from before the nickname existed still show their
-      // real first name: ask them once for a pilot name.
-      if (G.playerAuthType === 'google' && !G.pilotNameChosen) {
-        // Let the yellow intro finish first.
-        while (document.getElementById('np-intro')) await new Promise(r => setTimeout(r, 300));
-        await askPilotName([G.playerName, G.playerEmail.split('@')[0]]);
-      }
+      // A unique player name: reserved (first to sign in again keeps an old
+      // name), or asked once — e.g. Google players from before the nickname
+      // existed, who still show their real first name.
+      // Let the yellow intro finish first.
+      while (document.getElementById('np-intro')) await new Promise(r => setTimeout(r, 300));
+      await ensureUniquePlayerName(G.playerAuthType === 'google' && !G.pilotNameChosen
+        ? [G.playerName, G.playerEmail.split('@')[0]]
+        : [G.playerEmail.split('@')[0]]);
       if (sync?.merged) renderMenu();
       else if (sync?.forbidden) {
         // The account's sign-in expired (or was ended): progress stays on
@@ -889,6 +985,7 @@ if (G.playerRegistered && G.playerEmail) {
           ? 'Ta connexion a expiré. Reconnecte-toi pour retrouver ta progression du compte.'
           : 'Your sign-in expired. Sign in again to get your account progress back.', 4200);
         if (G.playerAuthType === 'google') setTimeout(openConnectPrompt, 1200);
+        else if (G.playerAuthType === 'email') setTimeout(() => openEmailSignIn('login'), 1200);
       }
       else if (sync?.offline && window._showToast) {
         window._showToast(t('syncOffline') || 'Account connected - progress saves on this device.');

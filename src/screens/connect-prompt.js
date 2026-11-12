@@ -1,7 +1,8 @@
 // "Sign in with Google" invitation shown after the beginner practice (yellow
 // design like the new-player intro): the T-6 loops in, a card pops with
 // "BRAVO PILOTE!", the Google logo spins in, the benefits slide in one by one,
-// and a glowing Google button (or "later") ends it.
+// and a glowing Google button (or "later") ends it. Under it, a link creates
+// an account with an e-mail instead (screens/email-auth.js).
 import { getLang, t } from '../i18n.js';
 
 import { uiIcon } from '../utils/icons.js';
@@ -21,7 +22,7 @@ const REASON_SUB = {
   skin: ['Connecte-toi pour obtenir ton skin Halloween 2026!', 'Sign in to get your Halloween 2026 skin!'],
 };
 
-export function showConnectPrompt({ onGoogle, onLater, onLegal, reason = '' } = {}) {
+export function showConnectPrompt({ onGoogle, onEmail, onLater, onLegal, reason = '' } = {}) {
   document.getElementById('connect-prompt')?.remove();
   const fr = getLang() === 'fr';
   // What an account gives: everything else is open to every player.
@@ -45,6 +46,7 @@ export function showConnectPrompt({ onGoogle, onLater, onLegal, reason = '' } = 
         ${perks.map(([icon, text], i) => `<li style="--i:${i}"><span>${uiIcon(icon)}</span>${text}</li>`).join('')}
       </ul>
       <button class="cp-btn" type="button">${GOOGLE_G}<span>${fr ? 'SE CONNECTER AVEC GOOGLE' : 'SIGN IN WITH GOOGLE'}</span></button>
+      ${onEmail ? `<button class="cp-later cp-email" type="button">${fr ? 'Créer un compte avec un courriel' : 'Create an account with an e-mail'}</button>` : ''}
       <button class="cp-later" type="button">${fr ? 'Plus tard' : 'Later'}</button>
     </div>
     <div class="cp-legal">
@@ -58,7 +60,8 @@ export function showConnectPrompt({ onGoogle, onLater, onLegal, reason = '' } = 
     setTimeout(() => { overlay.remove(); then?.(); }, 350);
   };
   overlay.querySelector('.cp-btn').addEventListener('click', () => close(onGoogle), { once: true });
-  overlay.querySelector('.cp-later').addEventListener('click', () => close(onLater), { once: true });
+  overlay.querySelector('.cp-email')?.addEventListener('click', () => close(onEmail), { once: true });
+  overlay.querySelector('.cp-later:not(.cp-email)').addEventListener('click', () => close(onLater), { once: true });
   // Terms of use / privacy policy (main.js reopens this invitation on "back").
   overlay.querySelectorAll('[data-legal]').forEach(btn => btn.addEventListener('click', () => {
     close(() => onLegal?.(btn.dataset.legal));
