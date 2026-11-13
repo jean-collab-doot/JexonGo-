@@ -1362,6 +1362,30 @@ html:not(.touch-phone):not(.touch-tablet):not(.touch-mobile) #s-levelmap #levelm
     repeating-linear-gradient(180deg, rgba(0,0,0,.55) 0 2px, transparent 2px 4px);
   mix-blend-mode: multiply;
 }
+/* AMÉLIORER: the plane parked on the lobby's hangar floor (painted by
+   plane-info-fisheye.js), shown like an old TV picture: the same scanlines,
+   plus a glass glare, a slow rolling bright band and a faint flicker. */
+.upg-card .pi-screen { background: #15191c; }
+.upg-card .pi-screen::before {
+  content: ''; position: absolute; inset: 0; z-index: 2; pointer-events: none;
+  background: radial-gradient(ellipse at 28% 16%, rgba(255,255,255,.14), transparent 46%);
+}
+.upg-card .pi-screen::after {
+  content: ''; position: absolute; left: 0; right: 0; top: 0; height: 24%;
+  z-index: 2; pointer-events: none;
+  background: linear-gradient(180deg, transparent, rgba(255,255,255,.09) 50%, transparent);
+  animation: upgTvRoll 4.5s linear infinite;
+}
+.upg-card .pi-img { animation: upgTvFlicker 3.2s steps(1) infinite; }
+@keyframes upgTvRoll { from { transform: translateY(-100%); } to { transform: translateY(420%); } }
+@keyframes upgTvFlicker {
+  0%, 100% { opacity: 1; }
+  46% { opacity: .93; } 47% { opacity: 1; }
+  80% { opacity: .96; } 81% { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .upg-card .pi-screen::after, .upg-card .pi-img { animation: none; }
+}
 .pi-corner {
   position: absolute; z-index: 3; padding: 5px 10px; font-size: 10px; line-height: 1.2;
   background: rgba(10,14,16,.88); color: #fff; white-space: nowrap;

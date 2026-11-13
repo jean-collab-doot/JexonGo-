@@ -436,6 +436,8 @@ function renderMissileOption(type, lang, activeMissileType, ownedMissiles) {
 let _upgradePlaneId = null;
 // Same heart art as the in-game lives HUD (game.js updateLivesHUD).
 const HEART_IMG = '/assets/fx/Iteam/heart-full.png';
+// Lobby hangar floor (door open) behind the plane in the AMÉLIORER screen.
+const UPGRADE_FLOOR = '/assets/hangar/hangar-door/frame-19.webp';
 // Same EXP art as the HUD / rewards (utils/icons.js expIcon).
 const EXP_IMG = '/assets/fx/Caisse/JexonGo_EXP_frame_01.png';
 // Explosion for the homing icon: the 7 frames of the in-game enemy explosion
@@ -637,7 +639,8 @@ function renderUpgradesTab(body) {
   `;
 
   const canvas = body.querySelector('[data-upg-canvas]');
-  if (canvas) paintPlaneInfoFisheye(canvas, `/assets/hangar/${id}.webp`, secretLocked ? 'secret' : !unlocked);
+  // AMÉLIORER: the plane parked on the lobby's hangar floor, seen on an old TV.
+  if (canvas) paintPlaneInfoFisheye(canvas, `/assets/hangar/${id}.webp`, secretLocked ? 'secret' : !unlocked, { backdropSrc: UPGRADE_FLOOR });
 
   body.querySelectorAll('[data-upg-step]').forEach(btn => {
     btn.addEventListener('click', () => stepUpgradePlane(Number(btn.dataset.upgStep) || 1));
