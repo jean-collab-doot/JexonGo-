@@ -25,7 +25,7 @@ import {
 } from '../game/aircraft-draw.js';
 import { AIRCRAFT } from '../data/aircraft.js';
 import { getLevel } from '../data/levels.js';
-import { SFX } from '../audio/sound.js';
+import { SFX as SOUND } from '../audio/sound.js';
 import { preloadBiome, drawFrame, hasTurnArt, shipSpriteKey, SPRITE_DEFS, AIRCRAFT_SPRITE, preloadSprite, biomeBgKey } from '../game/sprites.js';
 import { earnHalloweenSkin } from '../data/skins.js';
 import { showYellowLoader } from './new-player-intro.js';
@@ -1095,7 +1095,12 @@ function showStartCountdown(done, { keepPlane = false } = {}) {
   el.innerHTML = `<span class="tutorial-count-caption">${copy.starting}</span><strong>${count}</strong>`;
   SFX.countNumber(count);
   el.classList.remove('hidden');
+  // Left for the lobby: the countdown stops. Paused with QUIT: it waits there
+  // (silent) and goes on with CONTINUER.
+  const countSid = _sessionId;
   const tickDown = () => {
+    if (countSid !== _sessionId) return;
+    if (_gamePausedFromQuit) { setTimeout(tickDown, 250); return; }
     count--;
     if (count <= 0) {
       // Countdown over: (boss levels) BOSS ALERT, then the START banner. The
@@ -1104,6 +1109,7 @@ function showStartCountdown(done, { keepPlane = false } = {}) {
       const sid = _sessionId;
       const beginPlay = () => {
         if (sid !== _sessionId) return;
+        if (_gamePausedFromQuit) { setTimeout(beginPlay, 250); return; }
         if (_countdownPlaneAnim) {
           G.player.x = _countdownPlaneAnim.toX;
           G.player.y = _countdownPlaneAnim.toY;
@@ -1117,6 +1123,7 @@ function showStartCountdown(done, { keepPlane = false } = {}) {
       };
       const playStart = () => {
         if (sid !== _sessionId) return;
+        if (_gamePausedFromQuit) { setTimeout(playStart, 250); return; }
         showStartBanner(el.parentElement);
         setTimeout(beginPlay, START_BANNER_MS);
       };
@@ -1458,6 +1465,22 @@ let baseMaxEnemies = 5;
 let _sessionId    = 0;
 let _activeSessionId = 0;
 let _gamePausedFromQuit = false;
+
+// The game's sounds stop at QUIT: while the game is paused (PARTIE ARRÊTÉE),
+// left for the lobby or its window hidden, the timers still running
+// (countdown, banners, end animation...) stay silent. Stopping a sound,
+// preloading and volumes always go through.
+function gameSoundsAllowed() {
+  return !!_activeSessionId && !_gamePausedFromQuit && !document.hidden;
+}
+const SFX = new Proxy(SOUND, {
+  get(target, key) {
+    const value = target[key];
+    if (typeof value !== 'function') return value;
+    if (/^(stop|preload|set|unlock)|Stop$/.test(String(key))) return value.bind(target);
+    return (...args) => (gameSoundsAllowed() ? value.apply(target, args) : undefined);
+  },
+});
 let _tutorialActive = false;
 let _tutorialRound = 1;
 let _tutorialStats = null;

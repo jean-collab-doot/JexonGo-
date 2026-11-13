@@ -44,9 +44,13 @@ export function askAgeBeforeSignIn() {
       resolve(result);
     };
     document.getElementById('btn-age-gate-cancel').onclick = () => close(false);
-    // The policy opens on its own screen; the player signs in again after.
+    // The policy opens on its own screen, alone: the settings drawer (where
+    // the sign-in often starts) and the Google window close so they don't
+    // cover it. The player signs in again after.
     document.getElementById('btn-age-gate-policy').onclick = () => {
       close(false);
+      document.getElementById('settings-panel')?.classList.add('hidden');
+      document.getElementById('gsi-fallback-overlay')?.classList.add('hidden');
       showScreen('s-privacy');
     };
     document.getElementById('btn-age-gate-continue').onclick = () => {

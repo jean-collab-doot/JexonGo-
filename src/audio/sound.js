@@ -74,8 +74,13 @@ const _timers  = [];
 const _sources = [];
 const _mediaShots = [];
 
+// A sound due while the game's window is hidden is skipped (it would wait in
+// the paused audio and play on return).
 function _after(ms, fn) {
-  const id = setTimeout(() => { fn(); _timers.splice(_timers.indexOf(id), 1); }, ms);
+  const id = setTimeout(() => {
+    _timers.splice(_timers.indexOf(id), 1);
+    if (!document.hidden) fn();
+  }, ms);
   _timers.push(id);
 }
 
@@ -291,10 +296,25 @@ document.addEventListener('pointerdown', _resumeAll, { passive: true });
 document.addEventListener('click',      _resumeAll);
 document.addEventListener('keydown',    _resumeAll);
 
+// Leaving the game's window (another app, the home screen, a locked phone):
+// every sound stops at once — the music, the plane and weather loops and the
+// effects (they all play through the audio context, which is paused). iPhones
+// otherwise keep a page's audio playing in the background. The music comes
+// back where it was when the window does.
+function _silenceInBackground() {
+  _clearFade();
+  try { _bgEl.pause(); } catch (_) {}
+  _timers.forEach(clearTimeout);
+  _timers.length = 0;
+  if (_actx && _actx.state === 'running') _actx.suspend().catch(() => {});
+}
+window.addEventListener('pagehide', _silenceInBackground);
+
 // Resume when tab comes back to foreground
-window.addEventListener('focus', _resumeAll);
+window.addEventListener('focus', () => { if (!document.hidden) _resumeAll(); });
 document.addEventListener('visibilitychange', () => {
-  if (!document.hidden) setTimeout(_resumeAll, 300);
+  if (document.hidden) _silenceInBackground();
+  else setTimeout(_resumeAll, 300);
 });
 
 // On mobile: poll every 4 s while visible to catch silent audio drops
