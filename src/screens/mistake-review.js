@@ -34,8 +34,8 @@ export function reportDetailsHTML(report = sessionReport()) {
   const fr = isFr();
   const theme = t => `<b>${esc(tOp(t.op))}</b> <span>(${t.correct}/${t.total})</span>`;
   const lines = [];
-  if (report.best) lines.push(`<div class="jx-report-line is-best">${uiIcon('star')}<span>${fr ? 'Meilleur thème' : 'Best topic'} : ${theme(report.best)}</span></div>`);
-  if (report.rework) lines.push(`<div class="jx-report-line is-rework">${uiIcon('target')}<span>${fr ? 'À retravailler' : 'To work on'} : ${theme(report.rework)}</span></div>`);
+  if (report.best) lines.push(`<div class="jx-report-line is-best">${uiIcon('star')}<span>${fr ? 'Meilleur thème :' : 'Best topic:'} ${theme(report.best)}</span></div>`);
+  if (report.rework) lines.push(`<div class="jx-report-line is-rework">${uiIcon('target')}<span>${fr ? 'À retravailler :' : 'To work on:'} ${theme(report.rework)}</span></div>`);
   else if (report.total) lines.push(`<div class="jx-report-line is-best">${uiIcon('check')}<span>${fr ? 'Aucune erreur, bravo !' : 'No mistakes, well done!'}</span></div>`);
   const replay = Math.min(REPLAY_COUNT, report.mistakes);
   const button = replay
@@ -97,7 +97,7 @@ export function openMistakeReview(onClose) {
       const lines = q.steps || tipLines(q) || [];
       const last = index === questions.length - 1;
       card.querySelector('.mr-feedback').innerHTML = `
-        <div class="mr-verdict ${ok ? 'is-ok' : 'is-miss'}">${ok ? (fr ? 'Bravo, c’est juste !' : 'Right, well done!') : `${fr ? 'Bonne réponse' : 'Correct answer'} : ${esc(show(q.answer))}`}</div>
+        <div class="mr-verdict ${ok ? 'is-ok' : 'is-miss'}">${ok ? (fr ? 'Bravo, c’est juste !' : 'Right, well done!') : `${fr ? 'Bonne réponse :' : 'Correct answer:'} ${esc(show(q.answer))}`}</div>
         ${ok ? '' : `${tip ? `<div class="mr-tip">${esc(fr ? tip.fr : tip.en)}</div>` : ''}${lines.length ? `<div class="mr-lines">${lines.map(l => esc(show(l))).join('<br>')}</div>` : ''}`}
         <button type="button" class="mr-next">${last ? (fr ? 'TERMINER' : 'FINISH') : (fr ? 'SUIVANTE' : 'NEXT')}</button>`;
       card.querySelector('.mr-next').addEventListener('click', () => {

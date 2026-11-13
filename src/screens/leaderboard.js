@@ -6,7 +6,7 @@
 // is blue. While the panel is open it follows the table live (Supabase
 // Realtime), with a slow refresh as a fallback.
 import { G } from '../state.js';
-import { getLang } from '../i18n.js';
+import { getLang, numLocale } from '../i18n.js';
 import { getSupabaseClient, getSupabaseSession } from '../systems/supabase-client.js';
 import { pushLeaderboardScore } from '../systems/leaderboard-sync.js';
 
@@ -67,13 +67,13 @@ function render(rows, note = '') {
     <div class="top20-podium-col top20-place-${place}${row && row.id === _myId ? ' is-me' : ''}">
       <b class="top20-podium-num">${place}</b>
       <span class="top20-podium-name">${row ? escapeHtml(row.name) : '—'}</span>
-      ${row ? `<span class="top20-podium-xp">${row.score.toLocaleString()}</span>` : ''}
+      ${row ? `<span class="top20-podium-xp">${row.score.toLocaleString(numLocale())}</span>` : ''}
     </div>`;
   const list = rows.map(row => `
     <div class="top20-row${row.id === _myId ? ' is-me' : ''}">
       <span class="top20-rank">${row.rank}</span>
       <span class="top20-name">${escapeHtml(row.name)}</span>
-      <span class="top20-xp">${row.score.toLocaleString()} <img src="${XP_IMG}" alt="EXP"></span>
+      <span class="top20-xp">${row.score.toLocaleString(numLocale())} <img src="${XP_IMG}" alt="EXP"></span>
     </div>`).join('');
   body.innerHTML = `
     <div class="top20-head">

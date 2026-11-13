@@ -48,14 +48,14 @@ function configuredOpsLabel() {
   const ops = Array.isArray(G.focusOperations) && G.focusOperations.length
     ? G.focusOperations
     : G.focusOperation ? [G.focusOperation] : ['+', '-', '*', '/'];
-  return ops.map(op => ({ '+': 'ADD', '-': 'SUB', '*': 'MUL', '/': 'DIV' })[op] || op).join(' + ');
+  return ops.map(op => ({ '+': 'ADD', '-': 'SUB', '*': 'MUL', '/': 'DIV', '^': 'EXPONENT', alg: 'ALGEBRA', frac: 'FRACTIONS', pct: 'PERCENT' })[op] || op).join(' + ');
 }
 
 function configuredOpsLabelFr() {
   const ops = Array.isArray(G.focusOperations) && G.focusOperations.length
     ? G.focusOperations
     : G.focusOperation ? [G.focusOperation] : ['+', '-', '*', '/'];
-  return ops.map(op => ({ '+': 'ADD', '-': 'SOUS', '*': 'MULT', '/': 'DIV' })[op] || op).join(' + ');
+  return ops.map(op => ({ '+': 'ADD', '-': 'SOUS', '*': 'MULT', '/': 'DIV', '^': 'EXPOSANT', alg: 'ALGÈBRE', frac: 'FRACTIONS', pct: 'POURCENTAGES' })[op] || op).join(' + ');
 }
 
 function prunePlayMinutes() {
@@ -309,15 +309,12 @@ export function getMonthlyConfigChallenge(lang = 'en') {
   const ops = isFr ? configuredOpsLabelFr() : configuredOpsLabel();
   const length = G.onboardingLevelLength || 'normal';
   return {
-    // Accents dropped on purpose - the old pixel font was missing
-    // several accented glyphs and falls back to a mismatched system font
-    // mid-word for just that character otherwise.
-    title: isFr ? 'DEFI DU MOIS' : 'MONTH CHALLENGE',
+    title: isFr ? 'DÉFI DU MOIS' : 'MONTH CHALLENGE',
     subtitle: isFr
-      ? `Objectif: ${stats.monthTarget} min ce mois-ci`
+      ? `Objectif : ${stats.monthTarget} min ce mois-ci`
       : `Goal: ${stats.monthTarget} min this month`,
     config: isFr
-      ? `Config: niveau ${grade}, ${ops}, ${length}`
+      ? `Réglages : niveau ${grade}, ${ops}, ${({ short: 'court', normal: 'normal', long: 'long' })[length] || length}`
       : `Config: grade ${grade}, ${ops}, ${length}`,
     progress: stats.monthTotal,
     target: stats.monthTarget,

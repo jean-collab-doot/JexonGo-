@@ -45,11 +45,19 @@ export function nameTakenMessage() {
     : 'This name is already taken. Pick another one.';
 }
 
-const SUGGEST_WORDS = [
-  'FAUCON', 'AIGLE', 'COMETE', 'ECLAIR', 'TONNERRE', 'ORAGE', 'METEORE', 'TURBO',
-  'RADAR', 'NOVA', 'ORBITE', 'CONDOR', 'VIPER', 'JET', 'ROCKET', 'PHENIX',
-  'ZENITH', 'SONIC', 'ALPHA', 'DELTA', 'BOLIDE', 'FUSEE', 'ATLAS', 'MACH',
-];
+// Name ideas in the game language (no accents: names are plain letters).
+const SUGGEST_WORDS = {
+  fr: [
+    'FAUCON', 'AIGLE', 'COMETE', 'ECLAIR', 'TONNERRE', 'ORAGE', 'METEORE', 'TURBO',
+    'RADAR', 'NOVA', 'ORBITE', 'CONDOR', 'VIPERE', 'JET', 'FUSEE', 'PHENIX',
+    'ZENITH', 'SONIQUE', 'ALPHA', 'DELTA', 'BOLIDE', 'ATLAS', 'MACH', 'TORNADE',
+  ],
+  en: [
+    'FALCON', 'EAGLE', 'COMET', 'BOLT', 'THUNDER', 'STORM', 'METEOR', 'TURBO',
+    'RADAR', 'NOVA', 'ORBIT', 'CONDOR', 'VIPER', 'JET', 'ROCKET', 'PHOENIX',
+    'ZENITH', 'SONIC', 'ALPHA', 'DELTA', 'BLAZE', 'ATLAS', 'MACH', 'TORNADO',
+  ],
+};
 
 function lettersOnly(text) {
   return String(text || '').toLowerCase()
@@ -93,7 +101,8 @@ function suggestions(count, realNames) {
   const out = new Set();
   let guard = 0;
   while (out.size < count && guard++ < 50) {
-    const word = SUGGEST_WORDS[Math.floor(Math.random() * SUGGEST_WORDS.length)];
+    const words = SUGGEST_WORDS[getLang() === 'fr' ? 'fr' : 'en'];
+    const word = words[Math.floor(Math.random() * words.length)];
     const name = `${word} ${10 + Math.floor(Math.random() * 90)}`;
     if (!pilotNameError(name, realNames)) out.add(name);
   }

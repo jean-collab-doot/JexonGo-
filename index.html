@@ -167,7 +167,7 @@
         <div class="sett-row sett-row-volume">
           <div class="sett-row-left">
             <span class="sett-icon" id="sett-music-icon"><svg class="ui-icon ui-icon-music" viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/></svg></span>
-            <span class="sett-label">MUSIC</span>
+            <span class="sett-label" data-i18n="jxMusic">MUSIQUE</span>
           </div>
           <div class="sett-slider-wrap">
             <input type="range" id="sett-music-slider" class="sett-slider" min="0" max="100" value="45">
@@ -181,7 +181,7 @@
           </div>
           <button id="sett-effects" class="sett-toggle sett-on">ON</button>
         </div>
-        <button id="btn-change-equations" class="sett-action-btn" type="button">CHANGER LES EQUATIONS</button>
+        <button id="btn-change-equations" class="sett-action-btn" type="button" data-i18n="jxChangeEquations">CHANGER LES ÉQUATIONS</button>
       </div>
 
       <button class="jx-pill" type="button" data-jx-sub="drawer-controls" data-i18n="jxControls">CONTRÔLES</button>
@@ -392,7 +392,7 @@
           <div class="jx-tabs">
             <button class="jx-tab is-active" type="button" data-hangar-tab="planes" data-i18n="jxAircraftTab">AVIONS</button>
             <button class="jx-tab" type="button" data-hangar-tab="missiles" data-i18n="jxMissileTab">TIR DE MISSILE</button>
-            <button class="jx-tab" type="button" data-hangar-tab="upgrades" data-i18n="jxUpgradeTab">UPGRADE</button>
+            <button class="jx-tab" type="button" data-hangar-tab="upgrades" data-i18n="jxUpgradeTab">AMÉLIORER</button>
             <button class="jx-tab jx-tab-bot" type="button" data-hangar-tab="bot">BOT</button>
           </div>
           <div class="jx-panel-body"></div>
@@ -509,7 +509,7 @@
       <div class="jx-tabs">
         <button class="jx-tab is-active" type="button" data-hangar-tab="planes" data-i18n="jxAircraftTab">AVIONS</button>
         <button class="jx-tab" type="button" data-hangar-tab="missiles" data-i18n="jxMissileTab">TIR DE MISSILE</button>
-        <button class="jx-tab" type="button" data-hangar-tab="upgrades" data-i18n="jxUpgradeTab">UPGRADE</button>
+        <button class="jx-tab" type="button" data-hangar-tab="upgrades" data-i18n="jxUpgradeTab">AMÉLIORER</button>
       </div>
       <div id="hangar-body" class="jx-panel-body"></div>
     </div>
@@ -587,9 +587,9 @@
     <div id="shop-content" class="shop-content"></div>
 
     <div id="shop-sheet" class="jx-bottomsheet is-collapsed">
-      <button class="jx-sheet-grip" type="button" aria-label="Shot type"><span data-i18n="jxFireTypeSheet">Type de tire</span></button>
+      <button class="jx-sheet-grip" type="button" aria-label="Shot type"><span data-i18n="jxFireTypeSheet">Type de tir</span></button>
       <div class="jx-sheet-content">
-        <div class="jx-panel-title" data-i18n="jxFireTypeSheet">Type de tire</div>
+        <div class="jx-panel-title" data-i18n="jxFireTypeSheet">Type de tir</div>
         <div id="shop-sheet-body" class="jx-panel-body"></div>
       </div>
     </div>
@@ -1679,7 +1679,7 @@
   <!-- FEEDBACK OVERLAY -->
   <div id="feedback-overlay" class="sett-backdrop hidden">
     <div class="feedback-panel">
-      <div class="feedback-header" data-i18n="feedbackTitle">HOW DO YOU LIKE JEXONGO ?</div>
+      <div class="feedback-header" data-i18n="feedbackTitle">COMMENT TROUVES-TU JEXONGO ?</div>
       <div class="feedback-sub" data-i18n="feedbackSub">DAILY FEEDBACK</div>
       <div class="feedback-stars" id="feedback-stars">
         <span class="fb-star" data-v="1"><svg class="ui-icon ui-icon-star" viewBox="0 0 24 24" width="1em" height="1em" fill="currentColor" stroke="none" aria-hidden="true" focusable="false"><path d="M12 2.5l2.9 6.2 6.6.7-5 4.5 1.4 6.6L12 17.2l-5.9 3.3 1.4-6.6-5-4.5 6.6-.7z"/></svg></span>
@@ -1691,7 +1691,7 @@
       <textarea id="feedback-comment" class="feedback-textarea" placeholder="YOUR COMMENT (OPTIONAL)..." data-i18n-placeholder="feedbackCommentPh" maxlength="300"></textarea>
       <div id="feedback-error" class="feedback-error"></div>
       <div class="feedback-btns" id="feedback-btns">
-        <button id="btn-feedback-submit" class="btn btn-primary" data-i18n="feedbackSubmit">▶︎ SEND FEEDBACK</button>
+        <button id="btn-feedback-submit" class="btn btn-primary" data-i18n="feedbackSubmit">▶︎ ENVOYER</button>
         <button id="btn-feedback-skip" class="feedback-skip-btn" data-i18n="feedbackSkip">SKIP</button>
       </div>
       <div id="feedback-thanks" class="feedback-thanks hidden"></div>
@@ -1740,7 +1740,7 @@
     <div class="delete-account-panel">
       <div class="delete-account-title" data-i18n="deleteAccountTitle">DELETE ACCOUNT</div>
       <div class="delete-account-copy" data-i18n="deleteAccountWarning">
-        This permanently deletes your JexonGO cloud save from this account.
+        This permanently deletes your JexonGo cloud save from this account.
       </div>
       <label class="delete-question">
         <span data-i18n="deleteReasonLabel">WHY ARE YOU DELETING?</span>

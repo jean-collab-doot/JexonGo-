@@ -4,7 +4,7 @@ import { G } from '../state.js';
 import { getLevel, TOTAL_LEVELS, BIOME_META, BIOMES } from '../data/levels.js';
 import { levelState } from '../systems/progression.js';
 import { SFX } from '../audio/sound.js';
-import { getLang } from '../i18n.js';
+import { getLang, numLocale } from '../i18n.js';
 import { nodePositions, buildMapBackdrop, routeSegment, territoryArt } from './levelmap-territories.js';
 import { paintFisheye, warmFisheye, lensPositions } from './levelmap-fisheye.js';
 
@@ -178,8 +178,8 @@ export function initLevelMap(nav) {
 }
 
 export function renderLevelMap() {
-  $('map-coins').textContent = (G.coins || 0).toLocaleString();
-  $('map-xp').textContent = (G.xp || 0).toLocaleString();
+  $('map-coins').textContent = (G.coins || 0).toLocaleString(numLocale());
+  $('map-xp').textContent = (G.xp || 0).toLocaleString(numLocale());
 
   _allNodes = [];
   for (let n = 1; n <= TOTAL_LEVELS; n++) {

@@ -7,7 +7,7 @@ import { saveProgress } from '../systems/progression.js';
 import { rollChest, skinChest } from '../systems/chest.js';
 import { trackMission } from '../systems/daily.js';
 import { getPilotGrade, getNextGrade } from '../data/pilots.js';
-import { t, getLang } from '../i18n.js';
+import { t, getLang, numLocale } from '../i18n.js';
 import { AIRCRAFT } from '../data/aircraft.js';
 import { coinIcon, expIcon, uiIcon } from '../utils/icons.js';
 import { unlockBossAircraft } from '../systems/secret-aircraft.js';
@@ -110,7 +110,7 @@ function animateResultCounters(root) {
     const ease = 1 - Math.pow(1 - k, 3);
     for (const el of els) {
       const value = Math.round(Number(el.dataset.count || 0) * ease);
-      el.textContent = el.dataset.plain ? value.toLocaleString() : `+${value.toLocaleString()}`;
+      el.textContent = el.dataset.plain ? value.toLocaleString(numLocale()) : `+${value.toLocaleString(numLocale())}`;
     }
     if (k < 1 && !root.classList.contains('hidden')) requestAnimationFrame(step);
   };

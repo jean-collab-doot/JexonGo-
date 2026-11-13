@@ -15849,16 +15849,6 @@ html.np-boot .np-intro.np-static { display: block; }
   animation: cpPop .45s cubic-bezier(.2,1.6,.4,1) 1.2s both;
 }
 .cp-sub { font-size: clamp(8px, 2.4vw, 11px); color: #7a4300; line-height: 1.6; animation: cpFade .4s ease-out 1.4s both; }
-.cp-google {
-  width: clamp(48px, 14vw, 64px);
-  aspect-ratio: 1;
-  padding: 10px;
-  background: #fff;
-  border-radius: 50%;
-  box-shadow: 0 0 0 4px rgba(66,133,244,.25), 0 0 22px rgba(66,133,244,.45);
-  animation: cpSpin .7s cubic-bezier(.2,1.3,.4,1) 1.6s both, cpPulse 1.6s ease-in-out 2.4s infinite;
-}
-.cp-google svg { display: block; width: 100%; height: 100%; }
 .cp-ask { font-size: clamp(9px, 2.8vw, 13px); color: #1f3b73; line-height: 1.6; animation: cpFade .4s ease-out 1.9s both; }
 .cp-perks { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; justify-items: start; }
 .cp-perks li {
@@ -15885,11 +15875,11 @@ html.np-boot .np-intro.np-static { display: block; }
   border: 3px solid #4285f4;
   border-radius: 30px;
   cursor: pointer;
-  box-shadow: 0 0 0 3px rgba(66,133,244,.25), 0 6px 0 #2a5bb8;
-  animation: cpPop .45s cubic-bezier(.2,1.6,.4,1) 2.6s both, cpBtnGlow 1.4s ease-in-out 3.1s infinite;
+  box-shadow: 0 6px 0 #2a5bb8;   /* no blue halo around the button */
+  animation: cpPop .45s cubic-bezier(.2,1.6,.4,1) 2.6s both;
 }
 .cp-btn svg { width: 22px; height: 22px; flex: 0 0 auto; }
-.cp-btn:active { transform: translateY(3px); box-shadow: 0 0 0 3px rgba(66,133,244,.25), 0 3px 0 #2a5bb8; }
+.cp-btn:active { transform: translateY(3px); box-shadow: 0 3px 0 #2a5bb8; }
 .cp-later {
   font-family: inherit;
   font-size: 8px;
@@ -15912,10 +15902,7 @@ html.np-boot .np-intro.np-static { display: block; }
 @keyframes cpCard { from { opacity: 0; transform: translateY(40px) scale(.9); } }
 @keyframes cpPop { from { opacity: 0; transform: scale(.3); } }
 @keyframes cpFade { from { opacity: 0; transform: translateY(8px); } }
-@keyframes cpSpin { from { opacity: 0; transform: rotate(-540deg) scale(.2); } }
-@keyframes cpPulse { 50% { box-shadow: 0 0 0 8px rgba(66,133,244,.15), 0 0 30px rgba(66,133,244,.6); } }
 @keyframes cpPerk { from { opacity: 0; transform: translateX(-16px); } to { opacity: 1; transform: none; } }
-@keyframes cpBtnGlow { 50% { box-shadow: 0 0 0 6px rgba(66,133,244,.3), 0 6px 0 #2a5bb8, 0 0 24px rgba(66,133,244,.6); } }
 
 /* Pilot name after a Google sign-in (pilot-name-prompt.js). */
 .pnp { z-index: 125000; }   /* above the intro, the daily rewards and other popups */
@@ -16219,8 +16206,8 @@ html.touch-phone .briefing-mission-title {
 .cp-actions { display: grid; gap: 10px; width: min(100%, 330px); margin-top: 6px; }
 .cp-actions .cp-btn { width: 100%; justify-content: center; margin-top: 0; }
 .cp-btn { line-height: 1.6; }   /* a label on two lines stays readable */
-.cp-btn.cp-email { border-color: #ff9d00; box-shadow: 0 0 0 3px rgba(255,157,0,.25), 0 6px 0 #c76f00; }
-.cp-btn.cp-email:active { box-shadow: 0 0 0 3px rgba(255,157,0,.25), 0 3px 0 #c76f00; }
+.cp-btn.cp-email { border-color: #ff9d00; box-shadow: 0 6px 0 #c76f00; }
+.cp-btn.cp-email:active { box-shadow: 0 3px 0 #c76f00; }
 #connect-prompt .cp-email { animation: cpPop .45s cubic-bezier(.2,1.6,.4,1) 2.75s both; }
 .gsi-or { font-size: 8px; color: #a0651b; }
 .gsi .gsi-email { width: min(100%, 300px); justify-content: center; }
@@ -16304,7 +16291,6 @@ html:not(.touch-phone):not(.touch-tablet):not(.touch-mobile) #s-briefing .briefi
     gap: 6px;
     padding: 14px 16px 12px;
   }
-  html:not(.touch-phone):not(.touch-tablet):not(.touch-mobile) .cp-google { width: 44px; padding: 7px; }
   html:not(.touch-phone):not(.touch-tablet):not(.touch-mobile) .cp-perks { gap: 3px; }
 }
 

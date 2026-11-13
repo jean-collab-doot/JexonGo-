@@ -201,7 +201,9 @@ export function showChest(chestData) {
   _chestBusy = false;
 
   $('chest-title').textContent      = t('chestReward');
-  $('chest-tier-label').textContent = chestName + ' ' + t('chestSuffix');
+  // French puts the noun first and translates the tier: COFFRE ARGENT / SILVER CHEST.
+  const frTier = { SILVER: 'ARGENT', GOLD: 'OR', PLATINUM: 'PLATINE', LEGENDARY: 'LÉGENDAIRE' }[chestName] || chestName;
+  $('chest-tier-label').textContent = getLang() === 'fr' ? `${t('chestSuffix')} ${frTier}` : `${chestName} ${t('chestSuffix')}`;
   $('chest-tier-label').style.color = chestColor;
 
   const box = $('chest-box');

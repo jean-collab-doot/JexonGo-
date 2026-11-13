@@ -857,7 +857,7 @@ function showFeedbackPopup() {
   document.getElementById('feedback-comment').classList.remove('hidden');
   const btn = document.getElementById('btn-feedback-submit');
   btn.disabled    = false;
-  btn.textContent = '▶ SEND FEEDBACK';
+  btn.textContent = t('feedbackSubmit');
   document.getElementById('feedback-overlay').classList.remove('hidden');
 }
 

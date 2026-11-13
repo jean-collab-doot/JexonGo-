@@ -50,8 +50,8 @@ export function showConnectPrompt({ onGoogle, onEmail, onLater, onLegal, reason 
       <div class="cp-sub">${REASON_SUB[reason]?.[fr ? 0 : 1]
         || (fr ? 'Tu as fini ta première pratique!' : 'You finished your first practice!')}</div>
       <div class="cp-ask">${onEmail
-        ? (fr ? 'Connecte-toi avec Google ou avec un courriel. C’est gratuit!' : 'Sign in with Google or with an e-mail. It’s free!')
-        : (fr ? 'Connecte-toi avec ton compte Google. C’est gratuit!' : 'Sign in with your Google account. It’s free!')}</div>
+        ? (fr ? 'Connecte-toi avec Google ou avec un courriel. C’est gratuit !' : 'Sign in with Google or with an e-mail. It’s free!')
+        : (fr ? 'Connecte-toi avec ton compte Google. C’est gratuit !' : 'Sign in with your Google account. It’s free!')}</div>
       <ul class="cp-perks">
         ${perks.map(([icon, text], i) => `<li style="--i:${i}"><span>${uiIcon(icon)}</span>${text}</li>`).join('')}
       </ul>

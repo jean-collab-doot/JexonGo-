@@ -6,7 +6,7 @@ import { LOGIN_REWARDS, claimDailyReward, getMissions, claimMission,
          hasPendingMissionClaim, getPlayMinuteStats, getMonthlyConfigChallenge } from '../systems/daily.js';
 import { clearAll, clearAccountData, save, load } from '../utils/storage.js';
 import { AIRCRAFT, AIRCRAFT_ORDER } from '../data/aircraft.js';
-import { t, getLang, setLang, applyI18n } from '../i18n.js';
+import { t, getLang, numLocale, setLang, applyI18n } from '../i18n.js';
 import { deleteCloudSave, flushCloudSave } from '../systems/cloud-save.js';
 import { signOutSupabase } from '../systems/supabase-client.js';
 import { releaseSession } from '../systems/session-guard.js';
@@ -334,7 +334,7 @@ function renderLobbyPlane() {
   // Level still too low: the level AND the EXP price, so the player knows
   // both what to reach and what to save up.
   // One compact line: name · price (· level needed while it is too low).
-  btn.innerHTML = `<span>${plane.name.toUpperCase()}</span><b>${cost.toLocaleString()} XP</b>${gradeOk
+  btn.innerHTML = `<span>${plane.name.toUpperCase()}</span><b>${cost.toLocaleString(numLocale())} XP</b>${gradeOk
     ? '' : `<small class="jx-plane-buy-cost">${fr ? `NIV. ${plane.gradeRequired} REQUIS` : `LEVEL ${plane.gradeRequired} NEEDED`}</small>`}`;
   btn.classList.toggle('is-disabled', !gradeOk || (G.xp || 0) < cost);
   placeLobbyBuyButton();
@@ -385,7 +385,7 @@ function buyLobbyPreview() {
   const plane = AIRCRAFT[id];
   _showToast(result === 'grade'
     ? (fr ? `Atteins le niveau ${plane.gradeRequired} pour débloquer ${plane.name}.` : `Reach level ${plane.gradeRequired} to unlock ${plane.name}.`)
-    : (fr ? `Il te manque ${(planeCost(plane) - (G.xp || 0)).toLocaleString()} XP.` : `You need ${(planeCost(plane) - (G.xp || 0)).toLocaleString()} more XP.`));
+    : (fr ? `Il te manque ${(planeCost(plane) - (G.xp || 0)).toLocaleString(numLocale())} XP.` : `You need ${(planeCost(plane) - (G.xp || 0)).toLocaleString(numLocale())} more XP.`));
 }
 
 // Moves to the previous/next plane, wrapping around. { ownedOnly: true } (the
@@ -423,7 +423,7 @@ function _grantDevCoins(amount = MAX_COINS) {
   G.coins = clampCoins((G.coins || 0) + amount);
   save('coins', G.coins);
   saveAll();
-  _showToast(`+${amount.toLocaleString()} coins`);
+  _showToast(`+${amount.toLocaleString(numLocale())} coins`);
   renderMenu();
 }
 function _openResetConfirm() { document.getElementById('reset-modal')?.classList.remove('hidden'); }
@@ -584,8 +584,8 @@ export function renderMenu() {
 function _updateLobbyHud() {
   const coinsEl = $('menu-hud-coins');
   const xpEl = $('menu-hud-xp');
-  if (coinsEl) coinsEl.textContent = (G.coins || 0).toLocaleString();
-  if (xpEl) xpEl.textContent = (G.xp || 0).toLocaleString();
+  if (coinsEl) coinsEl.textContent = (G.coins || 0).toLocaleString(numLocale());
+  if (xpEl) xpEl.textContent = (G.xp || 0).toLocaleString(numLocale());
 
   renderLobbyPlane();
 
@@ -763,7 +763,7 @@ export function showDailyReward(reward, streak, onClaim = null, viewOnly = false
     else                     card.classList.add('ddc-future');
 
     card.innerHTML = `
-      <span class="ddc-num">D${day}</span>
+      <span class="ddc-num">${getLang() === 'fr' ? 'J' : 'D'}${day}</span>
       <span class="ddc-icon">${r.icon === 'coin' ? coinIcon('jg-coin-icon-small') : r.icon}</span>
       ${day < streak || (viewOnly && day === streak) ? `<span class="ddc-check">${uiIcon('check')}</span>` : ''}
     `;

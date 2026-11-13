@@ -1,7 +1,7 @@
 import { $ } from '../utils/dom.js';
 import { uiIcon } from '../utils/icons.js';
 import { G } from '../state.js';
-import { applyI18n, t, getLang } from '../i18n.js';
+import { applyI18n, t, getLang, numLocale } from '../i18n.js';
 import { save } from '../utils/storage.js';
 import { updateSelectedPlaneShowcase, lobbyPlanes } from './menu.js';
 import { AIRCRAFT } from '../data/aircraft.js';
@@ -170,7 +170,7 @@ function renderTrainingSheet() {
     </div>
 
     <div class="practice-timer-row">
-      <span class="practice-timer-label">${uiIcon('clock')} TIMER</span>
+      <span class="practice-timer-label">${uiIcon('clock')} ${getLang() === 'fr' ? 'CHRONO' : 'TIMER'}</span>
       <div class="practice-timer-btns" id="training-timer-btns">
         ${[5, 10, 15, 30, 0].map(s => `<button class="practice-timer-btn" type="button" data-time="${s}">${s === 0 ? '∞' : s + 's'}</button>`).join('')}
       </div>
@@ -306,8 +306,8 @@ function renderTrainingSheet() {
 export function renderTraining() {
   const coinsEl = $('training-coins');
   const xpEl = $('training-xp');
-  if (coinsEl) coinsEl.textContent = (G.coins || 0).toLocaleString();
-  if (xpEl) xpEl.textContent = (G.xp || 0).toLocaleString();
+  if (coinsEl) coinsEl.textContent = (G.coins || 0).toLocaleString(numLocale());
+  if (xpEl) xpEl.textContent = (G.xp || 0).toLocaleString(numLocale());
   _trainingPreview = null;
   renderTrainingPlane();
   const sheet = $('training-sheet');

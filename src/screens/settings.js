@@ -197,7 +197,7 @@ export function initSettings() {
     if (window._startBriefingPractice) window._startBriefingPractice();
     else {
       resetIntroBriefing();
-      window._showToast?.('Briefing will replay on Level 1.');
+      window._showToast?.(getLang() === 'fr' ? 'Le briefing reviendra au niveau 1.' : 'Briefing will replay on Level 1.');
     }
   });
 
@@ -211,7 +211,7 @@ export function initSettings() {
     _closeDrawer();
     showEquationConfig(() => {
       SFX.playMusic('menu');   // back to the lobby after the (silent) questionnaire
-      window._showToast?.('Configuration des equations sauvegardee.');
+      window._showToast?.(getLang() === 'fr' ? 'Équations enregistrées.' : 'Equations saved.');
     });
   });
 

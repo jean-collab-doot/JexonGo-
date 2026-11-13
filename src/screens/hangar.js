@@ -4,7 +4,7 @@ import { G, saveAll } from '../state.js';
 import { save } from '../utils/storage.js';
 import { AIRCRAFT, AIRCRAFT_ORDER } from '../data/aircraft.js';
 import { paintPlaneInfoFisheye } from './plane-info-fisheye.js';
-import { t, getLang, applyI18n } from '../i18n.js';
+import { t, getLang, numLocale, applyI18n } from '../i18n.js';
 import { MISSILE_TYPES, SHOOTING_PLANS, renderShotPlanMiniCard, startShopPreview, stopShopPreview } from './shop.js';
 import { coinIcon, uiIcon } from '../utils/icons.js';
 import { isMultiLobby, renderBotPanel, onHangarTabShown } from './multiplayer.js';
@@ -93,6 +93,9 @@ function stepPlaneInfo(dir) {
 
 function setText(id, text) { const el = $(id); if (el) el.textContent = text; }
 
+// Level needed for a plane: "NIV 16" in French, "LV 16" in English.
+function levelTag(n) { return `${getLang() === 'fr' ? 'NIV' : 'LV'} ${n}`; }
+
 function openPlaneInfo(id) {
   const plane = AIRCRAFT[id];
   if (!plane) return;
@@ -120,8 +123,8 @@ function openPlaneInfo(id) {
   }
   const typeLabel = TYPE_LABELS[plane.type]?.[lang] || (plane.type || '').toUpperCase();
   setText('plane-info-type', hide(typeLabel));
-  setText('plane-info-cost', plane.starter ? t('starter') : hide(`${planeCost(plane).toLocaleString()} XP`));
-  setText('plane-info-grade', plane.gradeRequired ? `LV ${plane.gradeRequired}` : 'LV 1');
+  setText('plane-info-cost', plane.starter ? t('starter') : hide(`${planeCost(plane).toLocaleString(numLocale())} XP`));
+  setText('plane-info-grade', levelTag(plane.gradeRequired || 1));
 
   setText('plane-info-name', hide(plane.name));
   setText('plane-info-desc', hide(plane.description?.[lang] || ''));
@@ -137,7 +140,7 @@ function openPlaneInfo(id) {
       : secretLocked ? 'SECRET' : (fr ? 'VERROUILLÉ' : 'LOCKED');
     const rows = [
       [fr ? 'TYPE' : 'TYPE', hide(typeLabel)],
-      [fr ? 'COÛT' : 'COST', plane.starter ? t('starter') : hide(`${planeCost(plane).toLocaleString()} XP`)],
+      [fr ? 'COÛT' : 'COST', plane.starter ? t('starter') : hide(`${planeCost(plane).toLocaleString(numLocale())} XP`)],
       [fr ? 'NIVEAU REQUIS' : 'LEVEL REQUIRED', plane.gradeRequired ? `${plane.gradeRequired}${plane.gradeLabel ? ` · ${plane.gradeLabel}` : ''}` : '—'],
       [fr ? 'STATUT' : 'STATUS', status],
     ];
@@ -150,9 +153,9 @@ function openPlaneInfo(id) {
     if (active)                 { label = fr ? 'ÉQUIPÉ' : 'EQUIPPED'; disabled = true; }
     else if (unlocked)          label = fr ? 'ÉQUIPER' : 'EQUIP';
     else if (secretLocked)      { label = 'SECRET'; disabled = true; }
-    else if (!meetsGradeRequirement(plane)) { label = `LV ${plane.gradeRequired} · ${planeCost(plane).toLocaleString()} XP`; disabled = true; }
-    else if (canBuyAircraft(id)) label = `${t('unlock')} · ${planeCost(plane).toLocaleString()} XP`;
-    else                        { label = `${planeCost(plane).toLocaleString()} XP`; disabled = true; }
+    else if (!meetsGradeRequirement(plane)) { label = `${levelTag(plane.gradeRequired)} · ${planeCost(plane).toLocaleString(numLocale())} XP`; disabled = true; }
+    else if (canBuyAircraft(id)) label = `${t('unlock')} · ${planeCost(plane).toLocaleString(numLocale())} XP`;
+    else                        { label = `${planeCost(plane).toLocaleString(numLocale())} XP`; disabled = true; }
     btn.textContent = label;
     btn.disabled = disabled;
     btn.classList.toggle('is-equipped', active);
@@ -179,9 +182,9 @@ export function meetsGradeRequirement(plane) {
 
 export function renderHangar() {
   const xpEl = $('hangar-xp');
-  if (xpEl) xpEl.textContent = (G.xp || 0).toLocaleString();
+  if (xpEl) xpEl.textContent = (G.xp || 0).toLocaleString(numLocale());
   const coinsEl = $('hangar-coins');
-  if (coinsEl) coinsEl.textContent = (G.coins || 0).toLocaleString();
+  if (coinsEl) coinsEl.textContent = (G.coins || 0).toLocaleString(numLocale());
   renderHangarPanels();
 }
 
@@ -258,8 +261,8 @@ function renderPlanes(body) {
     else if (active)        status = t('active');
     else if (plane.starter) status = t('starter');
     else if (unlocked)      status = 'OK';
-    else if (plane.gradeRequired && !gradeOk) status = `LV ${plane.gradeRequired}<br>${cost.toLocaleString()} XP`;
-    else                    status = `${cost.toLocaleString()} XP`;
+    else if (plane.gradeRequired && !gradeOk) status = `${levelTag(plane.gradeRequired)}<br>${cost.toLocaleString(numLocale())} XP`;
+    else                    status = `${cost.toLocaleString(numLocale())} XP`;
 
     card.innerHTML = `
       <button type="button" class="jx-slot-info-btn" data-plane-info="${id}" aria-label="Info">ⓘ</button>
@@ -501,7 +504,7 @@ function renderUpgradesTab(body) {
   const typeLabel = TYPE_LABELS[plane.type]?.[lang] || (plane.type || '').toUpperCase();
   const pips = (level, max) =>
     `<span class="upg-pips">${Array.from({ length: max }, (_, i) => `<i class="${i < level ? 'on' : ''}"></i>`).join('')}</span>`;
-  const price = amount => `${amount.toLocaleString()} ${coinIcon('jg-coin-icon-small')}`;
+  const price = amount => `${amount.toLocaleString(numLocale())} ${coinIcon('jg-coin-icon-small')}`;
 
   const levelRow = (kind, icon, name, desc, level, prices) => {
     const maxed = level >= prices.length;
@@ -554,7 +557,7 @@ function renderUpgradesTab(body) {
   body.innerHTML = `
     <div class="pi-card upg-card">
       <div class="pi-head">
-        <h2 class="pi-title">UPGRADE</h2>
+        <h2 class="pi-title">${t('jxUpgradeTab')}</h2>
       </div>
       <div class="upg-left">
       <div class="pi-stars" aria-hidden="true">${Array.from({ length: 5 }, (_, i) => `<span class="${i < tier ? 'on' : ''}">${uiIcon('star')}</span>`).join('')}</div>
@@ -565,7 +568,7 @@ function renderUpgradesTab(body) {
           <div class="pi-scanlines" aria-hidden="true"></div>
           <span class="pi-corner pi-corner-tl">${secretLocked ? '???' : typeLabel}</span>
           <span class="pi-corner pi-corner-bl"><img class="upg-heart-mini" src="${HEART_IMG}" alt=""> +${up.lives} · ${uiIcon('plus')} +${up.shots}</span>
-          <span class="pi-corner pi-corner-br">${plane.gradeRequired ? `LV ${plane.gradeRequired}` : 'LV 1'}</span>
+          <span class="pi-corner pi-corner-br">${levelTag(plane.gradeRequired || 1)}</span>
         </div>
         <button class="pi-arrow pi-arrow-right" type="button" data-upg-step="1" aria-label="Next">&#9654;&#65038;</button>
       </div>

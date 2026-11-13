@@ -9,7 +9,7 @@
 //     TEAMMATE").
 import { SFX } from '../audio/sound.js';
 import { G, startingLives } from '../state.js';
-import { getLang } from '../i18n.js';
+import { getLang, numLocale } from '../i18n.js';
 // Co-op runs over Supabase Realtime (no game server to host).
 import { coopConnect as wsConnect, coopSend as wsSend, coopOn as wsOn, coopDisconnect as wsDisconnect } from '../online/coop-realtime.js';
 import { highestUnlockedLevel } from '../systems/progression.js';
@@ -163,9 +163,9 @@ function botPlaneList() {
 
 function refreshCoinsHud() {
   const coins = $('menu-hud-coins');
-  if (coins) coins.textContent = (G.coins || 0).toLocaleString();
+  if (coins) coins.textContent = (G.coins || 0).toLocaleString(numLocale());
   const xp = $('menu-hud-xp');
-  if (xp) xp.textContent = (G.xp || 0).toLocaleString();
+  if (xp) xp.textContent = (G.xp || 0).toLocaleString(numLocale());
 }
 
 // BOT tab of the lobby HANGAR sheet (MULTI mode), laid out like the UPGRADE
@@ -197,7 +197,7 @@ export function renderBotPanel(body) {
   const typeLabel = TYPE_LABELS[plane.type]?.[lang] || (plane.type || '').toUpperCase();
   const pips = (level, max) =>
     `<span class="upg-pips">${Array.from({ length: max }, (_, i) => `<i class="${i < level ? 'on' : ''}"></i>`).join('')}</span>`;
-  const coinPrice = amount => `${amount.toLocaleString()} ${coinIcon('jg-coin-icon-small')}`;
+  const coinPrice = amount => `${amount.toLocaleString(numLocale())} ${coinIcon('jg-coin-icon-small')}`;
   const levelRow = (kind, icon, name, desc, level, max, cost) => {
     const maxed = cost === undefined;
     return `
@@ -218,7 +218,7 @@ export function renderBotPanel(body) {
   if (equipped)   { actionLabel = f ? 'BOT ÉQUIPÉ' : 'BOT EQUIPPED'; actionDisabled = true; }
   else if (owned) actionLabel = f ? 'ÉQUIPER LE BOT' : 'EQUIP THE BOT';
   else {
-    actionLabel = `${f ? 'ACHETER' : 'BUY'} · ${price.toLocaleString()} <img class="upg-exp-mini" src="${XP_IMG}" alt="EXP">`;
+    actionLabel = `${f ? 'ACHETER' : 'BUY'} · ${price.toLocaleString(numLocale())} <img class="upg-exp-mini" src="${XP_IMG}" alt="EXP">`;
     actionDisabled = (G.xp || 0) < price;
   }
   const nextFire = BOT_FIRE_TEXT[lang][Math.min(up.fire, BOT_FIRE_MAX - 1)];
@@ -244,8 +244,8 @@ export function renderBotPanel(body) {
       </div>
       <h3 class="pi-bar pi-name">${plane.name}</h3>
       ${owned ? '' : `<p class="pi-text upg-locked">${f
-        ? `Prix du hangar : ${(plane.xpCost || 0).toLocaleString()} EXP. Le bot volera en ${AIRCRAFT[up.aircraft]?.name || up.aircraft} en attendant.`
-        : `Hangar price: ${(plane.xpCost || 0).toLocaleString()} XP. The bot flies the ${AIRCRAFT[up.aircraft]?.name || up.aircraft} meanwhile.`}</p>`}
+        ? `Prix du hangar : ${(plane.xpCost || 0).toLocaleString(numLocale())} EXP. Le bot volera en ${AIRCRAFT[up.aircraft]?.name || up.aircraft} en attendant.`
+        : `Hangar price: ${(plane.xpCost || 0).toLocaleString(numLocale())} XP. The bot flies the ${AIRCRAFT[up.aircraft]?.name || up.aircraft} meanwhile.`}</p>`}
       <div class="pi-actions">
         <button class="pi-btn ${equipped ? 'is-equipped' : ''}" type="button" data-bot-action ${actionDisabled ? 'disabled' : ''}>${actionLabel}</button>
       </div>

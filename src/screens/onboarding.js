@@ -119,7 +119,7 @@ function buildCopy(lang) {
     start: fr ? 'Cliquer commencer!' : 'Click to start!',
     continue: fr ? 'CONTINUER' : 'CONTINUE',
     rangeFrom: fr ? 'De 0 à' : 'From 0 to',
-    hudReady: fr ? 'PRET' : 'READY',
+    hudReady: fr ? 'PRÊT' : 'READY',
     pilotSetup: fr ? 'CONFIG PILOTE' : 'PILOT SETUP',
     steps: [
       {

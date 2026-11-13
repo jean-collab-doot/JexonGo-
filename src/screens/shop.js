@@ -2,7 +2,7 @@ import { SFX } from '../audio/sound.js';
 import { $ } from '../utils/dom.js';
 import { G, saveAll, clampCoins } from '../state.js';
 import { load, save } from '../utils/storage.js';
-import { t, applyI18n, getLang } from '../i18n.js';
+import { t, applyI18n, getLang, numLocale } from '../i18n.js';
 import { coinIcon } from '../utils/icons.js';
 import { AIRCRAFT } from '../data/aircraft.js';
 import { AIRCRAFT_SPRITE, drawFrame, getImage, preloadSprite } from '../game/sprites.js';
@@ -150,7 +150,7 @@ export function renderShotPlanMiniCard(plan, lang) {
   const count = Array.isArray(plan.missiles) ? plan.missiles.length : 1;
   const label = owned
     ? (active ? (lang === 'fr' ? 'ÉQUIPÉ' : 'EQUIPPED') : (lang === 'fr' ? 'CHOISIR' : 'SELECT'))
-    : `${(plan.price || 0).toLocaleString()} ${coinIcon('jg-coin-icon-small')}`;
+    : `${(plan.price || 0).toLocaleString(numLocale())} ${coinIcon('jg-coin-icon-small')}`;
   return `<button class="jx-slot jx-slot-shot ${active ? 'is-active' : ''} ${owned ? '' : 'is-locked'}" type="button" data-plan-id="${plan.id}">
     <canvas class="shop-plan-mini-canvas" data-mini-plan="${plan.id}"></canvas>
     <span class="jx-slot-shot-name">${count}× ${plan.title[lang]}</span>
@@ -180,8 +180,8 @@ export function renderShop() {
   const coins = $('shop-coins-val');
   const xp = $('shop-xp-val');
   G.coins = clampCoins(G.coins);
-  if (coins) coins.textContent = (G.coins || 0).toLocaleString();
-  if (xp) xp.textContent = (G.xp || 0).toLocaleString();
+  if (coins) coins.textContent = (G.coins || 0).toLocaleString(numLocale());
+  if (xp) xp.textContent = (G.xp || 0).toLocaleString(numLocale());
 
   const content = $('shop-content');
   if (!content) return;
@@ -256,7 +256,7 @@ function renderMissileButton(m, lang, specialWeapon) {
   const active = !specialWeapon && G.activeMissileType === m.id;
   const label  = owned
     ? (active ? (lang === 'fr' ? 'ÉQUIPÉ' : 'EQUIPPED') : (lang === 'fr' ? 'CHOISIR' : 'SELECT'))
-    : m.price.toLocaleString();
+    : m.price.toLocaleString(numLocale());
   const pos = MISSILE_BUTTON_POS[m.id] || { fx: 0.5, fy: 0.5 };
   return `
     <button class="jx-arsenal-btn" type="button" data-fx="${pos.fx}" data-fy="${pos.fy}"
@@ -313,7 +313,7 @@ function renderPlanCell(p, lang, specialWeapon) {
   const count  = Array.isArray(p.missiles) ? p.missiles.length : 1;
   const label  = owned
     ? (active ? (lang === 'fr' ? 'ÉQUIPÉ' : 'EQUIPPED') : (lang === 'fr' ? 'CHOISIR' : 'SELECT'))
-    : (p.price || 0).toLocaleString();
+    : (p.price || 0).toLocaleString(numLocale());
   return `
     <div class="jx-shop-cell" data-owned="${owned ? 1 : 0}" data-active="${active ? 1 : 0}">
       <button class="jx-rack" type="button" data-jx-plan="${p.id}"><span class="jx-plan-count">${count}×</span></button>
@@ -430,7 +430,7 @@ function renderPlanCard(plan, lang) {
         <button class="shop-plan-action ${owned ? 'shop-action-bought' : ''}" type="button" data-plan-action="${plan.id}" ${disabled ? 'disabled' : ''}>
           ${owned
             ? `<b>${lang === 'fr' ? 'ACHETE' : 'BOUGHT'}</b>`
-            : `<b>${plan.price ? plan.price.toLocaleString() : '0'}</b>${coinIcon('jg-coin-icon-small')}`}
+            : `<b>${plan.price ? plan.price.toLocaleString(numLocale()) : '0'}</b>${coinIcon('jg-coin-icon-small')}`}
         </button>
       </div>
       <p>${specialWeapon
@@ -466,7 +466,7 @@ function renderMissileCard(missile, lang) {
         <button class="shop-missile-action ${owned ? 'shop-action-bought' : ''}" type="button" data-missile-action="${missile.id}" ${disabled ? 'disabled' : ''}>
           ${owned
             ? `<b>${lang === 'fr' ? 'ACHETE' : 'BOUGHT'}</b>`
-            : `<b>${missile.price.toLocaleString()}</b>${coinIcon('jg-coin-icon-small')}`}
+            : `<b>${missile.price.toLocaleString(numLocale())}</b>${coinIcon('jg-coin-icon-small')}`}
         </button>
         <span>${specialWeapon
           ? (lang === 'fr' ? 'Indisponible : arme speciale de cet avion' : 'Unavailable: this aircraft uses a special weapon')

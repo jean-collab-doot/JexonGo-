@@ -44,7 +44,7 @@ import { getPilotGrade } from '../data/pilots.js';
 import { applyAgeModifiers } from '../systems/age-modifiers.js';
 import { calcSpeedXP } from '../systems/xp.js';
 import { load, save } from '../utils/storage.js';
-import { t, getLang } from '../i18n.js';
+import { t, getLang, numLocale } from '../i18n.js';
 import {
   isTouchMobile, isTablet, isPhone, gameCanvasDpr,
 } from '../utils/device.js';
@@ -662,36 +662,36 @@ const TUTORIAL_COPY = {
     ops: { '+': 'additions', '-': 'subtractions', '*': 'multiplications', '/': 'divisions' },
   },
   fr: {
-    round1Label: 'TUTORIEL ROUND 1 - FACILE',
-    round2Label: 'TUTORIEL ROUND 2 - VITESSE',
-    round1Hint: 'Pas de timer. Pas de game over. Choisis la bonne reponse.',
-    livesNow: 'Timer active et 3 VIES! Attention aux erreurs.',
-    guidedBreak: 'Bravo! 5 questions faites. Petite pause de 5 secondes, puis timer et 3 vies!',
-    restart: 'Plus de vies! On recommence a 0.',
+    round1Label: 'TUTORIEL MANCHE 1 - FACILE',
+    round2Label: 'TUTORIEL MANCHE 2 - VITESSE',
+    round1Hint: 'Pas de chrono. Pas de défaite. Choisis la bonne réponse.',
+    livesNow: 'Chrono activé et 3 VIES ! Attention aux erreurs.',
+    guidedBreak: 'Bravo ! 5 questions faites. Petite pause de 5 secondes, puis chrono et 3 vies !',
+    restart: 'Plus de vies ! On recommence à 0.',
     infinite: 'VIES',
-    round2Hint: 'Timer active. Questions plus difficiles. Montre ton niveau.',
-    good: ['Beau tir!', 'Bonne reponse!', 'Capitaine Jexongo approuve!'],
-    bad: ["Pas celle-la. Regarde l'equation.", 'Bon essai. Le capitaine montre la reponse.'],
-    timeout: ['Temps termine. Regarde le tableau.', 'Trop lent. Essaie la prochaine.'],
+    round2Hint: 'Chrono activé. Questions plus difficiles. Montre ton niveau.',
+    good: ['Beau tir !', 'Bonne réponse !', 'Capitaine Jexongo approuve !'],
+    bad: ["Pas celle-là. Regarde l'équation.", 'Bon essai. Le capitaine montre la réponse.'],
+    timeout: ['Temps écoulé. Regarde le tableau.', 'Trop lent. Essaie la prochaine.'],
     captain: 'CAPITAINE JEXONGO',
-    starting: 'DEBUT DU TUTORIEL',
-    lookBoard: "Regarde le tableau d'equation.",
-    tapAnswer: 'Tape la bonne case pour tirer.',
-    round1Rules: 'Round 1 sans timer et sans game over.',
+    starting: 'DÉBUT DU TUTORIEL',
+    lookBoard: "Regarde le tableau d'équation.",
+    tapAnswer: 'Touche la bonne case pour tirer.',
+    round1Rules: 'Manche 1 sans chrono et sans défaite.',
     computer: 'ORDINATEUR',
-    phone: 'TELEPHONE',
+    phone: 'TÉLÉPHONE',
     hudLevel: 'TUTORIEL',
-    training: 'ENTRAINEMENT',
-    arrows: 'ou les fleches',
+    training: 'ENTRAÎNEMENT',
+    arrows: 'ou les flèches',
     phoneMove: "bouge avec l'avion",
     continue: 'CONTINUER',
-    round1Complete: 'ROUND 1 COMPLETE',
-    round2Harder: 'Le round 2 est plus rapide et plus difficile.',
-    round2Detail: 'Timer active. Questions avec plus grands nombres et operations melangees.',
-    startRound2: 'COMMENCER ROUND 2',
-    planMessage: (level, weakName) => `Plan JexonGo: commence niveau ${level}, pratique ${weakName}, puis augmente la vitesse.`,
-    tipSlow: "Prends plus de temps d'abord, puis entraine la vitesse.",
-    tipReady: 'La precision est prete. Entraine la vitesse maintenant.',
+    round1Complete: 'MANCHE 1 RÉUSSIE',
+    round2Harder: 'La manche 2 est plus rapide et plus difficile.',
+    round2Detail: 'Chrono activé. Questions avec de plus grands nombres et des opérations mélangées.',
+    startRound2: 'COMMENCER LA MANCHE 2',
+    planMessage: (level, weakName) => `Plan JexonGo : commence au niveau ${level}, pratique les ${weakName}, puis augmente la vitesse.`,
+    tipSlow: "Prends plus de temps d'abord, puis entraîne ta vitesse.",
+    tipReady: 'Ta précision est prête. Entraîne ta vitesse maintenant.',
     ops: { '+': 'additions', '-': 'soustractions', '*': 'multiplications', '/': 'divisions' },
   },
 };
@@ -832,7 +832,7 @@ function showGuidedLivesBanner() {
     <div class="lsb-stack">
       <div class="lsb-sub glb-kicker">${fr ? 'BRAVO ! 5 QUESTIONS FAITES' : 'WELL DONE! 5 QUESTIONS DONE'}</div>
       <div class="lsb-word lsb-word-long" style="--n:${word.length}">${letters}</div>
-      <div class="lsb-sub">${fr ? 'TIMER ACTIVÉ · ATTENTION AUX ERREURS !' : 'TIMER ON · WATCH YOUR MISTAKES!'}</div>
+      <div class="lsb-sub">${fr ? 'CHRONO ACTIVÉ · ATTENTION AUX ERREURS !' : 'TIMER ON · WATCH YOUR MISTAKES!'}</div>
     </div>`;
   host.appendChild(banner);
   SFX.startBanner(word.length);
@@ -4993,7 +4993,7 @@ function updateNukeButton(now = performance.now()) {
     btn.textContent = 'NUKE';
   } else {
     btn.disabled = false;
-    btn.textContent = getLang() === 'fr' ? 'B-2 PRET' : 'B-2 READY';
+    btn.textContent = getLang() === 'fr' ? 'B-2 PRÊT' : 'B-2 READY';
   }
 }
 
@@ -5983,7 +5983,7 @@ function buildCorrectionIntro(q, picked = null) {
       : 'Almost! Just a small calculation slip.';
   }
   return isFr
-    ? 'Pas grave ! Regardons la strategie.'
+    ? 'Pas grave ! Regardons la stratégie.'
     : "No worries! Let's use a strategy.";
 }
 
@@ -5997,7 +5997,7 @@ function buildMentalMathExplanationV2(q, picked = null) {
     const rounded = Math.ceil(b / 10) * 10;
     if (b >= 8 && rounded !== b && rounded - b <= 5) {
       return isFr
-        ? `Arrondis ${b} a ${rounded}. ${a} + ${rounded} = ${a + rounded}. Puis retire ${rounded - b}: ${answer}.`
+        ? `Arrondis ${b} à ${rounded}. ${a} + ${rounded} = ${a + rounded}. Puis retire ${rounded - b} : ${answer}.`
         : `Round ${b} to ${rounded}. ${a} + ${rounded} = ${a + rounded}. Then take away ${rounded - b}: ${answer}.`;
     }
     const tens = Math.floor(b / 10) * 10;
@@ -6009,7 +6009,7 @@ function buildMentalMathExplanationV2(q, picked = null) {
     }
     const steps = listCountingSteps(a, b, 1);
     return isFr
-      ? `Avance de ${b} pas apres ${a}: ${steps}. Donc ${eq}.`
+      ? `Avance de ${b} pas après ${a} : ${steps}. Donc ${eq}.`
       : `Count ${b} steps after ${a}: ${steps}. So ${eq}.`;
   }
 
@@ -6017,19 +6017,19 @@ function buildMentalMathExplanationV2(q, picked = null) {
     const rounded = Math.ceil(b / 10) * 10;
     if (b >= 8 && rounded !== b && rounded - b <= 5) {
       return isFr
-        ? `Arrondis ${b} a ${rounded}. ${a} - ${rounded} = ${a - rounded}. Puis rajoute ${rounded - b}: ${answer}.`
+        ? `Arrondis ${b} à ${rounded}. ${a} - ${rounded} = ${a - rounded}. Puis rajoute ${rounded - b} : ${answer}.`
         : `Round ${b} to ${rounded}. ${a} - ${rounded} = ${a - rounded}. Then add back ${rounded - b}: ${answer}.`;
     }
     const tens = Math.floor(b / 10) * 10;
     const ones = b - tens;
     if (tens > 0 && ones > 0) {
       return isFr
-        ? `Enleve d'abord ${tens}: ${a} - ${tens} = ${a - tens}. Puis enleve ${ones}: ${answer}.`
+        ? `Enlève d'abord ${tens} : ${a} - ${tens} = ${a - tens}. Puis enlève ${ones} : ${answer}.`
         : `Take away ${tens} first: ${a} - ${tens} = ${a - tens}. Then take away ${ones}: ${answer}.`;
     }
     const steps = listCountingSteps(a, b, -1);
     return isFr
-      ? `Recule de ${b} pas depuis ${a}: ${steps}. Donc ${eq}.`
+      ? `Recule de ${b} pas depuis ${a} : ${steps}. Donc ${eq}.`
       : `Count back ${b} steps from ${a}: ${steps}. So ${eq}.`;
   }
 
@@ -6037,13 +6037,13 @@ function buildMentalMathExplanationV2(q, picked = null) {
     if (b === 5 || a === 5) {
       const other = a === 5 ? b : a;
       return isFr
-        ? `Pour x5, fais x10 puis coupe en deux. ${other} x 10 = ${other * 10}. La moitie = ${answer}.`
+        ? `Pour x5, fais x10 puis coupe en deux. ${other} x 10 = ${other * 10}. La moitié = ${answer}.`
         : `For x5, do x10 then cut it in half. ${other} x 10 = ${other * 10}. Half is ${answer}.`;
     }
     if (b === 9 || a === 9) {
       const other = a === 9 ? b : a;
       return isFr
-        ? `Pour x9, fais x10 puis enleve une fois le nombre. ${other} x 10 = ${other * 10}. ${other * 10} - ${other} = ${answer}.`
+        ? `Pour x9, fais x10 puis enlève une fois le nombre. ${other} x 10 = ${other * 10}. ${other * 10} - ${other} = ${answer}.`
         : `For x9, do x10 then take away the number once. ${other} x 10 = ${other * 10}. ${other * 10} - ${other} = ${answer}.`;
     }
     if ((b === 11 && a >= 10 && a < 100) || (a === 11 && b >= 10 && b < 100)) {
@@ -6051,22 +6051,22 @@ function buildMentalMathExplanationV2(q, picked = null) {
       const digits = String(other).split('').map(Number);
       const middle = digits[0] + digits[1];
       return isFr
-        ? `Pour x11, additionne les deux chiffres de ${other}: ${digits[0]} + ${digits[1]} = ${middle}. Mets le total au milieu: ${answer}.`
+        ? `Pour x11, additionne les deux chiffres de ${other} : ${digits[0]} + ${digits[1]} = ${middle}. Mets le total au milieu : ${answer}.`
         : `For x11, add the two digits of ${other}: ${digits[0]} + ${digits[1]} = ${middle}. Put it in the middle: ${answer}.`;
     }
     if (a % 2 === 0 && b * 2 <= 100) {
       return isFr
-        ? `Simplifie: coupe ${a} en deux et double ${b}. ${a} x ${b} devient ${a / 2} x ${b * 2}. Resultat: ${answer}.`
+        ? `Simplifie : coupe ${a} en deux et double ${b}. ${a} x ${b} devient ${a / 2} x ${b * 2}. Résultat : ${answer}.`
         : `Make it simpler: halve ${a} and double ${b}. ${a} x ${b} becomes ${a / 2} x ${b * 2}. Result: ${answer}.`;
     }
     if (a <= 6 && b <= 12) {
       const groups = Array.from({ length: a }, () => b).join(' + ');
       return isFr
-        ? `${a} groupes de ${b}: ${groups} = ${answer}.`
+        ? `${a} groupes de ${b} : ${groups} = ${answer}.`
         : `${a} groups of ${b}: ${groups} = ${answer}.`;
     }
     return isFr
-      ? `Pense en groupes: ${a} groupes de ${b}. Compte par bonds jusqu'a ${answer}.`
+      ? `Pense en groupes : ${a} groupes de ${b}. Compte par bonds jusqu'à ${answer}.`
       : `Think in groups: ${a} groups of ${b}. Count by jumps up to ${answer}.`;
   }
 
@@ -6082,7 +6082,7 @@ function buildMentalMathExplanationV2(q, picked = null) {
         : `To divide by 4, halve it twice. ${a} / 2 = ${a / 2}. Then /2 = ${answer}.`;
     }
     return isFr
-      ? `Demande: combien de groupes de ${b} font ${a}? ${answer} groupes, car ${answer} x ${b} = ${a}.`
+      ? `Demande-toi : combien de groupes de ${b} font ${a} ? ${answer} groupes, car ${answer} x ${b} = ${a}.`
       : `Ask: how many groups of ${b} make ${a}? ${answer} groups, because ${answer} x ${b} = ${a}.`;
   }
 
@@ -6110,11 +6110,11 @@ function buildClearCorrectionSteps(q, picked = null) {
   const isFr = getLang() === 'fr';
   const symbol = op === '*' ? '×' : op === '/' ? '÷' : op === '-' ? '−' : op;
   const explanation = buildExplanation(q, picked)
-    .replace(/^.*?(?:Your answer was|Ta reponse etait).*?\.\s*/i, '')
+    .replace(/^.*?(?:Your answer was|Ta r[eé]ponse [eé]tait).*?\.\s*/i, '')
     .trim();
   const sentences = explanation.split(/\.\s+/).map(s => s.replace(/\.$/, '').trim()).filter(Boolean);
   const method1 = sentences[0] || `${a} ${symbol} ${b}`;
-  const method2 = sentences.slice(1).join('. ') || (isFr ? 'Verifie chaque valeur de position.' : 'Check each place value.');
+  const method2 = sentences.slice(1).join('. ') || (isFr ? 'Vérifie chaque valeur de position.' : 'Check each place value.');
 
   let setup = `${a} ${symbol} ${b}`;
   // Keep the complete calculation on one line for fast, unambiguous reading.
@@ -6133,12 +6133,12 @@ function buildClearCorrectionSteps(q, picked = null) {
     const alg = q.op === 'alg';
     return [
       buildCorrectionIntro(q, picked),
-      alg ? `${isFr ? "ETAPE 1 — L'EQUATION" : 'STEP 1 — THE EQUATION'}\n${q.text}`
-        : `${isFr ? 'ETAPE 1 — LE CALCUL' : 'STEP 1 — THE CALCULATION'}\n${questionText(q)}`,
-      alg ? `${isFr ? 'ETAPE 2 — ISOLE x' : 'STEP 2 — GET x ALONE'}\n${tip}${q.steps.join('\n')}`
-        : `${isFr ? 'ETAPE 2 — ASTUCE' : 'STEP 2 — TIP'}\n${tip}${q.steps.join('\n')}`,
-      `${isFr ? 'ETAPE 3 — VERIFIE' : 'STEP 3 — CHECK'}\n${questionCheck(q) || questionText(q)}`,
-      `${isFr ? 'BONNE REPONSE' : 'CORRECT ANSWER'} : ${fmtNumber(answer)}`,
+      alg ? `${isFr ? "ÉTAPE 1 — L'ÉQUATION" : 'STEP 1 — THE EQUATION'}\n${q.text}`
+        : `${isFr ? 'ÉTAPE 1 — LE CALCUL' : 'STEP 1 — THE CALCULATION'}\n${questionText(q)}`,
+      alg ? `${isFr ? 'ÉTAPE 2 — ISOLE x' : 'STEP 2 — GET x ALONE'}\n${tip}${q.steps.join('\n')}`
+        : `${isFr ? 'ÉTAPE 2 — ASTUCE' : 'STEP 2 — TIP'}\n${tip}${q.steps.join('\n')}`,
+      `${isFr ? 'ÉTAPE 3 — VÉRIFIE' : 'STEP 3 — CHECK'}\n${questionCheck(q) || questionText(q)}`,
+      isFr ? `BONNE RÉPONSE : ${fmtNumber(answer)}` : `CORRECT ANSWER: ${fmtNumber(answer)}`,
     ].map(localDecimals);
   }
 
@@ -6151,10 +6151,10 @@ function buildClearCorrectionSteps(q, picked = null) {
 
   return [
     buildCorrectionIntro(q, picked),
-    `${isFr ? 'ETAPE 1 — PLACE LES NOMBRES' : 'STEP 1 — SET UP THE NUMBERS'}\n${setup}`,
-    `${isFr ? 'ETAPE 2 — CALCULE' : 'STEP 2 — CALCULATE'}\n${tip}${methodLines?.length ? methodLines.join('\n') : `${method1}${method2 ? `. ${method2}` : ''}`}`,
-    `${isFr ? 'ETAPE 3 — VERIFIE' : 'STEP 3 — CHECK'}\n${check}`,
-    `${isFr ? 'BONNE REPONSE' : 'CORRECT ANSWER'} : ${answer}`,
+    `${isFr ? 'ÉTAPE 1 — PLACE LES NOMBRES' : 'STEP 1 — SET UP THE NUMBERS'}\n${setup}`,
+    `${isFr ? 'ÉTAPE 2 — CALCULE' : 'STEP 2 — CALCULATE'}\n${tip}${methodLines?.length ? methodLines.join('\n') : `${method1}${method2 ? `. ${method2}` : ''}`}`,
+    `${isFr ? 'ÉTAPE 3 — VÉRIFIE' : 'STEP 3 — CHECK'}\n${check}`,
+    isFr ? `BONNE RÉPONSE : ${answer}` : `CORRECT ANSWER: ${answer}`,
   ];
 }
 
@@ -6582,8 +6582,8 @@ function finishLevel(won) {
 function updateGameCurrencyHUD() {
   const coins = document.getElementById('hud-coins-count');
   const xp = document.getElementById('hud-xp-count');
-  if (coins) coins.textContent = (G.airdropSessionCoins || 0).toLocaleString();
-  if (xp) xp.textContent = (G.airdropSessionXP || 0).toLocaleString();
+  if (coins) coins.textContent = (G.airdropSessionCoins || 0).toLocaleString(numLocale());
+  if (xp) xp.textContent = (G.airdropSessionXP || 0).toLocaleString(numLocale());
 }
 
 function updateTimedPlayXp(frameMs) {
@@ -7044,9 +7044,9 @@ export function initGame(levelNum, onComplete) {
     SFX.weatherStop();
     SFX.engineStop();
     SFX.airdropPlaneStop();
-    $('gameover-title').textContent = getLang() === 'fr' ? 'PARTIE ARRETEE' : 'GAME STOPPED';
+    $('gameover-title').textContent = getLang() === 'fr' ? 'PARTIE ARRÊTÉE' : 'GAME STOPPED';
     $('gameover-score').textContent = getLang() === 'fr'
-      ? 'Choisis continuer, recommencer ou retourner au lobby.'
+      ? "Choisis continuer, recommencer ou retourner à l'accueil."
       : 'Choose continue, restart, or go back to the lobby.';
     // Paused, not finished: no end-of-game report here.
     $('gameover-report')?.replaceChildren();
@@ -7057,7 +7057,7 @@ export function initGame(levelNum, onComplete) {
       continueBtn.onclick = () => G.pausedGameResume?.();
     }
     $('btn-retry').textContent = getLang() === 'fr' ? 'RECOMMENCER' : 'RETRY';
-    $('btn-go-map').textContent = getLang() === 'fr' ? 'LOBBY' : 'LOBBY';
+    $('btn-go-map').textContent = getLang() === 'fr' ? 'ACCUEIL' : 'LOBBY';
     showScreen('s-gameover');
   };
 
