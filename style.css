@@ -16217,6 +16217,40 @@ html.touch-phone .briefing-mission-title {
 .ag-continue:active { transform: translateY(3px); box-shadow: 0 2px 0 #9a4a00; }
 .gsi-btn-wrap { display: flex; justify-content: center; min-height: 44px; }
 
+/* Google and e-mail sign-in side by side in every sign-in window
+   (connect-prompt.js, the Google window menu.js): same width, one under the
+   other. The e-mail one is orange (the game's colour) instead of Google blue. */
+.cp-actions { display: grid; gap: 10px; width: min(100%, 330px); margin-top: 6px; }
+.cp-actions .cp-btn { width: 100%; justify-content: center; margin-top: 0; }
+.cp-btn { line-height: 1.6; }   /* a label on two lines stays readable */
+.cp-btn.cp-email { border-color: #ff9d00; box-shadow: 0 0 0 3px rgba(255,157,0,.25), 0 6px 0 #c76f00; }
+.cp-btn.cp-email:active { box-shadow: 0 0 0 3px rgba(255,157,0,.25), 0 3px 0 #c76f00; }
+#connect-prompt .cp-email { animation: cpPop .45s cubic-bezier(.2,1.6,.4,1) 2.75s both; }
+.gsi-or { font-size: 8px; color: #a0651b; }
+.gsi .gsi-email { width: min(100%, 300px); justify-content: center; }
+
+/* Every sign-in window fits its screen: the card scrolls rather than being
+   cut off (the invitation keeps room for its plane above the card). */
+#connect-prompt .cp-card { max-height: calc(100dvh - 48px - min(18vw, 90px)); overflow-y: auto; }
+.pnp .pnp-card { max-height: calc(100dvh - 32px); overflow-y: auto; }
+/* Phones held sideways and other short screens: no plane or big Google
+   logo, a wider card with the perks and the two buttons side by side, and
+   the terms / privacy links up in the corner. */
+@media (max-height: 560px) {
+  .cp-plane, .cp-google { display: none; }
+  #connect-prompt .cp-card {
+    width: min(100%, 640px);
+    margin-top: 0;
+    gap: 6px;
+    padding: 12px 16px;
+    max-height: calc(100dvh - 24px);
+  }
+  .cp-perks { grid-template-columns: 1fr 1fr; column-gap: 16px; row-gap: 4px; }
+  #connect-prompt .cp-actions { grid-template-columns: 1fr 1fr; width: 100%; }
+  .cp-legal { top: max(6px, env(safe-area-inset-top)); bottom: auto; justify-content: flex-end; }
+  .pnp .pnp-card { gap: 8px; padding-top: 14px; padding-bottom: 12px; }
+}
+
 /* ── Computers of every size (mouse, no touch classes) ────────────────────
    Shorter / smaller screens (1366x657, 1280x609, 1024x600...). */
 /* Briefing: on shorter screens the conditions sit side by side instead of

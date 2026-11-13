@@ -17,6 +17,7 @@ import { bindHangarTabs, renderHangarPanels, buyAircraftFromLobby, planeCost, me
 import { isMultiLobby, openMultiChoices } from './multiplayer.js';
 import { initLobbyTour } from './lobby-tour.js';
 import { askAgeBeforeSignIn } from './age-gate.js';
+import { EMAIL_ICON, emailButtonLabel } from './connect-prompt.js';
 import { aircraftArt } from '../data/skins.js';
 import { skinChest } from '../systems/chest.js';
 import { updateMistakesButton } from './mistakes-lobby.js';
@@ -98,6 +99,7 @@ function _showGsiFallback() {
   if (overlay) { overlay.classList.remove('hidden'); return; }
 
   // Same yellow design as the age check and the sign-in invitation (.cp).
+  // Under Google's button, the e-mail sign-in (screens/email-auth.js).
   const fr = getLang() === 'fr';
   overlay = document.createElement('div');
   overlay.id = 'gsi-fallback-overlay';
@@ -107,10 +109,16 @@ function _showGsiFallback() {
       <div class="cp-title">${fr ? 'CONNEXION' : 'SIGN IN'}</div>
       <div class="cp-sub">${t('signInGoogle')}</div>
       <div class="gsi-btn-wrap"></div>
+      <div class="gsi-or">${fr ? 'OU' : 'OR'}</div>
+      <button class="cp-btn cp-email gsi-email" type="button">${EMAIL_ICON}<span>${emailButtonLabel()}</span></button>
       <button class="cp-later" type="button">${fr ? 'Annuler' : 'Cancel'}</button>
     </div>`;
   const btnWrap = overlay.querySelector('.gsi-btn-wrap');
   overlay.querySelector('.cp-later').onclick = () => overlay.classList.add('hidden');
+  overlay.querySelector('.gsi-email').onclick = () => {
+    overlay.classList.add('hidden');
+    window._openEmailSignIn?.('signup');
+  };
   overlay.onclick = e => { if (e.target === overlay) overlay.classList.add('hidden'); };
   document.body.appendChild(overlay);
 
@@ -792,13 +800,14 @@ export function showDailyReward(reward, streak, onClaim = null, viewOnly = false
     return;
   }
 
-  // Not signed in: the calendar is shown too; claiming needs a Google account.
+  // Not signed in: the calendar is shown too; claiming needs an account
+  // (the sign-in invitation: Google or an e-mail).
   if (!G.playerRegistered) {
     const fr = getLang() === 'fr';
     $('btn-daily-claim').textContent = fr ? 'CONNECTE-TOI POUR RÉCUPÉRER' : 'SIGN IN TO CLAIM';
     $('btn-daily-claim').onclick = () => {
       overlay.classList.add('hidden');
-      _handleLogin('google');
+      window._openConnectPrompt?.('daily');
       onClaim?.({ claimed: false, requiresConnection: true });
     };
     overlay.addEventListener('click', e => {

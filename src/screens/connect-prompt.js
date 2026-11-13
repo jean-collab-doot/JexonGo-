@@ -1,8 +1,8 @@
 // "Sign in with Google" invitation shown after the beginner practice (yellow
 // design like the new-player intro): the T-6 loops in, a card pops with
 // "BRAVO PILOTE!", the Google logo spins in, the benefits slide in one by one,
-// and a glowing Google button (or "later") ends it. Under it, a link creates
-// an account with an e-mail instead (screens/email-auth.js).
+// and a glowing Google button (or "later") ends it. Beside it, a button of the
+// same size continues with an e-mail instead (screens/email-auth.js).
 import { getLang, t } from '../i18n.js';
 
 import { uiIcon } from '../utils/icons.js';
@@ -16,11 +16,20 @@ const GOOGLE_G = `<svg viewBox="0 0 48 48" aria-hidden="true">
 // reason 'multi' / 'top20': a player without an account tapped MULTI or
 // TOP 20 in the lobby (menu.js). reason 'skin': tapped OBTENIR on an event
 // skin chest (screens/chest.js).
+// reason 'daily': a player without an account tapped the daily reward.
 const REASON_SUB = {
   multi: ['Connecte-toi pour jouer en multijoueur!', 'Sign in to play multiplayer!'],
   top20: ['Connecte-toi pour voir le TOP 20!', 'Sign in to see the TOP 20!'],
+  daily: ['Connecte-toi pour récupérer ta récompense!', 'Sign in to claim your reward!'],
   skin: ['Connecte-toi pour obtenir ton skin Halloween 2026!', 'Sign in to get your Halloween 2026 skin!'],
 };
+const ACCOUNT_NEEDED = ['multi', 'top20', 'daily'];
+
+// Envelope of the "continue with an e-mail" buttons (also menu.js).
+export const EMAIL_ICON = `<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="5" width="19" height="14" rx="2.5" fill="#ff9d00"/><path d="M3.5 7l8.5 6 8.5-6" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+export function emailButtonLabel() {
+  return getLang() === 'fr' ? 'CONTINUER AVEC UN COURRIEL' : 'CONTINUE WITH E-MAIL';
+}
 
 export function showConnectPrompt({ onGoogle, onEmail, onLater, onLegal, reason = '' } = {}) {
   document.getElementById('connect-prompt')?.remove();
@@ -35,18 +44,22 @@ export function showConnectPrompt({ onGoogle, onEmail, onLater, onLegal, reason 
   overlay.innerHTML = `
     <div class="cp-plane"></div>
     <div class="cp-card">
-      <div class="cp-title">${reason === 'multi' || reason === 'top20'
+      <div class="cp-title">${ACCOUNT_NEEDED.includes(reason)
         ? (fr ? 'COMPTE REQUIS' : 'ACCOUNT NEEDED')
         : (fr ? 'BRAVO PILOTE!' : 'GREAT JOB, PILOT!')}</div>
       <div class="cp-sub">${REASON_SUB[reason]?.[fr ? 0 : 1]
         || (fr ? 'Tu as fini ta première pratique!' : 'You finished your first practice!')}</div>
       <div class="cp-google">${GOOGLE_G}</div>
-      <div class="cp-ask">${fr ? 'Connecte-toi avec ton compte Google. C’est gratuit!' : 'Sign in with your Google account. It’s free!'}</div>
+      <div class="cp-ask">${onEmail
+        ? (fr ? 'Connecte-toi avec Google ou avec un courriel. C’est gratuit!' : 'Sign in with Google or with an e-mail. It’s free!')
+        : (fr ? 'Connecte-toi avec ton compte Google. C’est gratuit!' : 'Sign in with your Google account. It’s free!')}</div>
       <ul class="cp-perks">
         ${perks.map(([icon, text], i) => `<li style="--i:${i}"><span>${uiIcon(icon)}</span>${text}</li>`).join('')}
       </ul>
-      <button class="cp-btn" type="button">${GOOGLE_G}<span>${fr ? 'SE CONNECTER AVEC GOOGLE' : 'SIGN IN WITH GOOGLE'}</span></button>
-      ${onEmail ? `<button class="cp-later cp-email" type="button">${fr ? 'Créer un compte avec un courriel' : 'Create an account with an e-mail'}</button>` : ''}
+      <div class="cp-actions">
+        <button class="cp-btn cp-google-btn" type="button">${GOOGLE_G}<span>${fr ? 'SE CONNECTER AVEC GOOGLE' : 'SIGN IN WITH GOOGLE'}</span></button>
+        ${onEmail ? `<button class="cp-btn cp-email" type="button">${EMAIL_ICON}<span>${emailButtonLabel()}</span></button>` : ''}
+      </div>
       <button class="cp-later" type="button">${fr ? 'Plus tard' : 'Later'}</button>
     </div>
     <div class="cp-legal">
@@ -59,9 +72,9 @@ export function showConnectPrompt({ onGoogle, onEmail, onLater, onLegal, reason 
     overlay.classList.add('cp-leave');
     setTimeout(() => { overlay.remove(); then?.(); }, 350);
   };
-  overlay.querySelector('.cp-btn').addEventListener('click', () => close(onGoogle), { once: true });
+  overlay.querySelector('.cp-google-btn').addEventListener('click', () => close(onGoogle), { once: true });
   overlay.querySelector('.cp-email')?.addEventListener('click', () => close(onEmail), { once: true });
-  overlay.querySelector('.cp-later:not(.cp-email)').addEventListener('click', () => close(onLater), { once: true });
+  overlay.querySelector('.cp-later').addEventListener('click', () => close(onLater), { once: true });
   // Terms of use / privacy policy (main.js reopens this invitation on "back").
   overlay.querySelectorAll('[data-legal]').forEach(btn => btn.addEventListener('click', () => {
     close(() => onLegal?.(btn.dataset.legal));
