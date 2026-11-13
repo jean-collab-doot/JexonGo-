@@ -54,9 +54,9 @@ Supabase → **Authentication** → **Sign In / Providers** → **Email** :
 
 Puis, sur la même page, section **User Signups** :
 
-- **Confirm email** : **désactivé**. Le joueur est connecté dès « CRÉER MON COMPTE », sans
-  code ; le seul courriel envoyé est celui de bienvenue (étape 7). Si un jour tu le réactives,
-  le jeu demande le code à 6 chiffres du modèle « Confirm signup ».
+- **Confirm email** : **activé**. Après « CRÉER MON COMPTE », le joueur reçoit un code à
+  6 chiffres (modèle « Confirm signup ») et le tape dans le jeu. Le courriel du compte est
+  ainsi vérifié. (Désactivé, le joueur serait connecté tout de suite, sans code.)
 
 **Save changes**.
 
@@ -67,7 +67,7 @@ Supabase → **Authentication** → **Emails** → onglet **Templates**. Dans ch
 **Save changes**. Dans l'aperçu, `{{ .Token }}` s'affiche tel quel : dans le vrai courriel, ce
 sont les 6 chiffres.
 
-### « Confirm signup » (seulement si « Confirm email » est réactivé)
+### « Confirm signup » (code de création de compte)
 
 Sujet : `Ton code JexonGo / Your JexonGo code`
 
@@ -108,7 +108,7 @@ webhook Supabase. Supabase → **Database** → **Webhooks** → ouvre ce webhoo
 **table** :
 
 - **`saves`** (schéma public) : rien à changer (c'est le cas de JexonGo). Le courriel part à la
-  première sauvegarde du compte, juste après sa création. Un seul par courriel.
+  première sauvegarde du compte, juste après la confirmation par le code. Un seul par courriel.
 - **`users`** (schéma auth) : coche aussi l'événement **Update** (en plus d'Insert) et
   enregistre. Le jeu envoie alors le courriel au moment où le compte est confirmé : tout de
   suite pour Google, après le code pour un compte par courriel. Jamais une 2e fois, même si le
