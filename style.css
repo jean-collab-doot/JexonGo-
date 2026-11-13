@@ -16009,28 +16009,24 @@ html.np-boot .np-intro.np-static { display: block; }
 .ea .ea-link:disabled { color: #c9a26b; text-decoration: none; cursor: default; }
 @keyframes pnpShake { 20%, 60% { transform: translateX(-6px); } 40%, 80% { transform: translateX(6px); } }
 
-/* Terms / privacy links at the bottom of the Google invitation. */
+/* Terms / privacy links in the sign-in invitation, right under the Google
+   and e-mail buttons. */
 .cp-legal {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: max(14px, env(safe-area-inset-bottom));
   display: flex;
   justify-content: center;
   align-items: center;
   flex-wrap: wrap;
   gap: 8px;
-  padding: 0 16px;
-  font-size: 8px;
+  font-size: 7px;
   color: #8a4b00;
-  animation: cpFade .4s ease-out 3s both;
+  animation: cpFade .4s ease-out 2.9s both;
 }
 .cp-legal button {
   font-family: inherit;
   font-size: inherit;
   color: #7a3d00;
-  background: rgba(255,255,255,.45);
-  border: 2px solid rgba(255,255,255,.8);
+  background: #fff3cf;
+  border: 2px solid #ffd27a;
   border-radius: 14px;
   padding: 6px 10px;
   cursor: pointer;
@@ -16233,11 +16229,17 @@ html.touch-phone .briefing-mission-title {
    cut off (the invitation keeps room for its plane above the card). */
 #connect-prompt .cp-card { max-height: calc(100dvh - 48px - min(18vw, 90px)); overflow-y: auto; }
 .pnp .pnp-card { max-height: calc(100dvh - 32px); overflow-y: auto; }
-/* Phones held sideways and other short screens: no plane or big Google
-   logo, a wider card with the perks and the two buttons side by side, and
-   the terms / privacy links up in the corner. */
-@media (max-height: 560px) {
-  .cp-plane, .cp-google { display: none; }
+/* Laptops and phones of medium height: a smaller plane closer to the card,
+   so the whole invitation fits without scrolling. */
+@media (max-height: 820px) and (min-height: 641px) {
+  .cp-plane { top: 2%; width: min(16vw, 72px); }
+  #connect-prompt .cp-card { margin-top: min(14vw, 64px); gap: 8px; max-height: calc(100dvh - 24px - min(14vw, 64px)); }
+  .cp-perks { gap: 6px; }
+}
+/* Phones held sideways, short laptops and other short screens: no plane, a wider card with
+   the perks and the two buttons side by side. */
+@media (max-height: 640px) {
+  .cp-plane { display: none; }
   #connect-prompt .cp-card {
     width: min(100%, 640px);
     margin-top: 0;
@@ -16247,7 +16249,6 @@ html.touch-phone .briefing-mission-title {
   }
   .cp-perks { grid-template-columns: 1fr 1fr; column-gap: 16px; row-gap: 4px; }
   #connect-prompt .cp-actions { grid-template-columns: 1fr 1fr; width: 100%; }
-  .cp-legal { top: max(6px, env(safe-area-inset-top)); bottom: auto; justify-content: flex-end; }
   .pnp .pnp-card { gap: 8px; padding-top: 14px; padding-bottom: 12px; }
 }
 

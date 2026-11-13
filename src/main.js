@@ -7,13 +7,13 @@ import { showConnectPrompt } from './screens/connect-prompt.js';
 import { playWorldCupIntro, stopWorldCupIntro } from './screens/worldcup-intro.js';
 import { showOnboarding, showBriefingEquationOptions } from './screens/onboarding.js';
 import { playNewPlayerIntro } from './screens/new-player-intro.js';
-import { showIntroBriefing } from './screens/intro-briefing.js';
-import { initLevelMap, renderLevelMap, setMapFocusLevel, setLevelMapPicker, getLevelMapPicker } from './screens/levelmap.js';
+import { showIntroBriefing, preloadBriefingImages } from './screens/intro-briefing.js';
+import { initLevelMap, renderLevelMap, setMapFocusLevel, setLevelMapPicker, getLevelMapPicker, preloadLevelMapImages } from './screens/levelmap.js';
 import { initHangar, renderHangar } from './screens/hangar.js';
 import { initShop, renderShop } from './screens/shop.js';
 import { initTraining, renderTraining, practiceLevelNumber } from './screens/training.js';
 import { initMistakesLobby } from './screens/mistakes-lobby.js';
-import { initGame, leaveCoopLink } from './screens/game.js';
+import { initGame, leaveCoopLink, warmUpGame } from './screens/game.js';
 import { initResult, showResult } from './screens/result.js';
 import { initChest, showChest, setChestReturn } from './screens/chest.js';
 import { initGameover, showGameover } from './screens/gameover.js';
@@ -892,6 +892,28 @@ if (G.tutorialMode && G.onboardingStartMode !== 'placement') {
   save('tutorialProgress', null);
 }
 preloadShips(G.activeAircraft);
+
+// Background downloads, so the next screens show their pictures at once
+// (mostly for phones on a first visit): the how-to-play and level map
+// pictures, then the next game's map, planes and enemies — the practice for a
+// new player, the current level otherwise — and, after the first tap, its
+// sounds. The same files the game would download anyway, only earlier.
+// Skipped when the phone asks to save data.
+function warmUpAssets() {
+  const conn = navigator.connection;
+  if (conn?.saveData || /(^|-)2g$/.test(conn?.effectiveType || '')) return;
+  const newPlayer = !(G.hasSeenOnboarding || load('hasSeenOnboarding', false));
+  const level = newPlayer ? practiceLevelNumber() : Math.max(1, G.currentLevel || 1);
+  preloadBriefingImages();
+  preloadLevelMapImages();
+  // The pictures first; the sounds (then the music, the biggest file) after.
+  const images = warmUpGame(level);
+  document.addEventListener('pointerdown', () => {
+    images.then(() => warmUpGame(level, { images: false, sounds: true }));
+  }, { once: true, passive: true });
+}
+// Once the first screen is up, so it never waits for these.
+setTimeout(() => (window.requestIdleCallback || (cb => cb()))(warmUpAssets), 1500);
 
 // A page load that opens on the lobby shows the 7-day rewards only when a
 // reward is ready to unlock (signed in, tutorial done, 24 h since the last

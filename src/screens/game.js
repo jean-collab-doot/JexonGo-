@@ -2983,6 +2983,29 @@ let _levelLoading = false;
 function withTimeout(promise, ms) {
   return Promise.race([promise, new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), ms))]);
 }
+// Downloads what a game needs before it starts, in the background — e.g.
+// while a new player watches the intro and answers the questions — so its
+// yellow loading screen is short: the same map, planes, enemies and effects
+// as the game's own loading (tryStart), and its sounds (sounds: true; the
+// audio engine needs a first tap). Nothing is drawn or started.
+export function warmUpGame(levelNum, { images = true, sounds = false } = {}) {
+  const cfg = getLevel(levelNum);
+  const jobs = [];
+  if (images) {
+    jobs.push(preloadBiome(cfg.biome, {
+      aircraftId: G.activeAircraft,
+      levelNum,
+      enemyTypes: [...RANDOM_ENEMY_TYPES, ...(cfg.isBossLevel ? ['boss'] : [])],
+    }).then(() => preloadSprite(biomeBgKey(cfg.biome, levelNum))).catch(() => {}));
+  }
+  // The sound effects first (the game waits for them), then the music.
+  if (sounds) {
+    jobs.push(Promise.resolve(SFX.preloadGame())
+      .then(() => SFX.preloadGame(cfg.isBossLevel ? ['dialogue', 'game'] : ['game'])).catch(() => {}));
+  }
+  return Promise.all(jobs);
+}
+
 async function ensureMapLoaded(biome, levelNum) {
   const key = biomeBgKey(biome, levelNum);
   for (let attempt = 0; attempt < 4; attempt++) {
@@ -7064,9 +7087,11 @@ export function initGame(levelNum, onComplete) {
       _loadRaf = requestAnimationFrame(loadTick);
     });
 
-    // Planes, map, sounds and music are all downloaded before anything
-    // starts: the loading screen is silent and nothing moves underneath.
-    const musicKeys = levelCfg.isBossLevel ? ['dialogue', levelMusicKey()] : ['game'];
+    // Planes, map and sounds are all downloaded before anything starts: the
+    // loading screen is silent and nothing moves underneath. The music is not
+    // waited for (the game music is a 4 MB WAV): its player plays it while it
+    // arrives, often already downloaded in the background (main.js
+    // warmUpAssets, warmUpGame).
     Promise.all([
       withTimeout(preloadBiome(levelCfg.biome, {
         aircraftId: G.activeAircraft,
@@ -7076,7 +7101,7 @@ export function initGame(levelNum, onComplete) {
           ...(levelCfg.isBossLevel ? ['boss'] : []),
         ],
       }), 30000).catch(() => {}).then(() => ensureMapLoaded(levelCfg.biome, levelCfg.num)),
-      withTimeout(SFX.preloadGame(musicKeys), 30000).catch(() => {}),
+      withTimeout(SFX.preloadGame(), 30000).catch(() => {}),
     ]).then(() => {
       cancelAnimationFrame(_loadRaf);
       if (!_isActiveSid(sid)) { loader?.remove(); return; }

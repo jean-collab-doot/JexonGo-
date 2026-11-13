@@ -15,6 +15,11 @@ const IMG = {
   crate: '/assets/fx/Parachut%20anime/JexonGo_Parachute_Crate_12_Frames/frames/plan_01.png',
 };
 
+/** Downloads the how-to-play pictures in advance (main.js), so they show at once. */
+export function preloadBriefingImages() {
+  Object.values(IMG).forEach(src => { new Image().src = src; });
+}
+
 // Each page: illustration kind, title, and short tips (icon + text).
 function pages(fr) {
   return [

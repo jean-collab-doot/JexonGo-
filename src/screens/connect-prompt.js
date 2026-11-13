@@ -1,8 +1,8 @@
-// "Sign in with Google" invitation shown after the beginner practice (yellow
-// design like the new-player intro): the T-6 loops in, a card pops with
-// "BRAVO PILOTE!", the Google logo spins in, the benefits slide in one by one,
-// and a glowing Google button (or "later") ends it. Beside it, a button of the
-// same size continues with an e-mail instead (screens/email-auth.js).
+// Sign-in invitation shown after the beginner practice (yellow design like
+// the new-player intro): the T-6 loops in, a card pops with "BRAVO PILOTE!",
+// the benefits slide in one by one, then a glowing Google button and one of
+// the same size to continue with an e-mail (screens/email-auth.js), the terms
+// and privacy links right under them, and "later".
 import { getLang, t } from '../i18n.js';
 
 import { uiIcon } from '../utils/icons.js';
@@ -49,7 +49,6 @@ export function showConnectPrompt({ onGoogle, onEmail, onLater, onLegal, reason 
         : (fr ? 'BRAVO PILOTE!' : 'GREAT JOB, PILOT!')}</div>
       <div class="cp-sub">${REASON_SUB[reason]?.[fr ? 0 : 1]
         || (fr ? 'Tu as fini ta première pratique!' : 'You finished your first practice!')}</div>
-      <div class="cp-google">${GOOGLE_G}</div>
       <div class="cp-ask">${onEmail
         ? (fr ? 'Connecte-toi avec Google ou avec un courriel. C’est gratuit!' : 'Sign in with Google or with an e-mail. It’s free!')
         : (fr ? 'Connecte-toi avec ton compte Google. C’est gratuit!' : 'Sign in with your Google account. It’s free!')}</div>
@@ -60,11 +59,11 @@ export function showConnectPrompt({ onGoogle, onEmail, onLater, onLegal, reason 
         <button class="cp-btn cp-google-btn" type="button">${GOOGLE_G}<span>${fr ? 'SE CONNECTER AVEC GOOGLE' : 'SIGN IN WITH GOOGLE'}</span></button>
         ${onEmail ? `<button class="cp-btn cp-email" type="button">${EMAIL_ICON}<span>${emailButtonLabel()}</span></button>` : ''}
       </div>
+      <div class="cp-legal">
+        <button type="button" data-legal="terms">${t('jxTermsOfService')}</button>
+        <button type="button" data-legal="privacy">${t('jxPolicyUser')}</button>
+      </div>
       <button class="cp-later" type="button">${fr ? 'Plus tard' : 'Later'}</button>
-    </div>
-    <div class="cp-legal">
-      <button type="button" data-legal="terms">${t('jxTermsOfService')}</button>
-      <button type="button" data-legal="privacy">${t('jxPolicyUser')}</button>
     </div>`;
   document.body.appendChild(overlay);
 

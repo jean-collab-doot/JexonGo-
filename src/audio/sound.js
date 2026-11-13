@@ -956,6 +956,8 @@ const BOSS_MUSIC = {
   arctic: MUSIC.bossArctic, space: MUSIC.bossSpace,
 };
 
+const _musicFetches = {};   // music src -> its download (preloadGame)
+
 function _musicSrc(key) {
   return key.startsWith('boss-') ? (BOSS_MUSIC[key.slice(5)] || MUSIC.bossOcean)
     : { menu: MUSIC.menu, ranked: MUSIC.menu, shop: MUSIC.menu, game: MUSIC.game,
@@ -1006,8 +1008,9 @@ export const SFX = {
   // Downloads a game's sounds and music (keys as for playMusic) before it
   // starts (game.js loading screen); resolves once they are all in.
   preloadGame(musicKeys = []) {
+    // A music file already on its way is not downloaded a second time.
     const music = musicKeys.map(_musicSrc).filter(Boolean)
-      .map(src => fetch(src).then(r => r.blob()).catch(() => {}));
+      .map(src => (_musicFetches[src] ||= fetch(src).then(r => r.blob()).catch(() => { delete _musicFetches[src]; })));
     return Promise.all([...Object.values(SOUND).map(_loadBuf), ...music]);
   },
   stopMusic() { _stopMusic(); },

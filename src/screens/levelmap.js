@@ -12,6 +12,11 @@ const REGULAR_OPEN_SHEET = '/assets/levels/Unlock/Apercu_Niveaux_Cadenas_Ouverts
 const REGULAR_LOCKED_SHEET = '/assets/levels/Lock/Apercu_Niveaux_Cadenas_Fermes_Transparent.png';
 const BOSS_OPEN_SHEET = '/assets/levels/Unlock/Apercu_Boss_Rouges_Cadenas_Ouvert_Transparent.png';
 
+/** Downloads the level pictures in advance (main.js), so the map shows them at once. */
+export function preloadLevelMapImages() {
+  [REGULAR_OPEN_SHEET, REGULAR_LOCKED_SHEET, BOSS_OPEN_SHEET].forEach(src => { new Image().src = src; });
+}
+
 // One page per biome (10 levels each) instead of one long 50-level scroll,
 // with < > arrows in the title bar to switch world - see BIOME_META for the
 // display names (PACIFIQUE/SAHARA/USA/ARCTIQUE/ESPACE in French).
