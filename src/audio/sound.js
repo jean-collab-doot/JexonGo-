@@ -1095,6 +1095,25 @@ export const SFX = {
     [550, 770, 1050].forEach((f, i) =>
       _after(i * 90, () => _tone(_ac(), f, 'sine', 0.2, 0.35)));
   },
+  // EXP combo (systems/xp-combo.js): two quick notes, two semitones higher
+  // at each step of the multiplier (×1.25 … ×3), after the "correct" chime.
+  // Bell-like sine notes for the youngest players (game/glitter.js).
+  comboUp(mult = 1.25) {
+    const step = Math.max(0, Math.round((mult - 1) / 0.25));
+    const f = 587 * Math.pow(2, (step * 2) / 12);
+    const type = gentleFx() ? 'sine' : 'triangle';
+    _after(190, () => _tone(_ac(), f, type, 0.12, 0.26));
+    _after(260, () => _tone(_ac(), f * 1.5, type, 0.16, 0.22));
+  },
+  // The combo EXP is earned (end of a wave): a fast rising run and a chord.
+  comboCash() {
+    const type = gentleFx() ? 'sine' : 'triangle';
+    [523, 659, 784, 1047, 1319, 1568].forEach((f, i) =>
+      _after(120 + i * 45, () => _tone(_ac(), f, type, 0.16, 0.3)));
+    _after(420, () => {
+      [1047, 1319, 1568, 2093].forEach(f => _tone(_ac(), f, type, 0.5, 0.16));
+    });
+  },
   chest() {
     _playBuf(SOUND.purchase, 0.9, () => {
       [523, 659, 784, 1047].forEach((f, i) =>

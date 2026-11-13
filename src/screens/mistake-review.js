@@ -55,6 +55,35 @@ export function mountReportDetails(el, afterReplay) {
   });
 }
 
+// Win screen: "CE QUE TU AS TRAVAILLÉ" — good answers for each type of
+// calculation, this game's mistakes to review and the replay button.
+export function workedOnHTML(report = sessionReport()) {
+  const fr = isFr();
+  const ops = (report.themes || []).map(t =>
+    `<span class="jx-worked-op ${t.correct === t.total ? 'is-perfect' : ''}"><b>${esc(tOp(t.op))}</b><span>${t.correct}/${t.total}</span></span>`).join('');
+  const missed = Math.max(0, report.total - report.correct);
+  const mistakesLine = missed
+    ? (fr ? `${missed} erreur${missed > 1 ? 's' : ''} à revoir` : `${missed} mistake${missed > 1 ? 's' : ''} to review`)
+    : (report.total ? (fr ? 'Aucune erreur, bravo !' : 'No mistakes, well done!') : '');
+  const replay = Math.min(REPLAY_COUNT, report.mistakes);
+  return `
+    <div class="jx-worked">
+      <div class="jx-worked-title">${fr ? 'CE QUE TU AS TRAVAILLÉ' : 'WHAT YOU PRACTISED'}</div>
+      ${ops ? `<div class="jx-worked-ops">${ops}</div>` : ''}
+      ${mistakesLine ? `<div class="jx-worked-mistakes">${mistakesLine}</div>` : ''}
+      ${replay ? `<button type="button" class="jx-report-replay">${uiIcon('rotate')}<span>${fr ? 'REVOIR MES ERREURS' : 'REVIEW MY MISTAKES'} (${replay})</span></button>` : ''}
+    </div>`;
+}
+
+export function mountWorkedOn(el) {
+  if (!el) return;
+  el.innerHTML = workedOnHTML();
+  el.querySelector('.jx-report-replay')?.addEventListener('click', () => {
+    SFX.click?.();
+    openMistakeReview(() => mountWorkedOn(el));
+  });
+}
+
 // ── Replay ────────────────────────────────────────────────────────────────
 export function openMistakeReview(onClose) {
   const questions = mistakesToReplay();

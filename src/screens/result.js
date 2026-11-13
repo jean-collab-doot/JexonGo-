@@ -1,5 +1,5 @@
 import { $ } from '../utils/dom.js';
-import { G, autoSave, clampCoins, MAX_GAME_COINS, maxGameXp, xpUpgradeMultiplier, addLifetimeXp } from '../state.js';
+import { G, autoSave, clampCoins, MAX_GAME_COINS, addLifetimeXp } from '../state.js';
 import { save, load } from '../utils/storage.js';
 import { SFX } from '../audio/sound.js';
 import { calcStars } from '../systems/xp.js';
@@ -12,8 +12,11 @@ import { AIRCRAFT } from '../data/aircraft.js';
 import { coinIcon, expIcon, uiIcon } from '../utils/icons.js';
 import { unlockBossAircraft } from '../systems/secret-aircraft.js';
 import { earnHalloweenSkin } from '../data/skins.js';
-import { reportTiles, mountReportDetails } from './mistake-review.js';
+import { reportTiles, mountWorkedOn } from './mistake-review.js';
 import { notebookSize } from '../systems/session-report.js';
+import { gameXpBreakdown, comboState, recordBestGame } from '../systems/xp-combo.js';
+import { multText } from './combo-fx.js';
+import { gentleFx } from '../game/glitter.js';
 
 let _prevHighestLevel = 0;
 
@@ -134,9 +137,10 @@ export function showResult(won) {
 
   // The end-of-level bonus only fills what is left under the per-game caps
   // (MAX_GAME_COINS / maxGameXp()), after what was picked up during play. The
-  // hangar XP upgrade raises both the bonus and the cap.
-  const collectedXpSoFar = G.practiceMode ? 0 : Math.max(0, G.airdropSessionXP || 0);
-  const xp    = Math.min(Math.round((G.sessionXP || 0) * xpUpgradeMultiplier()), Math.max(0, maxGameXp() - collectedXpSoFar));
+  // hangar XP upgrade raises both the bonus and the cap. On top of it, the
+  // speed and combo bonus (systems/xp-combo.js) under its own cap.
+  const xpParts = gameXpBreakdown();
+  const xp    = canEarnRewards ? xpParts.base + xpParts.bonus : 0;
   const stars = calcStars(correct, answered, hits);
 
   // Coins earned: scale by stars and level
@@ -238,12 +242,31 @@ export function showResult(won) {
         : ''}`;
   }
 
-  // End-of-game report (screens/mistake-review.js): questions, success,
-  // average time; then best theme, theme to work on and the mistake replay.
+  // EXP combo (systems/xp-combo.js): a NOUVEAU RECORD ! sticker on the
+  // rewards when this game beats the best one in EXP.
+  const combo = comboState();
+  const record = canEarnRewards ? recordBestGame(totalXpGained) : { isRecord: false };
+  if (record.isRecord) {
+    rewardsEl.insertAdjacentHTML('beforeend',
+      `<div class="rs-record${gentleFx() ? ' is-gentle' : ''}">${fr ? 'NOUVEAU RECORD !' : 'NEW RECORD!'}</div>`);
+    setTimeout(() => SFX.comboCash?.(), 1100);
+  }
+  // Tiles: best combo, speed / combo bonus, total EXP, then the end-of-game
+  // report (screens/mistake-review.js): questions, success, average time.
+  // Under them, what was practised (good answers for each type of
+  // calculation, mistakes to review and their replay).
   // (Hits are in the 3-star goal above.)
-  $('rs-stats').innerHTML = reportTiles()
+  const comboTiles = canEarnRewards ? [
+    `<div class="rs-stat"><small>${fr ? 'MEILLEUR COMBO' : 'BEST COMBO'}</small><b class="rs-combo-mult">${combo.bestMult > 1 ? multText(combo.bestMult) : '—'}</b>`
+      + `<em>${combo.bestStreak} ${fr ? 'd’affilée' : 'in a row'}</em></div>`,
+    `<div class="rs-stat"><small>BONUS</small><b data-count="${xpParts.bonus}">+0</b><em>${fr ? 'combo + rapidité' : 'combo + speed'}</em></div>`,
+    `<div class="rs-stat"><small>TOTAL EXP</small><b data-count="${G.xp || 0}" data-plain="1">0</b></div>`,
+  ] : [];
+  const statsEl = $('rs-stats');
+  statsEl.classList.toggle('rs-combo-stats', comboTiles.length > 0);
+  statsEl.innerHTML = comboTiles.join('') + reportTiles()
     .map(([label, value]) => `<div class="rs-stat"><small>${label}</small><b>${value}</b></div>`).join('');
-  mountReportDetails($('rs-report'));
+  mountWorkedOn($('rs-report'));
 
   const aircraft = AIRCRAFT[G.activeAircraft] || AIRCRAFT.t6;
   const playerName = (G.playerName && G.playerName !== 'PILOT') ? G.playerName : (fr ? 'PILOTE JEXONGO' : 'JEXONGO PILOT');

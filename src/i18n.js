@@ -77,6 +77,7 @@ const STRINGS = {
     noXpPractice:    'No XP in practice',
     correct:         'correct',
     continueBtn:     'CONTINUE',
+    playAgain:       'PLAY AGAIN',
     retry:           'RETRY',
 
     // Game over screen
@@ -409,6 +410,7 @@ const STRINGS = {
     noXpPractice:    'Pas d\'XP en entraînement',
     correct:         'correctes',
     continueBtn:     'CONTINUER',
+    playAgain:       'REJOUER',
     retry:           'RÉESSAYER',
 
     // Game over screen

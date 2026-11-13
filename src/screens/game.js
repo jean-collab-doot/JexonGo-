@@ -43,6 +43,8 @@ import { trackMission } from '../systems/daily.js';
 import { getPilotGrade } from '../data/pilots.js';
 import { applyAgeModifiers } from '../systems/age-modifiers.js';
 import { calcSpeedXP } from '../systems/xp.js';
+import { resetCombo, comboCorrect, comboBroken, cashCombo, comboState, gameXpBreakdown, WAVE_SIZE } from '../systems/xp-combo.js';
+import { setHudXp, setComboBadge, comboBadgeLost, hideComboBadge, showComboGain, showComboCash, resetComboFx } from './combo-fx.js';
 import { load, save } from '../utils/storage.js';
 import { t, getLang, numLocale } from '../i18n.js';
 import {
@@ -3246,9 +3248,10 @@ function frame(ts = 0) {
   const shaking = !_cutsceneActive && shakeFrames > 0;
   if (shaking) {
     ctx.save();
-    const shakeAmp = performance.now() < _bigShakeUntil ? 22 : 7;
+    const shakeAmp = performance.now() < _bigShakeUntil ? 22 : (_softShakeAmp || 7);
     ctx.translate((Math.random() - 0.5) * shakeAmp, (Math.random() - 0.5) * shakeAmp);
     shakeFrames--;
+    if (shakeFrames <= 0) _softShakeAmp = 0;
   }
 
   // ── Background ─────────────────────────────────────────────────────────
@@ -5053,6 +5056,7 @@ const BOSS_DEATH_MS = 2400;
 const BOSS_DEBRIS_COLORS = ['#fff3b0', '#ffd166', '#ff9f1c', '#ff5400', '#c1121f', '#3d3d3d'];
 let _bossDeaths = [];
 let _bigShakeUntil = 0;
+let _softShakeAmp = 0;   // EXP combo: a light shake (comboShake), 0 = normal
 
 // Boss level won: no new question may come up while the boss explodes and
 // the level ends (the level's question count no longer matters), and the one
@@ -5904,12 +5908,14 @@ function handleAnswer(choice, btn) {
     G.questionsAnswered++;
     recordTutorialAnswer(G.question.op, true);
     showTutorialFeedback(true);
-    G.sessionXP += calcSpeedXP(G.timeLeft, _timerTotal) + (G.likesMath ? 1 : 0);
+    const answerXp = calcSpeedXP(G.timeLeft, _timerTotal) + (G.likesMath ? 1 : 0);
+    G.sessionXP += answerXp;
     G.streak++;
     G.bestAnswerStreak = Math.max(G.bestAnswerStreak || 0, G.streak);
     save('bestAnswerStreak', G.bestAnswerStreak);
     updateStreakHUD();
-    if (G.streak === 3 || G.streak === 5) SFX.streak();
+    if (comboOn()) comboAfterCorrect(answerXp, lastQuestion);
+    else if (G.streak === 3 || G.streak === 5) SFX.streak();
     trackMission('correct_answers', 1);
     trackMission('max_streak', G.streak);
     if (_coop) trackMission('coop_correct', 1);
@@ -5925,6 +5931,7 @@ function handleAnswer(choice, btn) {
     showTutorialFeedback(false);
     G.streak = 0;
     updateStreakHUD();
+    comboAfterMistake();
     // Wrong answer breaks the SR-71 run — reset all cube progress
     revealCorrectAnswer(choice);
     if (!G.practiceMode && G.currentLevel <= 30) {
@@ -6280,6 +6287,7 @@ function handleTimeout() {
   showTutorialFeedback(false, true);
   G.streak = 0;
   updateStreakHUD();
+  comboAfterMistake();
   SFX.wrong();
   document.querySelectorAll('.answer-btn').forEach(b => {
     if (!G.question?.typed) b.classList.add('wrong');
@@ -6581,9 +6589,52 @@ function finishLevel(won) {
 
 function updateGameCurrencyHUD() {
   const coins = document.getElementById('hud-coins-count');
-  const xp = document.getElementById('hud-xp-count');
   if (coins) coins.textContent = (G.airdropSessionCoins || 0).toLocaleString(numLocale());
-  if (xp) xp.textContent = (G.airdropSessionXP || 0).toLocaleString(numLocale());
+  // EXP of the game so far, counting up live (answers + combo + pick-ups,
+  // with the per-game caps); practice only shows what was picked up.
+  setHudXp(comboOn() ? gameXpBreakdown().total : (G.airdropSessionXP || 0));
+}
+
+// ── EXP COMBO (rules: systems/xp-combo.js, visuals: screens/combo-fx.js) ──
+// Real games only: no EXP in practice, the beginner practice, the mistake
+// review or the tutorial.
+function comboOn() {
+  return !G.practiceMode && !isTutorialActive();
+}
+
+const _reducedMotion = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+
+// A light screen shake that grows with the combo.
+function comboShake(amp, frames) {
+  if (_reducedMotion()) return;
+  _softShakeAmp = Math.max(_softShakeAmp, amp);
+  shakeFrames = Math.max(shakeFrames, frames);
+}
+
+function comboAfterCorrect(answerXp, lastQuestion) {
+  const gain = comboCorrect(answerXp, answerSeconds());
+  const reached = showComboGain(gain);
+  if (gain.mult > 1) SFX.comboUp(gain.mult);
+  if (reached) comboShake(2 + reached * 1.5, 8 + reached * 2);
+  // End of a wave (every WAVE_SIZE questions) or of the level: cash in.
+  if (G.questionsAnswered % WAVE_SIZE === 0 || lastQuestion) comboCashIn();
+  setComboBadge(comboState());
+  updateGameCurrencyHUD();
+}
+
+// The pop shows the EXP really added (the game's EXP has a maximum).
+function comboCashIn() {
+  const before = gameXpBreakdown().total;
+  if (cashCombo() <= 0) return;
+  showComboCash(gameXpBreakdown().total - before);
+  SFX.comboCash();
+  comboShake(9, 14);
+}
+
+function comboAfterMistake() {
+  if (!comboOn()) return;
+  comboBroken();      // the pot of this wave is lost
+  comboBadgeLost();
 }
 
 function updateTimedPlayXp(frameMs) {
@@ -6616,6 +6667,7 @@ function endLevel(won) {
   _levelEnding = true;
   _cutsceneActive = true;
   G.answerLocked = true;
+  if (comboOn()) { comboCashIn(); hideComboBadge(); updateGameCurrencyHUD(); }
   clearInterval(G.timerInterval);
   G.timerInterval = null;
   $('timer-bar-wrap').classList.add('timer-finished');
@@ -6887,6 +6939,8 @@ export function initGame(levelNum, onComplete) {
   resetLevel();
   // End-of-game report: a new game starts a new count (a continued one keeps it).
   if (!snap) startSessionReport();
+  resetCombo({ keepBanked: !!snap });   // EXP combo (systems/xp-combo.js)
+  resetComboFx();
   _timedXpElapsedMs = 0;
   G.airdropSessionCoins = 0;
   G.airdropSessionXP = 0;

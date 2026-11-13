@@ -50,8 +50,9 @@ export function recordAnswer(q, outcome, seconds) {
   keepNotebook();
 }
 
-// { total, correct, successPct, avgSeconds, best, rework, mistakes }
-// best / rework: { op, correct, total, pct } or null.
+// { total, correct, successPct, avgSeconds, best, rework, mistakes, themes }
+// best / rework: { op, correct, total, pct } or null; themes: every type of
+// calculation of the game, the most asked first.
 export function sessionReport() {
   const total = _answers.length;
   const correct = _answers.filter(a => a.outcome === 'correct').length;
@@ -80,6 +81,7 @@ export function sessionReport() {
     avgSeconds,
     best: strip(best), rework: strip(rework),
     mistakes: _notebook.length,
+    themes: themes.sort((x, y) => y.total - x.total).map(strip),
   };
 }
 
