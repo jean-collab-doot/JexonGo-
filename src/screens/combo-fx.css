@@ -5,6 +5,9 @@
 /* HUD EXP counter: a little jump each time it grows. */
 #s-game .hud-currency-item.is-bump b { display: inline-block; animation: hudXpBump .38s ease-out; }
 @keyframes hudXpBump { 40% { transform: scale(1.35); color: #ffe066; } }
+/* A mistake costs EXP: the counter drops with a red flash. */
+#s-game .hud-currency-item.is-drop b { display: inline-block; animation: hudXpDrop .55s ease-out; }
+@keyframes hudXpDrop { 25% { transform: translateY(3px) scale(1.25); color: #ff5a5a; } 60% { color: #ff5a5a; } }
 
 /* Combo badge under the coins / EXP: yellow at ×1.25, red at ×3. */
 #s-game .hud-combo { display: none; }
@@ -27,6 +30,12 @@
 #s-game .hud-combo-pot:empty { display: none; }
 #s-game .hud-combo.is-bump { animation: comboBadgeBump .3s ease-out; }
 #s-game .hud-combo.is-lost { animation: comboBadgeLost .65s ease-in forwards; }
+/* A mistake: the combo falls a few steps (it shakes, flashes red, stays). */
+#s-game .hud-combo.is-drop { animation: comboBadgeDrop .55s ease-out; }
+@keyframes comboBadgeDrop {
+  10%, 50% { transform: translateX(-4px); border-color: #ff5a5a; }
+  30%, 70% { transform: translateX(4px); border-color: #ff5a5a; }
+}
 #s-game .hud-combo.is-lost .hud-combo-pot { color: #ff6b6b; text-decoration: line-through; }
 #s-game .hud-combo.is-gentle .hud-combo-mult { animation: comboRainbowText 1.2s linear infinite; }
 @keyframes comboBadgeBump { 45% { transform: scale(1.18); } }
@@ -42,11 +51,14 @@
 }
 
 /* Jumping texts, in the upper part of the play area. */
-#combo-pops {
+#combo-pops, #combo-pops-low {
   position: absolute; left: 0; right: 0; top: 24%;
   z-index: 60; pointer-events: none;
   display: flex; flex-direction: column; align-items: center; gap: 8px;
 }
+/* Mistakes: lower, between the answers (moved up by the correction) and
+   the correction panel. */
+#combo-pops-low { top: 42%; }
 .combo-pop {
   position: relative;
   font-family: 'Press Start 2P', monospace;
@@ -57,6 +69,23 @@
 }
 .combo-pop-fast { font-size: clamp(12px, 3.6vw, 22px); color: #7ee8fa; text-shadow: 3px 3px 0 #06324a, 0 0 14px rgba(80, 220, 255, .6); }
 .combo-pop-cash { font-size: clamp(18px, 5.6vw, 34px); color: #9effa1; text-shadow: 3px 3px 0 #0b3d17, 0 0 20px rgba(120, 255, 140, .7); }
+/* Mistakes: why it costs more (orange), then the EXP lost (red, bigger for a
+   worse mistake: --sev from .25 to 1), falling instead of jumping. */
+.combo-pop-warn { font-size: clamp(12px, 3.6vw, 22px); color: #ffb13b; text-shadow: 3px 3px 0 #4a2300, 0 0 12px rgba(255, 160, 40, .55); }
+.combo-pop-loss {
+  font-size: calc(clamp(14px, 4.2vw, 26px) * (.8 + var(--sev, .5) * .5));
+  color: #ff5a5a; text-shadow: 3px 3px 0 #4a0710, 0 0 14px rgba(255, 70, 70, .55);
+  animation-name: comboPopLoss;
+}
+.combo-pop-loss.is-gentle { color: #ff8fb1; text-shadow: 3px 3px 0 #5a1730; }
+@keyframes comboPopLoss {
+  0%   { opacity: 0; transform: translateY(-14px) scale(.4); }
+  15%  { opacity: 1; transform: translateY(0) scale(1.15); }
+  22%, 38% { transform: translateX(-5px) scale(1); }
+  30%, 46% { transform: translateX(5px); }
+  75%  { opacity: 1; transform: none; }
+  100% { opacity: 0; transform: translateY(26px); }
+}
 @keyframes comboPop {
   0%   { opacity: 0; transform: translateY(18px) scale(.3); }
   18%  { opacity: 1; transform: translateY(-8px) scale(1.18); }
@@ -65,7 +94,7 @@
   100% { opacity: 0; transform: translateY(-30px) scale(.95); }
 }
 /* Youngest players: rainbow letters and glitter bursting out. */
-.combo-pop.is-gentle span {
+.combo-pop.is-gentle:not(.combo-pop-warn):not(.combo-pop-loss) span {
   background: linear-gradient(90deg, #ff5fa2, #ffb13b, #ffe14d, #5ee87a, #4cc9ff, #9b7bff, #ff5fa2);
   background-size: 200% 100%;
   -webkit-background-clip: text; background-clip: text;
@@ -147,7 +176,8 @@ html body #s-result .rs-btn.rs-btn-alt { font-size: clamp(9px, 2.6vw, 14px); }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .combo-pop i, #s-game .hud-combo.is-bump, #s-game .hud-combo.is-lost,
+  .combo-pop i, #s-game .hud-combo.is-bump, #s-game .hud-combo.is-lost, #s-game .hud-combo.is-drop,
+  #s-game .hud-currency-item.is-drop b,
   #s-game .hud-currency-item.is-bump b, html body #s-result .rs-record, html body #s-result .rs-btn.rs-btn-replay {
     animation-duration: .01ms !important; animation-iteration-count: 1 !important;
   }

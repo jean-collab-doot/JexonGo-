@@ -43,8 +43,8 @@ import { trackMission } from '../systems/daily.js';
 import { getPilotGrade } from '../data/pilots.js';
 import { applyAgeModifiers } from '../systems/age-modifiers.js';
 import { calcSpeedXP } from '../systems/xp.js';
-import { resetCombo, comboCorrect, comboBroken, cashCombo, comboState, gameXpBreakdown, WAVE_SIZE } from '../systems/xp-combo.js';
-import { setHudXp, setComboBadge, comboBadgeLost, hideComboBadge, showComboGain, showComboCash, resetComboFx } from './combo-fx.js';
+import { resetCombo, comboCorrect, comboMistake, cashCombo, comboState, gameXpBreakdown, WAVE_SIZE } from '../systems/xp-combo.js';
+import { setHudXp, setComboBadge, hideComboBadge, showComboGain, showComboCash, showExpMax, showComboMistake, resetComboFx } from './combo-fx.js';
 import { load, save } from '../utils/storage.js';
 import { t, getLang, numLocale } from '../i18n.js';
 import {
@@ -5931,7 +5931,7 @@ function handleAnswer(choice, btn) {
     showTutorialFeedback(false);
     G.streak = 0;
     updateStreakHUD();
-    comboAfterMistake();
+    comboAfterMistake({ seconds: answerSeconds(), questionXp: calcSpeedXP(G.timeLeft, _timerTotal) });
     // Wrong answer breaks the SR-71 run — reset all cube progress
     revealCorrectAnswer(choice);
     if (!G.practiceMode && G.currentLevel <= 30) {
@@ -6287,7 +6287,7 @@ function handleTimeout() {
   showTutorialFeedback(false, true);
   G.streak = 0;
   updateStreakHUD();
-  comboAfterMistake();
+  comboAfterMistake({ timeout: true, questionXp: calcSpeedXP(0, _timerTotal) });
   SFX.wrong();
   document.querySelectorAll('.answer-btn').forEach(b => {
     if (!G.question?.typed) b.classList.add('wrong');
@@ -6614,6 +6614,7 @@ function comboShake(amp, frames) {
 function comboAfterCorrect(answerXp, lastQuestion) {
   const gain = comboCorrect(answerXp, answerSeconds());
   const reached = showComboGain(gain);
+  if (gain.capped) showExpMax();
   if (gain.mult > 1) SFX.comboUp(gain.mult);
   if (reached) comboShake(2 + reached * 1.5, 8 + reached * 2);
   // End of a wave (every WAVE_SIZE questions) or of the level: cash in.
@@ -6631,10 +6632,16 @@ function comboCashIn() {
   comboShake(9, 14);
 }
 
-function comboAfterMistake() {
+// A wrong answer or a timeout costs bonus EXP and combo steps by severity
+// (number of mistakes, too fast, time's up: systems/xp-combo.js).
+function comboAfterMistake({ seconds = 0, timeout = false, questionXp = 0 } = {}) {
   if (!comboOn()) return;
-  comboBroken();      // the pot of this wave is lost
-  comboBadgeLost();
+  const mistake = comboMistake({ seconds, timeout, questionXp });
+  // The wave ends on this question: what is left of the pot is earned.
+  if (G.questionsAnswered % WAVE_SIZE === 0) comboCashIn();
+  showComboMistake(mistake, comboState());
+  comboShake(2 + mistake.severity * 4, 6 + Math.round(mistake.severity * 6));
+  updateGameCurrencyHUD();
 }
 
 function updateTimedPlayXp(frameMs) {

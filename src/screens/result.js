@@ -259,7 +259,8 @@ export function showResult(won) {
   const comboTiles = canEarnRewards ? [
     `<div class="rs-stat"><small>${fr ? 'MEILLEUR COMBO' : 'BEST COMBO'}</small><b class="rs-combo-mult">${combo.bestMult > 1 ? multText(combo.bestMult) : '—'}</b>`
       + `<em>${combo.bestStreak} ${fr ? 'd’affilée' : 'in a row'}</em></div>`,
-    `<div class="rs-stat"><small>BONUS</small><b data-count="${xpParts.bonus}">+0</b><em>${fr ? 'combo + rapidité' : 'combo + speed'}</em></div>`,
+    `<div class="rs-stat"><small>BONUS</small><b data-count="${xpParts.bonus}">+0</b>`
+      + `<em>${combo.lost > 0 ? `−${combo.lost.toLocaleString(numLocale())} ${fr ? 'erreurs' : 'mistakes'}` : (fr ? 'combo + rapidité' : 'combo + speed')}</em></div>`,
     `<div class="rs-stat"><small>TOTAL EXP</small><b data-count="${G.xp || 0}" data-plain="1">0</b></div>`,
   ] : [];
   const statsEl = $('rs-stats');

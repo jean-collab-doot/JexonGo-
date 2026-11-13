@@ -20,13 +20,15 @@ let _raf = 0;
 
 function hudXpEl() { return document.getElementById('hud-xp-count'); }
 
-// Shows `value` in the HUD: counts up when it grows, jumps when it goes down
-// (new game) or when `instant`.
+// Shows `value` in the HUD: counts up when it grows, drops at once (with a
+// red flash) when a mistake costs EXP, no flash for a new game (`instant`).
 export function setHudXp(value, { instant = false } = {}) {
   const el = hudXpEl();
   if (!el) return;
   _targetXp = Math.max(0, Math.round(value) || 0);
   if (instant || _targetXp < _shownXp) {
+    const item = el.closest('.hud-currency-item');
+    if (!instant && item) restart(item, 'is-drop');
     cancelAnimationFrame(_raf);
     _raf = 0;
     _shownXp = _targetXp;
@@ -74,7 +76,7 @@ function restart(el, cls) { el.classList.remove(cls); void el.offsetWidth; el.cl
 export function setComboBadge({ mult, pot }) {
   const el = badge();
   if (!el) return;
-  el.classList.remove('is-lost');
+  el.classList.remove('is-lost', 'is-drop');
   el.classList.toggle('is-gentle', gentleFx());
   if (mult <= 1) { el.classList.remove('is-on'); return; }
   el.querySelector('.hud-combo-mult').textContent = `COMBO ${multText(mult)}`;
@@ -97,13 +99,18 @@ export function hideComboBadge() {
 }
 
 // ── Jumping texts ─────────────────────────────────────────────────────────
-function popLayer() {
-  let el = document.getElementById('combo-pops');
+// Two layers: the gains in the upper part of the play area, the mistakes
+// lower (during the correction the question and its answers move up and
+// would cover them).
+const POP_LAYERS = ['combo-pops', 'combo-pops-low'];
+function popLayer(low = false) {
+  const id = POP_LAYERS[low ? 1 : 0];
+  let el = document.getElementById(id);
   if (el) return el;
   const host = document.getElementById('s-game');
   if (!host) return null;
   el = document.createElement('div');
-  el.id = 'combo-pops';
+  el.id = id;
   el.setAttribute('aria-hidden', 'true');
   host.appendChild(el);
   return el;
@@ -117,15 +124,16 @@ function glitterBits(count) {
   }).join('');
 }
 
-// kind: 'combo' | 'fast' | 'cash'.
+// kind: 'combo' | 'fast' | 'cash' (glitter for the youngest) | 'warn' | 'loss'.
 export function popText(text, kind = 'combo', delayMs = 0) {
-  const layer = popLayer();
+  const layer = popLayer(kind === 'warn' || kind === 'loss');
   if (!layer) return;
   const gentle = gentleFx();
   const el = document.createElement('div');
   el.className = `combo-pop combo-pop-${kind}${gentle ? ' is-gentle' : ''}`;
   el.style.setProperty('--delay', `${delayMs}ms`);
-  el.innerHTML = `<span>${text}</span>${gentle ? glitterBits(kind === 'cash' ? 14 : 9) : ''}`;
+  const glitter = gentle && kind !== 'warn' && kind !== 'loss';
+  el.innerHTML = `<span>${text}</span>${glitter ? glitterBits(kind === 'cash' ? 14 : 9) : ''}`;
   layer.appendChild(el);
   setTimeout(() => el.remove(), 1300 + delayMs);
 }
@@ -140,18 +148,44 @@ export function showComboGain(c) {
   return reached;
 }
 
-// End of a wave: the combo EXP is earned. 0 = the game's EXP maximum is
-// already reached (said once per game).
-let _maxShown = false;
+// End of a wave: the combo EXP is earned.
 export function showComboCash(amount) {
   if (amount > 0) popText(`+${num(amount)} EXP`, 'cash', 120);
-  else if (!_maxShown) { _maxShown = true; popText(isFr() ? 'EXP MAX !' : 'EXP MAX!', 'cash', 120); }
+}
+
+// The bonus maximum of the game is reached (said once per game).
+let _maxShown = false;
+export function showExpMax() {
+  if (_maxShown) return;
+  _maxShown = true;
+  popText(isFr() ? 'EXP MAX !' : 'EXP MAX!', 'cash', 300);
+}
+
+// A mistake (systems/xp-combo.js comboMistake's result): why it costs more
+// (too fast / time's up), the EXP lost (bigger text for a worse mistake)
+// and the combo badge falling to its new level.
+export function showComboMistake(m, { mult, pot }) {
+  const fr = isFr();
+  if (m.reason === 'fast') popText(fr ? 'TROP VITE !' : 'TOO FAST!', 'warn');
+  else if (m.reason === 'timeout') popText(fr ? 'TEMPS ÉCOULÉ !' : "TIME'S UP!", 'warn');
+  if (m.lostShown > 0) {
+    popText(`−${num(m.lostShown)} EXP`, 'loss', m.reason === 'wrong' ? 0 : 170);
+    const last = document.getElementById('combo-pops-low')?.lastElementChild;
+    last?.style.setProperty('--sev', String(m.severity));
+  }
+  const el = document.getElementById('hud-combo');
+  if (mult > 1 && el) {
+    setComboBadge({ mult, pot });
+    restart(el, 'is-drop');
+  } else {
+    comboBadgeLost();
+  }
 }
 
 // New game: nothing left on screen.
 export function resetComboFx() {
   _maxShown = false;
   hideComboBadge();
-  document.getElementById('combo-pops')?.replaceChildren();
+  POP_LAYERS.forEach(id => document.getElementById(id)?.replaceChildren());
   setHudXp(0, { instant: true });
 }
