@@ -67,8 +67,10 @@ export async function signInWithGoogleIdToken(idToken) {
 
 // ── E-mail + password accounts (screens/email-auth.js) ────────────────────
 // Each returns Supabase's { data, error }; the screen turns errors into
-// messages. "Confirm email" is on: the account is confirmed with the 6-digit
-// code of the e-mail (its template shows {{ .Token }}), not with a link.
+// messages. "Confirm email" is off in Supabase: signUp signs the player in at
+// once (the only e-mail is the welcome one). Turned on again, the account is
+// confirmed with the 6-digit code of the e-mail ({{ .Token }} in its
+// template). A forgotten password always uses such a code.
 
 async function authCall(run) {
   const supabase = await getSupabaseClient();

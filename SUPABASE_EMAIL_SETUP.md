@@ -44,18 +44,30 @@ mets **100** par heure (une classe entière peut créer ses comptes en même tem
 Supabase → **Authentication** → **Sign In / Providers** → **Email** :
 
 - **Enable Email provider** : activé
-- **Confirm email** : **activé** (le joueur tape le code reçu)
+- **Require current password when updating** : désactivé (sinon un joueur Google ne peut pas
+  se créer de mot de passe)
 - **Minimum password length** : `8`
 - **Email OTP Length** : `6`
 - **Email OTP Expiration** : `3600` (1 heure)
 
 **Save**.
 
+Puis, sur la même page, section **User Signups** :
+
+- **Confirm email** : **désactivé**. Le joueur est connecté dès « CRÉER MON COMPTE », sans
+  code ; le seul courriel envoyé est celui de bienvenue (étape 7). Si un jour tu le réactives,
+  le jeu demande le code à 6 chiffres du modèle « Confirm signup ».
+
+**Save changes**.
+
 ## 6. Modèles de courriel (un code, pas de lien)
 
-Supabase → **Authentication** → **Emails** → onglet **Templates**.
+Supabase → **Authentication** → **Emails** → onglet **Templates**. Dans chaque modèle, le
+**sujet** va dans le champ **Subject** et le **message** dans **Body** (onglet Source), puis
+**Save changes**. Dans l'aperçu, `{{ .Token }}` s'affiche tel quel : dans le vrai courriel, ce
+sont les 6 chiffres.
 
-### « Confirm signup »
+### « Confirm signup » (seulement si « Confirm email » est réactivé)
 
 Sujet : `Ton code JexonGo / Your JexonGo code`
 
@@ -73,7 +85,7 @@ Message (onglet Source) :
 </div>
 ```
 
-### « Reset password »
+### « Reset password » (mot de passe oublié — toujours utilisé)
 
 Sujet : `Ton code JexonGo pour le mot de passe / Your JexonGo password code`
 
@@ -95,8 +107,8 @@ Le courriel « Bienvenue dans JexonGO ✈️ » part de `api/send-welcome.js`, a
 webhook Supabase. Supabase → **Database** → **Webhooks** → ouvre ce webhook et regarde sa
 **table** :
 
-- **`saves`** (schéma public) : rien à changer. Le courriel part à la première sauvegarde du
-  compte, juste après la confirmation par le code. Un seul par courriel.
+- **`saves`** (schéma public) : rien à changer (c'est le cas de JexonGo). Le courriel part à la
+  première sauvegarde du compte, juste après sa création. Un seul par courriel.
 - **`users`** (schéma auth) : coche aussi l'événement **Update** (en plus d'Insert) et
   enregistre. Le jeu envoie alors le courriel au moment où le compte est confirmé : tout de
   suite pour Google, après le code pour un compte par courriel. Jamais une 2e fois, même si le

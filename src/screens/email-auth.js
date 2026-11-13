@@ -1,7 +1,8 @@
 // Sign-in with an e-mail and a password, beside Google (same yellow design
 // as the sign-in invitation and the pilot name prompt):
 //  - CRÉER UN COMPTE: player name (unique, checked while typing), e-mail,
-//    password twice; then the 6-digit code of the e-mail confirms it
+//    password twice; signed in at once ("Confirm email" off in Supabase),
+//    or with the 6-digit code of the e-mail if it is turned on again
 //  - SE CONNECTER: e-mail + password, "Mot de passe oublié ?" sends a code
 //    to choose a new password
 //  - an e-mail that already has an account (e.g. Google): sign in with
