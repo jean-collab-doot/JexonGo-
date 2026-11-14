@@ -1,0 +1,82 @@
+/* ============================ SHOT COINS ================================== */
+/* In game (screens/shot-meter.js); rules in systems/shot-coins.js.
+   The meter in the row under the top bar (combo-fx.css #hud-under): a
+   crosshair, one pip per hit toward the next step, the coins of that step. */
+#s-game .hud-shots { display: none; }
+#s-game .hud-shots.is-on {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 8px 4px 6px;
+  border: 2px solid #ffd84d; border-radius: 999px;
+  background: rgba(10, 14, 20, .78);
+  box-shadow: 0 0 6px rgba(255, 216, 77, .35);
+  font-family: 'Press Start 2P', monospace; font-size: 8px; line-height: 1;
+  color: #fff; white-space: nowrap;
+}
+#s-game .hud-shots-aim { display: inline-flex; color: #ff7a5c; filter: drop-shadow(1px 1px 0 #000); }
+#s-game .hud-shots-aim svg { width: 13px; height: 13px; shape-rendering: crispEdges; }
+#s-game .hud-shots-pips { display: inline-flex; gap: 2px; }
+#s-game .hud-shots-pips i {
+  width: 7px; height: 10px; border-radius: 2px;
+  background: rgba(255, 255, 255, .2); box-shadow: inset 0 -2px 0 rgba(0, 0, 0, .35);
+}
+#s-game .hud-shots-pips i.is-full { background: #ffd84d; box-shadow: inset 0 -2px 0 #c77d00, 0 0 5px rgba(255, 216, 77, .7); }
+#s-game .hud-shots-pips i.is-hit { animation: shotPip .35s ease-out; }
+@keyframes shotPip { 40% { transform: scale(1.35, 1.5); background: #fff; } }
+#s-game .hud-shots-reward { display: inline-flex; align-items: center; gap: 3px; color: #ffd84d; text-shadow: 1px 1px 0 #000; }
+#s-game .hud-shots-reward img { width: 13px; height: 13px; }
+/* A step is reached: the meter flashes. */
+#s-game .hud-shots.is-step { animation: shotStep .55s ease-out; }
+@keyframes shotStep { 30% { transform: scale(1.18); box-shadow: 0 0 16px rgba(255, 216, 77, .95); } }
+/* All the steps of the game are reached: green, MAX. */
+#s-game .hud-shots.is-max { border-color: #7be08a; box-shadow: 0 0 6px rgba(123, 224, 138, .4); }
+#s-game .hud-shots.is-max .hud-shots-pips i { background: #7be08a; box-shadow: inset 0 -2px 0 #2f8a3d; }
+#s-game .hud-shots.is-max .hud-shots-reward { color: #9effa1; }
+/* Youngest players: rainbow pips. */
+#s-game .hud-shots.is-gentle:not(.is-max) .hud-shots-pips i.is-full:nth-child(6n + 1) { background: #ff5fa2; }
+#s-game .hud-shots.is-gentle:not(.is-max) .hud-shots-pips i.is-full:nth-child(6n + 2) { background: #ffb13b; }
+#s-game .hud-shots.is-gentle:not(.is-max) .hud-shots-pips i.is-full:nth-child(6n + 3) { background: #ffe14d; }
+#s-game .hud-shots.is-gentle:not(.is-max) .hud-shots-pips i.is-full:nth-child(6n + 4) { background: #5ee87a; }
+#s-game .hud-shots.is-gentle:not(.is-max) .hud-shots-pips i.is-full:nth-child(6n + 5) { background: #4cc9ff; }
+#s-game .hud-shots.is-gentle:not(.is-max) .hud-shots-pips i.is-full:nth-child(6n) { background: #9b7bff; }
+
+/* "+5 🪙" that jumps out of the meter, then flies into the coin counter
+   (moved by shot-meter.js with element.animate). */
+.jx-coin-pop {
+  position: fixed; left: 0; top: 0; z-index: 9000; pointer-events: none;
+  display: inline-flex; align-items: center; gap: .1em;
+  transform: translate(-50%, -50%); opacity: 0;
+  /* Press Start 2P: its "5" can't be read as an "S" (Pixelify's can). */
+  font-family: 'Press Start 2P', monospace;
+  font-size: clamp(24px, 6.4vw, 40px); line-height: 1; white-space: nowrap;
+  color: #ffd84d;
+  text-shadow: 0 3px 0 #7a3a00, 2px 0 0 #7a3a00, -2px 0 0 #7a3a00, 0 -2px 0 #7a3a00, 0 0 16px rgba(255, 200, 40, .5);
+}
+.jx-coin-pop img { width: .95em; height: .95em; filter: drop-shadow(0 3px 0 #7a3a00); }
+.jx-coin-pop.is-gentle .jx-coin-pop-text {
+  background: linear-gradient(90deg, #ff5fa2, #ffb13b, #ffe14d, #5ee87a, #4cc9ff, #9b7bff, #ff5fa2);
+  background-size: 200% 100%;
+  -webkit-background-clip: text; background-clip: text;
+  color: transparent; text-shadow: none;
+  filter: drop-shadow(0 3px 0 #5a2a00) drop-shadow(2px 0 0 #5a2a00);
+  animation: comboRainbowSlide 1s linear infinite;
+}
+.jx-coin-pop i {
+  position: absolute; left: 50%; top: 50%;
+  width: 6px; height: 6px; margin: -3px 0 0 -3px;
+  background: var(--c); box-shadow: 0 0 6px var(--c);
+  animation: comboGlitter .9s ease-out .25s both;
+}
+/* Reduced motion: no flight, it shows a moment under the meter and fades. */
+.jx-coin-pop.is-still { animation: coinPopStill 1.2s linear both; }
+.jx-coin-pop.is-still i { display: none; }
+@keyframes coinPopStill {
+  0% { opacity: 0; transform: translate(-50%, 70%); }
+  15%, 75% { opacity: 1; transform: translate(-50%, 70%); }
+  100% { opacity: 0; transform: translate(-50%, 70%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #s-game .hud-shots-pips i.is-hit, #s-game .hud-shots.is-step, .jx-coin-pop.is-gentle .jx-coin-pop-text {
+    animation-duration: .01ms !important; animation-iteration-count: 1 !important;
+  }
+}

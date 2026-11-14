@@ -1114,6 +1114,15 @@ export const SFX = {
       [1047, 1319, 1568, 2093].forEach(f => _tone(_ac(), f, type, 0.5, 0.16));
     });
   },
+  // Shot coins step (systems/shot-coins.js): a shower of quick coin pings,
+  // then a bright two-note chime. Bell-like sine notes for the youngest.
+  shotStep() {
+    const type = gentleFx() ? 'sine' : 'triangle';
+    [1568, 1865, 1661, 1976, 2217].forEach((f, i) =>
+      _after(i * 50, () => _tone(_ac(), f, type, 0.07, 0.2)));
+    _after(300, () => _tone(_ac(), 1047, type, 0.12, 0.3));
+    _after(380, () => _tone(_ac(), 1568, type, 0.35, 0.28));
+  },
   chest() {
     _playBuf(SOUND.purchase, 0.9, () => {
       [523, 659, 784, 1047].forEach((f, i) =>

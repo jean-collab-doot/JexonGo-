@@ -43,14 +43,15 @@ import { trackMission } from '../systems/daily.js';
 import { getPilotGrade } from '../data/pilots.js';
 import { applyAgeModifiers } from '../systems/age-modifiers.js';
 import { calcSpeedXP } from '../systems/xp.js';
-import { resetShotCoins, countShot, countHit, liveShotCoins, shotCoinsResult } from '../systems/shot-coins.js';
+import { resetShotCoins, countHit, shotProgress, liveShotCoins, shotCoinsResult } from '../systems/shot-coins.js';
+import { setShotMeter, shotStepPop, resetShotMeter } from './shot-meter.js';
 import { resetCombo, comboCorrect, comboMistake, cashCombo, comboState, gameXpBreakdown, WAVE_SIZE, FAST_SECONDS } from '../systems/xp-combo.js';
 import {
-  setHudXp, setComboBadge, hideComboBadge, comboBadgeDrop, comboStepReached, resetComboFx,
+  setHudXp, setHudCoins, setComboBadge, hideComboBadge, comboBadgeDrop, comboStepReached, resetComboFx,
   calloutAnswer, calloutCash, calloutExpMax, calloutKill, calloutMistake, calloutHit,
 } from './combo-fx.js';
 import { load, save } from '../utils/storage.js';
-import { t, getLang, numLocale } from '../i18n.js';
+import { t, getLang } from '../i18n.js';
 import {
   isTouchMobile, isTablet, isPhone, gameCanvasDpr,
 } from '../utils/device.js';
@@ -5464,7 +5465,7 @@ const A10_BOSS_SHELL_DAMAGE = 0.4;
 function onMissileHit(enemy, missile) {
   SFX.explode();
   // Shot coins (systems/shot-coins.js): the player's own shot hit a plane.
-  if (missile?.byPilot && comboOn()) { countHit(); updateGameCurrencyHUD(); }
+  if (missile?.byPilot && comboOn()) onPilotHit();
   let damage = missile?.damage ?? 1;
   // A-10 GAU-8 on a boss: each shell is weak, so a 5-shell burst does about
   // two normal missiles' worth instead of ten (it melted bosses in 2 bursts).
@@ -6563,7 +6564,7 @@ function finishLevel(won) {
   // leaving the level discards the session counters without changing the
   // player's saved account balance.
   if (won) {
-    // Coins picked up during play + the shot coins (hits and accuracy bonus).
+    // Coins picked up during play + the shot coins (steps of hits).
     const earnedCoins = Math.max(0, G.airdropSessionCoins || 0) + (comboOn() ? shotCoinsResult().total : 0);
     const earnedXp = Math.max(0, G.airdropSessionXP || 0);
     G.coins = clampCoins((G.coins || 0) + earnedCoins);
@@ -6606,14 +6607,9 @@ function finishLevel(won) {
 }
 
 function updateGameCurrencyHUD() {
-  const coins = document.getElementById('hud-coins-count');
-  if (coins) {
-    const value = (G.airdropSessionCoins || 0) + (comboOn() ? liveShotCoins() : 0);
-    const item = coins.closest('.hud-currency-item');
-    if (item && value > (Number(coins.dataset.value) || 0)) { item.classList.remove('is-bump'); void item.offsetWidth; item.classList.add('is-bump'); }
-    coins.dataset.value = String(value);
-    coins.textContent = value.toLocaleString(numLocale());
-  }
+  // Coins picked up + the shot coins steps already landed in the counter,
+  // counting up live.
+  setHudCoins((G.airdropSessionCoins || 0) + (comboOn() ? _shotCoinsShown : 0));
   // EXP of the game so far, counting up live (answers + combo + pick-ups,
   // with the per-game caps); practice only shows what was picked up.
   setHudXp(comboOn() ? gameXpBreakdown().total : (G.airdropSessionXP || 0));
@@ -6626,11 +6622,32 @@ function comboOn() {
   return !G.practiceMode && !isTutorialActive();
 }
 
-// A shot of the player's own plane (not an ally's): counted for the shot
-// coins (systems/shot-coins.js), marked so its hit can be recognised.
+// A shot of the player's own plane (not an ally's), marked so its hit
+// counts for the shot coins.
 function pilotShot(missile) {
   missile.byPilot = true;
-  if (comboOn()) countShot();
+}
+
+// ── SHOT COINS (rules: systems/shot-coins.js, visuals: screens/shot-meter.js)
+// Coins of the steps already shown in the HUD counter: a new step joins it
+// when its "+5" lands there.
+let _shotCoinsShown = 0;
+
+function updateShotMeter(hit = false) {
+  setShotMeter(comboOn() ? shotProgress() : null, { hit });
+}
+
+// The player's own shot hit an enemy plane: one more pip in the meter; at
+// each step, the coin sound and the "+5" that flies into the coin counter.
+function onPilotHit() {
+  const coins = countHit();
+  updateShotMeter(true);
+  if (!coins) return;
+  SFX.shotStep();
+  shotStepPop(coins, () => {
+    _shotCoinsShown = liveShotCoins();
+    updateGameCurrencyHUD();
+  });
 }
 
 // Side callouts (screens/combo-fx.js): every game but the tutorial (it has
@@ -6993,6 +7010,9 @@ export function initGame(levelNum, onComplete) {
   resetCombo({ keepBanked: !!snap });   // EXP combo (systems/xp-combo.js)
   resetShotCoins({ keep: !!snap });     // shot coins (systems/shot-coins.js)
   resetComboFx();
+  resetShotMeter();
+  _shotCoinsShown = liveShotCoins();
+  updateShotMeter();
   _timedXpElapsedMs = 0;
   G.airdropSessionCoins = 0;
   G.airdropSessionXP = 0;

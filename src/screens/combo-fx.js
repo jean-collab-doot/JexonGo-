@@ -1,7 +1,7 @@
-// EXP combo on screen (rules in systems/xp-combo.js): the HUD EXP counter
-// that counts up live, the combo badge under it and the big side callouts
-// for the good moments and the mistakes (rainbow letters and glitter for the
-// youngest players, game/glitter.js gentle mode).
+// EXP combo on screen (rules in systems/xp-combo.js): the HUD EXP and coin
+// counters that count up live, the combo badge under them and the big side
+// callouts for the good moments and the mistakes (rainbow letters and
+// glitter for the youngest players, game/glitter.js gentle mode).
 // Visuals only: game.js plays the sounds and shakes the screen.
 import { getLang, numLocale } from '../i18n.js';
 import { gentleFx } from '../game/glitter.js';
@@ -13,53 +13,69 @@ export const multText = m => `×${isFr() ? String(m).replace('.', ',') : String(
 const COMBO_STEPS = [1.5, 2, 2.5, 3];
 const GLITTER = ['#ff5fa2', '#ffb13b', '#ffe14d', '#5ee87a', '#4cc9ff', '#9b7bff', '#ffffff'];
 
-// ── HUD EXP counter ───────────────────────────────────────────────────────
-let _shownXp = 0;
-let _targetXp = 0;
-let _raf = 0;
-
-function hudXpEl() { return document.getElementById('hud-xp-count'); }
-
-// Shows `value` in the HUD: counts up when it grows, drops at once (with a
-// red flash) when a mistake costs EXP, no flash for a new game (`instant`).
-export function setHudXp(value, { instant = false } = {}) {
-  const el = hudXpEl();
-  if (!el) return;
-  _targetXp = Math.max(0, Math.round(value) || 0);
-  if (instant || _targetXp < _shownXp) {
-    const item = el.closest('.hud-currency-item');
-    if (!instant && item) restart(item, 'is-drop');
-    cancelAnimationFrame(_raf);
-    _raf = 0;
-    _shownXp = _targetXp;
-    el.textContent = num(_shownXp);
-    return;
+// ── HUD EXP and coin counters ─────────────────────────────────────────────
+// Count up when the value grows (with a little jump), drop at once with a
+// red flash when a mistake costs EXP, no flash for a new game (`instant`).
+function hudCounter(id) {
+  let shown = 0;
+  let target = 0;
+  let raf = 0;
+  const elOf = () => document.getElementById(id);
+  function step() {
+    const el = elOf();
+    const diff = target - shown;
+    if (!el || diff <= 0) {
+      shown = target;
+      if (el) el.textContent = num(shown);
+      raf = 0;
+      return;
+    }
+    shown = Math.min(target, shown + Math.max(1, Math.ceil(diff * 0.12)));
+    el.textContent = num(shown);
+    raf = requestAnimationFrame(step);
   }
-  if (_targetXp === _shownXp) return;
-  const item = el.closest('.hud-currency-item');
-  if (item) { item.classList.remove('is-bump'); void item.offsetWidth; item.classList.add('is-bump'); }
-  if (!_raf) _raf = requestAnimationFrame(stepHudXp);
+  return function set(value, { instant = false } = {}) {
+    const el = elOf();
+    if (!el) return;
+    const next = Math.max(0, Math.round(value) || 0);
+    const item = el.closest('.hud-currency-item');
+    if (instant || next < shown) {
+      if (!instant && item) restart(item, 'is-drop');
+      cancelAnimationFrame(raf);
+      raf = 0;
+      target = shown = next;
+      el.textContent = num(shown);
+      return;
+    }
+    // Called every frame by game.js: only a new, higher value jumps.
+    if (next > target && item) restart(item, 'is-bump');
+    target = next;
+    if (target !== shown && !raf) raf = requestAnimationFrame(step);
+  };
 }
 
-function stepHudXp() {
-  const el = hudXpEl();
-  const diff = _targetXp - _shownXp;
-  if (!el || diff <= 0) {
-    _shownXp = _targetXp;
-    if (el) el.textContent = num(_shownXp);
-    _raf = 0;
-    return;
-  }
-  _shownXp = Math.min(_targetXp, _shownXp + Math.max(1, Math.ceil(diff * 0.12)));
-  el.textContent = num(_shownXp);
-  _raf = requestAnimationFrame(stepHudXp);
+export const setHudXp = hudCounter('hud-xp-count');
+export const setHudCoins = hudCounter('hud-coins-count');
+
+// Row just under the top bar, outside its flow so it never squeezes the
+// hearts and the coins: the shot coins meter (screens/shot-meter.js), then
+// the combo badge.
+export function hudUnder() {
+  let row = document.getElementById('hud-under');
+  if (row) return row;
+  const host = document.getElementById('hud-left-cluster');
+  if (!host) return null;
+  row = document.createElement('div');
+  row.id = 'hud-under';
+  host.appendChild(row);
+  return row;
 }
 
 // ── Combo badge (under the coins / EXP of the HUD) ────────────────────────
 function badge() {
   let el = document.getElementById('hud-combo');
   if (el) return el;
-  const host = document.getElementById('hud-left-cluster');
+  const host = hudUnder();
   if (!host) return null;
   el = document.createElement('div');
   el.id = 'hud-combo';
@@ -333,4 +349,5 @@ export function resetComboFx() {
   hideComboBadge();
   document.getElementById('jx-callouts')?.replaceChildren();
   setHudXp(0, { instant: true });
+  setHudCoins(0, { instant: true });
 }
