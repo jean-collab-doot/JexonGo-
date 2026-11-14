@@ -73,6 +73,7 @@
   <link rel="stylesheet" href="src/screens/game-ui.css">
   <link rel="stylesheet" href="src/screens/combo-fx.css">
   <link rel="stylesheet" href="src/screens/shot-meter.css">
+  <link rel="stylesheet" href="src/screens/credits-page.css">
 </head>
 <body>
   <!-- Opening intro (src/screens/new-player-intro.js takes it over). It is
@@ -238,16 +239,12 @@
         </div>
       </div>
 
-      <button class="jx-pill" type="button" data-jx-sub="drawer-credits" data-i18n="jxCredits">CRÉDITS</button>
-      <div id="drawer-credits" class="jx-sub"></div>
+      <button id="btn-jx-credits" class="jx-pill" type="button" data-i18n="jxCredits">CRÉDITS</button>
 
       <div id="drawer-profile">
-        <!-- One SE CONNECTER button: it opens the two ways to sign in. -->
-        <button class="jx-pill jx-connect" id="btn-jx-connect" type="button" data-jx-sub="drawer-login" data-i18n="jxConnect">SE CONNECTER</button>
-        <div id="drawer-login" class="jx-sub">
-          <button class="login-btn login-google jx-pill" id="btn-login-google" type="button" aria-label="Sign in with Google" data-i18n="jxWithGoogle">AVEC GOOGLE</button>
-          <button class="jx-pill" id="btn-login-email" type="button" data-i18n="jxWithEmail">AVEC UN COURRIEL</button>
-        </div>
+        <!-- One SE CONNECTER button: it opens the sign-in page with the two
+             ways to sign in (screens/connect-prompt.js, reason 'signin'). -->
+        <button class="jx-pill jx-connect" id="btn-jx-connect" type="button" data-i18n="jxConnect">SE CONNECTER</button>
         <span id="menu-profile-name" class="menu-profile-name"></span>
         <button id="btn-google-signout" class="jx-pill" type="button" data-i18n="signOut">× SIGN OUT</button>
         <button id="btn-menu-delete-account" class="jx-pill" type="button" data-i18n="deleteAccount">DELETE ACCOUNT</button>

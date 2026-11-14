@@ -17,11 +17,13 @@ const GOOGLE_G = `<svg viewBox="0 0 48 48" aria-hidden="true">
 // TOP 20 in the lobby (menu.js). reason 'skin': tapped OBTENIR on an event
 // skin chest (screens/chest.js).
 // reason 'daily': a player without an account tapped the daily reward.
+// reason 'signin': the SE CONNECTER button of the RÉGLAGE drawer.
 const REASON_SUB = {
   multi: ['Connecte-toi pour jouer en multijoueur!', 'Sign in to play multiplayer!'],
   top20: ['Connecte-toi pour voir le TOP 20!', 'Sign in to see the TOP 20!'],
   daily: ['Connecte-toi pour récupérer ta récompense!', 'Sign in to claim your reward!'],
   skin: ['Connecte-toi pour obtenir ton skin Halloween 2026!', 'Sign in to get your Halloween 2026 skin!'],
+  signin: ['Choisis comment te connecter.', 'Choose how to sign in.'],
 };
 const ACCOUNT_NEEDED = ['multi', 'top20', 'daily'];
 
@@ -44,7 +46,7 @@ export function showConnectPrompt({ onGoogle, onEmail, onLater, onLegal, reason 
   overlay.innerHTML = `
     <div class="cp-plane"></div>
     <div class="cp-card">
-      <div class="cp-title">${ACCOUNT_NEEDED.includes(reason)
+      <div class="cp-title">${reason === 'signin' ? (fr ? 'SE CONNECTER' : 'SIGN IN') : ACCOUNT_NEEDED.includes(reason)
         ? (fr ? 'COMPTE REQUIS' : 'ACCOUNT NEEDED')
         : (fr ? 'BRAVO PILOTE!' : 'GREAT JOB, PILOT!')}</div>
       <div class="cp-sub">${REASON_SUB[reason]?.[fr ? 0 : 1]
@@ -63,7 +65,7 @@ export function showConnectPrompt({ onGoogle, onEmail, onLater, onLegal, reason 
         <button type="button" data-legal="terms">${t('jxTermsOfService')}</button>
         <button type="button" data-legal="privacy">${t('jxPolicyUser')}</button>
       </div>
-      <button class="cp-later" type="button">${fr ? 'Plus tard' : 'Later'}</button>
+      <button class="cp-later" type="button">${reason === 'signin' ? (fr ? 'Retour' : 'Back') : (fr ? 'Plus tard' : 'Later')}</button>
     </div>`;
   document.body.appendChild(overlay);
 

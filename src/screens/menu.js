@@ -738,10 +738,9 @@ export function updateDrawerProfile() {
 
   if (loginBtn)  loginBtn.hidden  = isLoggedIn;
   if (emailBtn)  emailBtn.hidden  = isLoggedIn;
-  // The single SE CONNECTER button and its two choices (Google, e-mail).
+  // The single SE CONNECTER button (it opens the sign-in page).
   const connectBtn = document.getElementById('btn-jx-connect');
   if (connectBtn) connectBtn.hidden = isLoggedIn;
-  if (isLoggedIn) document.getElementById('drawer-login')?.classList.remove('is-open');
   if (signoutEl) signoutEl.hidden = !isLoggedIn;
   if (deleteEl)  deleteEl.hidden  = !isLoggedIn;
   if (nameEl) {

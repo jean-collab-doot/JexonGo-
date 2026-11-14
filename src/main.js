@@ -393,7 +393,8 @@ function openConnectPrompt(reason = '') {
   showConnectPrompt({
     reason,
     onGoogle: () => handleGoogleLogin('google'),
-    onEmail: () => openEmailSignIn('signup'),
+    // From SE CONNECTER (reason 'signin'): log in to an existing account.
+    onEmail: () => openEmailSignIn(reason === 'signin' ? 'login' : 'signup'),
     onLegal: kind => {
       _reopenConnectPrompt = { reason };
       showScreen(kind === 'terms' ? 's-terms' : 's-privacy');

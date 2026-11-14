@@ -18,7 +18,6 @@ import { createMissile, updateMissiles, drawMissiles } from '../game/missiles.js
 import { spawnExplosion, spawnHitSpark, spawnMissileExplosion, updateParticles, drawParticles } from '../game/particles.js';
 import {
   drawAircraftSprite,
-  drawAircraftSpriteSized,
   drawEnemySprite,
   getEnemyDrawSize,
   getPlayerSize,
@@ -46,6 +45,7 @@ import { calcSpeedXP } from '../systems/xp.js';
 import { resetShotCoins, countHit, shotProgress, liveShotCoins, shotCoinsResult } from '../systems/shot-coins.js';
 import { setShotMeter, shotStepPop, resetShotMeter } from './shot-meter.js';
 import { resetNukeReward, nukeReward, nukeRewardTotal } from '../systems/nuke-reward.js';
+import { resetWingmen, startWingmenEntry, wingmenIn, updateWingmen, wingmanPos, drawWingmen } from '../game/wingmen.js';
 import { resetCombo, comboCorrect, comboMistake, cashCombo, comboState, gameXpBreakdown, WAVE_SIZE, FAST_SECONDS } from '../systems/xp-combo.js';
 import {
   setHudXp, setHudCoins, setComboBadge, hideComboBadge, comboBadgeDrop, comboStepReached, resetComboFx,
@@ -1072,6 +1072,7 @@ function showPracticeBanner(done) {
 // climbing in from the bottom (beginner practice, after the 5-second break).
 function showStartCountdown(done, { keepPlane = false } = {}) {
   window.dispatchEvent(new Event('jexongo:countdown'));   // e.g. hides the briefing
+  resetWingmen();   // the escort planes fly in again when it is over
   _cutsceneActive = true;
   _stopGameLoop();
   stopCountdownDraw();
@@ -1111,6 +1112,8 @@ function showStartCountdown(done, { keepPlane = false } = {}) {
     if (countSid !== _sessionId) return;
     if (_gamePausedFromQuit) { setTimeout(tickDown, 250); return; }
     count--;
+    // The count reached 0: the escort planes fly in from both sides.
+    if (count <= 0 && activeShootingPlan()?.wingmen && !wingmenIn()) startWingmenEntry();
     if (count <= 0) {
       // Countdown over: (boss levels) BOSS ALERT, then the START banner. The
       // aircraft stays locked (cutscene) until both have played.
@@ -3055,6 +3058,8 @@ function drawCountdownSafeFrame() {
   if (_speedLines.length === 0) initSpeedLines(canvas.width, canvas.height);
   drawSpeedLines(ctx, canvas.width, canvas.height);
   const plane = countdownPlanePosition();
+  // Escort planes flying in once the count reached 0 (game/wingmen.js).
+  if (activeShootingPlan()?.wingmen && wingmenIn()) drawEscorts(performance.now(), plane.x, plane.y, 1, 1);
   drawAircraftSprite(ctx, G.activeAircraft, plane.x, plane.y, _shipFrame, 1, 0);
   // Weather is visible from the very start, during the countdown too.
   drawWeatherLayer(1, null);
@@ -3958,13 +3963,13 @@ function frame(ts = 0) {
   updateAndDrawAirSupport(ts || performance.now());
   updateAndDrawCoop(ts || performance.now());
 
+  // Escort planes of the wingmen shot types (game/wingmen.js): they fly in
+  // from both sides once the countdown is over (the loop starts again when
+  // the cutscene ends), then roam beside the player on their own.
   if (!_playerDestroyed && shootingPlan?.wingmen) {
-    const wingSize = Math.max(46, Math.round(getPlayerSize() * (isTouchMobile() ? 0.78 : 0.68)));
-    const wingOffset = wingmanSideOffset();
-    const sideAlpha = flashAlpha * 0.94;
-    const sideTilt = bankAngle * 0.45;
-    drawAircraftSpriteSized(ctx, G.activeAircraft, playerDrawX - wingOffset, wingmanY(playerDrawY), wingSize, _shipFrame, sideAlpha, sideTilt);
-    drawAircraftSpriteSized(ctx, G.activeAircraft, playerDrawX + wingOffset, wingmanY(playerDrawY), wingSize, _shipFrame, sideAlpha, sideTilt);
+    const now = ts || performance.now();
+    if (!wingmenIn() && !_cutsceneActive) startWingmenEntry(now);   // a start without countdown
+    drawEscorts(now, playerDrawX, playerDrawY, _frameStep, flashAlpha);
   }
 
   if (!_playerDestroyed) {
@@ -4205,15 +4210,41 @@ function sourceForShot(shot) {
   const mobileScale = isTouchMobile() ? 0.72 : 1;
   const sideOffset = wingmanSideOffset();
   if (shot.source === 'leftWingman') {
-    return { x: G.player.x - sideOffset, y: wingmanY(G.player.y) };
+    return wingmanPos(-1) || { x: G.player.x - sideOffset, y: wingmanY(G.player.y) };
   }
   if (shot.source === 'rightWingman') {
-    return { x: G.player.x + sideOffset, y: wingmanY(G.player.y) };
+    return wingmanPos(1) || { x: G.player.x + sideOffset, y: wingmanY(G.player.y) };
   }
   return {
     x: G.player.x + (shot.x || 0) * mobileScale,
     y: G.player.y - 42 + (shot.y || 0) * mobileScale,
   };
+}
+
+// Moves and draws the two escort planes beside the plane at (px, py).
+function drawEscorts(now, px, py, frameStep, alpha) {
+  const size = Math.max(46, Math.round(getPlayerSize() * (isTouchMobile() ? 0.78 : 0.68)));
+  updateWingmen({
+    now, frameStep, size, width: canvas.width,
+    slot: side => ({ x: px + side * wingmanSideOffset(), y: wingmanY(py) }),
+  });
+  drawWingmen(ctx, { aircraftId: G.activeAircraft, size, frame: _shipFrame, alpha: alpha * 0.94 });
+}
+
+// An escort plane's own aim: the nearest enemy ahead of it, the shot going on
+// past it. null when there is none (the shot then flies straight).
+function wingmanAimPoint(source) {
+  let target = null, best = Infinity;
+  for (const e of G.enemies) {
+    if (!e.active || e.holdEntry || e.turncoat || e.y >= source.y) continue;
+    const d = (e.x - source.x) ** 2 + (e.y - source.y) ** 2;
+    if (d < best) { best = d; target = e; }
+  }
+  if (!target) return null;
+  const dx = target.x - source.x, dy = target.y - source.y;
+  const len = Math.hypot(dx, dy) || 1;
+  const far = Math.max(canvas.height * 1.4, 900);
+  return { x: source.x + (dx / len) * far, y: source.y + (dy / len) * far };
 }
 
 function wingmanSideOffset() {
@@ -4254,7 +4285,9 @@ function firePlayerShootingPlan() {
   const homing = Boolean(ability.homing) || homingUpgradeOwned();
   for (const shot of aircraftShots) {
     const source = sourceForShot(shot);
-    const target = targetPointForShot(source, { ...shot, angle: (shot.angle || 0) + aimOffset() });
+    // Escort planes aim on their own, like small turrets (game/wingmen.js).
+    const target = (shot.source && wingmanAimPoint(source))
+      || targetPointForShot(source, { ...shot, angle: (shot.angle || 0) + aimOffset() });
     const damage = (shot.damage || 1) * (ability.damage || 1);
     if (ability.weapon === 'gau8') {
       // A-10 GAU-8: a burst of five heavy shells, each worth double damage.
@@ -7028,6 +7061,7 @@ export function initGame(levelNum, onComplete) {
   resetShotCoins({ keep: !!snap });     // shot coins (systems/shot-coins.js)
   resetComboFx();
   resetShotMeter();
+  resetWingmen();
   resetNukeReward({ keep: !!snap });   // nuke rewards (systems/nuke-reward.js)
   _shotCoinsShown = liveShotCoins();
   updateShotMeter();
