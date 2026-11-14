@@ -2103,3 +2103,17 @@ html:not(.touch-phone):not(.touch-tablet):not(.touch-mobile) #s-levelmap #levelm
 .jx-mistakes-count.hidden { display: none; }
 /* MULTI mode: the review is a solo game. */
 #s-menu.is-multi .jx-mistakes-btn { display: none; }
+
+/* RÉGLAGE › CRÉDITS (settings.js _renderCredits): music and sounds with their
+   author, source and license. */
+#settings-panel #drawer-credits h3 {
+  margin: 8px 4px 6px; font-family: var(--jx-font); font-size: 13px; letter-spacing: 1px; color: var(--jx-ink);
+}
+#settings-panel .jx-credits { list-style: none; margin: 0 0 6px; padding: 0; display: grid; gap: 6px; }
+#settings-panel .jx-credit {
+  display: grid; gap: 2px; padding: 8px 10px; border-radius: 12px;
+  background: rgba(255, 255, 255, .35); color: var(--jx-ink);
+  font-family: var(--jx-font); font-size: 11px; line-height: 1.3; text-align: left;
+}
+#settings-panel .jx-credit b { font-size: 12px; }
+#settings-panel .jx-credit a { color: #1c5fb8; text-decoration: underline; }

@@ -5,7 +5,7 @@ import { save } from '../utils/storage.js';
 import { AIRCRAFT, AIRCRAFT_ORDER } from '../data/aircraft.js';
 import { paintPlaneInfoFisheye } from './plane-info-fisheye.js';
 import { t, getLang, numLocale, applyI18n } from '../i18n.js';
-import { MISSILE_TYPES, SHOOTING_PLANS, renderShotPlanMiniCard, startShopPreview, stopShopPreview } from './shop.js';
+import { MISSILE_TYPES, SHOOTING_PLANS, renderShotPlanMiniCard, startShopPreview, stopShopPreview, buyOrEquipPlan, buyOrEquipMissile } from './shop.js';
 import { coinIcon, uiIcon } from '../utils/icons.js';
 import { isMultiLobby, renderBotPanel, onHangarTabShown } from './multiplayer.js';
 import { visibleSkins, ownsSkin, activeSkin, setActiveSkin, skinEventOpen, aircraftArt, hasNewSkin, markSkinsSeen } from '../data/skins.js';
@@ -69,10 +69,18 @@ export function buyAircraftFromLobby(id) {
   buyAircraft(id);
   return 'bought';
 }
+// Choosing a plane: back to the lobby at once, the chosen plane on show.
+let _toLobbyTimer = 0;
 function selectAircraft(id) {
   G.activeAircraft = id;
   save('activeAircraft', G.activeAircraft);
   renderHangarPanels();
+  window.dispatchEvent(new CustomEvent('jexongo:plane-selected', { detail: { id } }));
+  clearTimeout(_toLobbyTimer);
+  _toLobbyTimer = setTimeout(() => {
+    closePlaneInfo();
+    if (!$('s-hangar')?.classList.contains('hidden')) window._nav?.toMenu('next');
+  }, 250);   // the card's "équipé" shows a moment first
 }
 function buyAircraft(id) {
   SFX.buy();
@@ -369,7 +377,6 @@ function openSkinPicker(id) {
 // ── TIR DE MISSILE (shot plans + missile skins) ─────────────────────────────
 function renderMissilesTab(body) {
   const lang = getLang() === 'fr' ? 'fr' : 'en';
-  const owned = Array.isArray(G.ownedShootingPlans) ? G.ownedShootingPlans : ['default'];
   const ownedMissiles = Array.isArray(G.ownedMissileTypes) ? G.ownedMissileTypes : [];
   G.ownedMissileTypes = ownedMissiles;
 
@@ -385,26 +392,14 @@ function renderMissilesTab(body) {
     </div>
   `;
 
+  // A shot type or a missile: equipped when owned, bought with coins when not
+  // (same purchase as the shop, shop.js).
   body.querySelectorAll('[data-plan-id]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const planId = btn.dataset.planId;
-      if (!owned.includes(planId)) return;
-      G.activeShootingPlan = planId;
-      save('activeShootingPlan', G.activeShootingPlan);
-      window.dispatchEvent(new CustomEvent('jexongo:shooting-plan-changed', { detail: { planId } }));
-      renderHangarPanels();
-    });
+    btn.addEventListener('click', () => buyOrEquipPlan(btn.dataset.planId, refreshAfterPurchase));
   });
 
   body.querySelectorAll('[data-hangar-missile]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const missileId = btn.dataset.hangarMissile || '';
-      if (!ownedMissiles.includes(missileId)) return;
-      G.activeMissileType = missileId;
-      save('ownedMissileTypes', G.ownedMissileTypes);
-      save('activeMissileType', G.activeMissileType);
-      renderHangarPanels();
-    });
+    btn.addEventListener('click', () => buyOrEquipMissile(btn.dataset.hangarMissile || '', refreshAfterPurchase));
   });
 
   // Same live "plane firing" preview used by the shop's shot-plan cards
@@ -413,12 +408,18 @@ function renderMissilesTab(body) {
   startShopPreview();
 }
 
+// After a purchase in the missile tab: the tab and the hangar coin counter.
+function refreshAfterPurchase() {
+  renderHangar();
+}
+
 function renderMissileOption(type, lang, activeMissileType, ownedMissiles) {
   const owned = ownedMissiles.includes(type.id);
   const active = activeMissileType === type.id;
   const status = active
     ? (lang === 'fr' ? 'ÉQUIPÉ' : 'EQUIPPED')
-    : owned ? (lang === 'fr' ? 'DÉBLOQUÉ' : 'UNLOCKED') : (lang === 'fr' ? 'BLOQUÉ' : 'LOCKED');
+    : owned ? (lang === 'fr' ? 'CHOISIR' : 'SELECT')
+      : `${type.price.toLocaleString(numLocale())} ${coinIcon('jg-coin-icon-small')}`;
   return `
     <button class="jx-slot jx-slot-missile ${active ? 'is-active' : ''} ${owned ? '' : 'is-locked'}" type="button" data-hangar-missile="${type.id}">
       <span class="jx-slot-thumb" style="background-image:url('${type.sprite}')"></span>

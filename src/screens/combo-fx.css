@@ -240,3 +240,10 @@ html body #s-result .rs-btn.rs-btn-alt { font-size: clamp(9px, 2.6vw, 14px); }
   .jx-worked { gap: 4px; }
   .jx-worked-op { padding: 3px 8px; }
 }
+
+/* Nuke reward (calloutNuke): EXP and coins one per line, in Press Start 2P
+   so the digits ("50") read clearly. */
+.jx-callout-value.is-reward {
+  font-family: 'Press Start 2P', monospace; font-weight: 400;
+  font-size: min(clamp(16px, 5.4vw, 38px), 5.5vh); line-height: 1.35;
+}

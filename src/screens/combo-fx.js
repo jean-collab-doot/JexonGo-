@@ -199,7 +199,7 @@ function showCallout(item) {
   el.className = `jx-callout is-${item.tone}${gentle ? ' is-gentle' : ''}`;
   el.style.setProperty('--w', String(longestWord(item.title)));
   el.innerHTML = `<div class="jx-callout-title">${item.title}</div>`
-    + (item.value ? `<div class="jx-callout-value">${item.value}</div>` : '')
+    + (item.value ? `<div class="jx-callout-value${item.valueClass ? ` ${item.valueClass}` : ''}">${item.value}</div>` : '')
     + `<div class="jx-callout-subs">${item.subs.map(subHTML).join('')}</div>`
     + (gentle && item.tone === 'good' ? glitterBits(item.priority >= 2 ? 14 : 9) : '');
   host.appendChild(el);
@@ -225,8 +225,8 @@ function scheduleQueue() {
 
 // title, value ('+31 EXP'), tone 'good' | 'soft', subs [{ text, value }],
 // priority (the queue keeps the 2 most important), now = show at once.
-export function callout({ title, value = '', tone = 'good', subs = [], priority = 1, now = false }) {
-  const item = { title, value, tone, subs, priority };
+export function callout({ title, value = '', tone = 'good', subs = [], priority = 1, now = false, valueClass = '' }) {
+  const item = { title, value, tone, subs, priority, valueClass };
   if (now) {
     _queue = [];
     clearTimeout(_queueTimer);
@@ -333,6 +333,19 @@ export function calloutHit() {
   callout({
     title: bang(pick(words(['OUPS, TOUCHÉ', 'ATTENTION'], ['OOPS, HIT', 'WATCH OUT']))),
     tone: 'soft', subs: [{ text: words('ESQUIVE LES TIRS', 'DODGE THE SHOTS') }], priority: 3,
+  });
+}
+
+// A nuke exploded: its reward (systems/nuke-reward.js), big and at once.
+// Practice: the title alone.
+export function calloutNuke({ xp = 0, coins = 0 } = {}) {
+  callout({
+    title: bang(pick(words(['NUKE', 'BOUM'], ['NUKE', 'BOOM']))),
+    // Both gains big, one per line, in digits that read clearly.
+    value: [xp > 0 ? `+${num(xp)} EXP` : '', coins > 0 ? `+${num(coins)} ${words('PIÈCES', 'COINS')}` : '']
+      .filter(Boolean).join('<br>'),
+    valueClass: 'is-reward',
+    priority: 3, now: true,
   });
 }
 

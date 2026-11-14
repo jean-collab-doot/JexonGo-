@@ -4,6 +4,7 @@ import { resetIntroBriefing } from './intro-briefing.js';
 import { showEquationConfig } from './onboarding.js';
 import { openShareGame } from './share-game.js';
 import { updateDrawerProfile } from './menu.js';
+import { LICENSES, MUSIC_CREDITS, SOUND_CREDITS } from '../data/credits.js';
 
 const KEY = 'jexongo_settings';
 
@@ -69,6 +70,29 @@ function _refresh() {
 
   const langBtn = document.getElementById('btn-jx-lang');
   if (langBtn) langBtn.textContent = t('jxLangName');
+  _renderCredits();
+}
+
+// CRÉDITS: every music and sound of the game, its author and its license
+// (data/credits.js), with links to the source and the license.
+const _esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+function _renderCredits() {
+  const box = document.getElementById('drawer-credits');
+  if (!box) return;
+  const lang = getLang() === 'en' ? 'en' : 'fr';
+  const item = c => {
+    const lic = LICENSES[c.license];
+    return `<li class="jx-credit">
+      <b>${_esc(c.title)}</b>
+      <span>${_esc(c.author)} · ${_esc(c.use[lang])}</span>
+      <span class="jx-credit-links"><a href="${c.source}" target="_blank" rel="noopener noreferrer">${lang === 'fr' ? 'Source' : 'Source'}</a>
+        · <a href="${lic.url}" target="_blank" rel="noopener noreferrer">${_esc(lic.name)}</a></span>
+    </li>`;
+  };
+  const used = new Set([...MUSIC_CREDITS, ...SOUND_CREDITS].map(c => c.license));
+  box.innerHTML = `<h3>${t('jxCreditsMusic')}</h3><ul class="jx-credits">${MUSIC_CREDITS.map(item).join('')}</ul>
+    <h3>${t('jxCreditsSounds')}</h3><ul class="jx-credits">${SOUND_CREDITS.map(item).join('')}</ul>
+    <h3>${lang === 'fr' ? 'LICENCES' : 'LICENSES'}</h3><ul class="jx-credits">${[...used].map(k => `<li class="jx-credit"><b>${_esc(LICENSES[k].name)}</b><span>${_esc(LICENSES[k].text[lang])}</span></li>`).join('')}</ul>`;
 }
 
 function _openDrawer() {

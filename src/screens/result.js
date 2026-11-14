@@ -16,6 +16,7 @@ import { reportTiles, mountWorkedOn } from './mistake-review.js';
 import { notebookSize } from '../systems/session-report.js';
 import { gameXpBreakdown, comboState, recordBestGame } from '../systems/xp-combo.js';
 import { shotCoinsResult } from '../systems/shot-coins.js';
+import { nukeRewardTotal } from '../systems/nuke-reward.js';
 import { multText } from './combo-fx.js';
 import { gentleFx } from '../game/glitter.js';
 
@@ -155,8 +156,10 @@ export function showResult(won) {
   // Shot coins (systems/shot-coins.js, steps of hits): already added by
   // game.js finishLevel; the coins tile says how many hits and coins.
   const shot = canEarnRewards ? shotCoinsResult() : null;
-  const totalCoinsGained = coinsEarned + collectedCoins + (shot?.total || 0);
-  const totalXpGained = xp + collectedXp;
+  // Nuke rewards (systems/nuke-reward.js): also added by finishLevel.
+  const nuke = canEarnRewards ? nukeRewardTotal() : { xp: 0, coins: 0 };
+  const totalCoinsGained = coinsEarned + collectedCoins + (shot?.total || 0) + nuke.coins;
+  const totalXpGained = xp + collectedXp + nuke.xp;
 
   _prevHighestLevel = G.highestLevel || 0;
 

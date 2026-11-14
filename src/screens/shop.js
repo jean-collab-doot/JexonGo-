@@ -531,7 +531,8 @@ function bindPlanCards() {
   });
 }
 
-function buyOrEquipPlan(planId) {
+// Also used by the hangar's missile tab (refresh = its own re-render).
+export function buyOrEquipPlan(planId, refresh = renderShop) {
   if (activeAircraftHasSpecialWeapon()) return;
   const plan = getPlan(planId);
   if (!plan) return;
@@ -553,10 +554,10 @@ function buyOrEquipPlan(planId) {
   window.dispatchEvent(new CustomEvent('jexongo:shooting-plan-changed', {
     detail: { planId: plan.id },
   }));
-  renderShop();
+  refresh();
 }
 
-function buyOrEquipMissile(missileId) {
+export function buyOrEquipMissile(missileId, refresh = renderShop) {
   if (activeAircraftHasSpecialWeapon()) return;
   const missile = getMissile(missileId);
   if (!missile) return;
@@ -575,7 +576,7 @@ function buyOrEquipMissile(missileId) {
   G.activeMissileType = missile.id;
   save('activeMissileType', G.activeMissileType);
   saveAll();
-  renderShop();
+  refresh();
 }
 
 export function stopShopPreview() {

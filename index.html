@@ -238,9 +238,16 @@
         </div>
       </div>
 
+      <button class="jx-pill" type="button" data-jx-sub="drawer-credits" data-i18n="jxCredits">CRÉDITS</button>
+      <div id="drawer-credits" class="jx-sub"></div>
+
       <div id="drawer-profile">
-        <button class="login-btn login-google jx-pill" id="btn-login-google" type="button" aria-label="Sign in with Google" data-i18n="signInGoogle">SIGN IN WITH GOOGLE</button>
-        <button class="jx-pill" id="btn-login-email" type="button" data-i18n="signInEmail">SE CONNECTER AVEC UN COURRIEL</button>
+        <!-- One SE CONNECTER button: it opens the two ways to sign in. -->
+        <button class="jx-pill jx-connect" id="btn-jx-connect" type="button" data-jx-sub="drawer-login" data-i18n="jxConnect">SE CONNECTER</button>
+        <div id="drawer-login" class="jx-sub">
+          <button class="login-btn login-google jx-pill" id="btn-login-google" type="button" aria-label="Sign in with Google" data-i18n="jxWithGoogle">AVEC GOOGLE</button>
+          <button class="jx-pill" id="btn-login-email" type="button" data-i18n="jxWithEmail">AVEC UN COURRIEL</button>
+        </div>
         <span id="menu-profile-name" class="menu-profile-name"></span>
         <button id="btn-google-signout" class="jx-pill" type="button" data-i18n="signOut">× SIGN OUT</button>
         <button id="btn-menu-delete-account" class="jx-pill" type="button" data-i18n="deleteAccount">DELETE ACCOUNT</button>

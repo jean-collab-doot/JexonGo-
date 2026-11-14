@@ -45,10 +45,11 @@ import { applyAgeModifiers } from '../systems/age-modifiers.js';
 import { calcSpeedXP } from '../systems/xp.js';
 import { resetShotCoins, countHit, shotProgress, liveShotCoins, shotCoinsResult } from '../systems/shot-coins.js';
 import { setShotMeter, shotStepPop, resetShotMeter } from './shot-meter.js';
+import { resetNukeReward, nukeReward, nukeRewardTotal } from '../systems/nuke-reward.js';
 import { resetCombo, comboCorrect, comboMistake, cashCombo, comboState, gameXpBreakdown, WAVE_SIZE, FAST_SECONDS } from '../systems/xp-combo.js';
 import {
   setHudXp, setHudCoins, setComboBadge, hideComboBadge, comboBadgeDrop, comboStepReached, resetComboFx,
-  calloutAnswer, calloutCash, calloutExpMax, calloutKill, calloutMistake, calloutHit,
+  calloutAnswer, calloutCash, calloutExpMax, calloutKill, calloutMistake, calloutHit, calloutNuke,
 } from './combo-fx.js';
 import { load, save } from '../utils/storage.js';
 import { t, getLang } from '../i18n.js';
@@ -4095,7 +4096,7 @@ function frame(ts = 0) {
 
   // ── Nuke animation overlay ─────────────────────────────────────────────
   if (_nukeAnim > 0) {
-    if (_nukeAnim === 55 && !_nukeApplied) { _nukeApplied = true; applyNuke(); shakeGamePage(); }
+    if (_nukeAnim === 55 && !_nukeApplied) { _nukeApplied = true; applyNuke(); shakeGamePage(); onNukeExploded(); }
     const t  = 1 - _nukeAnim / 90;          // 0 → 1 over the animation
     // The blast (and its shockwave) starts where the nuke missile landed.
     const { x: cx, y: cy } = nukeBlastPoint();
@@ -5330,6 +5331,17 @@ function detonateNuke() {
   _nukedBosses = new Set();
   G.enemyMissiles = [];
   SFX.nukeBlast();
+}
+
+// After the blast: +100 EXP and +50 coins (systems/nuke-reward.js), with a
+// big side callout and the cash-in sound.
+function onNukeExploded() {
+  const reward = comboOn() ? nukeReward() : { xp: 0, coins: 0 };
+  if (calloutsOn()) calloutNuke(reward);
+  if (reward.xp || reward.coins) {
+    SFX.comboCash();
+    updateGameCurrencyHUD();
+  }
 }
 
 function applyNuke() {
@@ -6567,8 +6579,10 @@ function finishLevel(won) {
   // player's saved account balance.
   if (won) {
     // Coins picked up during play + the shot coins (steps of hits).
-    const earnedCoins = Math.max(0, G.airdropSessionCoins || 0) + (comboOn() ? shotCoinsResult().total : 0);
-    const earnedXp = Math.max(0, G.airdropSessionXP || 0);
+    // + the nuke rewards (systems/nuke-reward.js).
+    const nuke = comboOn() ? nukeRewardTotal() : { xp: 0, coins: 0 };
+    const earnedCoins = Math.max(0, G.airdropSessionCoins || 0) + (comboOn() ? shotCoinsResult().total : 0) + nuke.coins;
+    const earnedXp = Math.max(0, G.airdropSessionXP || 0) + nuke.xp;
     G.coins = clampCoins((G.coins || 0) + earnedCoins);
     G.xp = (G.xp || 0) + earnedXp;
     G.totalXpEarned = (G.totalXpEarned || 0) + earnedXp;
@@ -6611,10 +6625,10 @@ function finishLevel(won) {
 function updateGameCurrencyHUD() {
   // Coins picked up + the shot coins steps already landed in the counter,
   // counting up live.
-  setHudCoins((G.airdropSessionCoins || 0) + (comboOn() ? _shotCoinsShown : 0));
+  setHudCoins((G.airdropSessionCoins || 0) + (comboOn() ? _shotCoinsShown + nukeRewardTotal().coins : 0));
   // EXP of the game so far, counting up live (answers + combo + pick-ups,
   // with the per-game caps); practice only shows what was picked up.
-  setHudXp(comboOn() ? gameXpBreakdown().total : (G.airdropSessionXP || 0));
+  setHudXp(comboOn() ? gameXpBreakdown().total + nukeRewardTotal().xp : (G.airdropSessionXP || 0));
 }
 
 // ── EXP COMBO (rules: systems/xp-combo.js, visuals: screens/combo-fx.js) ──
@@ -7014,6 +7028,7 @@ export function initGame(levelNum, onComplete) {
   resetShotCoins({ keep: !!snap });     // shot coins (systems/shot-coins.js)
   resetComboFx();
   resetShotMeter();
+  resetNukeReward({ keep: !!snap });   // nuke rewards (systems/nuke-reward.js)
   _shotCoinsShown = liveShotCoins();
   updateShotMeter();
   _timedXpElapsedMs = 0;

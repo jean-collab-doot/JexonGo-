@@ -310,6 +310,10 @@ export function updateSelectedPlaneShowcase(imgEl, nameEl) {
 // button under it to buy it. The game always uses G.activeAircraft.
 let _lobbyPreview = null;
 
+// A plane chosen in the hangar: the lobby shows it, not a plane previewed
+// with ◀︎ ▶︎ before.
+window.addEventListener('jexongo:plane-selected', () => { _lobbyPreview = null; renderLobbyPlane(); });
+
 export function lobbyPlanes() {
   return AIRCRAFT_ORDER.filter(id => AIRCRAFT[id] && (!AIRCRAFT[id].secret || G.unlockedAircraft.includes(id)));
 }
@@ -734,6 +738,10 @@ export function updateDrawerProfile() {
 
   if (loginBtn)  loginBtn.hidden  = isLoggedIn;
   if (emailBtn)  emailBtn.hidden  = isLoggedIn;
+  // The single SE CONNECTER button and its two choices (Google, e-mail).
+  const connectBtn = document.getElementById('btn-jx-connect');
+  if (connectBtn) connectBtn.hidden = isLoggedIn;
+  if (isLoggedIn) document.getElementById('drawer-login')?.classList.remove('is-open');
   if (signoutEl) signoutEl.hidden = !isLoggedIn;
   if (deleteEl)  deleteEl.hidden  = !isLoggedIn;
   if (nameEl) {
