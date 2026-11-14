@@ -50,64 +50,87 @@
   50% { color: #5ee87a; } 67% { color: #4cc9ff; } 83% { color: #9b7bff; } 100% { color: #ff5fa2; }
 }
 
-/* Jumping texts, in the upper part of the play area. */
-#combo-pops, #combo-pops-low {
-  position: absolute; left: 0; right: 0; top: 24%;
+/* Side callouts (screens/combo-fx.js): big messages on the left side of the
+   play area, in the JexonGo font. Yellow for the good moments, soft coral
+   (never harsh) for a mistake or a hit. Portrait: in the middle band, between
+   the answers (moved up by a correction) and the correction panel.
+   Landscape / computers: higher, left of the question and its answers. */
+#jx-callouts {
+  position: absolute; left: max(12px, 3vw); top: 38%;
   z-index: 60; pointer-events: none;
-  display: flex; flex-direction: column; align-items: center; gap: 8px;
 }
-/* Mistakes: lower, between the answers (moved up by the correction) and
-   the correction panel. */
-#combo-pops-low { top: 42%; }
-.combo-pop {
-  position: relative;
-  font-family: 'Press Start 2P', monospace;
-  font-size: clamp(15px, 4.6vw, 28px); line-height: 1.1;
-  color: #ffe066; white-space: nowrap;
-  text-shadow: 3px 3px 0 #3a1d00, 0 0 16px rgba(255, 200, 40, .65);
-  animation: comboPop 1.15s cubic-bezier(.2, 1.5, .4, 1) var(--delay, 0ms) both;
+.jx-callout { --co-w: min(60vw, 420px); }
+@media (min-aspect-ratio: 1/1) {
+  #jx-callouts { top: 21%; }
+  /* Good moments happen while the question waits at the bottom: big. A
+     mistake shows during the correction: it stays left of the answers. */
+  .jx-callout.is-good { --co-w: min(36vw, 560px); }
+  .jx-callout.is-soft { --co-w: min(23vw, 330px); }
 }
-.combo-pop-fast { font-size: clamp(12px, 3.6vw, 22px); color: #7ee8fa; text-shadow: 3px 3px 0 #06324a, 0 0 14px rgba(80, 220, 255, .6); }
-.combo-pop-cash { font-size: clamp(18px, 5.6vw, 34px); color: #9effa1; text-shadow: 3px 3px 0 #0b3d17, 0 0 20px rgba(120, 255, 140, .7); }
-/* Mistakes: why it costs more (orange), then the EXP lost (red, bigger for a
-   worse mistake: --sev from .25 to 1), falling instead of jumping. */
-.combo-pop-warn { font-size: clamp(12px, 3.6vw, 22px); color: #ffb13b; text-shadow: 3px 3px 0 #4a2300, 0 0 12px rgba(255, 160, 40, .55); }
-.combo-pop-loss {
-  font-size: calc(clamp(14px, 4.2vw, 26px) * (.8 + var(--sev, .5) * .5));
-  color: #ff5a5a; text-shadow: 3px 3px 0 #4a0710, 0 0 14px rgba(255, 70, 70, .55);
-  animation-name: comboPopLoss;
+.jx-callout {
+  position: absolute; left: 0; top: 0; width: var(--co-w);
+  font-family: var(--jx-font, 'Pixelify Sans', 'Press Start 2P', monospace);
+  font-weight: 700; text-transform: uppercase; line-height: .95;
+  transform-origin: left center;
+  animation: coIn .5s cubic-bezier(.2, 1.5, .4, 1) both;
 }
-.combo-pop-loss.is-gentle { color: #ff8fb1; text-shadow: 3px 3px 0 #5a1730; }
-@keyframes comboPopLoss {
-  0%   { opacity: 0; transform: translateY(-14px) scale(.4); }
-  15%  { opacity: 1; transform: translateY(0) scale(1.15); }
-  22%, 38% { transform: translateX(-5px) scale(1); }
-  30%, 46% { transform: translateX(5px); }
-  75%  { opacity: 1; transform: none; }
-  100% { opacity: 0; transform: translateY(26px); }
+.jx-callout.is-out { animation: coOut .3s ease-in forwards; }
+.jx-callout-title {
+  /* Long words get smaller (--w = letters of the longest word). */
+  font-size: min(clamp(28px, 10vw, 104px), 12vh, calc(var(--co-w) / (var(--w, 8) * .6)));
+  color: #ffd84d;
+  text-shadow: 0 4px 0 #7a3a00, 3px 0 0 #7a3a00, -2px 0 0 #7a3a00, 0 -2px 0 #7a3a00, 0 0 22px rgba(255, 200, 40, .45);
+  transform: skewX(-7deg);
 }
-@keyframes comboPop {
-  0%   { opacity: 0; transform: translateY(18px) scale(.3); }
-  18%  { opacity: 1; transform: translateY(-8px) scale(1.18); }
-  30%  { transform: translateY(0) scale(1); }
-  75%  { opacity: 1; }
-  100% { opacity: 0; transform: translateY(-30px) scale(.95); }
+.jx-callout-value {
+  margin-top: .22em;
+  font-size: min(clamp(22px, 7vw, 60px), 7.5vh);
+  color: #fff;
+  text-shadow: 0 3px 0 #7a3a00, 2px 0 0 #7a3a00, -2px 0 0 #7a3a00, 0 -2px 0 #7a3a00;
+  transform: skewX(-7deg);
+  animation: coValue .5s cubic-bezier(.2, 1.5, .4, 1) .12s both;
 }
+.jx-callout-subs { margin-top: .4em; display: grid; gap: .25em; }
+.jx-callout-sub {
+  font-size: min(clamp(14px, 4.2vw, 30px), 3.8vh);
+  color: #c4f7cf; opacity: .95;
+  text-shadow: 0 2px 0 #1d4a2a, 1px 0 0 #1d4a2a, -1px 0 0 #1d4a2a;
+  transform: skewX(-7deg);
+  animation: coSub .4s cubic-bezier(.2, 1.4, .4, 1) both;
+}
+.jx-callout-sub b { color: #fff; font-weight: 700; }
+.jx-callout-sub.is-bump, .jx-callout-title.is-bump { animation: coBump .35s ease-out; }
+
+/* Mistakes and hits: soft coral, kind words. */
+.jx-callout.is-soft .jx-callout-title { color: #ffb4a2; text-shadow: 0 4px 0 #6b2a1e, 3px 0 0 #6b2a1e, -2px 0 0 #6b2a1e, 0 -2px 0 #6b2a1e; }
+.jx-callout.is-soft .jx-callout-value { color: #ffe0d8; text-shadow: 0 3px 0 #6b2a1e, 2px 0 0 #6b2a1e, -2px 0 0 #6b2a1e; }
+.jx-callout.is-soft .jx-callout-sub { color: #fff1ec; text-shadow: 0 2px 0 #6b2a1e, 1px 0 0 #6b2a1e, -1px 0 0 #6b2a1e; }
+
+@keyframes coIn {
+  0%   { opacity: 0; transform: translateX(-40px) scale(.55); }
+  60%  { opacity: 1; transform: translateX(4px) scale(1.06); }
+  100% { opacity: 1; transform: none; }
+}
+@keyframes coOut { to { opacity: 0; transform: translateX(-30px) scale(.92); } }
+@keyframes coValue { 0% { opacity: 0; transform: skewX(-7deg) translateY(10px) scale(.6); } 100% { opacity: 1; transform: skewX(-7deg); } }
+@keyframes coSub { 0% { opacity: 0; transform: skewX(-7deg) translateX(-18px); } 100% { opacity: .95; transform: skewX(-7deg); } }
+@keyframes coBump { 45% { transform: skewX(-7deg) scale(1.15); } }
+
 /* Youngest players: rainbow letters and glitter bursting out. */
-.combo-pop.is-gentle:not(.combo-pop-warn):not(.combo-pop-loss) span {
+.jx-callout.is-gentle.is-good .jx-callout-title {
   background: linear-gradient(90deg, #ff5fa2, #ffb13b, #ffe14d, #5ee87a, #4cc9ff, #9b7bff, #ff5fa2);
   background-size: 200% 100%;
   -webkit-background-clip: text; background-clip: text;
   color: transparent; text-shadow: none;
-  filter: drop-shadow(3px 3px 0 #3a1d00);
+  filter: drop-shadow(0 3px 0 #5a2a00) drop-shadow(2px 0 0 #5a2a00);
   animation: comboRainbowSlide 1s linear infinite;
 }
 @keyframes comboRainbowSlide { to { background-position: 200% 0; } }
-.combo-pop i {
-  position: absolute; left: 50%; top: 50%;
-  width: 6px; height: 6px; margin: -3px 0 0 -3px;
+.jx-callout i {
+  position: absolute; left: 30%; top: 30%;
+  width: 7px; height: 7px; margin: -3px 0 0 -3px;
   background: var(--c); box-shadow: 0 0 6px var(--c);
-  animation: comboGlitter .9s ease-out calc(var(--delay, 0ms) + 120ms) both;
+  animation: comboGlitter .9s ease-out .12s both;
 }
 @keyframes comboGlitter {
   0%   { opacity: 0; transform: rotate(var(--a)) translateX(0) scale(.4); }
@@ -176,13 +199,15 @@ html body #s-result .rs-btn.rs-btn-alt { font-size: clamp(9px, 2.6vw, 14px); }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .combo-pop i, #s-game .hud-combo.is-bump, #s-game .hud-combo.is-lost, #s-game .hud-combo.is-drop,
+  .jx-callout i, .jx-callout-value, .jx-callout-sub, .jx-callout .is-bump, #s-game .hud-combo.is-bump, #s-game .hud-combo.is-lost, #s-game .hud-combo.is-drop,
   #s-game .hud-currency-item.is-drop b,
   #s-game .hud-currency-item.is-bump b, html body #s-result .rs-record, html body #s-result .rs-btn.rs-btn-replay {
     animation-duration: .01ms !important; animation-iteration-count: 1 !important;
   }
-  .combo-pop { animation: comboFade 1.15s linear var(--delay, 0ms) both !important; }
-  @keyframes comboFade { 0%, 100% { opacity: 0; } 15%, 75% { opacity: 1; } }
+  .jx-callout { animation: comboFade .4s linear both !important; }
+  .jx-callout.is-out { animation: comboFadeOut .3s linear forwards !important; }
+  @keyframes comboFadeOut { to { opacity: 0; } }
+  @keyframes comboFade { from { opacity: 0; } to { opacity: 1; } }
 }
 
 /* Short screens (small phones, low laptops): a tighter card so the big

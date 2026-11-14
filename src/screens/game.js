@@ -43,8 +43,11 @@ import { trackMission } from '../systems/daily.js';
 import { getPilotGrade } from '../data/pilots.js';
 import { applyAgeModifiers } from '../systems/age-modifiers.js';
 import { calcSpeedXP } from '../systems/xp.js';
-import { resetCombo, comboCorrect, comboMistake, cashCombo, comboState, gameXpBreakdown, WAVE_SIZE } from '../systems/xp-combo.js';
-import { setHudXp, setComboBadge, hideComboBadge, showComboGain, showComboCash, showExpMax, showComboMistake, resetComboFx } from './combo-fx.js';
+import { resetCombo, comboCorrect, comboMistake, cashCombo, comboState, gameXpBreakdown, WAVE_SIZE, FAST_SECONDS } from '../systems/xp-combo.js';
+import {
+  setHudXp, setComboBadge, hideComboBadge, comboBadgeDrop, comboStepReached, resetComboFx,
+  calloutAnswer, calloutCash, calloutExpMax, calloutKill, calloutMistake, calloutHit,
+} from './combo-fx.js';
 import { load, save } from '../utils/storage.js';
 import { t, getLang, numLocale } from '../i18n.js';
 import {
@@ -5369,6 +5372,7 @@ function onEnemyMissileHit() {
   if (playerImmune()) return;
   if (airdropShieldActive()) return;
   G.missileHitsReceived = (G.missileHitsReceived || 0) + 1;
+  if (calloutsOn()) calloutHit();
   if (!G.practiceMode && G.currentLevel <= 30) {
     G.sr71MissileHits = (G.sr71MissileHits || 0) + 1;
     save('sr71MissileHits', G.sr71MissileHits);
@@ -5464,6 +5468,7 @@ function onMissileHit(enemy, missile) {
     if (enemy.type === 'boss') startBossDeath(enemy);
     else spawnMissileExplosion(G.particles, enemy.x, enemy.y, missile?.type || 'default', 18);
     enemy.active = false;
+    if (calloutsOn() && !_cutsceneActive) calloutKill({ boss: enemy.type === 'boss' });
     // Every aircraft destroyed by the player leaves a collectible coin at
     // its last position. The coin is awarded only if the player picks it up.
     spawnMapCoin(canvas.width, enemy.y, enemy.x, 1);
@@ -5909,13 +5914,17 @@ function handleAnswer(choice, btn) {
     recordTutorialAnswer(G.question.op, true);
     showTutorialFeedback(true);
     const answerXp = calcSpeedXP(G.timeLeft, _timerTotal) + (G.likesMath ? 1 : 0);
+    const xpBefore = gameXpBreakdown().total;   // for the callout's "+N EXP"
     G.sessionXP += answerXp;
     G.streak++;
     G.bestAnswerStreak = Math.max(G.bestAnswerStreak || 0, G.streak);
     save('bestAnswerStreak', G.bestAnswerStreak);
     updateStreakHUD();
-    if (comboOn()) comboAfterCorrect(answerXp, lastQuestion);
-    else if (G.streak === 3 || G.streak === 5) SFX.streak();
+    if (comboOn()) comboAfterCorrect(answerXp, lastQuestion, xpBefore);
+    else {
+      if (G.streak === 3 || G.streak === 5) SFX.streak();
+      if (calloutsOn()) calloutAnswer({ fast: answerSeconds() < FAST_SECONDS });
+    }
     trackMission('correct_answers', 1);
     trackMission('max_streak', G.streak);
     if (_coop) trackMission('coop_correct', 1);
@@ -6602,6 +6611,12 @@ function comboOn() {
   return !G.practiceMode && !isTutorialActive();
 }
 
+// Side callouts (screens/combo-fx.js): every game but the tutorial (it has
+// the captain's own messages), never over the end of the level.
+function calloutsOn() {
+  return !isTutorialActive() && !_levelEnding;
+}
+
 const _reducedMotion = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 
 // A light screen shake that grows with the combo.
@@ -6611,10 +6626,12 @@ function comboShake(amp, frames) {
   shakeFrames = Math.max(shakeFrames, frames);
 }
 
-function comboAfterCorrect(answerXp, lastQuestion) {
+// xpBefore: the game's EXP before this answer (its own EXP included after).
+function comboAfterCorrect(answerXp, lastQuestion, xpBefore) {
   const gain = comboCorrect(answerXp, answerSeconds());
-  const reached = showComboGain(gain);
-  if (gain.capped) showExpMax();
+  const reached = comboStepReached(gain);
+  calloutAnswer({ fast: gain.fast, reached, xp: gameXpBreakdown().total - xpBefore });
+  if (gain.capped) calloutExpMax();
   if (gain.mult > 1) SFX.comboUp(gain.mult);
   if (reached) comboShake(2 + reached * 1.5, 8 + reached * 2);
   // End of a wave (every WAVE_SIZE questions) or of the level: cash in.
@@ -6627,7 +6644,7 @@ function comboAfterCorrect(answerXp, lastQuestion) {
 function comboCashIn() {
   const before = gameXpBreakdown().total;
   if (cashCombo() <= 0) return;
-  showComboCash(gameXpBreakdown().total - before);
+  calloutCash(gameXpBreakdown().total - before);
   SFX.comboCash();
   comboShake(9, 14);
 }
@@ -6635,11 +6652,16 @@ function comboCashIn() {
 // A wrong answer or a timeout costs bonus EXP and combo steps by severity
 // (number of mistakes, too fast, time's up: systems/xp-combo.js).
 function comboAfterMistake({ seconds = 0, timeout = false, questionXp = 0 } = {}) {
-  if (!comboOn()) return;
+  if (!comboOn()) {
+    // Practice: the kind words, without EXP.
+    if (calloutsOn()) calloutMistake({ reason: timeout ? 'timeout' : (seconds >= 0 && seconds < FAST_SECONDS ? 'fast' : 'wrong') });
+    return;
+  }
   const mistake = comboMistake({ seconds, timeout, questionXp });
   // The wave ends on this question: what is left of the pot is earned.
   if (G.questionsAnswered % WAVE_SIZE === 0) comboCashIn();
-  showComboMistake(mistake, comboState());
+  calloutMistake(mistake);
+  comboBadgeDrop(comboState());
   comboShake(2 + mistake.severity * 4, 6 + Math.round(mistake.severity * 6));
   updateGameCurrencyHUD();
 }
