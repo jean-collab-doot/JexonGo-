@@ -243,6 +243,7 @@ function fireTurncoatWeapon(e, target) {
     const shot = createMissile(e.x + spread * 0.3, muzzleY, target.x + spread, target.y, speed * MISSILE_SPEED_SCALE, null, color, 1, homing);
     shot.fromPlayer = true;
     shot.type = type;
+    pilotShot(shot);   // the plane's power: counts for the shot coins
     if (homing) shot.allyHoming = true;
     G.missiles.push(shot);
     return shot;
@@ -290,7 +291,7 @@ function updateTurncoatRam(e) {
   e.headingAngle = Math.atan2(dy, dx) - Math.PI / 2;
   const reach = (getEnemyDrawSize(e) + getEnemyDrawSize(target)) * 0.3;
   if (d < reach) {
-    onMissileHit(target, { damage: 3, type: 'default' });
+    onMissileHit(target, { damage: 3, type: 'default', byPilot: true });
     spawnMissileExplosion(G.particles, e.x, e.y, 'default', 18);
     e.active = false;
   }
@@ -4351,6 +4352,7 @@ function updateAndDrawAirSupport(now) {
       const laser = createMissile(s.x, noseY, target.x, target.y, speed, null, '#ff8a1f', 1, false);
       laser.fromPlayer = true;
       laser.type = 'player-laser';
+      pilotShot(laser);   // airdrop air support: counts for the shot coins
       G.missiles.push(laser);
       SFX.shot('laser');
     }
@@ -6622,8 +6624,9 @@ function comboOn() {
   return !G.practiceMode && !isTutorialActive();
 }
 
-// A shot of the player's own plane (not an ally's), marked so its hit
-// counts for the shot coins.
+// A shot of any of the player's weapons (own shots, airdrop weapons and air
+// support, planes turned by the plane's power), marked so its hit counts for
+// the shot coins. Only the teammate's shots (co-op, bot) do not count.
 function pilotShot(missile) {
   missile.byPilot = true;
 }

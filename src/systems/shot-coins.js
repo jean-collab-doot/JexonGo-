@@ -1,17 +1,17 @@
-// Coins for good shooting, by steps: every HITS_PER_STEP shots of the
-// player's own plane that hit an enemy plane, STEP_COINS coins.
-//  * A hit = a shot of the player's plane (missile, laser, bullet, shell,
-//    airdrop weapon) that touches an enemy plane. Allies' shots (turned enemy,
-//    air support, teammate bot) do not count.
+// Coins for good shooting, by steps: every HITS_PER_STEP shots that hit an
+// enemy plane, STEP_COINS coins.
+//  * Any weapon of the player counts: missile, laser, machine gun, shell,
+//    airdrop weapons and air support, planes turned by the plane's power.
+//    Only the teammate's shots (co-op player or bot) do not count.
 //  * At most MAX_STEPS steps per game (MAX_SHOT_COINS coins), on top of the
 //    other coins (state.js MAX_GAME_COINS, within the server's coin refill).
 // Sized on the shop prices (500 to 8,000 coins; a game gives up to 100): a
-// level 1 with the basic shot (about 14 hits) gives 2 steps, +10; the best
+// level 1 with the basic shot (about 15 hits) gives 3 steps, +15; the best
 // weapons reach the cap, +30. So a game gives at most 30 % more coins.
 // Like the coins picked up during play, they are earned only when the level
 // is won (game.js finishLevel). The HUD shows the hits left before the next
 // step (screens/combo-fx.js setShotMeter).
-export const HITS_PER_STEP = 6;
+export const HITS_PER_STEP = 5;
 export const STEP_COINS = 5;
 export const MAX_STEPS = 6;
 export const MAX_SHOT_COINS = STEP_COINS * MAX_STEPS;
