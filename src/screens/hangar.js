@@ -119,7 +119,8 @@ function openPlaneInfo(id) {
   const canvas = $('plane-info-canvas');
   if (canvas) {
     canvas.setAttribute('aria-label', secretLocked ? '' : plane.name);
-    paintPlaneInfoFisheye(canvas, aircraftArt(id), secretLocked ? 'secret' : !unlocked);
+    // Same old-TV picture as AMÉLIORER: the plane parked on the lobby's hangar floor.
+    paintPlaneInfoFisheye(canvas, aircraftArt(id), secretLocked ? 'secret' : !unlocked, { backdropSrc: UPGRADE_FLOOR });
   }
   const typeLabel = TYPE_LABELS[plane.type]?.[lang] || (plane.type || '').toUpperCase();
   setText('plane-info-type', hide(typeLabel));
@@ -436,7 +437,8 @@ function renderMissileOption(type, lang, activeMissileType, ownedMissiles) {
 let _upgradePlaneId = null;
 // Same heart art as the in-game lives HUD (game.js updateLivesHUD).
 const HEART_IMG = '/assets/fx/Iteam/heart-full.png';
-// Lobby hangar floor (door open) behind the plane in the AMÉLIORER screen.
+// Lobby hangar floor (door open) behind the plane in the AMÉLIORER screen
+// and the ⓘ plane info window.
 const UPGRADE_FLOOR = '/assets/hangar/hangar-door/frame-19.webp';
 // Same EXP art as the HUD / rewards (utils/icons.js expIcon).
 const EXP_IMG = '/assets/fx/Caisse/JexonGo_EXP_frame_01.png';

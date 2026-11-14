@@ -43,6 +43,7 @@ import { trackMission } from '../systems/daily.js';
 import { getPilotGrade } from '../data/pilots.js';
 import { applyAgeModifiers } from '../systems/age-modifiers.js';
 import { calcSpeedXP } from '../systems/xp.js';
+import { resetShotCoins, countShot, countHit, liveShotCoins, shotCoinsResult } from '../systems/shot-coins.js';
 import { resetCombo, comboCorrect, comboMistake, cashCombo, comboState, gameXpBreakdown, WAVE_SIZE, FAST_SECONDS } from '../systems/xp-combo.js';
 import {
   setHudXp, setComboBadge, hideComboBadge, comboBadgeDrop, comboStepReached, resetComboFx,
@@ -4258,6 +4259,7 @@ function firePlayerShootingPlan() {
         const shell = createMissile(source.x, source.y + b * 20, target.x, target.y + b * 20, speed * 1.5, null, '#ffb347', damage * 2, homing);
         shell.fromPlayer = true;
         shell.type = 'player-gau8';
+        pilotShot(shell);
         G.missiles.push(shell);
       }
       continue;
@@ -4268,6 +4270,7 @@ function firePlayerShootingPlan() {
         const bullet = createMissile(source.x, source.y + b * 22, target.x, target.y + b * 22, speed * 1.35, null, '#fff6a8', damage, homing);
         bullet.fromPlayer = true;
         bullet.type = 'player-machine-gun';
+        pilotShot(bullet);
         G.missiles.push(bullet);
       }
       continue;
@@ -4275,6 +4278,7 @@ function firePlayerShootingPlan() {
     const missile = createMissile(source.x, source.y, target.x, target.y, weapon === 'laser' ? speed * 1.8 : speed, null, ability.weapon === 'xray' ? '#ff2020' : '#00d4ff', damage, homing);
     missile.fromPlayer = true;
     missile.type = ability.weapon || (weapon === 'laser' ? 'player-laser' : G.activeMissileType || 'default');
+    pilotShot(missile);
     G.missiles.push(missile);
   }
   if (G.missiles.length) {
@@ -4919,6 +4923,7 @@ function fireAirdropXray() {
   );
   missile.fromPlayer = true;
   missile.type = 'xray';
+  pilotShot(missile);
   G.missiles.push(missile);
   SFX.shot('laser');
   return true;
@@ -4944,6 +4949,7 @@ function fireAirdropMachineGun() {
     const bullet = createMissile(G.player.x + b * 12, sourceY + Math.abs(b) * 10, target.x + b * 12, target.y, speed, null, '#fff6a8', 1);
     bullet.fromPlayer = true;
     bullet.type = 'player-machine-gun';
+    pilotShot(bullet);
     G.missiles.push(bullet);
   }
   SFX.shot('gun');
@@ -5457,6 +5463,8 @@ function onEnemyAircraftCollision(enemy) {
 const A10_BOSS_SHELL_DAMAGE = 0.4;
 function onMissileHit(enemy, missile) {
   SFX.explode();
+  // Shot coins (systems/shot-coins.js): the player's own shot hit a plane.
+  if (missile?.byPilot && comboOn()) { countHit(); updateGameCurrencyHUD(); }
   let damage = missile?.damage ?? 1;
   // A-10 GAU-8 on a boss: each shell is weak, so a 5-shell burst does about
   // two normal missiles' worth instead of ten (it melted bosses in 2 bursts).
@@ -6555,7 +6563,8 @@ function finishLevel(won) {
   // leaving the level discards the session counters without changing the
   // player's saved account balance.
   if (won) {
-    const earnedCoins = Math.max(0, G.airdropSessionCoins || 0);
+    // Coins picked up during play + the shot coins (hits and accuracy bonus).
+    const earnedCoins = Math.max(0, G.airdropSessionCoins || 0) + (comboOn() ? shotCoinsResult().total : 0);
     const earnedXp = Math.max(0, G.airdropSessionXP || 0);
     G.coins = clampCoins((G.coins || 0) + earnedCoins);
     G.xp = (G.xp || 0) + earnedXp;
@@ -6598,7 +6607,13 @@ function finishLevel(won) {
 
 function updateGameCurrencyHUD() {
   const coins = document.getElementById('hud-coins-count');
-  if (coins) coins.textContent = (G.airdropSessionCoins || 0).toLocaleString(numLocale());
+  if (coins) {
+    const value = (G.airdropSessionCoins || 0) + (comboOn() ? liveShotCoins() : 0);
+    const item = coins.closest('.hud-currency-item');
+    if (item && value > (Number(coins.dataset.value) || 0)) { item.classList.remove('is-bump'); void item.offsetWidth; item.classList.add('is-bump'); }
+    coins.dataset.value = String(value);
+    coins.textContent = value.toLocaleString(numLocale());
+  }
   // EXP of the game so far, counting up live (answers + combo + pick-ups,
   // with the per-game caps); practice only shows what was picked up.
   setHudXp(comboOn() ? gameXpBreakdown().total : (G.airdropSessionXP || 0));
@@ -6609,6 +6624,13 @@ function updateGameCurrencyHUD() {
 // review or the tutorial.
 function comboOn() {
   return !G.practiceMode && !isTutorialActive();
+}
+
+// A shot of the player's own plane (not an ally's): counted for the shot
+// coins (systems/shot-coins.js), marked so its hit can be recognised.
+function pilotShot(missile) {
+  missile.byPilot = true;
+  if (comboOn()) countShot();
 }
 
 // Side callouts (screens/combo-fx.js): every game but the tutorial (it has
@@ -6969,6 +6991,7 @@ export function initGame(levelNum, onComplete) {
   // End-of-game report: a new game starts a new count (a continued one keeps it).
   if (!snap) startSessionReport();
   resetCombo({ keepBanked: !!snap });   // EXP combo (systems/xp-combo.js)
+  resetShotCoins({ keep: !!snap });     // shot coins (systems/shot-coins.js)
   resetComboFx();
   _timedXpElapsedMs = 0;
   G.airdropSessionCoins = 0;

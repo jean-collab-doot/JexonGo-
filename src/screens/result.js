@@ -15,6 +15,7 @@ import { earnHalloweenSkin } from '../data/skins.js';
 import { reportTiles, mountWorkedOn } from './mistake-review.js';
 import { notebookSize } from '../systems/session-report.js';
 import { gameXpBreakdown, comboState, recordBestGame } from '../systems/xp-combo.js';
+import { shotCoinsResult } from '../systems/shot-coins.js';
 import { multText } from './combo-fx.js';
 import { gentleFx } from '../game/glitter.js';
 
@@ -151,7 +152,9 @@ export function showResult(won) {
     ? Math.min((COINS_PER_STAR[stars] || 0) + levelBonus, Math.max(0, MAX_GAME_COINS - collectedCoins))
     : 0;
   const collectedXp = G.practiceMode ? 0 : Math.max(0, G.airdropSessionXP || 0);
-  const totalCoinsGained = coinsEarned + collectedCoins;
+  // Shot coins (systems/shot-coins.js): already added by game.js finishLevel.
+  const shot = canEarnRewards ? shotCoinsResult() : null;
+  const totalCoinsGained = coinsEarned + collectedCoins + (shot?.total || 0);
   const totalXpGained = xp + collectedXp;
 
   _prevHighestLevel = G.highestLevel || 0;
@@ -235,7 +238,8 @@ export function showResult(won) {
     rewardsEl.innerHTML = `<div class="rs-reward-note">${shouldAskGuestConnect ? rewardLockLabel : guestTrialLabel}</div>`;
   } else {
     rewardsEl.innerHTML = `
-      <div class="rs-reward rs-reward-coins">${coinIcon('jg-coin-icon-large')}<b data-count="${totalCoinsGained}">+0</b><small>${fr ? 'PIÈCES' : 'COINS'}</small></div>
+      <div class="rs-reward rs-reward-coins">${coinIcon('jg-coin-icon-large')}<b data-count="${totalCoinsGained}">+0</b><small>${fr ? 'PIÈCES' : 'COINS'}</small>${shot?.shots
+        ? `<em class="rs-reward-shots">${fr ? 'TIRS' : 'SHOTS'} ${Math.round(shot.accuracy * 100)}${fr ? ' %' : '%'} · +${shot.total}</em>` : ''}</div>
       <div class="rs-reward rs-reward-xp">${expIcon()}<b data-count="${totalXpGained}">+0</b><small>EXP</small></div>
       ${window._currentLevelCfg?.isChestLevel
         ? `<div class="rs-reward rs-reward-chest"><img src="/assets/chest/chest-purple.png" alt=""><b>${fr ? 'COFFRE' : 'CHEST'}</b><small>${fr ? 'À OUVRIR' : 'TO OPEN'}</small></div>`

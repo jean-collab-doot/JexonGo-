@@ -1,5 +1,5 @@
 // Paints the ⓘ plane-info "radar screen" (green background, or the lobby's
-// hangar floor for the AMÉLIORER tab, + plane portrait)
+// hangar floor for AMÉLIORER and the ⓘ window, + plane portrait)
 // through the same barrel-lens warp as the level map's territory backdrop
 // (see levelmap-fisheye.js), so the whole screen bulges like an old CRT tube
 // instead of showing a flat picture. Kept separate from that module because
