@@ -2104,3 +2104,9 @@ html:not(.touch-phone):not(.touch-tablet):not(.touch-mobile) #s-levelmap #levelm
 /* MULTI mode: the review is a solo game. */
 #s-menu.is-multi .jx-mistakes-btn { display: none; }
 
+
+/* Coins / EXP chips (utils/wallet-hud.js): a little jump when the balance
+   grows while the screen is open. */
+.jx-chip.is-wallet-bump b { display: inline-block; animation: walletBump .55s ease-out; }
+@keyframes walletBump { 35% { transform: scale(1.3); color: #fff3a0; } }
+@media (prefers-reduced-motion: reduce) { .jx-chip.is-wallet-bump b { animation: none; } }

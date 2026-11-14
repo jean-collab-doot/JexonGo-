@@ -30,6 +30,7 @@ import { t, getLang, applyI18n } from './i18n.js';
 import { syncAccountFromCloud, flushCloudSave, pushCloudSave, fetchCloudSave, exportSaveSnapshot, applySaveSnapshot, mergeSaveSnapshots } from './systems/cloud-save.js';
 import { reservedPlayerName, claimPlayerName } from './systems/player-names.js';
 import { openEmailAuth } from './screens/email-auth.js';
+import { startWalletHud } from './utils/wallet-hud.js';
 import { askAgeBeforeSignIn } from './screens/age-gate.js';
 import { signInWithGoogleIdToken, signOutSupabase } from './systems/supabase-client.js';
 import { claimSessionOrBlock, sessionBlockedMessage, sessionLostMessage, askTakeover, onSessionLost } from './systems/session-guard.js';
@@ -654,6 +655,7 @@ initResult(nav);
 initChest(nav);
 initGameover(nav);
 initSettings();
+startWalletHud();   // coins / EXP chips follow the balance live (utils/wallet-hud.js)
 initBriefing(nav);
 initMultiplayer(nav);
 initLeaderboard();
