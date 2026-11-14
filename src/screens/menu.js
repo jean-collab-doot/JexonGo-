@@ -501,7 +501,6 @@ export function initMenu(nav) {
   // Hamburger → settings drawer is wired in settings.js.
 
   // Drawer profile / account
-  document.getElementById('btn-login-google')?.addEventListener('click', () => _handleLogin('google'));
   document.getElementById('btn-google-signout')?.addEventListener('click', _handleSignOut);
   document.getElementById('btn-menu-delete-account')?.addEventListener('click', e => {
     e.stopPropagation();
@@ -729,15 +728,11 @@ function closeWeekTracker() { $('week-overlay')?.classList.add('hidden'); }
 
 // ── DRAWER PROFILE (called from settings.js when the drawer opens) ───────────
 export function updateDrawerProfile() {
-  const loginBtn  = document.getElementById('btn-login-google');
-  const emailBtn  = document.getElementById('btn-login-email');
   const nameEl    = document.getElementById('menu-profile-name');
   const signoutEl = document.getElementById('btn-google-signout');
   const deleteEl  = document.getElementById('btn-menu-delete-account');
   const isLoggedIn = !!G.playerRegistered;
 
-  if (loginBtn)  loginBtn.hidden  = isLoggedIn;
-  if (emailBtn)  emailBtn.hidden  = isLoggedIn;
   // The single SE CONNECTER button (it opens the sign-in page).
   const connectBtn = document.getElementById('btn-jx-connect');
   if (connectBtn) connectBtn.hidden = isLoggedIn;

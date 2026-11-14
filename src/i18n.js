@@ -181,27 +181,9 @@ const STRINGS = {
     todayReward:     'TODAY\'S REWARD',
 
     // Ranked
-    findMatch:       'FIND MATCH',
-    matchHistory:    'MATCH HISTORY',
-    findingOpp:      'FINDING OPPONENT',
-    searching:       'SEARCHING FOR MATCH',
-    victory:         'VICTORY!',
-    defeat:          'DEFEAT',
-    draw:            'DRAW',
-    rematch:         'REMATCH',
     lobby:           'LOBBY',
-    placementLabel:  'PLACEMENT',
-    seasonEnds:      'SEASON ENDS',
-    dailyBonus:      'DAILY WIN BONUS +10 LP',
-    dailyClaimed:    'DAILY BONUS CLAIMED',
-    dailyFirstWin:   'DAILY FIRST WIN',
-    winStreak:       'WIN STREAK',
-    promotedTo:      'PROMOTED TO',
-    demotedTo:       'DEMOTED TO',
 
     // Duel HUD
-    you:             'YOU',
-    opp:             'OPP',
 
     // Classroom
     classroomTitle:  '# CLASSROOM',
@@ -518,27 +500,9 @@ const STRINGS = {
     todayReward:     'RÉCOMPENSE DU JOUR',
 
     // Ranked
-    findMatch:       'TROUVER UN MATCH',
-    matchHistory:    'HISTORIQUE',
-    findingOpp:      'RECHERCHE ADVERSAIRE',
-    searching:       'RECHERCHE EN COURS',
-    victory:         'VICTOIRE !',
-    defeat:          'DÉFAITE',
-    draw:            'ÉGALITÉ',
-    rematch:         'REVANCHE',
     lobby:           'ACCUEIL',
-    placementLabel:  'CLASSEMENT',
-    seasonEnds:      'FIN DE SAISON',
-    dailyBonus:      'BONUS QUOTIDIEN +10 LP',
-    dailyClaimed:    'BONUS DU JOUR RÉCLAMÉ',
-    dailyFirstWin:   'PREMIÈRE VICTOIRE',
-    winStreak:       'SÉRIE DE VICTOIRES',
-    promotedTo:      'PROMU EN',
-    demotedTo:       'RÉTROGRADÉ EN',
 
     // Duel HUD
-    you:             'TOI',
-    opp:             'ADV',
 
     // Classroom
     classroomTitle:  '# CLASSE',

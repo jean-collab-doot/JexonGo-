@@ -18,9 +18,7 @@ import { initResult, showResult } from './screens/result.js';
 import { initChest, showChest, setChestReturn } from './screens/chest.js';
 import { initGameover, showGameover } from './screens/gameover.js';
 import { initSettings, loadSettings } from './screens/settings.js';
-import { initRanked, renderRankedLobby } from './screens/ranked.js';
 import { initBriefing, showBriefing } from './screens/briefing.js';
-import { initArena, enterArena } from './screens/arena.js';
 import { initMultiplayer, enterMultiplayer, exitMultiplayer, isMultiLobby } from './screens/multiplayer.js';
 import { initLeaderboard, closeLeaderboard } from './screens/leaderboard.js';
 import { resetIntroBriefing } from './screens/intro-briefing.js';
@@ -272,13 +270,6 @@ const nav = {
     trackVirtualPage('/chest', { returnTo });
     SFX.playMusic('menu');
   },
-  toRanked() {
-    cleanup();
-    renderRankedLobby();
-    showScreen('s-ranked');
-    trackVirtualPage('/ranked');
-    SFX.playMusic('menu');
-  },
   toBriefing(levelNum) {
     if (!G.tutorialMode && !isLevelUnlocked(levelNum, G.levelStars, G.highestLevel, G.tutorialPlan?.startLevel || 1)) {
       nav.toMap();
@@ -290,12 +281,6 @@ const nav = {
     showScreen('s-briefing');
     trackVirtualPage('/briefing', { level: levelNum });
     SFX.playMusic('menu');
-  },
-  toArena(opts = {}) {
-    cleanup();
-    showScreen('s-arena');
-    trackVirtualPage('/arena', { mode: opts.mode || 'ranked' });
-    enterArena(opts);
   },
   // MULTI: the solo level map picks the co-op level (only unlocked levels).
   toMapPicker(onPick, onBack) {
@@ -669,13 +654,9 @@ initResult(nav);
 initChest(nav);
 initGameover(nav);
 initSettings();
-initRanked(nav);
 initBriefing(nav);
-initArena(nav);
 initMultiplayer(nav);
 initLeaderboard();
-// RÉGLAGE > SE CONNECTER AVEC UN COURRIEL (beside the Google button).
-document.getElementById('btn-login-email')?.addEventListener('click', () => openEmailSignIn('login'));
 // MULTI enters multiplayer mode; in that mode the same button reads SOLO.
 document.getElementById('btn-lobby-multi')?.addEventListener('click', () => {
   if (isMultiLobby()) exitMultiplayer();
@@ -704,7 +685,6 @@ document.addEventListener('click', e => {
   if (
     btn.id === 'btn-map-back' ||
     btn.id === 'btn-hangar-back' ||
-    btn.id === 'btn-ranked-back' ||
     btn.id === 'btn-profile-back'
   ) {
     e.preventDefault();

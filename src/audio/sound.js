@@ -960,8 +960,8 @@ const _musicFetches = {};   // music src -> its download (preloadGame)
 
 function _musicSrc(key) {
   return key.startsWith('boss-') ? (BOSS_MUSIC[key.slice(5)] || MUSIC.bossOcean)
-    : { menu: MUSIC.menu, ranked: MUSIC.menu, shop: MUSIC.menu, game: MUSIC.game,
-        arena: MUSIC.game, dialogue: MUSIC.dialogue, boss: MUSIC.dialogue }[key];
+    : { menu: MUSIC.menu, shop: MUSIC.menu, game: MUSIC.game,
+        dialogue: MUSIC.dialogue, boss: MUSIC.dialogue }[key];
 }
 
 const _enemyShot = (url, vol) => _throttled(110, () =>
@@ -998,7 +998,7 @@ export const SFX = {
     _resumeAll();
   },
 
-  // key: 'menu', 'game', 'arena', 'dialogue' (boss talking) or
+  // key: 'menu', 'game', 'dialogue' (boss talking) or
   // 'boss-<biome>' (boss fight: ocean, desert, city, arctic, space).
   // { restart: true } plays it from the beginning instead of resuming.
   playMusic(key, { restart = false } = {}) {

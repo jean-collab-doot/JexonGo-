@@ -4895,245 +4895,6 @@ html.touch-mobile .badge-unlock-card button{min-height:40px;padding:10px 18px;fo
 .sc-bp-unlocked .sc-bp-bar-fill { background: linear-gradient(90deg, #16a34a, #4ade80); }
 .sc-bp-unlocked .sc-bp-count { color: #4ade80; font-size: 4px; }
 
-/* ================================================================
-   RANKED SYSTEM
-================================================================ */
-
-/* ── RANKED LOBBY ────────────────────────────────────────────── */
-#s-ranked {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: flex-start;
-  padding: 0 0 24px;
-  overflow-y: auto;
-  background: radial-gradient(ellipse at 50% 30%, #0d0d2a 0%, #060610 100%);
-}
-.ranked-topbar {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 10px 14px 6px;
-  box-sizing: border-box;
-}
-.ranked-title {
-  font-family: 'Press Start 2P', monospace;
-  font-size: 9px;
-  color: #fff;
-  letter-spacing: 3px;
-  text-shadow: 0 0 12px #ff2277;
-}
-
-.rank-badge {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-  padding: 10px 16px;
-  background: linear-gradient(160deg, #111126 0%, #0a0a1e 100%);
-  border: 1.5px solid var(--rc, #cd7f32);
-  border-radius: 14px;
-  box-shadow: 0 0 18px var(--rg, #7c4a00), inset 0 0 8px rgba(0,0,0,0.6);
-  min-width: 110px;
-  text-align: center;
-}
-.rank-badge-sm {
-  padding: 4px 8px;
-  border-radius: 8px;
-  min-width: 60px;
-}
-.rb-icon { font-size: 28px; filter: drop-shadow(0 0 8px var(--rc, #cd7f32)); }
-.rank-badge-sm .rb-icon { font-size: 16px; }
-.rb-label {
-  font-family: 'Press Start 2P', monospace;
-  font-size: 7px;
-  color: var(--rc, #cd7f32);
-  letter-spacing: 1px;
-}
-.rank-badge-sm .rb-label { font-size: 5px; }
-.rb-lp { font-family: 'Press Start 2P', monospace; font-size: 6px; color: #aaa; }
-
-#ranked-badge-wrap { margin: 14px 0 4px; }
-
-.ranked-lp-track {
-  width: 200px; height: 6px;
-  background: #1a1a2e; border-radius: 4px; overflow: hidden;
-  margin: 2px auto 6px; border: 1px solid #333;
-}
-#ranked-lp-bar { height: 100%; border-radius: 4px; transition: width 0.5s ease; }
-
-#ranked-stats {
-  font-family: 'Press Start 2P', monospace; font-size: 7px;
-  display: flex; gap: 6px; align-items: center; margin: 4px 0;
-}
-.rk-stat       { color: #00e84b; }
-.rk-stat-loss  { color: #ff2233; }
-.rk-stat-sep   { color: #555; }
-.rk-placement  { color: #fbbf24; font-size: 7px; }
-
-#ranked-streak {
-  font-family: 'Press Start 2P', monospace; font-size: 7px;
-  color: #ff8c00; text-shadow: 0 0 8px #ff6000; margin: 2px 0;
-}
-#ranked-season-timer {
-  font-family: 'Press Start 2P', monospace; font-size: 6px; color: #555; margin: 4px 0;
-}
-#ranked-firstwin { font-family: 'Press Start 2P', monospace; font-size: 6px; margin: 2px 0 12px; }
-
-#btn-ranked-play {
-  font-family: 'Press Start 2P', monospace; font-size: 9px; color: #fff;
-  background: linear-gradient(135deg, #ff2277 0%, #9b0046 100%);
-  border: none; border-radius: 10px; padding: 12px 36px; cursor: pointer;
-  letter-spacing: 2px;
-  box-shadow: 0 0 20px #ff227788, 0 4px 12px rgba(0,0,0,0.5);
-  transition: transform 0.1s, box-shadow 0.1s; margin-top: 8px;
-}
-#btn-ranked-play:active { transform: scale(0.96); box-shadow: 0 0 8px #ff227744; }
-
-#btn-ranked-history {
-  font-family: 'Press Start 2P', monospace; font-size: 6px; color: #888;
-  background: transparent; border: 1px solid #333; border-radius: 8px;
-  padding: 7px 18px; cursor: pointer; margin-top: 6px;
-}
-
-/* ── FIND MATCH ──────────────────────────────────────────────── */
-#s-ranked-find {
-  display: flex; flex-direction: column; align-items: center;
-  justify-content: center; gap: 12px;
-  background: radial-gradient(ellipse at 50% 40%, #0d0d2a 0%, #060610 100%);
-}
-.ranked-find-title {
-  font-family: 'Press Start 2P', monospace; font-size: 9px;
-  color: #fff; letter-spacing: 2px;
-  animation: rk-pulse 1.2s ease-in-out infinite;
-}
-@keyframes rk-pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
-#ranked-find-dots {
-  font-family: 'Press Start 2P', monospace; font-size: 14px;
-  color: #ff2277; min-width: 40px; display: inline-block;
-}
-
-/* ── VS INTRO ────────────────────────────────────────────────── */
-#s-ranked-intro {
-  display: flex; align-items: center; justify-content: center;
-  background: radial-gradient(ellipse at 50% 50%, #0a0022 0%, #030008 100%);
-  overflow: hidden;
-}
-.intro-vs-wrap {
-  display: flex; align-items: center; justify-content: center;
-  gap: 0; width: 100%;
-}
-.intro-side {
-  display: flex; flex-direction: column; align-items: center; gap: 6px;
-  flex: 1; opacity: 0; transform: translateX(var(--tx, -60px));
-  transition: opacity 0.5s ease, transform 0.5s ease;
-}
-.intro-side:last-child { --tx: 60px; }
-.intro-side.intro-slide-in { opacity: 1; transform: translateX(0); }
-.intro-name {
-  font-family: 'Press Start 2P', monospace; font-size: 7px;
-  color: #fff; text-align: center;
-}
-.intro-rank-label {
-  font-family: 'Press Start 2P', monospace; font-size: 6px; text-align: center;
-}
-.intro-vs-badge {
-  font-family: 'Press Start 2P', monospace; font-size: 22px; color: #fff;
-  text-shadow: 0 0 20px #ff2277, 0 0 40px #ff2277; padding: 0 8px; flex-shrink: 0;
-}
-
-/* ── DUEL ────────────────────────────────────────────────────── */
-#s-ranked-duel {
-  display: flex; flex-direction: column; align-items: center;
-  justify-content: flex-start; padding: 12px 14px 20px; gap: 8px;
-  background: #080818; overflow: hidden;
-}
-.duel-header {
-  width: 100%; display: flex; align-items: center; justify-content: space-between;
-}
-.duel-score-side { display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 70px; }
-.duel-score-label { font-family: 'Press Start 2P', monospace; font-size: 6px; color: #555; }
-.duel-score-val   { font-family: 'Press Start 2P', monospace; font-size: 22px; color: #fff; }
-.duel-score-val.duel-score-player { color: #00e84b; }
-.duel-score-val.duel-score-opp    { color: #ff2233; }
-
-.duel-timer-wrap { display: flex; flex-direction: column; align-items: center; gap: 2px; }
-#duel-q-num  { font-family: 'Press Start 2P', monospace; font-size: 6px; color: #888; }
-#duel-timer  {
-  font-family: 'Press Start 2P', monospace; font-size: 20px; color: #fbbf24;
-  text-shadow: 0 0 10px #fbbf2488; min-width: 32px; text-align: center;
-}
-
-#duel-question {
-  font-family: 'Press Start 2P', monospace; font-size: 16px; color: #fff;
-  text-align: center; background: #0f0f28; border: 1.5px solid #2a2a4a;
-  border-radius: 10px; padding: 14px 10px; width: 100%; box-sizing: border-box;
-  text-shadow: 0 0 8px rgba(255,255,255,0.27);
-}
-
-#duel-answers { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; width: 100%; }
-.duel-ans-btn {
-  font-family: 'Press Start 2P', monospace; font-size: 11px; color: #fff;
-  background: #111130; border: 1.5px solid #2a2a5a; border-radius: 10px;
-  padding: 14px 8px; cursor: pointer; transition: background 0.1s, transform 0.1s;
-}
-.duel-ans-btn:active { background: #1e1e50; transform: scale(0.96); }
-
-.duel-feedback-row {
-  width: 100%; display: flex; justify-content: space-between; padding: 0 10px; box-sizing: border-box;
-}
-.duel-fb { font-family: 'Press Start 2P', monospace; font-size: 18px; opacity: 0; }
-.duel-fb.duel-flash { animation: duel-flash-anim 0.6s ease forwards; }
-@keyframes duel-flash-anim {
-  0%  { opacity: 1; transform: scale(1.3); }
-  60% { opacity: 1; transform: scale(1); }
-  100%{ opacity: 0; }
-}
-
-/* ── RESULT ──────────────────────────────────────────────────── */
-#s-ranked-result {
-  display: flex; flex-direction: column; align-items: center;
-  justify-content: flex-start; padding: 18px 16px 24px; gap: 8px;
-  background: radial-gradient(ellipse at 50% 30%, #0d0d2a 0%, #060610 100%);
-  overflow-y: auto;
-}
-.rr-outcome { font-family: 'Press Start 2P', monospace; font-size: 18px; letter-spacing: 3px; margin-bottom: 2px; }
-.rro-win  { color: #00e84b; text-shadow: 0 0 16px #00e84b88; }
-.rro-loss { color: #ff2233; text-shadow: 0 0 12px #ff223344; }
-.rro-draw { color: #fbbf24; text-shadow: 0 0 12px #fbbf2444; }
-
-#rr-score { font-family: 'Press Start 2P', monospace; font-size: 22px; color: #fff; }
-.rr-lp-change { font-family: 'Press Start 2P', monospace; font-size: 13px; }
-.rrlp-pos { color: #00e84b; text-shadow: 0 0 10px #00e84b66; }
-.rrlp-neg { color: #ff2233; }
-
-#rr-rank-badge { margin: 6px 0; }
-#rr-breakdown { display: flex; flex-direction: column; align-items: center; gap: 3px; }
-.rr-bonus { font-family: 'Press Start 2P', monospace; font-size: 6px; color: #fbbf24; text-shadow: 0 0 8px #fbbf2455; }
-#rr-promo-banner {
-  font-family: 'Press Start 2P', monospace; font-size: 8px; letter-spacing: 1px;
-  padding: 6px 14px; background: #111126; border-radius: 8px; border: 1px solid #333;
-}
-.rr-lp-track {
-  width: 200px; height: 6px; background: #1a1a2e; border-radius: 4px;
-  overflow: hidden; border: 1px solid #333; margin: 4px 0;
-}
-#rr-lp-bar { height: 100%; border-radius: 4px; transition: width 0.6s cubic-bezier(0.4,0,0.2,1); }
-
-.rr-btn-row { display: flex; gap: 10px; margin-top: 8px; }
-#btn-rr-rematch {
-  font-family: 'Press Start 2P', monospace; font-size: 8px; color: #fff;
-  background: linear-gradient(135deg, #ff2277 0%, #9b0046 100%);
-  border: none; border-radius: 10px; padding: 10px 20px; cursor: pointer;
-  box-shadow: 0 0 14px #ff227766;
-}
-#btn-rr-lobby {
-  font-family: 'Press Start 2P', monospace; font-size: 8px; color: #aaa;
-  background: #111126; border: 1px solid #333; border-radius: 10px;
-  padding: 10px 20px; cursor: pointer;
-}
-
 /* ═══════════════════════════════════════════════════════════════════════════
    MISSION BRIEFING SCREEN
    ═══════════════════════════════════════════════════════════════════════════ */
@@ -5637,189 +5398,8 @@ html.touch-mobile .badge-unlock-card button{min-height:40px;padding:10px 18px;fo
   padding: 24px;
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   DUEL ROUND BANNER
-   ═══════════════════════════════════════════════════════════════════════════ */
-
-.duel-round-banner {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  background: rgba(5, 5, 20, 0.88);
-  z-index: 50;
-  pointer-events: none;
-}
-.duel-round-banner-show {
-  animation: duelBannerIn 0.25s ease-out forwards;
-}
-.duel-round-banner-hide {
-  animation: duelBannerOut 0.35s ease-in forwards;
-}
-@keyframes duelBannerIn {
-  from { opacity: 0; transform: scale(1.15); }
-  to   { opacity: 1; transform: scale(1); }
-}
-@keyframes duelBannerOut {
-  from { opacity: 1; transform: scale(1); }
-  to   { opacity: 0; transform: scale(0.9); }
-}
-.duel-round-banner-text {
-  font-family: 'Press Start 2P', monospace;
-  font-size: 26px;
-  color: #fff;
-  text-shadow: 0 0 30px #ff2277, 0 0 60px #ff227744;
-  letter-spacing: 6px;
-  text-align: center;
-}
-.duel-round-score-text {
-  font-family: 'Press Start 2P', monospace;
-  font-size: 18px;
-  color: #00e84b;
-  text-shadow: 0 0 16px #00e84b88;
-  letter-spacing: 4px;
-  text-align: center;
-}
-
-/* ── ARENA SCREEN ──────────────────────────────────────────────────────────── */
-#s-arena {
-  position: absolute; inset: 0; overflow: hidden;
-  background: #010408;
-  display: block;       /* override .screen { display:flex } */
-  align-items: unset; justify-content: unset;
-}
-.arena-canvas {
-  position: absolute; inset: 0; width: 100%; height: 100%; display: block;
-}
-.arena-overlay {
-  position: absolute; inset: 0;
-  display: flex; flex-direction: column;
-  pointer-events: none;
-}
-
-/* TOP HUD */
-.arena-top-hud {
-  display: flex; align-items: flex-start; justify-content: space-between;
-  padding: 10px 12px 0;
-  pointer-events: none;
-}
-.arena-hud-side {
-  display: flex; flex-direction: column; align-items: center; gap: 4px;
-  min-width: 90px;
-}
-.arena-hud-right { align-items: center; }
-.arena-hud-center {
-  display: flex; flex-direction: column; align-items: center; gap: 2px;
-}
-.arena-pname {
-  font-family: 'Press Start 2P', monospace; font-size: 7px;
-  color: #fff; text-align: center; letter-spacing: 0.5px;
-}
-.arena-hearts { display: flex; gap: 4px; }
-.arena-heart {
-  font-size: 14px; color: #ff2277;
-  text-shadow: 0 0 8px #ff2277;
-  transition: opacity 0.25s;
-}
-.arena-qnum {
-  font-family: 'Press Start 2P', monospace; font-size: 6px; color: #888;
-}
-.arena-timer {
-  font-family: 'Press Start 2P', monospace; font-size: 18px;
-  color: #00e84b; text-shadow: 0 0 12px #00e84b;
-  transition: color 0.3s;
-}
-
-/* FEEDBACK FLASHES */
-.arena-fb {
-  position: absolute; top: 38%; font-size: 28px;
-  font-family: 'Press Start 2P', monospace;
-  pointer-events: none; opacity: 0;
-}
-.arena-fb-left  { left: 10%; }
-.arena-fb-right { right: 10%; }
-@keyframes arena-flash-anim {
-  0%   { opacity: 1; transform: scale(1.4); }
-  100% { opacity: 0; transform: scale(0.8); }
-}
-.arena-flash { animation: arena-flash-anim 0.55s ease-out forwards; }
-
-/* QUESTION BOX */
-.arena-question-box {
-  position: absolute; bottom: 24%; left: 50%; transform: translateX(-50%);
-  width: 88%; max-width: 400px;
-  background: rgba(6,12,30,0.92); border: 1px solid #ffffff18;
-  border-radius: 12px; padding: 14px 12px 12px;
-  pointer-events: auto;
-}
-.arena-question {
-  font-family: 'Press Start 2P', monospace; font-size: 13px;
-  color: #fff; text-align: center; margin-bottom: 14px;
-}
-.arena-answers {
-  display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
-}
-.arena-ans-btn {
-  font-family: 'Press Start 2P', monospace; font-size: 10px;
-  background: #0d1a35; color: #00d4ff;
-  border: 1px solid #00d4ff44; border-radius: 8px;
-  padding: 10px 6px; cursor: pointer; transition: background 0.15s, transform 0.1s;
-}
-.arena-ans-btn:hover:not(:disabled) { background: #112244; transform: scale(1.04); }
-.arena-ans-btn:disabled { opacity: 0.45; cursor: default; }
-
-/* STATUS */
-.arena-status {
-  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-  display: flex; flex-direction: column; align-items: center; gap: 12px;
-  pointer-events: none;
-}
-.arena-spinner {
-  width: 32px; height: 32px;
-  border: 3px solid #ffffff22; border-top-color: #00d4ff;
-  border-radius: 50%; animation: spin 0.8s linear infinite;
-}
+/* Spinner (loading states). */
 @keyframes spin { to { transform: rotate(360deg); } }
-.arena-status-text {
-  font-family: 'Press Start 2P', monospace; font-size: 9px; color: #fff;
-}
-.arena-status-dots { font-size: 9px; color: #888; }
-
-/* RESULT */
-.arena-result {
-  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-  width: 86%; max-width: 360px;
-  background: rgba(4,8,20,0.96); border: 1px solid #ffffff18;
-  border-radius: 14px; padding: 22px 18px;
-  display: flex; flex-direction: column; align-items: center; gap: 10px;
-  pointer-events: auto;
-}
-.arena-result-title {
-  font-family: 'Press Start 2P', monospace; font-size: 14px;
-  text-align: center;
-}
-.arena-result-score {
-  font-family: 'Press Start 2P', monospace; font-size: 18px; color: #fff;
-}
-.arena-result-lp {
-  font-family: 'Press Start 2P', monospace; font-size: 11px;
-}
-.arena-result-rank {
-  font-family: 'Press Start 2P', monospace; font-size: 8px; color: #888;
-}
-.arena-rematch-status {
-  font-family: 'Press Start 2P', monospace; font-size: 7px; color: #888;
-  min-height: 14px; text-align: center;
-}
-
-/* BACK BUTTON */
-.arena-back-btn {
-  position: absolute; top: 10px; left: 10px;
-  pointer-events: auto;
-}
 
 /* ── AUDIO SPLASH ────────────────────────────────────────────────────────────── */
 .audio-splash {
@@ -5974,11 +5554,6 @@ html.touch-mobile #answer-buttons { gap: 10px; }
 html.touch-mobile .answer-btn {
   padding: 16px 10px;
   font-size: clamp(11px, 2.8vw, 15px);
-  min-height: 44px;
-}
-html.touch-mobile .arena-ans-btn {
-  font-size: 11px;
-  padding: 14px 8px;
   min-height: 44px;
 }
 html.touch-mobile .map-node {
@@ -7499,7 +7074,6 @@ html.touch-tablet .menu-top-left {
   .prestige-btn-pulse-el  { animation: none !important; }
   .prestige-modal-glow    { animation: none !important; }
   .godmode-badge          { animation: none !important; }
-  .rk-live-dot            { animation: none !important; }
   .sr71-mission-card      { animation: none !important; }
   .offline-banner         { animation: none !important; }
   .map-node-boss.available { animation: none !important; }
@@ -9291,29 +8865,6 @@ html.touch-tablet .menu-top-left {
     max-height: 84vh;
     padding: 12px;
     overflow-y: auto;
-  }
-
-  .arena-top-hud {
-    height: 42px;
-    padding: 5px 8px;
-  }
-  .arena-question-box {
-    left: 50%;
-    right: 8px;
-    bottom: 8px;
-    width: auto;
-    padding: 8px;
-  }
-  .arena-question {
-    font-size: 11px;
-  }
-  .arena-answers {
-    gap: 7px;
-  }
-  .arena-ans-btn {
-    min-height: 38px;
-    padding: 8px 6px;
-    font-size: 8px;
   }
 
   #onboarding-overlay {
@@ -11248,9 +10799,7 @@ html.touch-tablet .menu-top-left {
   #s-gameover,
   #s-shop,
   #s-hangar,
-  #s-levelmap,
-  #s-ranked,
-  #s-arena {
+  #s-levelmap {
     padding:
       max(10px, env(safe-area-inset-top))
       max(10px, env(safe-area-inset-right))
@@ -12815,22 +12364,6 @@ html.touch-phone #s-menu .menu-offline-banner {
   vertical-align: middle;
 }
 
-.jg-plane-icon {
-  width: 1.55em;
-  height: 1.55em;
-  display: inline-block;
-  vertical-align: -0.3em;
-  object-fit: contain;
-  object-position: center;
-  filter: drop-shadow(0 0 6px rgba(234, 255, 128, 0.6));
-}
-
-.jg-plane-icon-large {
-  width: 2.6em;
-  height: 2.6em;
-  vertical-align: middle;
-}
-
 /* Legal pages are documents, not fixed-aspect gameplay screens. They must
    span the physical viewport even when the game uses a narrower app width. */
 #s-privacy,
@@ -12992,12 +12525,6 @@ html.touch-phone #s-menu .menu-offline-banner {
 }
 #s-terms .jg-tos .toc a { text-decoration: none; }
 #s-terms .jg-tos .toc a:hover { text-decoration: underline; }
-
-.shop-tab-icon .jg-plane-icon {
-  width: 24px;
-  height: 24px;
-  vertical-align: middle;
-}
 
 .plane-icon-button::before {
   content: '';
