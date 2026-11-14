@@ -1,10 +1,16 @@
 import { G, resetLevel, clampCoins, addSessionCoins, addSessionXp, addLifetimeXp, MAX_COINS, MAX_GAME_COINS } from '../state.js';
 import { gentleFx, drawGlitterBurst, schoolYear } from '../game/glitter.js';
-import { chosenBasicOpsForLevel, chosenExtraOps, extraTopicShare } from '../systems/question-topics.js';
+import { chosenBasicOpsForLevel, extraTopicShare } from '../systems/question-topics.js';
+import {
+  applyGradeToQuestion, selectedExtraTopicOps, schoolYearOf, extraTopicCap, selectedFocusOperations,
+  applyOnboardingFocus, PRACTICE_MATH_RANGE, applyOnboardingLevelLength, getOnboardingTimerBonus,
+} from '../game/question-config.js';
+import { TUTORIAL_COPY } from '../data/tutorial-copy.js';
+import { START_BANNER_MS, BOSS_ALERT_INFO, showStartBanner, showBossAlert, showPracticeBanner, setBannerSounds } from './game-banners.js';
 import { uiIcon } from '../utils/icons.js';
 import { $, showScreen } from '../utils/dom.js';
 import { newQuestion, withChoices } from '../game/math-engine.js';
-import { schoolYearOfLevel, schoolQuestionPlan, questionFromPlan } from '../systems/school-questions.js';
+import { schoolQuestionPlan, questionFromPlan } from '../systems/school-questions.js';
 import { fmt as fmtNumber } from '../game/negatives.js';
 import { makeSchoolAlgebraQuestion } from '../game/algebra.js';
 import { makeSchoolExponent } from '../game/arithmetic.js';
@@ -499,125 +505,6 @@ function recordGuestGamePlayed() {
   if (G.playerRegistered || G.practiceMode || isTutorialActive()) return;
 }
 
-// ── GRADE-BASED MATH FILTER ───────────────────────────────────────────────────
-// Each grade has its own ops, number cap, and multiplication cap.
-// Level config values are clamped DOWN to the grade ceiling — never up.
-const GRADE_PROFILES = {
-  1: { ops: ['+'],              cap: 10,  mCap: 0  },  // 1+9, simple addition
-  2: { ops: ['+', '-'],         cap: 20,  mCap: 0  },  // 15-7, add/sub to 20
-  3: { ops: ['+', '-', '*'],    cap: 50,  mCap: 5  },  // ×2–×5 times tables
-  4: { ops: ['+', '-', '*', '/'], cap: 100, mCap: 10 }, // full ×10 tables
-  5: { ops: ['+', '-', '*', '/'], cap: 200, mCap: 12 }, // ×12 tables, bigger sums
-  6: { ops: ['+', '-', '*', '/'], cap: 500, mCap: 15 }, // challenge level
-};
-
-const REASONABLE_GRADE_PROFILES = {
-  1: { ops: ['+'],                cap: 20,  mCap: 4  },
-  2: { ops: ['+', '-'],           cap: 30,  mCap: 5  },
-  3: { ops: ['+', '-', '*'],      cap: 45,  mCap: 7  },
-  4: { ops: ['+', '-', '*', '/'], cap: 70,  mCap: 9  },
-  5: { ops: ['+', '-', '*', '/'], cap: 100, mCap: 11 },
-  6: { ops: ['+', '-', '*', '/'], cap: 140, mCap: 12 },
-};
-
-function normalizeOps(ops) {
-  const map = {
-    '+': '+', add: '+', addition: '+',
-    '-': '-', sub: '-', subtraction: '-',
-    '*': '*', x: '*', '×': '*', mul: '*', multiplication: '*',
-    '/': '/', '÷': '/', div: '/', division: '/',
-  };
-  const list = Array.isArray(ops) ? ops : [ops];
-  return [...new Set(list.map(op => map[String(op || '').toLowerCase().trim()]).filter(Boolean))];
-}
-
-function applyGradeToQuestion(ops, cap, mCap, grade) {
-  const selectedOps = G.practiceMode ? normalizeOps(ops) : selectedFocusOperations();
-  const selectedAllowedOps = selectedOps.filter(op => ['+', '-', '*', '/'].includes(op));
-  // Levels ask only the operations the player chose: inside this level's own
-  // set when some of them are in it, else the chosen ones
-  // (systems/question-topics.js).
-  const focusInLevel = G.practiceMode ? selectedAllowedOps : chosenBasicOpsForLevel(ops);
-  if (!grade && !focusInLevel.length) return { ops, cap, mCap };
-  const p = REASONABLE_GRADE_PROFILES[grade] || REASONABLE_GRADE_PROFILES[6];
-  // Pilot setup choices apply for every grade; grade only keeps the numbers reasonable.
-  const allowedOps = focusInLevel.length
-    ? focusInLevel
-    : ops.filter(o => p.ops.includes(o));
-  const needsTables = allowedOps.some(op => op === '*' || op === '/');
-  const selectedCap = Math.min(cap, p.cap);
-  const selectedMCap = needsTables
-    ? Math.max(2, Math.min(mCap || p.mCap || 12, p.mCap))
-    : Math.min(mCap, p.mCap);
-  return {
-    ops:  allowedOps.length ? allowedOps : ['+'],
-    cap:  selectedCap,
-    mCap: selectedMCap,
-  };
-}
-
-// Exponent / algebra: chosen at onboarding (G.focusTopics) or in the
-// practice setup (G.practiceOps). Not part of any level's own op set, so they
-// are mixed in on top of it (see nextQuestion).
-function selectedExtraTopicOps() {
-  if (G.practiceMode) return (G.practiceOps || []).filter(op => ['^', 'alg', 'frac', 'pct'].includes(op));
-  if (isTutorialActive()) return [];   // placement rounds stay on + - x /
-  return chosenExtraOps();
-}
-
-// School year (1-12) from the onboarding class (qc-sec2, fr-4e, us-8...).
-function schoolYearOf(level = G.schoolLevel || '') {
-  return schoolYearOfLevel(level);
-}
-
-// Size of exponent / algebra questions in levels: the level's own number cap,
-// raised for secondary-school players so early levels are not trivial.
-function extraTopicCap(levelCap) {
-  const year = schoolYearOf();
-  return Math.max(levelCap || 10, year >= 9 ? 40 : year >= 7 ? 25 : 0);
-}
-
-function selectedFocusOperations() {
-  const list = Array.isArray(G.focusOperations) && G.focusOperations.length
-    ? G.focusOperations
-    : G.focusOperation ? [G.focusOperation] : [];
-  return [...new Set(list.filter(Boolean))];
-}
-
-function applyOnboardingFocus(ops) {
-  const selectedOps = selectedFocusOperations();
-  // Same rule as applyGradeToQuestion(): only weight towards the focus
-  // operation(s) that this level's own op set already includes.
-  const focusOps = selectedOps.filter(op => ops.includes(op));
-  if (G.practiceMode || !focusOps.length) return ops;
-  return [...focusOps, ...focusOps, ...focusOps];
-}
-
-// Practice difficulty also sets the size of the numbers in the equations.
-const PRACTICE_MATH_RANGE = {
-  easy:   { cap: 10, mCap: 5 },
-  normal: { cap: 20, mCap: 12 },
-  hard:   { cap: 40, mCap: 12 },
-};
-
-function applyOnboardingLevelLength(cfg) {
-  if (G.practiceMode || cfg.isBossLevel) return cfg;
-  const next = { ...cfg };
-  if (G.onboardingLevelLength === 'short') {
-    next.questionCount = Math.max(3, cfg.questionCount - 2);
-  } else if (G.onboardingLevelLength === 'long') {
-    next.questionCount = cfg.questionCount + 2;
-  }
-  return next;
-}
-
-function getOnboardingTimerBonus() {
-  let bonus = 0;
-  if (G.likesMath === false) bonus += 4;
-  if (G.pendingPlacement) bonus += 2;
-  return bonus;
-}
-
 function isTutorialActive() {
   return _tutorialActive && G.tutorialMode;
 }
@@ -635,75 +522,6 @@ function shouldForceIntroBriefingBeforeFirstRound() {
 function introLang() {
   return getLang();
 }
-
-const TUTORIAL_COPY = {
-  en: {
-    round1Label: 'TUTORIAL ROUND 1 - EASY',
-    round2Label: 'TUTORIAL ROUND 2 - SPEED',
-    round1Hint: 'No timer. No game over. Choose the best answer.',
-    livesNow: 'Timer on and 3 LIVES! Watch your mistakes.',
-    guidedBreak: 'Well done! 5 questions done. 5-second break, then timer and 3 lives!',
-    restart: 'Out of lives! Starting again at 0.',
-    infinite: 'LIVES',
-    round2Hint: 'Timer on. Harder questions. Show your level.',
-    good: ['Nice shot!', 'Good answer!', 'Captain Jexongo approves!'],
-    bad: ['Not this one. Look at the equation.', 'Good try. Captain shows the answer.'],
-    timeout: ['Time is up. Watch the board.', 'Too slow. Try the next one.'],
-    captain: 'CAPTAIN JEXONGO',
-    starting: 'TUTORIAL STARTING',
-    lookBoard: 'Look at the equation board.',
-    tapAnswer: 'Tap the correct answer case to shoot.',
-    round1Rules: 'Round 1 has no timer and no game over.',
-    computer: 'COMPUTER',
-    phone: 'PHONE',
-    hudLevel: 'TUTORIAL',
-    training: 'TRAINING',
-    arrows: 'or arrow keys',
-    phoneMove: 'move with the fighter',
-    continue: 'CONTINUE',
-    round1Complete: 'ROUND 1 COMPLETE',
-    round2Harder: 'Round 2 is faster and harder.',
-    round2Detail: 'Timer is ON. Questions use bigger numbers and more mixed operations.',
-    startRound2: 'START ROUND 2',
-    planMessage: (level, weakName) => `Plan JexonGo: start level ${level}, practice ${weakName}, then increase speed.`,
-    tipSlow: 'Take extra time first, then train speed.',
-    tipReady: 'Accuracy is ready. Train speed next.',
-    ops: { '+': 'additions', '-': 'subtractions', '*': 'multiplications', '/': 'divisions' },
-  },
-  fr: {
-    round1Label: 'TUTORIEL MANCHE 1 - FACILE',
-    round2Label: 'TUTORIEL MANCHE 2 - VITESSE',
-    round1Hint: 'Pas de chrono. Pas de défaite. Choisis la bonne réponse.',
-    livesNow: 'Chrono activé et 3 VIES ! Attention aux erreurs.',
-    guidedBreak: 'Bravo ! 5 questions faites. Petite pause de 5 secondes, puis chrono et 3 vies !',
-    restart: 'Plus de vies ! On recommence à 0.',
-    infinite: 'VIES',
-    round2Hint: 'Chrono activé. Questions plus difficiles. Montre ton niveau.',
-    good: ['Beau tir !', 'Bonne réponse !', 'Capitaine Jexongo approuve !'],
-    bad: ["Pas celle-là. Regarde l'équation.", 'Bon essai. Le capitaine montre la réponse.'],
-    timeout: ['Temps écoulé. Regarde le tableau.', 'Trop lent. Essaie la prochaine.'],
-    captain: 'CAPITAINE JEXONGO',
-    starting: 'DÉBUT DU TUTORIEL',
-    lookBoard: "Regarde le tableau d'équation.",
-    tapAnswer: 'Touche la bonne case pour tirer.',
-    round1Rules: 'Manche 1 sans chrono et sans défaite.',
-    computer: 'ORDINATEUR',
-    phone: 'TÉLÉPHONE',
-    hudLevel: 'TUTORIEL',
-    training: 'ENTRAÎNEMENT',
-    arrows: 'ou les flèches',
-    phoneMove: "bouge avec l'avion",
-    continue: 'CONTINUER',
-    round1Complete: 'MANCHE 1 RÉUSSIE',
-    round2Harder: 'La manche 2 est plus rapide et plus difficile.',
-    round2Detail: 'Chrono activé. Questions avec de plus grands nombres et des opérations mélangées.',
-    startRound2: 'COMMENCER LA MANCHE 2',
-    planMessage: (level, weakName) => `Plan JexonGo : commence au niveau ${level}, pratique les ${weakName}, puis augmente la vitesse.`,
-    tipSlow: "Prends plus de temps d'abord, puis entraîne ta vitesse.",
-    tipReady: 'Ta précision est prête. Entraîne ta vitesse maintenant.',
-    ops: { '+': 'additions', '-': 'soustractions', '*': 'multiplications', '/': 'divisions' },
-  },
-};
 
 function tutorialCopy() {
   return TUTORIAL_COPY[introLang()] || TUTORIAL_COPY.en;
@@ -981,93 +799,6 @@ function showTutorialFeedback(correct, timedOut = false) {
   panel._hideTimer = setTimeout(() => panel.classList.add('hidden'), 1300);
 }
 
-// "START" banner shown right after the 3-2-1 countdown: letters drop in one by
-// one, a light sweep crosses them, speed streaks shoot out, then it zooms away.
-const START_BANNER_MS = 1600;
-function showStartBanner(host) {
-  if (!host) return;
-  host.querySelector('.level-start-banner')?.remove();
-  const banner = document.createElement('div');
-  banner.className = 'level-start-banner';
-  const word = getLang() === 'fr' ? 'DÉPART' : 'START';
-  const letters = [...word]
-    .map((ch, i) => `<span style="--i:${i}">${ch}</span>`).join('');
-  SFX.startBanner(word.length);
-  const streaks = Array.from({ length: 8 }, (_, i) => `<i style="--s:${i}"></i>`).join('');
-  banner.innerHTML = `<div class="lsb-streaks">${streaks}</div><div class="lsb-word">${letters}</div>`;
-  host.appendChild(banner);
-  setTimeout(() => banner.remove(), 1700);
-}
-
-// Boss levels: after START, a red "BOSS ALERT" banner names the boss with a
-// line about it (hazard strips slide in, name slams down, screen flashes).
-const BOSS_ALERT_MS = 2900;
-const BOSS_ALERT_INFO = {
-  10: { name: 'A330', fr: 'Son bouclier bloque tes missiles !', en: 'Its shield blocks your missiles!' },
-  20: { name: 'B-52', fr: 'Le géant du désert et ses lasers !', en: 'The desert giant and its lasers!' },
-  30: { name: 'KAWASAKI C-2', fr: 'Deux tourelles, zéro répit !', en: 'Two turrets, zero rest!' },
-  40: { name: 'C-5 GALAXY', fr: 'Le colosse du blizzard arrive !', en: 'The blizzard colossus is coming!' },
-  50: { name: 'NAVETTE STS', nameEn: 'SPACE SHUTTLE', fr: 'Combat final dans l’espace !', en: 'Final battle in space!' },
-};
-function showBossAlert(levelNum, done) {
-  const info = BOSS_ALERT_INFO[levelNum];
-  const host = $('tutorial-countdown')?.parentElement;
-  if (!info || !host) { done(); return; }
-  const fr = getLang() === 'fr';
-  host.querySelector('.boss-alert-banner')?.remove();
-  const banner = document.createElement('div');
-  banner.className = 'boss-alert-banner';
-  const nameText = (!fr && info.nameEn) || info.name;
-  const name = [...nameText]
-    .map((ch, i) => `<span style="--i:${i}">${ch === ' ' ? '&nbsp;' : ch}</span>`).join('');
-  banner.innerHTML = `
-    <div class="bab-flash"></div>
-    <div class="bab-strip bab-strip-top"></div>
-    <div class="bab-strip bab-strip-bottom"></div>
-    <div class="bab-content">
-      <div class="bab-warning">${uiIcon('warning')} ${fr ? 'ALERTE BOSS' : 'BOSS ALERT'} ${uiIcon('warning')}</div>
-      <div class="bab-name" style="--n:${nameText.length}">${name}</div>
-      <div class="bab-tagline">${fr ? info.fr : info.en}</div>
-    </div>`;
-  host.appendChild(banner);
-  SFX.bossAlert(nameText.length);
-  const sid = _sessionId;
-  setTimeout(() => {
-    banner.remove();
-    if (sid === _sessionId) done();
-  }, BOSS_ALERT_MS);
-}
-
-// Practice games: a "PRACTICE MODE" banner between the countdown and START
-// (the practice tag drops in, the words slide in from both sides, a green
-// scan line sweeps across, then it all zooms away).
-const PRACTICE_BANNER_MS = 1900;
-function showPracticeBanner(done) {
-  const host = $('tutorial-countdown')?.parentElement;
-  if (!host) { done(); return; }
-  const fr = getLang() === 'fr';
-  host.querySelector('.practice-banner')?.remove();
-  const banner = document.createElement('div');
-  banner.className = 'practice-banner';
-  banner.innerHTML = `
-    <div class="pb-band"></div>
-    <div class="pb-content">
-      <div class="pb-tag">${fr ? 'ENTRAÎNEMENT' : 'TRAINING'}</div>
-      <div class="pb-words">
-        <span class="pb-w1">${fr ? 'MODE' : 'PRACTICE'}</span>
-        <span class="pb-w2">${fr ? 'PRATIQUE' : 'MODE'}</span>
-      </div>
-      <div class="pb-sub">${fr ? 'Aucune pression : entraîne-toi!' : 'No pressure: just train!'}</div>
-    </div>`;
-  host.appendChild(banner);
-  SFX.practiceBanner();
-  const sid = _sessionId;
-  setTimeout(() => {
-    banner.remove();
-    if (sid === _sessionId) done();
-  }, PRACTICE_BANNER_MS);
-}
-
 // keepPlane: the aircraft stays where it is during the countdown instead of
 // climbing in from the bottom (beginner practice, after the 5-second break).
 function showStartCountdown(done, { keepPlane = false } = {}) {
@@ -1139,8 +870,8 @@ function showStartCountdown(done, { keepPlane = false } = {}) {
         showStartBanner(el.parentElement);
         setTimeout(beginPlay, START_BANNER_MS);
       };
-      if (G.practiceMode && !_skipPracticeBannerOnce) showPracticeBanner(playStart);
-      else if (!isTutorialActive() && BOSS_ALERT_INFO[levelCfg?.num]) showBossAlert(levelCfg.num, playStart);
+      if (G.practiceMode && !_skipPracticeBannerOnce) showPracticeBanner(playStart, () => sid === _sessionId);
+      else if (!isTutorialActive() && BOSS_ALERT_INFO[levelCfg?.num]) showBossAlert(levelCfg.num, playStart, () => sid === _sessionId);
       else playStart();
       _skipPracticeBannerOnce = false;
       return;
@@ -1493,6 +1224,7 @@ const SFX = new Proxy(SOUND, {
     return (...args) => (gameSoundsAllowed() ? value.apply(target, args) : undefined);
   },
 });
+setBannerSounds(SFX);   // the countdown banners (game-banners.js) follow the same rules
 let _tutorialActive = false;
 let _tutorialRound = 1;
 let _tutorialStats = null;
@@ -5654,7 +5386,7 @@ function nextQuestion() {
       }
       // Extra topics: practice with only exponent/algebra selected asks only
       // those; otherwise they replace part of the usual questions.
-      const extraOps = selectedExtraTopicOps();
+      const extraOps = selectedExtraTopicOps({ tutorial: isTutorialActive() });
       // Only the chosen equations: no chosen + - x / means only exponent /
       // algebra; otherwise each chosen equation comes up about as often.
       const basicCount = G.practiceMode
