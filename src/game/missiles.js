@@ -2,6 +2,7 @@
 // Uses the upright rocket sprite sheet and rotates it to match the missile travel.
 
 import { drawFrame } from './sprites.js';
+import { drawShotHalo } from './readability.js';
 import { isTouchMobile } from '../utils/device.js';
 import { G } from '../state.js';
 import { gentleFx, drawRainbowShot, drawRainbowBeam } from './glitter.js';
@@ -118,6 +119,9 @@ export function drawMissiles(ctx, missiles, isEnemy = false) {
   const gentle = gentleFx();
   for (const m of missiles) {
     if (gentle && isEnemy) { drawRainbowShot(ctx, m, 6 * scale); continue; }
+    // Dark halo behind every enemy shot: it stands out from the scenery
+    // (game/readability.js).
+    if (isEnemy) drawShotHalo(ctx, m.x, m.y, 12 * scale);
     if (gentle && m.type === 'player-machine-gun') { drawRainbowShot(ctx, m, 4.5 * scale); continue; }
     if (gentle && (m.type === 'player-laser' || m.type === 'xray')) {
       drawRainbowBeam(ctx, m, 44 * scale, 6 * scale);

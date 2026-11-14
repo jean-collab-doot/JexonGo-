@@ -8,6 +8,7 @@ import {
 import { TUTORIAL_COPY } from '../data/tutorial-copy.js';
 import { START_BANNER_MS, BOSS_ALERT_INFO, showStartBanner, showBossAlert, showPracticeBanner, setBannerSounds } from './game-banners.js';
 import { uiIcon } from '../utils/icons.js';
+import { drawWorldDim, withPlaneShadow, withEnemyOutline } from '../game/readability.js';
 import { $, showScreen } from '../utils/dom.js';
 import { newQuestion, withChoices } from '../game/math-engine.js';
 import { schoolQuestionPlan, questionFromPlan } from '../systems/school-questions.js';
@@ -2789,10 +2790,11 @@ function drawCountdownSafeFrame() {
   drawClouds(ctx);
   if (_speedLines.length === 0) initSpeedLines(canvas.width, canvas.height);
   drawSpeedLines(ctx, canvas.width, canvas.height);
+  drawWorldDim(ctx, canvas.width, canvas.height);   // game/readability.js
   const plane = countdownPlanePosition();
   // Escort planes flying in once the count reached 0 (game/wingmen.js).
   if (activeShootingPlan()?.wingmen && wingmenIn()) drawEscorts(performance.now(), plane.x, plane.y, 1, 1);
-  drawAircraftSprite(ctx, G.activeAircraft, plane.x, plane.y, _shipFrame, 1, 0);
+  withPlaneShadow(ctx, getPlayerSize(), () => drawAircraftSprite(ctx, G.activeAircraft, plane.x, plane.y, _shipFrame, 1, 0));
   // Weather is visible from the very start, during the countdown too.
   drawWeatherLayer(1, null);
 }
@@ -3034,6 +3036,9 @@ function frame(ts = 0) {
   // in the gameplay branch made them disappear for the whole boss animation.
   updateClouds(_frameStep, canvas.width, canvas.height);
   drawClouds(ctx);
+  // Readability (game/readability.js): the world a little darker and less
+  // colourful, so the planes and shots drawn next stand out.
+  drawWorldDim(ctx, canvas.width, canvas.height);
 
   if (_cutsceneActive) {
     if (_bossDialogueActive) {
@@ -3467,7 +3472,11 @@ function frame(ts = 0) {
     const bankAngle = (e.vx || 0) * 0.13;
     if (e.kamikaze && e.kamikazePhase !== 'enter') drawKamikazeMark(e);
     if (e.homingLockT != null) drawLockRing(e, e.homingLockT, HOMING_LOCK_FRAMES);
-    drawEnemySprite(ctx, e, bankAngle);
+    // Its shadow (flying above the scenery) and, for a real enemy, a thin
+    // dark outline so it stands out (game/readability.js).
+    const drawPlane = () => drawEnemySprite(ctx, e, bankAngle);
+    if (e.turncoat) withPlaneShadow(ctx, getEnemyDrawSize(e), drawPlane);
+    else withEnemyOutline(ctx, getEnemyDrawSize(e), drawPlane);
     if (e.a330Boss && e.antiMissileActive) {
       const radius = e.antiMissileRadius || getEnemyDrawSize(e) * 0.78;
       const pulse = 0.5 + 0.5 * Math.sin((e.antiMissileCycle || 0) * 0.13);
@@ -3705,15 +3714,18 @@ function frame(ts = 0) {
   }
 
   if (!_playerDestroyed) {
-    if (showTurnRightRollArt) {
-      const sz = getPlayerSize();
-      drawFrame(ctx, shipSpriteKey(G.activeAircraft, 'right'), _turnRightFrame, playerDrawX, playerDrawY, sz, sz, { alpha: flashAlpha });
-    } else if (showTurnLeftRollArt) {
-      const sz = getPlayerSize();
-      drawFrame(ctx, shipSpriteKey(G.activeAircraft, 'left'), _turnLeftFrame, playerDrawX, playerDrawY, sz, sz, { alpha: flashAlpha });
-    } else {
-      drawAircraftSprite(ctx, G.activeAircraft, playerDrawX, playerDrawY, _shipFrame, flashAlpha, bankAngle);
-    }
+    // The plane with its shadow below it (game/readability.js).
+    withPlaneShadow(ctx, getPlayerSize(), () => {
+      if (showTurnRightRollArt) {
+        const sz = getPlayerSize();
+        drawFrame(ctx, shipSpriteKey(G.activeAircraft, 'right'), _turnRightFrame, playerDrawX, playerDrawY, sz, sz, { alpha: flashAlpha });
+      } else if (showTurnLeftRollArt) {
+        const sz = getPlayerSize();
+        drawFrame(ctx, shipSpriteKey(G.activeAircraft, 'left'), _turnLeftFrame, playerDrawX, playerDrawY, sz, sz, { alpha: flashAlpha });
+      } else {
+        drawAircraftSprite(ctx, G.activeAircraft, playerDrawX, playerDrawY, _shipFrame, flashAlpha, bankAngle);
+      }
+    });
     if (playerShieldActive(ts || performance.now())) {
       const radius = getPlayerSize() * 0.62;
       const pulse = 0.5 + 0.5 * Math.sin(tick * 0.13);

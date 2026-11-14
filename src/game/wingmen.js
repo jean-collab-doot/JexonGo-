@@ -8,6 +8,7 @@
 // roll frames when the escorts move sideways, like the player's plane.
 import { drawFrame, hasTurnArt, shipSpriteKey } from './sprites.js';
 import { drawAircraftSpriteSized } from './aircraft-draw.js';
+import { withPlaneShadow } from './readability.js';
 
 const ENTRY_MS = 1700;
 const ROAM_MIN_MS = 1300;
@@ -93,12 +94,15 @@ export function wingmanPos(side) {
 
 export function drawWingmen(ctx, { aircraftId, size, frame, alpha = 1 }) {
   for (const w of _wing) {
-    if (w.turnR > 0 && hasTurnArt(aircraftId, 'right')) {
-      drawFrame(ctx, shipSpriteKey(aircraftId, 'right'), Math.floor(w.turnR), w.x, w.y, size, size, { alpha });
-    } else if (w.turnL > 0 && hasTurnArt(aircraftId, 'left')) {
-      drawFrame(ctx, shipSpriteKey(aircraftId, 'left'), Math.floor(w.turnL), w.x, w.y, size, size, { alpha });
-    } else {
-      drawAircraftSpriteSized(ctx, aircraftId, w.x, w.y, size, frame, alpha, w.tilt);
-    }
+    // Each escort casts its shadow like the player's plane (readability.js).
+    withPlaneShadow(ctx, size, () => {
+      if (w.turnR > 0 && hasTurnArt(aircraftId, 'right')) {
+        drawFrame(ctx, shipSpriteKey(aircraftId, 'right'), Math.floor(w.turnR), w.x, w.y, size, size, { alpha });
+      } else if (w.turnL > 0 && hasTurnArt(aircraftId, 'left')) {
+        drawFrame(ctx, shipSpriteKey(aircraftId, 'left'), Math.floor(w.turnL), w.x, w.y, size, size, { alpha });
+      } else {
+        drawAircraftSpriteSized(ctx, aircraftId, w.x, w.y, size, frame, alpha, w.tilt);
+      }
+    });
   }
 }
