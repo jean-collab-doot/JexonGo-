@@ -247,3 +247,13 @@ html body #s-result .rs-btn.rs-btn-alt { font-size: clamp(9px, 2.6vw, 14px); }
   font-family: 'Press Start 2P', monospace; font-weight: 400;
   font-size: min(clamp(16px, 5.4vw, 38px), 5.5vh); line-height: 1.35;
 }
+
+/* REJOUER / CONTINUER always on screen: when the card is taller than the
+   screen (wide but short windows, the mistakes button, a promo banner), the
+   card scrolls under them instead of hiding them below (the scroll bar is
+   hidden, so nothing told the player they were there). */
+html body #s-result .rs-actions {
+  position: sticky; bottom: 0; z-index: 4;
+  padding-top: 14px; padding-bottom: max(8px, env(safe-area-inset-bottom));
+  background: linear-gradient(to bottom, rgba(255, 194, 26, 0), var(--jx-yellow, #FFC21A) 34%);
+}

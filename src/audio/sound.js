@@ -84,7 +84,21 @@ function _after(ms, fn) {
   _timers.push(id);
 }
 
+// One-shot sound effects (sounds, tones, noise bursts, the nuke) play
+// through this bus, so stopping every sound (_stopAllSFX: leaving or pausing
+// a game) cuts at once even the ones already playing that nothing kept a
+// handle on (long rumbles, chords, echoes). A new bus is made on next use.
+let _fxBus = null;
+function _fxOut(ctx) {
+  if (!_fxBus || _fxBus.context !== ctx) {
+    _fxBus = ctx.createGain();
+    _fxBus.connect(ctx.destination);
+  }
+  return _fxBus;
+}
+
 function _stopAllSFX() {
+  if (_fxBus) { try { _fxBus.disconnect(); } catch (_) {} _fxBus = null; }
   _nukeFlight = null;
   _adPlane = null;
   _timers.forEach(clearTimeout);
@@ -110,7 +124,7 @@ function _playBuf(url, vol, fallback, maxDur = Infinity) {
     const gain = ctx.createGain();
     src.buffer = buf;
     gain.gain.value = Math.min(1, vol * _sfxVol);
-    src.connect(gain); gain.connect(ctx.destination);
+    src.connect(gain); gain.connect(_fxOut(ctx));
     _sources.push(src);
     src.onended = () => _sources.splice(_sources.indexOf(src), 1);
     const offset = _offsets[url] || 0;
@@ -126,7 +140,7 @@ function _tone(ctx, freq, type, dur, vol = 0.28, sweep = null) {
   try {
     const osc = ctx.createOscillator();
     const g   = ctx.createGain();
-    osc.connect(g); g.connect(ctx.destination);
+    osc.connect(g); g.connect(_fxOut(ctx));
     osc.type = type;
     const now = ctx.currentTime;
     osc.frequency.setValueAtTime(sweep ?? freq, now);
@@ -144,7 +158,7 @@ function _noise(ctx, dur, vol = 0.35) {
     for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / d.length);
     const src = ctx.createBufferSource();
     const g   = ctx.createGain();
-    src.buffer = buf; src.connect(g); g.connect(ctx.destination);
+    src.buffer = buf; src.connect(g); g.connect(_fxOut(ctx));
     g.gain.setValueAtTime(vol * _sfxVol, ctx.currentTime);
     g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + dur);
     src.start();
@@ -286,7 +300,9 @@ function _resumeAll() {
     _ensureBgRoute();
     _setBgOutputVolume(_musicVol);
   }
-  if (_bgEl.src && _bgEl.paused && !_bgEl.ended) _bgEl.play().catch(() => {});
+  // Only a track that is meant to play (stopMusic clears _bgCurrent): an
+  // emptied element reports the page address as its src.
+  if (_bgCurrent && _bgEl.src && _bgEl.paused && !_bgEl.ended) _bgEl.play().catch(() => {});
   if (_actx && _actx.state === 'suspended') _actx.resume();
 }
 
@@ -700,7 +716,7 @@ function _nukeFlightStop() {
 }
 
 // A noise burst through a filter whose frequency glides from → to.
-function _noiseBurst(ctx, type, fromHz, toHz, dur, vol, attack = 0.02, dest = ctx.destination) {
+function _noiseBurst(ctx, type, fromHz, toHz, dur, vol, attack = 0.02, dest = _fxOut(ctx)) {
   const now = ctx.currentTime;
   const src = ctx.createBufferSource();
   src.buffer = _noiseBuffer(ctx);
@@ -1259,7 +1275,7 @@ export const SFX = {
     // Continuous flight layers, driven by nukeFlight(p).
     const out = ctx.createGain();
     out.gain.value = v;
-    out.connect(ctx.destination);
+    out.connect(_fxOut(ctx));
     const roar = ctx.createBufferSource();
     roar.buffer = _noiseBuffer(ctx);
     roar.loop = true;
@@ -1314,7 +1330,7 @@ export const SFX = {
     subG.gain.setValueAtTime(0.0001, now);
     subG.gain.exponentialRampToValueAtTime(0.9 * v, now + 0.05);
     subG.gain.exponentialRampToValueAtTime(0.0001, now + 2.8);
-    sub.connect(subG); subG.connect(ctx.destination);
+    sub.connect(subG); subG.connect(_fxOut(ctx));
     sub.start(now); sub.stop(now + 2.9);
     _sources.push(sub);
     _noiseBurst(ctx, 'lowpass', 6000, 90, 3.6, 0.85 * v, 0.03);           // the roar
