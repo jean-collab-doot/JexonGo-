@@ -9,3 +9,6 @@ data/saves/
 
 .vercel
 .env*
+
+# Supabase recovery codes: never in git
+supabase/Codes/

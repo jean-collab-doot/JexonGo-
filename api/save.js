@@ -200,8 +200,8 @@ export default async function handler(req, res) {
     }
 
     if (req.method === 'DELETE') {
+      // By account id only: an e-mail match could reach someone else's save.
       await deleteSaveAsServer(token, 'user_id', user.id);
-      await deleteSaveAsServer(token, 'email', String(user.email || '').toLowerCase());
       console.log('[Save] account deletion requested', {
         deleted: true,
         reason: req.body?.deletionReason?.reason || null,
