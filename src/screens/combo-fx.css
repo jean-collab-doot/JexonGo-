@@ -14,7 +14,7 @@
    combo badge. */
 #s-game #hud-left-cluster { position: relative; }
 #s-game #hud-under {
-  position: absolute; left: 0; top: calc(100% + 8px); z-index: 5;
+  position: absolute; left: 0; top: calc(100% + 20px); z-index: 5;
   display: flex; align-items: center; gap: 6px;
   width: max-content; pointer-events: none;
 }
