@@ -3164,10 +3164,15 @@ function frame(ts = 0) {
       }
     } else if (activeCount < normalCap) {
       // Independent enemies: F-15 straight runs and randomly turning Mirages.
-      const e = spawnEnemy(canvas.width, type);
-      // Some F-15s carry a homing missile (see HOMING F-15 below).
-      if (type === 'basic' && Math.random() < HOMING_F15_CHANCE) e.homingShooter = true;
-      spawned.push(e);
+      // With 5 missiles or more at once (firepowerExtraEnemies), two come in
+      // together while there is room: they are shot down faster.
+      const together = firepowerExtraEnemies() >= 2 ? 2 : 1;
+      for (let i = 0; i < together && activeCount + i < normalCap; i++) {
+        const e = spawnEnemy(canvas.width, type);
+        // Some F-15s carry a homing missile (see HOMING F-15 below).
+        if (type === 'basic' && Math.random() < HOMING_F15_CHANCE) e.homingShooter = true;
+        spawned.push(e);
+      }
     }
 
     for (const e of spawned) {
@@ -6643,13 +6648,30 @@ function extraEnemies() {
   return !isTutorialActive() && !_guidedRun;
 }
 
+// More firepower, more enemies: a shot type that fires 3 missiles or more at
+// once brings more planes on screen, growing with the missiles: 3 missiles
+// (Triple tir) +1 plane at once and 20 % shorter waits between planes, 5
+// (Tir en V, Assaut total) +2 and 40 %, 7 +3 and 60 % (at most): planes
+// die faster with more missiles, so they also come in faster. Not in the
+// tutorial / beginner run, nor on boss levels (the boss and its companions
+// keep their own count).
+const FIREPOWER_MAX_EXTRA = 3;
+const FIREPOWER_SPAWN_STEP = 0.2;
+
+function firepowerExtraEnemies() {
+  if (!extraEnemies() || levelCfg?.isBossLevel) return 0;
+  const shots = activeShootingPlan()?.missiles?.length || 1;
+  return shots >= 3 ? Math.min(FIREPOWER_MAX_EXTRA, Math.round((shots - 1) / 2)) : 0;
+}
+
 function adaptiveSpawnRate() {
   return Math.round(baseSpawnRate * ENEMY_SPAWN_INTERVAL_SCALE
-    * (extraEnemies() ? SPAWN_INTERVAL_MULT : 1));
+    * (extraEnemies() ? SPAWN_INTERVAL_MULT : 1)
+    * (1 - FIREPOWER_SPAWN_STEP * firepowerExtraEnemies()));
 }
 
 function adaptiveMaxEnemies() {
-  return baseMaxEnemies;
+  return baseMaxEnemies > 0 ? baseMaxEnemies + firepowerExtraEnemies() : baseMaxEnemies;
 }
 
 function tuneAdaptivePerformance(ts = 0) {
