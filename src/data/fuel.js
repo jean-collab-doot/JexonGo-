@@ -1,20 +1,21 @@
 // Fuel of each playable plane (validated table, 2026-11-20): tank size and
 // burn rate per second of flight. Small light planes: small tank, low burn;
-// big heavy ones: big tank, high burn. Every plane flies 72 s on a full tank,
-// plus a little more the rarer it is (+4 % uncommon … +20 % secret).
+// big heavy ones: big tank, high burn. Every plane flies 85 s on a full tank
+// (72 s in the first version, made slower on 2026-11-20), plus a little more
+// the rarer it is (+4 % uncommon … +20 % secret).
 //   plane   size / weight          rarity            tank  burn/s  flight
-//   t6      small, 2.9 t           common (free)       60   0.83    72 s
-//   pc21    small, 4.2 t           common (800)        70   0.97    72 s
-//   c130    very big, 70 t         uncommon (2000)    160   2.14    75 s
-//   a10     medium-heavy, 23 t     uncommon (3800)    110   1.47    75 s
-//   f16     medium, 19 t           rare (6000)        100   1.29    78 s
-//   f18     medium-heavy, 23 t     rare (8800)        110   1.41    78 s
-//   f22     heavy, 38 t            epic (12000)       130   1.61    81 s
-//   f35     heavy, 32 t            epic (14400)       120   1.49    81 s
-//   b2      giant, 170 t           legendary (22000)  200   2.40    84 s
-//   sr71    big, 78 t              legendary (30000)  170   2.04    84 s
-//   f117    medium-heavy, 24 t     secret             110   1.27    86 s
-export const BASE_FLIGHT_S = 72;
+//   t6      small, 2.9 t           common (free)       60   0.71    85 s
+//   pc21    small, 4.2 t           common (800)        70   0.82    85 s
+//   c130    very big, 70 t         uncommon (2000)    160   1.81    88 s
+//   a10     medium-heavy, 23 t     uncommon (3800)    110   1.24    88 s
+//   f16     medium, 19 t           rare (6000)        100   1.09    92 s
+//   f18     medium-heavy, 23 t     rare (8800)        110   1.20    92 s
+//   f22     heavy, 38 t            epic (12000)       130   1.37    95 s
+//   f35     heavy, 32 t            epic (14400)       120   1.26    95 s
+//   b2      giant, 170 t           legendary (22000)  200   2.03    99 s
+//   sr71    big, 78 t              legendary (30000)  170   1.72    99 s
+//   f117    medium-heavy, 24 t     secret             110   1.08   102 s
+export const BASE_FLIGHT_S = 85;
 export const RARITY_BONUS = { common: 0, uncommon: 0.04, rare: 0.08, epic: 0.12, legendary: 0.16, secret: 0.2 };
 
 export const PLANE_FUEL = {
@@ -45,6 +46,7 @@ export const CAN_DROP_CHANCE = 1 / 3;  // share of destroyed enemies that drop a
 export const SAFETY_BELOW = 0.30;      // under this, after SAFETY_KILLS kills without a can,
 export const SAFETY_KILLS = 4;         // the next kill drops one for sure
 export const RESPAWN_FUEL = 0.5;       // back after an empty tank or revived in co-op
+export const HALF_ALERT = 0.50;        // half the tank gone: an alarm
 export const LOW_ALERT = 0.25;         // red, blinking, alert sound
 export const CRITICAL_ALERT = 0.10;    // second alert sound
 // Youngest players (game/glitter.js gentle mode): much gentler.

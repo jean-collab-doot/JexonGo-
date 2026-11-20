@@ -26,7 +26,7 @@ import { makeFractionQuestion } from '../game/fractions.js';
 import { makePercentQuestion } from '../game/percentages.js';
 import { startSessionReport, recordAnswer, mistakesToReplay, markReplayed } from '../systems/session-report.js';
 import { spawnEnemy, updateEnemies, hitEnemy, KAMIKAZE_LOCK_FRAMES } from '../game/enemies.js';
-import { shotDelaySeconds, activeWeapon, homingUpgradeOwned } from '../data/upgrades.js';
+import { shotDelaySeconds, activeWeapon, homingUpgradeOwned, planeUpgrades, FUEL_CAN_CHANCE_MULT } from '../data/upgrades.js';
 import { createMissile, updateMissiles, drawMissiles } from '../game/missiles.js';
 import { spawnExplosion, spawnHitSpark, spawnMissileExplosion, updateParticles, drawParticles } from '../game/particles.js';
 import {
@@ -6481,7 +6481,13 @@ function fuelAlerts(list) {
   const fr = getLang() === 'fr';
   for (const level of list || []) {
     SFX.fuelLow(level);
-    if (calloutsOn()) callout({
+    if (!calloutsOn()) continue;
+    if (level === 'half') {
+      callout({ title: fr ? 'ESSENCE À 50 %' : 'FUEL AT 50%', tone: 'soft',
+        subs: [{ text: fr ? 'PENSE AUX BIDONS' : 'WATCH FOR FUEL CANS' }], priority: 2 });
+      continue;
+    }
+    callout({
       title: level === 'critical' ? (fr ? 'RÉSERVE !' : 'RESERVE!') : (fr ? 'ESSENCE BASSE !' : 'LOW FUEL!'),
       tone: 'soft', subs: [{ text: fr ? 'ATTRAPE UN BIDON' : 'GRAB A FUEL CAN' }], priority: 3,
     });
@@ -6958,7 +6964,10 @@ export function initGame(levelNum, onComplete) {
   // beginner run; much gentler for the youngest players.
   _fuelCrash = null;
   _fuelTipsShown = false;
-  resetFuel(G.activeAircraft, { on: fuelModeOn(), gentle: gentleFx() });
+  resetFuel(G.activeAircraft, {
+    on: fuelModeOn(), gentle: gentleFx(),
+    canChance: FUEL_CAN_CHANCE_MULT[planeUpgrades(G.activeAircraft).fuelCan] || 1,   // hangar PLUS DE BIDONS
+  });
   resetFuelGauge();
   setFuelGauge(fuelOn() ? fuelShare() : null);
   resetNukeReward({ keep: !!snap });   // nuke rewards (systems/nuke-reward.js)

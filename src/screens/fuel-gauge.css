@@ -113,3 +113,6 @@
   100% { width: 100%; background-color: #5ee87a; }
 }
 @media (prefers-reduced-motion: reduce) { .ht-fuel-bar i { animation: none; width: 70%; } }
+
+/* Hangar AMÉLIORER: PLUS DE BIDONS icon (the can at 2x, no smoothing). */
+.upg-fuel { width: 64px; height: 64px; max-width: 78%; max-height: 78%; object-fit: contain; image-rendering: pixelated; image-rendering: crisp-edges; }

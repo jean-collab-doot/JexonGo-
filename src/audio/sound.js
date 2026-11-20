@@ -1133,6 +1133,11 @@ export const SFX = {
   // Fuel (game/fuel.js). Low tank: two short warning beeps (level 'low'
   // under 25 %, 'critical' under 10 %: higher and three beeps).
   fuelLow(level = 'low') {
+    if (level === 'half') {
+      // Half the tank gone: a two-tone alarm, lower and calmer.
+      [0, 260].forEach((ms, i) => _after(ms, () => _tone(_ac(), i ? 523 : 659, 'square', 0.2, 0.13)));
+      return;
+    }
     const crit = level === 'critical';
     const f = crit ? 1046 : 880;
     [0, 160, ...(crit ? [320] : [])].forEach(ms =>

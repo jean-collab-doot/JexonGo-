@@ -12,8 +12,9 @@ import { visibleSkins, ownsSkin, activeSkin, setActiveSkin, skinEventOpen, aircr
 import {
   LIFE_UPGRADE_PRICES, SHOT_UPGRADE_PRICES, HOMING_UPGRADE_PRICES, XP_UPGRADE_PRICES, XP_BONUS_PERCENT, WEAPONS,
   AIRDROP_BOOST_ITEMS, AIRDROP_CHANCE_PRICES, AIRDROP_CHANCE_MULT, AIRDROP_TIME_PRICES, AIRDROP_TIME_BONUS_S, AIRDROP_BASE_DURATION_S,
-  planeUpgrades, setPlaneUpgrades, SHOT_DELAY_SECONDS,
+  planeUpgrades, setPlaneUpgrades, SHOT_DELAY_SECONDS, FUEL_CAN_PRICES, FUEL_CAN_CHANCE_MULT,
 } from '../data/upgrades.js';
+import { CAN_DROP_CHANCE } from '../data/fuel.js';
 
 let _hangarTab = 'planes';   // 'planes' | 'missiles' | 'upgrades'
 const _panelScopes = new Set(['#s-hangar']);   // every place the hangar panel lives
@@ -631,6 +632,20 @@ function renderUpgradesTab(body) {
             : (fr ? `Laser, mitrailleuse, champ de protection et soutien aérien durent ${AIRDROP_BASE_DURATION_S + AIRDROP_TIME_BONUS_S[up.dropTime]} s.`
                   : `X-ray, machine gun, force field and air support last ${AIRDROP_BASE_DURATION_S + AIRDROP_TIME_BONUS_S[up.dropTime]} s.`),
           up.dropTime, AIRDROP_TIME_PRICES)}
+        <h4 class="pi-bar">${fr ? 'ESSENCE' : 'FUEL'}</h4>
+        ${(() => {
+          // Share of destroyed enemies that drop a fuel can (game/fuel.js).
+          const pct = lvl => Math.round(Math.min(0.85, CAN_DROP_CHANCE * FUEL_CAN_CHANCE_MULT[lvl]) * 100);
+          const maxed = up.fuelCan >= FUEL_CAN_PRICES.length;
+          return levelRow('fuelCan', '<img class="upg-fuel" src="/assets/fx/Fuel/bidon.png" alt="">',
+            fr ? `PLUS DE BIDONS (${up.fuelCan}/3)` : `MORE FUEL CANS (${up.fuelCan}/3)`,
+            maxed
+              ? (fr ? `${pct(up.fuelCan)} % des ennemis abattus lâchent un bidon d’essence.`
+                    : `${pct(up.fuelCan)}% of the enemies shot down drop a fuel can.`)
+              : (fr ? `Prochain niveau : ${pct(up.fuelCan + 1)} % des ennemis abattus lâchent un bidon (au lieu de ${pct(up.fuelCan)} %).`
+                    : `Next level: ${pct(up.fuelCan + 1)}% of the enemies shot down drop a fuel can (instead of ${pct(up.fuelCan)}%).`),
+            up.fuelCan, FUEL_CAN_PRICES);
+        })()}
         <h4 class="pi-bar">${fr ? 'ARME' : 'WEAPON'}</h4>
         ${specialWeapon
           ? `<p class="pi-text">${fr
@@ -673,7 +688,7 @@ function buyLevelUpgrade(planeId, kind) {
   // "drop-<item>" = airdrop chance for that item (record.dropChance[item]).
   const dropItem = kind.startsWith('drop-') ? kind.slice(5) : null;
   const prices = dropItem ? AIRDROP_CHANCE_PRICES : { lives: LIFE_UPGRADE_PRICES, shots: SHOT_UPGRADE_PRICES,
-    homing: HOMING_UPGRADE_PRICES, xp: XP_UPGRADE_PRICES, dropTime: AIRDROP_TIME_PRICES }[kind];
+    homing: HOMING_UPGRADE_PRICES, xp: XP_UPGRADE_PRICES, dropTime: AIRDROP_TIME_PRICES, fuelCan: FUEL_CAN_PRICES }[kind];
   if (!prices || (dropItem && !(dropItem in record.dropChance))) return;
   const level = dropItem ? record.dropChance[dropItem] : record[kind];
   if (level >= prices.length) return;

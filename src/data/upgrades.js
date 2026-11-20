@@ -8,6 +8,7 @@
 //   • dropChance — { xray, machinegun, shield, support }: airdrop chance level
 //                  per item (0-3, weight × AIRDROP_CHANCE_MULT)
 //   • dropTime   — longer airdrop items (0-3, + AIRDROP_TIME_BONUS_S seconds)
+//   • fuelCan    — fuel cans dropped more often (0-3, × FUEL_CAN_CHANCE_MULT)
 //   • weapons — weapons bought for this aircraft ('missile' is free)
 //   • weapon  — the equipped weapon: 'missile' | 'machinegun' | 'laser'
 
@@ -32,6 +33,9 @@ export const AIRDROP_CHANCE_MULT = [1, 1.5, 2, 3];       // index = level
 export const AIRDROP_TIME_PRICES = [800, 1600, 3200];    // levels 1 → 3
 export const AIRDROP_TIME_BONUS_S = [0, 3, 6, 10];       // index = level
 export const AIRDROP_BASE_DURATION_S = 10;
+// Fuel cans (game/fuel.js): destroyed enemies drop one more often.
+export const FUEL_CAN_PRICES = [600, 1200, 2400];     // levels 1 → 3
+export const FUEL_CAN_CHANCE_MULT = [1, 1.2, 1.4, 1.65]; // index = level (1 in 3 → about 1 in 1.8)
 
 export const WEAPONS = [
   {
@@ -68,6 +72,7 @@ export function planeUpgrades(planeId = G.activeAircraft) {
     dropChance: Object.fromEntries(AIRDROP_BOOST_ITEMS.map(({ id }) =>
       [id, Math.max(0, Math.min(AIRDROP_CHANCE_PRICES.length, raw.dropChance?.[id] | 0))])),
     dropTime: Math.max(0, Math.min(AIRDROP_TIME_PRICES.length, raw.dropTime | 0)),
+    fuelCan: Math.max(0, Math.min(FUEL_CAN_PRICES.length, raw.fuelCan | 0)),
     weapons,
     weapon: weapons.includes(raw.weapon) ? raw.weapon : 'missile',
   };

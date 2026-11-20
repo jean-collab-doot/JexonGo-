@@ -9,7 +9,7 @@
 // crash, a heart lost) is handled by game.js.
 import {
   planeFuel, HIT_COST, CAN_REFILL, CAN_DROP_CHANCE, SAFETY_BELOW, SAFETY_KILLS,
-  RESPAWN_FUEL, LOW_ALERT, CRITICAL_ALERT, GENTLE,
+  RESPAWN_FUEL, HALF_ALERT, LOW_ALERT, CRITICAL_ALERT, GENTLE,
 } from '../data/fuel.js';
 
 const CAN_SRC = '/assets/fx/Fuel/bidon.png';
@@ -20,6 +20,8 @@ const CAN_LIFE_MS = 6000;
 const CAN_BLINK_MS = 1500;
 const CAN_FALL = 0.75;          // px per 60 fps frame (slow float down)
 const CAN_BOB_MS = 320;         // up / down by one picture pixel
+const CAN_PULSE = 0.09;         // grows and shrinks by 9 % (like the EXP / coin pickups)
+const CAN_PULSE_MS = 1300;      // one grow + shrink
 const MAX_CANS = 3;             // on screen at once
 
 let _img = null;
@@ -31,13 +33,14 @@ function canImage() {
 const S = {
   on: false, gentle: false,
   tank: 60, burn: 1, fuel: 60,
-  killsSinceCan: 0,
-  lowAlerted: false, criticalAlerted: false,
+  killsSinceCan: 0, canChance: 1,
+  halfAlerted: false, lowAlerted: false, criticalAlerted: false,
   cans: [],
 };
 
 // New game / new life. on = false: no fuel in this mode (practice, tutorial).
-export function resetFuel(planeId, { on = true, gentle = false, share = 1 } = {}) {
+// canChance: multiplier of the can drop chance (hangar upgrade PLUS DE BIDONS).
+export function resetFuel(planeId, { on = true, gentle = false, share = 1, canChance = 1 } = {}) {
   const p = planeFuel(planeId);
   S.on = on;
   S.gentle = gentle;
@@ -45,7 +48,8 @@ export function resetFuel(planeId, { on = true, gentle = false, share = 1 } = {}
   S.burn = p.burn;
   S.fuel = p.tank * share;
   S.killsSinceCan = 0;
-  S.lowAlerted = S.criticalAlerted = false;
+  S.canChance = canChance;
+  S.halfAlerted = S.lowAlerted = S.criticalAlerted = false;
   S.cans = [];
   canImage();
 }
@@ -54,12 +58,16 @@ export const fuelOn = () => S.on;
 export const fuelShare = () => (S.on ? Math.max(0, Math.min(1, S.fuel / S.tank)) : 1);
 export const fuelEmpty = () => S.on && S.fuel <= 0;
 
-// Alerts crossed by the last change: 'low' (under 25 %) / 'critical' (10 %).
+// Alerts crossed by the last change: 'half' (half the tank gone), 'low'
+// (under 25 %), 'critical' (under 10 %). Each again after a refill above it.
 function checkAlerts() {
   const share = fuelShare();
   const out = [];
-  if (share >= LOW_ALERT) { S.lowAlerted = false; S.criticalAlerted = false; }
+  if (share >= HALF_ALERT) { S.halfAlerted = false; S.lowAlerted = false; S.criticalAlerted = false; }
+  else if (share >= LOW_ALERT) { S.lowAlerted = false; S.criticalAlerted = false; }
   else if (share >= CRITICAL_ALERT) S.criticalAlerted = false;
+  if (share < HALF_ALERT && share >= LOW_ALERT && !S.halfAlerted) { S.halfAlerted = true; out.push('half'); }
+  if (share < LOW_ALERT) S.halfAlerted = true;
   if (share < LOW_ALERT && share > 0 && !S.lowAlerted) { S.lowAlerted = true; out.push('low'); }
   if (share < CRITICAL_ALERT && share > 0 && !S.criticalAlerted) { S.criticalAlerted = true; out.push('critical'); }
   return out;
@@ -90,14 +98,14 @@ export function refuelTo(share = RESPAWN_FUEL) {
 export function drainForTest(share = 0.03) {
   if (!S.on) return;
   S.fuel = S.tank * share;
-  S.lowAlerted = S.criticalAlerted = false;
+  S.halfAlerted = S.lowAlerted = S.criticalAlerted = false;
 }
 
 // An enemy plane was destroyed at (x, y): maybe it drops a can.
 // boss: a boss always drops one.
 export function enemyDestroyed(x, y, { boss = false } = {}) {
   if (!S.on) return false;
-  const chance = S.gentle ? GENTLE.drop : CAN_DROP_CHANCE;
+  const chance = Math.min(0.85, (S.gentle ? GENTLE.drop : CAN_DROP_CHANCE) * S.canChance);
   const safety = fuelShare() < SAFETY_BELOW && S.killsSinceCan >= SAFETY_KILLS;
   if (!boss && !safety && Math.random() >= chance) { S.killsSinceCan++; return false; }
   if (S.cans.length >= MAX_CANS) S.cans.shift();
@@ -126,17 +134,22 @@ export function updateAndDrawCans(ctx, { now, ms, step, height, player, playerRa
     if (!frozen) { c.age += ms; c.y += CAN_FALL * step; }
     const age = c.age;
     if (age >= CAN_LIFE_MS || c.y - size > height) { S.cans.splice(i, 1); continue; }
-    // Floats: up and down by one picture pixel.
+    // Floats: up and down by one picture pixel, and grows / shrinks a little
+    // like the EXP and coin pickups (drawn without smoothing).
     const bob = Math.floor(now / CAN_BOB_MS) % 2 ? -k : 0;
     const left = Math.round(c.x - size / 2);
     const top = Math.round(c.y - size / 2 + bob);
+    const pulse = 1 + Math.sin((now / CAN_PULSE_MS) * Math.PI * 2) * CAN_PULSE;
+    const drawSize = Math.round(size * pulse);
+    const drawLeft = Math.round(c.x - drawSize / 2);
+    const drawTop = Math.round(c.y - drawSize / 2 + bob);
     // Blinks just before it vanishes.
     const blinking = CAN_LIFE_MS - age < CAN_BLINK_MS;
     if (!blinking || Math.floor(now / 110) % 2 === 0) {
       if (img.complete && img.naturalWidth) {
         ctx.save();
         ctx.imageSmoothingEnabled = false;
-        ctx.drawImage(img, left, top, size, size);
+        ctx.drawImage(img, drawLeft, drawTop, drawSize, drawSize);
         ctx.restore();
       }
     }
