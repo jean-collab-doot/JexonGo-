@@ -6547,18 +6547,62 @@ function updateFuel(frameMs) {
   if (!_fuelCrash && planeFlying() && _tk.attached < 0) {
     fuelAlerts(burnFuel(frameMs));
     if (fuelEmpty()) startFuelCrash();
-    // A leak: fuel drops falling from the plane.
+    // A leak: brown fuel droplets run from under the plane.
     if (fuelLeaking()) {
       _leakDropMs -= frameMs;
-      if (_leakDropMs <= 0) {
-        _leakDropMs = 140;
-        spawnExplosion(G.particles, G.player.x + (Math.random() - 0.5) * 8, G.player.y + getPlayerSize() * 0.3, '#d9a520', 3);
-      }
+      while (_leakDropMs <= 0) { _leakDropMs += 28; spawnLeakDrop(); }
     }
   }
+  updateAndDrawLeakDrops(frameMs);
   setFuelGauge(fuelShare(), { leak: fuelLeaking() });
 }
 let _leakDropMs = 0;
+
+// Fuel leak droplets: like rain, small brown streaks that come out from under
+// the wings near the fuselage, stretch as they speed up and fall behind the
+// plane, then fade. Drawn just before the plane (they start under it).
+// Plain pixel rectangles, no smoothing, no blur.
+let _leakDrops = [];
+const LEAK_DROP_LIFE_MS = 650;
+function spawnLeakDrop() {
+  if (_leakDrops.length > 80) return;
+  const ps = getPlayerSize();
+  const k = ps / 64;
+  const side = Math.random() < 0.5 ? -1 : 1;
+  _leakDrops.push({
+    x: G.player.x + side * ps * (0.06 + Math.random() * 0.14),
+    y: G.player.y + ps * (0.02 + Math.random() * 0.12),
+    vx: side * (0.004 + Math.random() * 0.018) * k,
+    vy: (0.05 + Math.random() * 0.05) * k,
+    k, age: 0, big: Math.random() < 0.3,
+  });
+}
+function updateAndDrawLeakDrops(frameMs) {
+  if (!_leakDrops.length) return;
+  const ms = Math.min(50, frameMs);
+  ctx.save();
+  ctx.imageSmoothingEnabled = false;
+  _leakDrops = _leakDrops.filter(d => {
+    d.age += ms;
+    if (d.age >= LEAK_DROP_LIFE_MS || d.y > canvas.height + 20) return false;
+    d.vy += 0.0011 * d.k * ms;          // gravity: it speeds up and stretches
+    d.x += d.vx * ms;
+    d.y += d.vy * ms;
+    const t = d.age / LEAK_DROP_LIFE_MS;
+    const w = Math.max(2, Math.round((d.big ? 3 : 2) * d.k));
+    const len = Math.max(w + 2, Math.round(Math.min(9, 3 + d.vy * 10 / d.k) * d.k));
+    const x = Math.round(d.x - w / 2), y = Math.round(d.y);
+    ctx.globalAlpha = t < 0.12 ? t / 0.12 : 1 - Math.max(0, (t - 0.55) / 0.45);
+    ctx.fillStyle = '#5a3210';                       // the streak
+    ctx.fillRect(x, y - len, w, len);
+    ctx.fillStyle = '#3a1f08';                       // a darker drop at its tip
+    ctx.fillRect(x, y - w, w, w + 1);
+    ctx.fillStyle = '#a8692a';                       // a glint
+    ctx.fillRect(x, y - len, Math.max(1, Math.round(w / 2)), Math.max(1, Math.round(len * 0.4)));
+    return true;
+  });
+  ctx.restore();
+}
 
 // Alerts from game/fuel.js: the sound, and a side callout (soft colour).
 function fuelAlerts(list) {
@@ -7220,6 +7264,7 @@ export function initGame(levelNum, onComplete) {
   if (!snap) startSessionReport();
   resetCombo({ keepBanked: !!snap });   // EXP combo (systems/xp-combo.js)
   resetShotCoins({ keep: !!snap });     // shot coins (systems/shot-coins.js)
+  _leakDrops = [];                      // fuel leak droplets
   resetComboFx();
   resetShotMeter();
   resetWingmen();
