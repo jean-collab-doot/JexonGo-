@@ -10,7 +10,7 @@ import { START_BANNER_MS, BOSS_ALERT_INFO, showStartBanner, showBossAlert, showP
 import { uiIcon } from '../utils/icons.js';
 import { drawWorldDim, withPlaneShadow, withEnemyOutline } from '../game/readability.js';
 import {
-  resetFuel, fuelOn, fuelShare, fuelEmpty, burnFuel, hitFuel, refuelTo, drainForTest,
+  resetFuel, fuelOn, fuelShare, fuelEmpty, burnFuel, hitFuel, refuelTo, drainForTest, leakForTest,
   enemyDestroyed, updateAndDrawCans, fuelLeaking, repairLeak, setFuelShare,
 } from '../game/fuel.js';
 import { RESPAWN_FUEL } from '../data/fuel.js';
@@ -2348,6 +2348,11 @@ function onKeyDown(e) {
     _gameCT.delete('e'); _gameCT.delete('s');
     drainForTest(0.03);
     setFuelGauge(fuelOn() ? fuelShare() : null);
+  }
+  // Test version only (not jexongo.app): F + U pierces the tank (a fuel leak).
+  if (_gameCheatHeld(['f', 'u']) && !/(^|\.)jexongo\.app$/.test(location.hostname)) {
+    _gameCT.delete('f'); _gameCT.delete('u');
+    if (leakForTest()) fuelAlerts(['leak']);
   }
   if (_gameCheatHeld(['q', 'w', 'e']))        _killBoss();
   if (_gameCheatHeld(['r', 'm', 'h', 'u']))   _winLevel();

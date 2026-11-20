@@ -88,6 +88,8 @@ export function burnFuel(ms) {
 // LEAK_MS of flight); a can or the tanker repairs it.
 export const fuelLeaking = () => S.on && S.leakLeft > 0;
 export function repairLeak() { S.leakLeft = 0; }
+// Test version only (F + U in game.js): pierces the tank now.
+export function leakForTest() { if (!S.on || S.fuel <= 0) return false; S.leakLeft = LEAK_MS; return true; }
 // The tanker fills the tank smoothly: sets the level (share of the tank).
 export function setFuelShare(share) {
   if (!S.on) return;
