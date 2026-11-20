@@ -11,10 +11,16 @@ import { uiIcon } from '../utils/icons.js';
 import { drawWorldDim, withPlaneShadow, withEnemyOutline } from '../game/readability.js';
 import {
   resetFuel, fuelOn, fuelShare, fuelEmpty, burnFuel, hitFuel, refuelTo, drainForTest,
-  enemyDestroyed, updateAndDrawCans,
+  enemyDestroyed, updateAndDrawCans, fuelLeaking, repairLeak, setFuelShare,
 } from '../game/fuel.js';
 import { RESPAWN_FUEL } from '../data/fuel.js';
 import { setFuelGauge, fuelPickupFx, resetFuelGauge } from './fuel-gauge.js';
+import {
+  resetTanker, rollTanker, callTankerNow, tankerPhase, tankerOnScreen, tankerWaitLeft, updateTanker,
+  startRefuel, leaveTanker, holdPointFor, basketTouched, drawTanker,
+} from '../game/tanker.js';
+import { setTankerBanner } from './tanker-ui.js';
+import { coopRole } from '../online/coop-realtime.js';
 import { $, showScreen } from '../utils/dom.js';
 import { newQuestion, withChoices } from '../game/math-engine.js';
 import { schoolQuestionPlan, questionFromPlan } from '../systems/school-questions.js';
@@ -26,7 +32,10 @@ import { makeFractionQuestion } from '../game/fractions.js';
 import { makePercentQuestion } from '../game/percentages.js';
 import { startSessionReport, recordAnswer, mistakesToReplay, markReplayed } from '../systems/session-report.js';
 import { spawnEnemy, updateEnemies, hitEnemy, KAMIKAZE_LOCK_FRAMES } from '../game/enemies.js';
-import { shotDelaySeconds, activeWeapon, homingUpgradeOwned, planeUpgrades, FUEL_CAN_CHANCE_MULT } from '../data/upgrades.js';
+import {
+  shotDelaySeconds, activeWeapon, homingUpgradeOwned, planeUpgrades, FUEL_CAN_CHANCE_MULT,
+  REFUEL_SECONDS, REFUEL_SHIELD_SECONDS, TANK_SIZE_MULT, LEAK_CHANCE,
+} from '../data/upgrades.js';
 import { createMissile, updateMissiles, drawMissiles } from '../game/missiles.js';
 import { spawnExplosion, spawnHitSpark, spawnMissileExplosion, updateParticles, drawParticles } from '../game/particles.js';
 import {
@@ -2329,6 +2338,11 @@ function onKeyDown(e) {
   if (!FULL_UNLOCK) return;
   _gameCT.set(k, Date.now());
   if (_gameCheatHeld(['y', 'u']))             _toggleGodMode();
+  // Test version only (not jexongo.app): R + V brings the tanker now.
+  if (_gameCheatHeld(['r', 'v']) && !/(^|\.)jexongo\.app$/.test(location.hostname)) {
+    _gameCT.delete('r'); _gameCT.delete('v');
+    if (fuelOn() && !tankerOnScreen() && !tankerIsGuest()) tankerArrived(true);
+  }
   // Test version only (not jexongo.app): E + S empties the fuel tank (3 %).
   if (_gameCheatHeld(['e', 's']) && !/(^|\.)jexongo\.app$/.test(location.hostname)) {
     _gameCT.delete('e'); _gameCT.delete('s');
@@ -3097,6 +3111,7 @@ function frame(ts = 0) {
   updateAndDrawMapCoins(ctx, canvas.width, canvas.height, _frameStep,
     activeAircraftAbility().magnet ? C130_MAGNET_RADIUS : 0);
   updateAndDrawFuelCans(frameMs);
+  updateAndDrawTanker(frameMs, ts || performance.now());
 
   // ── Enemy spawn ────────────────────────────────────────────────────────
   const bossFirstShotGraceActive = G.enemies.some(enemy =>
@@ -3393,7 +3408,7 @@ function frame(ts = 0) {
       const fireTop = canvas.height * 0.08;
       const fireBot = Math.min(canvas.height * 0.78, G.player.y - 80);
       const inFireZone = e.y > fireTop && e.y < fireBot;
-      if (guidedBreakActive() || aimLessonHoldsFire() || _levelEnding) {
+      if (guidedBreakActive() || aimLessonHoldsFire() || _levelEnding || tankerRefueling()) {
         // Beginner practice break after question 5, the two aiming lessons
         // and the end of the game (MISSION COMPLETE): enemies fly, none fires.
       } else if (e.type === 'interceptor') {
@@ -3654,6 +3669,7 @@ function frame(ts = 0) {
   if (aircraftSkill()?.id === 'stealth') _stealthActive = aircraftSkillActive('stealth', ts || performance.now());
   const prevX = G.player.x;
   updatePlayerMovement();
+  holdPlayerOnTanker();   // connected to the tanker: held under the basket
   const _moveDelta = G.player.x - prevX;
   SFX.engineThrottle(Math.abs(_moveDelta) / 5);   // revs up while moving (keys or touch)
   const _targetTilt = _moveDelta > 0.5 ? 0.349 : _moveDelta < -0.5 ? -0.349 : 0;
@@ -4030,7 +4046,7 @@ function targetPointForShot(source, shot) {
 }
 
 function firePlayerShootingPlan() {
-  if (_fuelCrash) return false;   // the engine stopped: no more shots
+  if (_fuelCrash || _tk.attached >= 0) return false;   // engine stopped / on the tanker: no shots
   const plan = activeShootingPlan();
   const shots = Array.isArray(plan?.missiles) && plan.missiles.length
     ? plan.missiles
@@ -4251,6 +4267,12 @@ function ensureCoopHandlers() {
     if (Number.isFinite(msg.lives)) {
       _coop.hp = Math.max(0, Math.min(9, msg.lives | 0));
       if (_coop.hp > _coop.maxHp) _coop.maxHp = _coop.hp;
+    }
+    // Tanker (co-op): connected teammate; the guest follows the host's tanker.
+    _coop.tankerAttached = !!msg.ta;
+    if (tankerIsGuest() && msg.tk && msg.tk !== _tk.seenId) {
+      _tk.seenId = msg.tk;
+      if (fuelOn() && !tankerOnScreen()) tankerArrived();
     }
     const nowDown = !!msg.down;
     if (nowDown && !_coop.down) {
@@ -5183,7 +5205,7 @@ function answeringQuestion() {
 
 function playerImmune(now = performance.now()) {
   // Nothing can hurt the player while the wrong-answer correction is shown.
-  return _correctionWaiting || answeringQuestion() || now < _answerImmuneUntil;
+  return _correctionWaiting || answeringQuestion() || now < _answerImmuneUntil || _tk.attached >= 0;
 }
 
 function onEnemyMissileHit() {
@@ -5563,6 +5585,7 @@ function _runTimer() {
       return;
     }
     if (G.answerLocked) return;
+    if (tankerRefueling()) return;   // the game's timer waits during the refuel
     G.timeLeft -= timerStep;
     const pct = Math.max(0, G.timeLeft / _timerTotal) * 100;
     bar.style.width = pct + '%';
@@ -6148,9 +6171,13 @@ function _loadFrames(base, count) {
 // Our plane, hearts and spectator state for the teammate's game. Also sent
 // right away when the state changes (down, repair progress, back), without
 // waiting for the next frame.
+// The host's tanker id while it is on screen (0 otherwise): the guest's game
+// brings the same tanker when it sees a new id.
+function tankerSyncId() { return tankerIsOnlineHost() && tankerOnScreen() ? _tk.id : 0; }
+
 function coopStatusKey() {
   const heal = _coop?.down ? _coop.healCount : 0;
-  return `${G.lives}/${_maxLives}/${_spectating ? 1 : 0}/${heal}`;
+  return `${G.lives}/${_maxLives}/${_spectating ? 1 : 0}/${heal}/${tankerSyncId()}/${_tk.attached >= 0 ? 1 : 0}`;
 }
 function sendCoopStateNow(now = performance.now()) {
   if (!_coop || _coop.mode !== 'online' || _coop.left || !canvas || !G.player) return;
@@ -6158,7 +6185,8 @@ function sendCoopStateNow(now = performance.now()) {
   const y = +(G.player.y / canvas.height).toFixed(4);
   wsSend({ type: 'coop_state', x, y, aircraft: G.activeAircraft,
     lives: Math.max(0, G.lives), maxLives: _maxLives, down: _spectating,
-    heal: _coop.down ? _coop.healCount : 0 });
+    heal: _coop.down ? _coop.healCount : 0,
+    tk: tankerSyncId(), ta: _tk.attached >= 0 ? 1 : 0 });
   _coop.sentX = x; _coop.sentY = y; _coop.sentAt = now; _coop.sentStatus = coopStatusKey();
 }
 
@@ -6469,17 +6497,32 @@ function planeFlying() {
 
 function updateFuel(frameMs) {
   if (!fuelOn()) return;
-  if (!_fuelCrash && planeFlying()) {
+  if (!_fuelCrash && planeFlying() && _tk.attached < 0) {
     fuelAlerts(burnFuel(frameMs));
     if (fuelEmpty()) startFuelCrash();
+    // A leak: fuel drops falling from the plane.
+    if (fuelLeaking()) {
+      _leakDropMs -= frameMs;
+      if (_leakDropMs <= 0) {
+        _leakDropMs = 140;
+        spawnExplosion(G.particles, G.player.x + (Math.random() - 0.5) * 8, G.player.y + getPlayerSize() * 0.3, '#d9a520', 3);
+      }
+    }
   }
-  setFuelGauge(fuelShare());
+  setFuelGauge(fuelShare(), { leak: fuelLeaking() });
 }
+let _leakDropMs = 0;
 
 // Alerts from game/fuel.js: the sound, and a side callout (soft colour).
 function fuelAlerts(list) {
   const fr = getLang() === 'fr';
   for (const level of list || []) {
+    if (level === 'leak') {
+      SFX.fuelLeak();
+      if (calloutsOn()) callout({ title: fr ? 'FUITE !' : 'LEAK!', tone: 'soft',
+        subs: [{ text: fr ? 'UN BIDON LA RÉPARE' : 'A FUEL CAN FIXES IT' }], priority: 3 });
+      continue;
+    }
     SFX.fuelLow(level);
     if (!calloutsOn()) continue;
     if (level === 'half') {
@@ -6536,6 +6579,139 @@ function startFuelCrash() {
     setFuelGauge(fuelShare());
     loseLife({ resumeDelayMs: MISSILE_HIT_RECOVERY_MS, fromEnemyHit: true });
   }, FUEL_CRASH_MS);
+}
+
+// ── TANKER (plane: game/tanker.js, banner: screens/tanker-ui.js) ───────────
+// It flies in, holds in formation; the player has 10 s to put the plane's
+// nose in a basket; then the plane is held there while the tank fills up
+// smoothly (no enemy fire, enemy shots cleared, the game's timer paused, a
+// leak repaired); then a shield, and the tanker leaves.
+// Co-op: one basket each (host left, guest right); the refuel starts only
+// when both are connected; alone on a basket, MATE_WAIT_MS to wait for the
+// teammate. A teammate who is down, gone or a bot does not hold it up.
+const MATE_WAIT_MS = 3000;
+const REATTACH_PAUSE_MS = 1200;
+let _tk = { attached: -1, mateWait: 0, pause: 0, ms: 0, dur: 10000, from: 0, id: 0, seenId: 0, glug: 0 };
+
+function resetTankerState() {
+  resetTanker();
+  _tk = { attached: -1, mateWait: 0, pause: 0, ms: 0, dur: 10000, from: 0, id: _tk.id, seenId: _tk.seenId, glug: 0 };
+  setTankerBanner(null);
+}
+const tankerRefueling = () => tankerPhase() === 'refuel';
+function tankerIsGuest() { return _coop?.mode === 'online' && coopRole() === 'guest'; }
+function tankerIsOnlineHost() { return _coop?.mode === 'online' && coopRole() === 'host'; }
+// Baskets this player may use: one each in online co-op, either one else.
+function myBaskets() {
+  if (_coop?.mode === 'online' && !tankerPartnerAbsent()) return [tankerIsGuest() ? 1 : 0];
+  return [0, 1];
+}
+// The teammate does not hold the refuel up: no teammate, a bot, or one who is
+// down (waiting to be revived), gone or not seen yet.
+function tankerPartnerAbsent() {
+  return !_coop || _coop.mode !== 'online' || _coop.left || !_coop.seen || _coop.down;
+}
+function tankerPartnerReady() { return tankerPartnerAbsent() || !!_coop.tankerAttached; }
+
+function tankerArrived(sendNow = false) {
+  if (!tankerOnScreen()) callTankerNow();
+  SFX.tankerArrive();
+  if (tankerIsOnlineHost()) { _tk.id += 1; if (sendNow) sendCoopStateNow(); }
+}
+
+function holdPlayerOnTanker() {
+  if (_tk.attached < 0 || !tankerOnScreen()) return;
+  const p = holdPointFor(_tk.attached, getPlayerSize());
+  G.player.x += (p.x - G.player.x) * 0.3;
+  G.player.y += (p.y - G.player.y) * 0.3;
+}
+
+function tankerDetach(pause = REATTACH_PAUSE_MS) {
+  _tk.attached = -1;
+  _tk.pause = pause;
+  if (_coop?.mode === 'online') sendCoopStateNow();
+}
+
+function tankerBeginRefuel() {
+  startRefuel();
+  _tk.ms = 0;
+  _tk.from = fuelShare();
+  _tk.dur = (REFUEL_SECONDS[planeUpgrades(G.activeAircraft).refuelFast] || 10) * 1000;
+  repairLeak();
+  G.enemyMissiles = [];
+}
+
+function tankerFinish() {
+  setFuelShare(1);
+  const shieldS = REFUEL_SHIELD_SECONDS[planeUpgrades(G.activeAircraft).shieldLong] || 3;
+  G.airdropShieldUntil = Math.max(G.airdropShieldUntil || 0, performance.now() + shieldS * 1000);
+  SFX.fuelPickup();
+  if (calloutsOn()) callout({ title: getLang() === 'fr' ? 'PLEIN FAIT !' : 'TANK FULL!', priority: 2 });
+  tankerDetach(0);
+  leaveTanker();
+}
+
+let _tkLastNow = 0;
+function updateAndDrawTanker(_frameMs, now) {
+  if (!fuelOn()) { setTankerBanner(null); return; }
+  // Real time (the world runs slower while a question waits; the 10 s to
+  // connect and the refuel must not).
+  const frameMs = _tkLastNow ? Math.max(0, Math.min(250, now - _tkLastNow)) : 16;   // slow screens too
+  _tkLastNow = now;
+  const ps = getPlayerSize();
+  const ev = updateTanker(frameMs, {
+    flying: planeFlying() && !_fuelCrash, width: canvas.width, height: canvas.height, playerSize: ps, now,
+  });
+  if (ev === 'arrive') tankerArrived(true);
+  if (ev === 'missed' || ev === 'gone') { if (_tk.attached >= 0) tankerDetach(0); }
+  const phase = tankerPhase();
+  const nose = { x: G.player.x, y: G.player.y - ps * 0.42 };
+  if (phase === 'wait') {
+    if (_tk.attached < 0) {
+      if (_tk.pause > 0) _tk.pause -= frameMs;
+      else if (!_fuelCrash && !_playerDestroyed) {
+        const i = basketTouched(nose, ps, myBaskets());
+        if (i >= 0) {
+          _tk.attached = i;
+          _tk.mateWait = MATE_WAIT_MS;
+          SFX.tankerAttach();
+          if (_coop?.mode === 'online') sendCoopStateNow();
+        }
+      }
+    }
+    if (_tk.attached >= 0) {
+      if (tankerPartnerReady()) tankerBeginRefuel();
+      else {
+        _tk.mateWait -= frameMs;
+        if (_tk.mateWait <= 0) tankerDetach();
+      }
+    }
+  } else if (phase === 'refuel') {
+    _tk.ms += frameMs;
+    const p = Math.min(1, _tk.ms / _tk.dur);
+    setFuelShare(_tk.from + (1 - _tk.from) * p);
+    G.enemyMissiles = [];
+    _tk.glug -= frameMs;
+    if (_tk.glug <= 0) { _tk.glug = 450; SFX.refuelGlug(); }
+    if (p >= 1) tankerFinish();
+  }
+  // Banner.
+  const after = tankerPhase();
+  if (after === 'wait') {
+    setTankerBanner(_tk.attached >= 0
+      ? { mode: 'mate', seconds: _tk.mateWait / 1000 }
+      : { mode: 'connect', seconds: tankerWaitLeft() / 1000 });
+  } else if (after === 'refuel') {
+    setTankerBanner({ mode: 'refuel', pct: fuelShare() * 100 });
+  } else setTankerBanner(null);
+  // Drawing.
+  const partnerIdx = _coop?.mode === 'online' && _coop.tankerAttached ? (tankerIsGuest() ? 0 : 1) : -1;
+  drawTanker(ctx, {
+    now, playerSize: ps, gentle: gentleFx(),
+    targets: after === 'wait' && _tk.attached < 0 ? myBaskets() : [],
+    flowing: after === 'refuel' ? [_tk.attached, partnerIdx].filter(i => i >= 0) : [],
+    arrowFrom: after === 'wait' && _tk.attached < 0 ? nose : null,
+  });
 }
 
 // The plane falling: it spins and drops, with small explosions and smoke.
@@ -6964,10 +7140,17 @@ export function initGame(levelNum, onComplete) {
   // beginner run; much gentler for the youngest players.
   _fuelCrash = null;
   _fuelTipsShown = false;
+  const fuelUp = planeUpgrades(G.activeAircraft);
   resetFuel(G.activeAircraft, {
     on: fuelModeOn(), gentle: gentleFx(),
-    canChance: FUEL_CAN_CHANCE_MULT[planeUpgrades(G.activeAircraft).fuelCan] || 1,   // hangar PLUS DE BIDONS
+    canChance: FUEL_CAN_CHANCE_MULT[fuelUp.fuelCan] || 1,   // hangar PLUS DE BIDONS
+    tankMult: TANK_SIZE_MULT[fuelUp.tankBig] || 1,          // RÉSERVOIR AGRANDI
+    leakChance: LEAK_CHANCE[fuelUp.tankStrong] ?? 0.25,     // RÉSERVOIR RENFORCÉ
   });
+  // Tanker (game/tanker.js): 35 % of the normal levels, never on a boss
+  // level; in online co-op only the host rolls it (the guest follows).
+  resetTankerState();
+  if (fuelOn() && !levelCfg?.isBossLevel && !tankerIsGuest()) rollTanker();
   resetFuelGauge();
   setFuelGauge(fuelOn() ? fuelShare() : null);
   resetNukeReward({ keep: !!snap });   // nuke rewards (systems/nuke-reward.js)

@@ -31,12 +31,14 @@ function gauge() {
 function restart(el, cls) { el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls); }
 
 let _shownPct = -1;
-// share 0..1, or null to hide (no fuel in this mode).
-export function setFuelGauge(share) {
+// share 0..1, or null to hide (no fuel in this mode). leak: the tank leaks
+// (a red drop on the gauge).
+export function setFuelGauge(share, { leak = false } = {}) {
   const el = share == null ? document.getElementById('fuel-gauge') : gauge();
   if (!el) return;
-  if (share == null) { el.classList.remove('is-on'); _shownPct = -1; return; }
+  if (share == null) { el.classList.remove('is-on', 'is-leak'); _shownPct = -1; return; }
   el.classList.add('is-on');
+  el.classList.toggle('is-leak', leak);
   const pct = Math.max(0, Math.min(100, share * 100));
   // The bar is redrawn only when it visibly moves (it is updated every frame).
   if (Math.abs(pct - _shownPct) < 0.2) return;

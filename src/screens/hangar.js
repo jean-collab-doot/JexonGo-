@@ -13,6 +13,8 @@ import {
   LIFE_UPGRADE_PRICES, SHOT_UPGRADE_PRICES, HOMING_UPGRADE_PRICES, XP_UPGRADE_PRICES, XP_BONUS_PERCENT, WEAPONS,
   AIRDROP_BOOST_ITEMS, AIRDROP_CHANCE_PRICES, AIRDROP_CHANCE_MULT, AIRDROP_TIME_PRICES, AIRDROP_TIME_BONUS_S, AIRDROP_BASE_DURATION_S,
   planeUpgrades, setPlaneUpgrades, SHOT_DELAY_SECONDS, FUEL_CAN_PRICES, FUEL_CAN_CHANCE_MULT,
+  REFUEL_FAST_PRICES, REFUEL_SECONDS, SHIELD_LONG_PRICES, REFUEL_SHIELD_SECONDS,
+  TANK_BIG_PRICES, TANK_SIZE_MULT, TANK_STRONG_PRICES, LEAK_CHANCE,
 } from '../data/upgrades.js';
 import { CAN_DROP_CHANCE } from '../data/fuel.js';
 
@@ -646,6 +648,38 @@ function renderUpgradesTab(body) {
                     : `Next level: ${pct(up.fuelCan + 1)}% of the enemies shot down drop a fuel can (instead of ${pct(up.fuelCan)}%).`),
             up.fuelCan, FUEL_CAN_PRICES);
         })()}
+        <h4 class="pi-bar">${fr ? 'RAVITAILLEMENT' : 'REFUELING'}</h4>
+        ${(() => {
+          // Tanker plane and tank (game/tanker.js, game/fuel.js).
+          const n = v => String(v).replace('.', fr ? ',' : '.');
+          const row = (kind, icon, nameFr, nameEn, level, prices, now, next) => levelRow(kind, icon,
+            `${fr ? nameFr : nameEn} (${level}/3)`,
+            level < prices.length ? (fr ? `Prochain niveau : ${next}.` : `Next level: ${next}.`) : `${now}.`,
+            level, prices);
+          const can = '<img class="upg-fuel" src="/assets/fx/Fuel/bidon.png" alt="">';
+          const L = Math.min;
+          return [
+            row('refuelFast', '<span class="upg-clock" aria-hidden="true"></span>', 'RAVITAILLEMENT RAPIDE', 'FAST REFUELING',
+              up.refuelFast, REFUEL_FAST_PRICES,
+              fr ? `le plein prend ${n(REFUEL_SECONDS[up.refuelFast])} s` : `a full tank takes ${n(REFUEL_SECONDS[up.refuelFast])} s`,
+              fr ? `le plein prend ${n(REFUEL_SECONDS[L(up.refuelFast + 1, 3)])} s (au lieu de ${n(REFUEL_SECONDS[up.refuelFast])} s)`
+                 : `a full tank takes ${n(REFUEL_SECONDS[L(up.refuelFast + 1, 3)])} s (instead of ${n(REFUEL_SECONDS[up.refuelFast])} s)`),
+            row('shieldLong', AIRDROP_ITEM_ICONS.shield, 'BOUCLIER PROLONGÉ', 'LONGER SHIELD',
+              up.shieldLong, SHIELD_LONG_PRICES,
+              fr ? `${n(REFUEL_SHIELD_SECONDS[up.shieldLong])} s de bouclier après le ravitaillement` : `${n(REFUEL_SHIELD_SECONDS[up.shieldLong])} s of shield after refueling`,
+              fr ? `${n(REFUEL_SHIELD_SECONDS[L(up.shieldLong + 1, 3)])} s de bouclier après le ravitaillement (au lieu de ${n(REFUEL_SHIELD_SECONDS[up.shieldLong])} s)`
+                 : `${n(REFUEL_SHIELD_SECONDS[L(up.shieldLong + 1, 3)])} s of shield after refueling (instead of ${n(REFUEL_SHIELD_SECONDS[up.shieldLong])} s)`),
+            row('tankBig', can, 'RÉSERVOIR AGRANDI', 'BIGGER TANK',
+              up.tankBig, TANK_BIG_PRICES,
+              fr ? `+${Math.round((TANK_SIZE_MULT[up.tankBig] - 1) * 100)} % d’essence maximum` : `+${Math.round((TANK_SIZE_MULT[up.tankBig] - 1) * 100)}% maximum fuel`,
+              fr ? `+${Math.round((TANK_SIZE_MULT[L(up.tankBig + 1, 3)] - 1) * 100)} % d’essence maximum` : `+${Math.round((TANK_SIZE_MULT[L(up.tankBig + 1, 3)] - 1) * 100)}% maximum fuel`),
+            row('tankStrong', can, 'RÉSERVOIR RENFORCÉ', 'REINFORCED TANK',
+              up.tankStrong, TANK_STRONG_PRICES,
+              fr ? `${Math.round(LEAK_CHANCE[up.tankStrong] * 100)} % de risque de fuite quand tu es touché` : `${Math.round(LEAK_CHANCE[up.tankStrong] * 100)}% chance of a leak when hit`,
+              fr ? `${Math.round(LEAK_CHANCE[L(up.tankStrong + 1, 3)] * 100)} % de risque de fuite (au lieu de ${Math.round(LEAK_CHANCE[up.tankStrong] * 100)} %)`
+                 : `${Math.round(LEAK_CHANCE[L(up.tankStrong + 1, 3)] * 100)}% chance of a leak (instead of ${Math.round(LEAK_CHANCE[up.tankStrong] * 100)}%)`),
+          ].join('');
+        })()}
         <h4 class="pi-bar">${fr ? 'ARME' : 'WEAPON'}</h4>
         ${specialWeapon
           ? `<p class="pi-text">${fr
@@ -688,7 +722,8 @@ function buyLevelUpgrade(planeId, kind) {
   // "drop-<item>" = airdrop chance for that item (record.dropChance[item]).
   const dropItem = kind.startsWith('drop-') ? kind.slice(5) : null;
   const prices = dropItem ? AIRDROP_CHANCE_PRICES : { lives: LIFE_UPGRADE_PRICES, shots: SHOT_UPGRADE_PRICES,
-    homing: HOMING_UPGRADE_PRICES, xp: XP_UPGRADE_PRICES, dropTime: AIRDROP_TIME_PRICES, fuelCan: FUEL_CAN_PRICES }[kind];
+    homing: HOMING_UPGRADE_PRICES, xp: XP_UPGRADE_PRICES, dropTime: AIRDROP_TIME_PRICES, fuelCan: FUEL_CAN_PRICES,
+    refuelFast: REFUEL_FAST_PRICES, shieldLong: SHIELD_LONG_PRICES, tankBig: TANK_BIG_PRICES, tankStrong: TANK_STRONG_PRICES }[kind];
   if (!prices || (dropItem && !(dropItem in record.dropChance))) return;
   const level = dropItem ? record.dropChance[dropItem] : record[kind];
   if (level >= prices.length) return;

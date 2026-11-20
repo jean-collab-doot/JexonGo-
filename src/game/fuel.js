@@ -10,7 +10,7 @@
 // crash, a heart lost) is handled by game.js.
 import {
   planeFuel, HIT_COST, CAN_REFILL, CAN_DROP_CHANCE, SAFETY_BELOW, SAFETY_KILLS,
-  RESPAWN_FUEL, HALF_ALERT, LOW_ALERT, CRITICAL_ALERT, GENTLE,
+  RESPAWN_FUEL, HALF_ALERT, LOW_ALERT, CRITICAL_ALERT, GENTLE, LEAK_MS, LEAK_BURN,
 } from '../data/fuel.js';
 
 const CAN_SRC = '/assets/fx/Fuel/bidon.png';
@@ -32,20 +32,23 @@ function canImage() {
 const S = {
   on: false, gentle: false,
   tank: 60, burn: 1, fuel: 60,
-  killsSinceCan: 0, canChance: 1,
+  killsSinceCan: 0, canChance: 1, leakChance: 0, leakLeft: 0,
   halfAlerted: false, lowAlerted: false, criticalAlerted: false,
   cans: [],
 };
 
 // New game / new life. on = false: no fuel in this mode (practice, tutorial).
 // canChance: multiplier of the can drop chance (hangar upgrade PLUS DE BIDONS).
-export function resetFuel(planeId, { on = true, gentle = false, share = 1, canChance = 1 } = {}) {
+// tankMult: RÉSERVOIR AGRANDI; leakChance: chance a hit pierces the tank.
+export function resetFuel(planeId, { on = true, gentle = false, share = 1, canChance = 1, tankMult = 1, leakChance = 0 } = {}) {
   const p = planeFuel(planeId);
   S.on = on;
   S.gentle = gentle;
-  S.tank = p.tank;
+  S.tank = p.tank * tankMult;     // a bigger tank: the same burn lasts longer
   S.burn = p.burn;
-  S.fuel = p.tank * share;
+  S.fuel = S.tank * share;
+  S.leakChance = leakChance;
+  S.leakLeft = 0;
   S.killsSinceCan = 0;
   S.canChance = canChance;
   S.halfAlerted = S.lowAlerted = S.criticalAlerted = false;
@@ -75,15 +78,31 @@ function checkAlerts() {
 // Flying for `ms`: returns the alerts crossed (see checkAlerts).
 export function burnFuel(ms) {
   if (!S.on || S.fuel <= 0) return [];
-  S.fuel = Math.max(0, S.fuel - S.burn * (S.gentle ? GENTLE.burn : 1) * ms / 1000);
+  const leak = S.leakLeft > 0 ? LEAK_BURN : 1;
+  if (S.leakLeft > 0) S.leakLeft = Math.max(0, S.leakLeft - ms);
+  S.fuel = Math.max(0, S.fuel - S.burn * (S.gentle ? GENTLE.burn : 1) * leak * ms / 1000);
   return checkAlerts();
 }
 
-// Hit by an enemy missile.
+// Fuel leak: a hit may pierce the tank (it then burns twice as fast for
+// LEAK_MS of flight); a can or the tanker repairs it.
+export const fuelLeaking = () => S.on && S.leakLeft > 0;
+export function repairLeak() { S.leakLeft = 0; }
+// The tanker fills the tank smoothly: sets the level (share of the tank).
+export function setFuelShare(share) {
+  if (!S.on) return;
+  S.fuel = S.tank * Math.max(0, Math.min(1, share));
+  checkAlerts();
+}
+
+// Hit by an enemy missile. The alerts crossed, plus 'leak' when the hit
+// pierced the tank.
 export function hitFuel() {
   if (!S.on || S.fuel <= 0) return [];
   S.fuel = Math.max(0, S.fuel - S.tank * HIT_COST * (S.gentle ? GENTLE.hit : 1));
-  return checkAlerts();
+  const out = checkAlerts();
+  if (S.fuel > 0 && S.leakLeft <= 0 && Math.random() < S.leakChance) { S.leakLeft = LEAK_MS; out.push('leak'); }
+  return out;
 }
 
 // Back with part of the tank (after an empty tank, revived in co-op).
@@ -163,6 +182,7 @@ export function updateAndDrawCans(ctx, { now, ms, step, height, player, playerRa
       S.cans.splice(i, 1);
       const before = S.fuel;
       S.fuel = Math.min(S.tank, S.fuel + S.tank * CAN_REFILL);
+      S.leakLeft = 0;          // a can also repairs a leak
       checkAlerts();
       picked = { gained: (S.fuel - before) / S.tank, x: (bx0 + bx1) / 2, y: (by0 + by1) / 2 };
     }

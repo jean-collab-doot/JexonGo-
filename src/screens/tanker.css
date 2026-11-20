@@ -1,0 +1,47 @@
+/* ============================ TANKER BANNER =============================== */
+/* screens/tanker-ui.js: under the top bar row (shot meter / fuel gauge),
+   centred: the message and the seconds left or the refuel progress. */
+#s-game .tanker-banner { display: none; }
+#s-game .tanker-banner.is-on {
+  position: absolute; left: 50%; top: calc(max(6px, env(safe-area-inset-top)) + 118px); z-index: 61;
+  transform: translateX(-50%);
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  padding: 8px 16px 10px; border-radius: 16px;
+  background: rgba(10, 14, 20, .78); border: 3px solid #ffd84d;
+  box-shadow: 0 0 14px rgba(255, 216, 77, .45);
+  pointer-events: none; white-space: nowrap; text-align: center;
+  animation: tbIn .35s cubic-bezier(.2, 1.4, .4, 1) both;
+}
+#s-game .tanker-banner[data-mode="mate"] { border-color: #4cc9ff; box-shadow: 0 0 14px rgba(76, 201, 255, .45); }
+#s-game .tanker-banner[data-mode="refuel"] { border-color: #5ee87a; box-shadow: 0 0 14px rgba(94, 232, 122, .45); }
+#s-game .tb-title {
+  font-family: var(--jx-font, 'Pixelify Sans', monospace); font-weight: 700;
+  font-size: clamp(13px, 3.8vw, 22px); letter-spacing: .5px; color: #ffd84d;
+  text-shadow: 0 2px 0 #7a3a00, 2px 0 0 #7a3a00, -2px 0 0 #7a3a00;
+}
+#s-game .tanker-banner[data-mode="mate"] .tb-title { color: #9be3ff; text-shadow: 0 2px 0 #123a66, 2px 0 0 #123a66, -2px 0 0 #123a66; }
+#s-game .tanker-banner[data-mode="refuel"] .tb-title { color: #9effa1; text-shadow: 0 2px 0 #1d4a2a, 2px 0 0 #1d4a2a, -2px 0 0 #1d4a2a; }
+#s-game .tb-value { font-family: 'Press Start 2P', monospace; font-size: clamp(16px, 4.6vw, 26px); color: #fff; text-shadow: 2px 2px 0 #000; }
+#s-game .tb-value.is-tick { animation: tbTick .35s ease-out; }
+#s-game .tanker-banner.is-gentle .tb-title {
+  background: linear-gradient(90deg, #ff5fa2, #ffb13b, #ffe14d, #5ee87a, #4cc9ff, #9b7bff, #ff5fa2);
+  background-size: 200% 100%; -webkit-background-clip: text; background-clip: text;
+  color: transparent; text-shadow: none; filter: drop-shadow(0 2px 0 #5a2a00);
+  animation: comboRainbowSlide 1s linear infinite;
+}
+@keyframes tbIn { from { opacity: 0; transform: translateX(-50%) scale(.6); } }
+@keyframes tbTick { 40% { transform: scale(1.35); color: #ffd84d; } }
+@media (min-aspect-ratio: 1/1) and (max-height: 500px) {
+  #s-game .tanker-banner.is-on { top: calc(max(6px, env(safe-area-inset-top)) + 100px); padding: 5px 12px 6px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  #s-game .tanker-banner.is-on, #s-game .tb-value.is-tick, #s-game .tanker-banner.is-gentle .tb-title { animation: none; }
+}
+
+/* Fuel gauge: a red drop while the tank leaks (game/fuel.js). */
+#s-game .fuel-gauge.is-leak::after {
+  content: ''; position: absolute; right: -6px; top: -8px; width: 12px; height: 14px;
+  background: #ff5a4a; border: 2px solid #3a0a05; border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+  animation: fuelLeakDrop .8s ease-in infinite;
+}
+@keyframes fuelLeakDrop { 0% { transform: translateY(-2px); opacity: 1; } 100% { transform: translateY(8px); opacity: .2; } }

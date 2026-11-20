@@ -313,6 +313,9 @@ function _reset() {
 }
 
 // ── PUBLIC API (same shape as ws-client.js) ─────────────────────────────────
+// 'host' (created the code) or 'guest' (joined), null when not connected.
+export const coopRole = () => _role;
+
 export function coopOn(type, fn) {
   if (!_handlers.has(type)) _handlers.set(type, new Set());
   _handlers.get(type).add(fn);

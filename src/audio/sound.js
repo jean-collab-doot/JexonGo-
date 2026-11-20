@@ -1143,6 +1143,25 @@ export const SFX = {
     [0, 160, ...(crit ? [320] : [])].forEach(ms =>
       _after(ms, () => _tone(_ac(), f, 'square', 0.09, 0.16)));
   },
+  // Tanker (game/tanker.js): a deep engine hum rising as it flies in.
+  tankerArrive() {
+    _tone(_ac(), 110, 'sawtooth', 1.2, 0.12, 70);
+    _after(200, () => _tone(_ac(), 165, 'triangle', 0.9, 0.1, 120));
+  },
+  // Connected to the basket: a metal clunk and a short beep.
+  tankerAttach() {
+    _hit(180, 0.45, 0.1);
+    _after(120, () => _tone(_ac(), 880, 'square', 0.08, 0.14));
+  },
+  // Fuel flowing: one soft glug (game.js repeats it while refueling).
+  refuelGlug() {
+    const f = 260 + Math.random() * 80;
+    _tone(_ac(), f, 'sine', 0.12, 0.14, f * 0.6);
+  },
+  // A fuel leak: a short hiss-like warble.
+  fuelLeak() {
+    [0, 90, 180].forEach((ms, i) => _after(ms, () => _tone(_ac(), 1400 - i * 200, 'sawtooth', 0.07, 0.08, 1700 - i * 200)));
+  },
   // A can picked up: a rising "glug" sweep, then a bright chime.
   fuelPickup() {
     const type = gentleFx() ? 'sine' : 'triangle';

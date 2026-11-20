@@ -9,6 +9,8 @@
 //                  per item (0-3, weight × AIRDROP_CHANCE_MULT)
 //   • dropTime   — longer airdrop items (0-3, + AIRDROP_TIME_BONUS_S seconds)
 //   • fuelCan    — fuel cans dropped more often (0-3, × FUEL_CAN_CHANCE_MULT)
+//   • refuelFast / shieldLong / tankBig / tankStrong — tanker and tank
+//                  upgrades (0-3, see REFUEL_SECONDS … LEAK_CHANCE)
 //   • weapons — weapons bought for this aircraft ('missile' is free)
 //   • weapon  — the equipped weapon: 'missile' | 'machinegun' | 'laser'
 
@@ -36,6 +38,15 @@ export const AIRDROP_BASE_DURATION_S = 10;
 // Fuel cans (game/fuel.js): destroyed enemies drop one more often.
 export const FUEL_CAN_PRICES = [600, 1200, 2400];     // levels 1 → 3
 export const FUEL_CAN_CHANCE_MULT = [1, 1.2, 1.4, 1.65]; // index = level (1 in 3 → about 1 in 1.8)
+// Tanker plane (game/tanker.js): index = level.
+export const REFUEL_FAST_PRICES = [800, 1600, 3200];   // RAVITAILLEMENT RAPIDE
+export const REFUEL_SECONDS = [10, 8, 6.5, 5];
+export const SHIELD_LONG_PRICES = [600, 1200, 2400];   // BOUCLIER PROLONGÉ
+export const REFUEL_SHIELD_SECONDS = [3, 4.5, 6, 8];
+export const TANK_BIG_PRICES = [1000, 2000, 4000];     // RÉSERVOIR AGRANDI
+export const TANK_SIZE_MULT = [1, 1.1, 1.2, 1.35];
+export const TANK_STRONG_PRICES = [700, 1400, 2800];   // RÉSERVOIR RENFORCÉ
+export const LEAK_CHANCE = [0.25, 0.18, 0.12, 0.06];   // a hit pierces the tank
 
 export const WEAPONS = [
   {
@@ -73,6 +84,10 @@ export function planeUpgrades(planeId = G.activeAircraft) {
       [id, Math.max(0, Math.min(AIRDROP_CHANCE_PRICES.length, raw.dropChance?.[id] | 0))])),
     dropTime: Math.max(0, Math.min(AIRDROP_TIME_PRICES.length, raw.dropTime | 0)),
     fuelCan: Math.max(0, Math.min(FUEL_CAN_PRICES.length, raw.fuelCan | 0)),
+    refuelFast: Math.max(0, Math.min(REFUEL_FAST_PRICES.length, raw.refuelFast | 0)),
+    shieldLong: Math.max(0, Math.min(SHIELD_LONG_PRICES.length, raw.shieldLong | 0)),
+    tankBig: Math.max(0, Math.min(TANK_BIG_PRICES.length, raw.tankBig | 0)),
+    tankStrong: Math.max(0, Math.min(TANK_STRONG_PRICES.length, raw.tankStrong | 0)),
     weapons,
     weapon: weapons.includes(raw.weapon) ? raw.weapon : 'missile',
   };
