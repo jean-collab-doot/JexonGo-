@@ -5373,6 +5373,18 @@ function nextQuestion() {
     _guidedLives = GUIDED_LIVES;
     updateLivesHUD();
   }
+  // Tanker on screen (from its arrival until it has left, and the shield
+  // after a refuel): no new question; it comes once the tanker is gone.
+  if (tankerBlocksQuestions()) {
+    _tkQuestionWaiting = true;
+    _correctionWaiting = false;
+    const overlay = $('game-pause-overlay');
+    if (_smoothResumeAfterCorrection) overlay.classList.remove('correction-dimmed');
+    else overlay.classList.remove('dimmed', 'correction-dimmed');
+    _smoothResumeAfterCorrection = false;
+    if (!G.animFrame && !_cutsceneActive) _queueFrame(_sessionId);
+    return;
+  }
   _transitioning = true;
   G.answerLocked = false;
   const _nqSid = _sessionId; // capture session at start of transition
@@ -6601,10 +6613,18 @@ let _tk = { attached: -1, mateWait: 0, pause: 0, ms: 0, dur: 10000, from: 0, id:
 // comes back once the shield is over.
 let _tkHoldUntil = 0;
 function tankerHold() { return _tk.attached >= 0 || performance.now() < _tkHoldUntil; }
+// No new question from the tanker's arrival until it has left (and the
+// shield is over); the one asked meanwhile comes right after.
+let _tkQuestionWaiting = false;
+function tankerBlocksQuestions() { return fuelOn() && (tankerOnScreen() || tankerHold()); }
+// A question on screen (or its correction): the 10 s to connect wait until
+// it is answered, and the baskets cannot be used yet.
+function tankerQuestionOpen() { return (!!G.question && !G.answerLocked) || _correctionWaiting; }
 
 function resetTankerState() {
   resetTanker();
   _tkHoldUntil = 0;
+  _tkQuestionWaiting = false;
   _tkDraw = null;
   document.getElementById('question-box')?.classList.remove('tanker-hold');
   _tk = { attached: -1, mateWait: 0, pause: 0, ms: 0, dur: 10000, from: 0, id: _tk.id, seenId: _tk.seenId, glug: 0 };
@@ -6671,8 +6691,10 @@ function updateAndDrawTanker(_frameMs, now) {
   const frameMs = _tkLastNow ? Math.max(0, Math.min(250, now - _tkLastNow)) : 16;   // slow screens too
   _tkLastNow = now;
   const ps = getPlayerSize();
+  const qOpen = tankerQuestionOpen();
   const ev = updateTanker(frameMs, {
     flying: planeFlying() && !_fuelCrash, width: canvas.width, height: canvas.height, playerSize: ps, now,
+    paused: qOpen,
   });
   if (ev === 'arrive') tankerArrived(true);
   if (ev === 'missed' || ev === 'gone') { if (_tk.attached >= 0) tankerDetach(0); }
@@ -6681,7 +6703,7 @@ function updateAndDrawTanker(_frameMs, now) {
   if (phase === 'wait') {
     if (_tk.attached < 0) {
       if (_tk.pause > 0) _tk.pause -= frameMs;
-      else if (!_fuelCrash && !_playerDestroyed) {
+      else if (!_fuelCrash && !_playerDestroyed && !qOpen) {
         const i = basketTouched(nose, ps, myBaskets());
         if (i >= 0) {
           _tk.attached = i;
@@ -6717,12 +6739,17 @@ function updateAndDrawTanker(_frameMs, now) {
       if (!hideQ) { qbox.classList.remove('tanker-back'); void qbox.offsetWidth; qbox.classList.add('tanker-back'); }
     }
   }
+  // The question asked while the tanker was there: now that it is gone.
+  if (_tkQuestionWaiting && !tankerBlocksQuestions()) {
+    _tkQuestionWaiting = false;
+    nextQuestion();
+  }
   // Banner.
   const after = tankerPhase();
   if (after === 'wait') {
     setTankerBanner(_tk.attached >= 0
       ? { mode: 'mate', seconds: _tk.mateWait / 1000 }
-      : { mode: 'connect', seconds: tankerWaitLeft() / 1000 });
+      : { mode: 'connect', seconds: tankerWaitLeft() / 1000, answerFirst: qOpen });
   } else if (after === 'refuel') {
     setTankerBanner({ mode: 'refuel', pct: fuelShare() * 100 });
   } else setTankerBanner(null);
@@ -6732,7 +6759,7 @@ function updateAndDrawTanker(_frameMs, now) {
     now, playerSize: ps, gentle: gentleFx(),
     targets: after === 'wait' && _tk.attached < 0 ? myBaskets() : [],
     flowing: after === 'refuel' ? [_tk.attached, partnerIdx].filter(i => i >= 0) : [],
-    arrowFrom: after === 'wait' && _tk.attached < 0 ? nose : null,
+    arrowFrom: after === 'wait' && _tk.attached < 0 && !qOpen ? nose : null,
   };
 }
 

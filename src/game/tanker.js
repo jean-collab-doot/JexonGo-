@@ -83,7 +83,7 @@ const easeIn = t => t * t * t;
 // comes only counts then). Returns an event: 'arrive' (starts entering),
 // 'ready' (in place, the 10 s to connect start), 'missed' (nobody connected:
 // it leaves), 'gone' (left the screen), or ''.
-export function updateTanker(ms, { flying, width, height, playerSize, now }) {
+export function updateTanker(ms, { flying, width, height, playerSize, now, paused = false }) {
   let ev = '';
   if (T.phase === 'scheduled') {
     if (flying) T.due -= ms;
@@ -103,7 +103,7 @@ export function updateTanker(ms, { flying, width, height, playerSize, now }) {
     if (p >= 1) { T.phase = 'wait'; T.t = 0; T.waitLeft = TANKER_WAIT_MS; ev = ev || 'ready'; }
   } else if (T.phase === 'wait') {
     T.y = T.holdY + bob;
-    T.waitLeft -= ms;
+    if (!paused) T.waitLeft -= ms;   // paused: a question to answer first
     if (T.waitLeft <= 0) { leaveTanker(); ev = 'missed'; }
   } else if (T.phase === 'refuel') {
     T.y = T.holdY + bob * 0.4;

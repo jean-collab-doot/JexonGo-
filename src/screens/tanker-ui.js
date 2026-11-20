@@ -27,7 +27,8 @@ export function setTankerBanner(state) {
   if (!el) return;
   if (!state) { el.classList.remove('is-on'); _last = ''; return; }
   const fr = isFr();
-  const title = state.mode === 'connect' ? (fr ? 'ACCROCHE-TOI AU PANIER !' : 'CONNECT TO THE BASKET!')
+  const title = state.mode === 'connect' && state.answerFirst ? (fr ? 'RÉPONDS D\'ABORD !' : 'ANSWER FIRST!')
+    : state.mode === 'connect' ? (fr ? 'ACCROCHE-TOI AU PANIER !' : 'CONNECT TO THE BASKET!')
     : state.mode === 'mate' ? (fr ? 'EN ATTENTE DU COÉQUIPIER' : 'WAITING FOR TEAMMATE')
       : (fr ? 'RAVITAILLEMENT…' : 'REFUELING…');
   const value = state.mode === 'refuel' ? `${Math.round(state.pct)}${fr ? ' %' : '%'}` : `${Math.max(0, Math.ceil(state.seconds))}`;
