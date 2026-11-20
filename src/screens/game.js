@@ -3408,7 +3408,7 @@ function frame(ts = 0) {
       const fireTop = canvas.height * 0.08;
       const fireBot = Math.min(canvas.height * 0.78, G.player.y - 80);
       const inFireZone = e.y > fireTop && e.y < fireBot;
-      if (guidedBreakActive() || aimLessonHoldsFire() || _levelEnding || tankerRefueling()) {
+      if (guidedBreakActive() || aimLessonHoldsFire() || _levelEnding || tankerHold()) {
         // Beginner practice break after question 5, the two aiming lessons
         // and the end of the game (MISSION COMPLETE): enemies fly, none fires.
       } else if (e.type === 'interceptor') {
@@ -3828,7 +3828,8 @@ function frame(ts = 0) {
   SFX.weatherWind(windIntensity());
   ctx.globalAlpha = 1;
 
-  // ── A400M airdrop carrier: above everything, the player's plane too ─────
+  // ── Tanker and A400M airdrop carrier: above everything, every plane ────
+  drawTankerLayer();
   drawAirdropCarrier(ctx, canvas.width, canvas.height);
 
   if (shaking) ctx.restore();
@@ -5205,7 +5206,7 @@ function answeringQuestion() {
 
 function playerImmune(now = performance.now()) {
   // Nothing can hurt the player while the wrong-answer correction is shown.
-  return _correctionWaiting || answeringQuestion() || now < _answerImmuneUntil || _tk.attached >= 0;
+  return _correctionWaiting || answeringQuestion() || now < _answerImmuneUntil || tankerHold();
 }
 
 function onEnemyMissileHit() {
@@ -5585,7 +5586,7 @@ function _runTimer() {
       return;
     }
     if (G.answerLocked) return;
-    if (tankerRefueling()) return;   // the game's timer waits during the refuel
+    if (tankerHold()) return;   // the game's timer waits: refuel, then the shield
     G.timeLeft -= timerStep;
     const pct = Math.max(0, G.timeLeft / _timerTotal) * 100;
     bar.style.width = pct + '%';
@@ -5675,6 +5676,7 @@ function updateTypedDisplay() {
 }
 
 function typedPress(key) {
+  if (tankerHold()) return;   // the question waits during the refuel
   if (G.answerLocked || !G.question?.typed) return;
   if (key === 'ok') {
     if (!_typedValue || _typedValue === '-') return;
@@ -5707,6 +5709,7 @@ function typedAnswerKey(e) {
 
 // ── ANSWER HANDLING ──────────────────────────────────────────────────────────
 function handleAnswer(choice, btn) {
+  if (tankerHold()) return;   // the question waits during the refuel
   if (G.answerLocked || _spectating) return;
   G.answerLocked = true;
   _answerImmuneUntil = performance.now() + ANSWER_IMMUNE_MS;
@@ -6592,13 +6595,21 @@ function startFuelCrash() {
 const MATE_WAIT_MS = 3000;
 const REATTACH_PAUSE_MS = 1200;
 let _tk = { attached: -1, mateWait: 0, pause: 0, ms: 0, dur: 10000, from: 0, id: 0, seenId: 0, glug: 0 };
+// From connecting until the end of the shield after the refuel: no enemy
+// fires (their shots vanish), the player cannot be hit, and a question on
+// screen (or one coming meanwhile) waits hidden with its timer paused; it
+// comes back once the shield is over.
+let _tkHoldUntil = 0;
+function tankerHold() { return _tk.attached >= 0 || performance.now() < _tkHoldUntil; }
 
 function resetTankerState() {
   resetTanker();
+  _tkHoldUntil = 0;
+  _tkDraw = null;
+  document.getElementById('question-box')?.classList.remove('tanker-hold');
   _tk = { attached: -1, mateWait: 0, pause: 0, ms: 0, dur: 10000, from: 0, id: _tk.id, seenId: _tk.seenId, glug: 0 };
   setTankerBanner(null);
 }
-const tankerRefueling = () => tankerPhase() === 'refuel';
 function tankerIsGuest() { return _coop?.mode === 'online' && coopRole() === 'guest'; }
 function tankerIsOnlineHost() { return _coop?.mode === 'online' && coopRole() === 'host'; }
 // Baskets this player may use: one each in online co-op, either one else.
@@ -6645,6 +6656,7 @@ function tankerFinish() {
   setFuelShare(1);
   const shieldS = REFUEL_SHIELD_SECONDS[planeUpgrades(G.activeAircraft).shieldLong] || 3;
   G.airdropShieldUntil = Math.max(G.airdropShieldUntil || 0, performance.now() + shieldS * 1000);
+  _tkHoldUntil = performance.now() + shieldS * 1000;   // no fire, question waits, until the shield ends
   SFX.fuelPickup();
   if (calloutsOn()) callout({ title: getLang() === 'fr' ? 'PLEIN FAIT !' : 'TANK FULL!', priority: 2 });
   tankerDetach(0);
@@ -6690,10 +6702,20 @@ function updateAndDrawTanker(_frameMs, now) {
     _tk.ms += frameMs;
     const p = Math.min(1, _tk.ms / _tk.dur);
     setFuelShare(_tk.from + (1 - _tk.from) * p);
-    G.enemyMissiles = [];
     _tk.glug -= frameMs;
     if (_tk.glug <= 0) { _tk.glug = 450; SFX.refuelGlug(); }
     if (p >= 1) tankerFinish();
+  }
+  // Connected, then shielded: no enemy shot, the question waits hidden.
+  const hold = tankerHold();
+  if (hold) G.enemyMissiles = [];
+  const qbox = document.getElementById('question-box');
+  if (qbox) {
+    const hideQ = hold && !!G.question && !G.answerLocked;
+    if (hideQ !== qbox.classList.contains('tanker-hold')) {
+      qbox.classList.toggle('tanker-hold', hideQ);
+      if (!hideQ) { qbox.classList.remove('tanker-back'); void qbox.offsetWidth; qbox.classList.add('tanker-back'); }
+    }
   }
   // Banner.
   const after = tankerPhase();
@@ -6706,12 +6728,18 @@ function updateAndDrawTanker(_frameMs, now) {
   } else setTankerBanner(null);
   // Drawing.
   const partnerIdx = _coop?.mode === 'online' && _coop.tankerAttached ? (tankerIsGuest() ? 0 : 1) : -1;
-  drawTanker(ctx, {
+  _tkDraw = {
     now, playerSize: ps, gentle: gentleFx(),
     targets: after === 'wait' && _tk.attached < 0 ? myBaskets() : [],
     flowing: after === 'refuel' ? [_tk.attached, partnerIdx].filter(i => i >= 0) : [],
     arrowFrom: after === 'wait' && _tk.attached < 0 ? nose : null,
-  });
+  };
+}
+
+// Drawn at the end of the frame, above every plane (like the airdrop carrier).
+let _tkDraw = null;
+function drawTankerLayer() {
+  if (_tkDraw && tankerOnScreen()) drawTanker(ctx, _tkDraw);
 }
 
 // The plane falling: it spins and drops, with small explosions and smoke.
