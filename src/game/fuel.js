@@ -3,8 +3,9 @@
 // plane really flies: never while a question or the correction is on screen,
 // in pause or during cutscenes), an enemy missile costs a share of the tank,
 // and some destroyed enemies drop a fuel can that refills part of it.
-// The can is drawn from assets/fx/Fuel/bidon.png (32 x 32) at an integer
-// scale, without smoothing; only its body can be picked up, not the spout.
+// The can is drawn from assets/fx/Fuel/bidon.png (32 x 32), about two thirds
+// of the plane, without smoothing; it stays until picked up or out of the
+// screen; only its body can be picked up, not the spout.
 // The gauge on screen is screens/fuel-gauge.js; the empty tank (engine stop,
 // crash, a heart lost) is handled by game.js.
 import {
@@ -16,8 +17,6 @@ const CAN_SRC = '/assets/fx/Fuel/bidon.png';
 const CAN_PX = 32;
 // Body of the can in the 32 x 32 picture (the spout is above, on the right).
 const BODY = { x0: 8, y0: 10, x1: 24, y1: 26 };
-const CAN_LIFE_MS = 6000;
-const CAN_BLINK_MS = 1500;
 const CAN_FALL = 0.75;          // px per 60 fps frame (slow float down)
 const CAN_BOB_MS = 320;         // up / down by one picture pixel
 const CAN_PULSE = 0.09;         // grows and shrinks by 9 % (like the EXP / coin pickups)
@@ -109,43 +108,44 @@ export function enemyDestroyed(x, y, { boss = false } = {}) {
   const safety = fuelShare() < SAFETY_BELOW && S.killsSinceCan >= SAFETY_KILLS;
   if (!boss && !safety && Math.random() >= chance) { S.killsSinceCan++; return false; }
   if (S.cans.length >= MAX_CANS) S.cans.shift();
-  S.cans.push({ x, y, age: 0 });
+  S.cans.push({ x, y });
   S.killsSinceCan = 0;
   return true;
 }
 
-// Picture scale: an integer, about half the player's plane.
+// Picture scale: about two thirds of the player's plane (a little bigger
+// than before, to be seen well), at least the picture's own size; drawn
+// without smoothing so the pixels stay sharp.
+const CAN_SIZE_SHARE = 0.68;
 export function canScale(playerSize) {
-  return Math.max(1, Math.round((playerSize * 0.5) / CAN_PX));
+  return Math.max(1, (playerSize * CAN_SIZE_SHARE) / CAN_PX);
 }
 
-// Moves the cans, picks up the one the plane touches, draws them. They age
-// and fall only while the plane flies (frozen during a question), and none
-// is picked up while `noPickup` (the plane crashing).
+// Moves the cans, picks up the one the plane touches, draws them. A can stays
+// on screen until it is picked up or has floated down out of the screen (no
+// time limit); it falls only while the plane flies (still during a question),
+// and none is picked up while `noPickup` (the plane crashing).
 // Returns { gained, x, y } for a can picked up this frame, else null.
 export function updateAndDrawCans(ctx, { now, ms, step, height, player, playerRadius, playerSize, frozen = false, noPickup = false }) {
   if (!S.on || !S.cans.length) return null;
   const k = canScale(playerSize);
-  const size = CAN_PX * k;
+  const size = Math.round(CAN_PX * k);
   const img = canImage();
   let picked = null;
   for (let i = S.cans.length - 1; i >= 0; i--) {
     const c = S.cans[i];
-    if (!frozen) { c.age += ms; c.y += CAN_FALL * step; }
-    const age = c.age;
-    if (age >= CAN_LIFE_MS || c.y - size > height) { S.cans.splice(i, 1); continue; }
+    if (!frozen) c.y += CAN_FALL * step;
+    if (c.y - size > height) { S.cans.splice(i, 1); continue; }
     // Floats: up and down by one picture pixel, and grows / shrinks a little
     // like the EXP and coin pickups (drawn without smoothing).
-    const bob = Math.floor(now / CAN_BOB_MS) % 2 ? -k : 0;
+    const bob = Math.floor(now / CAN_BOB_MS) % 2 ? -Math.round(k) : 0;
     const left = Math.round(c.x - size / 2);
     const top = Math.round(c.y - size / 2 + bob);
     const pulse = 1 + Math.sin((now / CAN_PULSE_MS) * Math.PI * 2) * CAN_PULSE;
     const drawSize = Math.round(size * pulse);
     const drawLeft = Math.round(c.x - drawSize / 2);
     const drawTop = Math.round(c.y - drawSize / 2 + bob);
-    // Blinks just before it vanishes.
-    const blinking = CAN_LIFE_MS - age < CAN_BLINK_MS;
-    if (!blinking || Math.floor(now / 110) % 2 === 0) {
+    {
       if (img.complete && img.naturalWidth) {
         ctx.save();
         ctx.imageSmoothingEnabled = false;
