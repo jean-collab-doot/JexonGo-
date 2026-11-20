@@ -259,8 +259,25 @@ function updateKamikaze(e, canvasW, canvasH, step, target) {
   e.bankVis = (e.bankVis || 0) + (-turnRate * KAMIKAZE_BANK - (e.bankVis || 0)) * Math.min(1, 0.18 * step);
 }
 
+// The player is refuelling at the tanker (game.js): the kamikaze F-5s give up
+// the charge and just fly on, straight down, at their normal speed.
+export function calmKamikazes(enemies) {
+  for (const e of enemies) {
+    if (e.active && e.pathType === 'kamikaze' && e.kamikazePhase !== 'pass') e.kamikazePhase = 'pass';
+  }
+}
+
 function _moveKamikaze(e, canvasW, canvasH, step, target) {
   e.kamikazeTimer += step;
+  if (e.kamikazePhase === 'pass') {
+    e.headingAngle = (e.headingAngle || 0) * (1 - Math.min(1, 0.06 * step));
+    const sp = e.speed * 1.2;
+    e.x += -Math.sin(e.headingAngle) * sp * step;
+    e.y += Math.cos(e.headingAngle) * sp * step;
+    e.vx = 0;
+    if (e.x < -120 || e.x > canvasW + 120 || e.y > canvasH + e.size + 120) e.active = false;
+    return;
+  }
   if (e.kamikazePhase === 'enter') {
     e.y += e.speed * 1.2 * step;
     e.vx = 0;

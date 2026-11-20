@@ -52,3 +52,30 @@
 #question-box.tanker-back { animation: tankerQBack .35s ease-out; }
 @keyframes tankerQBack { from { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { #question-box.tanker-back { animation: none; } }
+
+/* Time left inside the question box (game.js syncQuestionTimer): a thick
+   bar and the seconds, green, then yellow, then red and blinking. */
+#question-box #q-timer {
+  display: flex; align-items: center; gap: 8px;
+  margin: 0 auto 6px; width: min(100%, 420px);
+}
+#question-box #q-timer.is-off,
+#question-box.correction-active #q-timer { display: none; }
+#question-box #q-timer-track {
+  flex: 1; height: 12px; border-radius: 8px; overflow: hidden;
+  background: rgba(90, 40, 0, .35); box-shadow: inset 0 2px 0 rgba(0, 0, 0, .25);
+}
+#question-box #q-timer-fill {
+  display: block; height: 100%; width: 100%; border-radius: 8px;
+  background: #3ecf5c; transition: width .25s linear, background-color .3s;
+}
+#question-box #q-timer[data-tone="mid"] #q-timer-fill { background: #ffd23f; }
+#question-box #q-timer[data-tone="low"] #q-timer-fill { background: #ff4a3d; }
+#question-box #q-timer-sec {
+  min-width: 3.2em; text-align: right;
+  font-family: 'Press Start 2P', monospace; font-size: 13px; font-weight: 400;
+  color: #5a2a00;
+}
+#question-box #q-timer[data-tone="low"] #q-timer-sec { color: #c41a10; animation: qTimerBlink .5s steps(2) infinite; }
+@keyframes qTimerBlink { 50% { opacity: .35; } }
+@media (prefers-reduced-motion: reduce) { #question-box #q-timer[data-tone="low"] #q-timer-sec { animation: none; } }

@@ -31,7 +31,7 @@ import { tipFor, tipLines } from '../game/tips.js';
 import { makeFractionQuestion } from '../game/fractions.js';
 import { makePercentQuestion } from '../game/percentages.js';
 import { startSessionReport, recordAnswer, mistakesToReplay, markReplayed } from '../systems/session-report.js';
-import { spawnEnemy, updateEnemies, hitEnemy, KAMIKAZE_LOCK_FRAMES } from '../game/enemies.js';
+import { spawnEnemy, updateEnemies, hitEnemy, KAMIKAZE_LOCK_FRAMES, calmKamikazes } from '../game/enemies.js';
 import {
   shotDelaySeconds, activeWeapon, homingUpgradeOwned, planeUpgrades, FUEL_CAN_CHANCE_MULT,
   REFUEL_SECONDS, REFUEL_SHIELD_SECONDS, TANK_SIZE_MULT, LEAK_CHANCE,
@@ -3112,6 +3112,7 @@ function frame(ts = 0) {
     activeAircraftAbility().magnet ? C130_MAGNET_RADIUS : 0);
   updateAndDrawFuelCans(frameMs);
   updateAndDrawTanker(frameMs, ts || performance.now());
+  syncQuestionTimer();   // cheap: writes only when the shown value changes
 
   // ── Enemy spawn ────────────────────────────────────────────────────────
   const bossFirstShotGraceActive = G.enemies.some(enemy =>
@@ -3226,6 +3227,7 @@ function frame(ts = 0) {
 
   // Level-based missile guidance strength and homing probability
   // ── Enemies ────────────────────────────────────────────────────────────
+  if (tankerHold()) calmKamikazes(G.enemies);   // refuelling: no kamikaze charges the player
   updateEnemies(G.enemies.filter(e => !e.turncoat), canvas.width, canvas.height, _frameStep,
     activeAircraftAbility().jam ? enemySpeedMultFor : null,
     _stealthActive || G.lives <= 0 ? null : G.player);
@@ -3503,7 +3505,7 @@ function frame(ts = 0) {
     const origX = e.x;
     e.x += ox;
     const bankAngle = (e.vx || 0) * 0.13;
-    if (e.kamikaze && e.kamikazePhase !== 'enter') drawKamikazeMark(e);
+    if (e.kamikaze && e.kamikazePhase !== 'enter' && e.kamikazePhase !== 'pass') drawKamikazeMark(e);
     if (e.homingLockT != null) drawLockRing(e, e.homingLockT, HOMING_LOCK_FRAMES);
     // Its shadow (flying above the scenery) and, for a real enemy, a thin
     // dark outline so it stands out (game/readability.js).
@@ -5585,8 +5587,32 @@ function startTimer(resetTime = true) {
   _runTimer();
 }
 
+// The time left, also shown inside the question box (a bar and the seconds):
+// the thin strip under the top bar is easy to miss. Hidden when there is no
+// countdown (training round 1, unlimited practice, spectating, level over).
+let _qTimerKey = '';
+function syncQuestionTimer() {
+  const el = document.getElementById('q-timer');
+  if (!el) return;
+  const wrap = document.getElementById('timer-bar-wrap');
+  const off = !wrap || wrap.classList.contains('timer-finished') || wrap.classList.contains('tutorial-no-timer')
+    || wrap.style.visibility === 'hidden' || !(_timerTotal > 0) || _timerTotal >= 9000 || G.timeLeft >= 9000;
+  const pct = off ? 100 : Math.max(0, Math.min(100, G.timeLeft / _timerTotal * 100));
+  const sec = off ? 0 : Math.max(0, Math.ceil(G.timeLeft));
+  const tone = pct < 25 ? 'low' : pct < 55 ? 'mid' : 'ok';
+  const key = `${off}|${pct.toFixed(1)}|${sec}|${tone}`;
+  if (key === _qTimerKey) return;
+  _qTimerKey = key;
+  el.classList.toggle('is-off', off);
+  if (off) return;
+  el.dataset.tone = tone;
+  document.getElementById('q-timer-fill').style.width = pct + '%';
+  document.getElementById('q-timer-sec').textContent = `${sec}s`;
+}
+
 function _runTimer() {
   if (G.timerInterval) clearInterval(G.timerInterval);
+  syncQuestionTimer();
   const bar      = $('timer-bar');
   const timerSid = _sessionId;
   const timerStep  = isTouchMobile() ? 0.25 : 0.1;
@@ -5604,6 +5630,7 @@ function _runTimer() {
     bar.style.width = pct + '%';
     if (pct < 25)      bar.style.background = 'var(--red)';
     else if (pct < 55) bar.style.background = 'var(--yellow)';
+    syncQuestionTimer();
     if (pct < 25 && Math.floor(G.timeLeft * 10) % 5 === 0) SFX.timerWarn();
     if (G.timeLeft <= 0) { clearInterval(G.timerInterval); handleTimeout(); }
   }, timerDelay);
