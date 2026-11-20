@@ -9,6 +9,12 @@ import { TUTORIAL_COPY } from '../data/tutorial-copy.js';
 import { START_BANNER_MS, BOSS_ALERT_INFO, showStartBanner, showBossAlert, showPracticeBanner, setBannerSounds } from './game-banners.js';
 import { uiIcon } from '../utils/icons.js';
 import { drawWorldDim, withPlaneShadow, withEnemyOutline } from '../game/readability.js';
+import {
+  resetFuel, fuelOn, fuelShare, fuelEmpty, burnFuel, hitFuel, refuelTo, drainForTest,
+  enemyDestroyed, updateAndDrawCans,
+} from '../game/fuel.js';
+import { RESPAWN_FUEL } from '../data/fuel.js';
+import { setFuelGauge, fuelPickupFx, resetFuelGauge } from './fuel-gauge.js';
 import { $, showScreen } from '../utils/dom.js';
 import { newQuestion, withChoices } from '../game/math-engine.js';
 import { schoolQuestionPlan, questionFromPlan } from '../systems/school-questions.js';
@@ -56,7 +62,7 @@ import { resetWingmen, startWingmenEntry, wingmenIn, updateWingmen, wingmanPos, 
 import { resetCombo, comboCorrect, comboMistake, cashCombo, comboState, gameXpBreakdown, WAVE_SIZE, FAST_SECONDS } from '../systems/xp-combo.js';
 import {
   setHudXp, setHudCoins, setComboBadge, hideComboBadge, comboBadgeDrop, comboStepReached, resetComboFx,
-  calloutAnswer, calloutCash, calloutExpMax, calloutKill, calloutMistake, calloutHit, calloutNuke,
+  calloutAnswer, calloutCash, calloutExpMax, calloutKill, calloutMistake, calloutHit, calloutNuke, callout,
 } from './combo-fx.js';
 import { load, save } from '../utils/storage.js';
 import { t, getLang } from '../i18n.js';
@@ -2323,6 +2329,12 @@ function onKeyDown(e) {
   if (!FULL_UNLOCK) return;
   _gameCT.set(k, Date.now());
   if (_gameCheatHeld(['y', 'u']))             _toggleGodMode();
+  // Test version only (not jexongo.app): E + S empties the fuel tank (3 %).
+  if (_gameCheatHeld(['e', 's']) && !/(^|\.)jexongo\.app$/.test(location.hostname)) {
+    _gameCT.delete('e'); _gameCT.delete('s');
+    drainForTest(0.03);
+    setFuelGauge(fuelOn() ? fuelShare() : null);
+  }
   if (_gameCheatHeld(['q', 'w', 'e']))        _killBoss();
   if (_gameCheatHeld(['r', 'm', 'h', 'u']))   _winLevel();
   if (k === 't' && !e.repeat && !_levelEnding
@@ -3084,6 +3096,7 @@ function frame(ts = 0) {
   // projectile, including during boss cutscenes.
   updateAndDrawMapCoins(ctx, canvas.width, canvas.height, _frameStep,
     activeAircraftAbility().magnet ? C130_MAGNET_RADIUS : 0);
+  updateAndDrawFuelCans(frameMs);
 
   // ── Enemy spawn ────────────────────────────────────────────────────────
   const bossFirstShotGraceActive = G.enemies.some(enemy =>
@@ -3697,6 +3710,7 @@ function frame(ts = 0) {
     G.airdropSupportPending = false;
     startAirSupport(ts || performance.now());
   }
+  updateFuel(frameMs);   // game/fuel.js: burns while the plane flies
   updateGameCurrencyHUD();
   if (!isTutorialActive() && G.lives > _maxLives) {
     _maxLives = G.lives;
@@ -3718,7 +3732,8 @@ function frame(ts = 0) {
     drawEscorts(now, playerDrawX, playerDrawY, _frameStep, flashAlpha);
   }
 
-  if (!_playerDestroyed) {
+  if (_fuelCrash) drawFuelCrash(ts || performance.now());
+  if (!_playerDestroyed && !_fuelCrash) {
     // The plane with its shadow below it (game/readability.js).
     withPlaneShadow(ctx, getPlayerSize(), () => {
       if (showTurnRightRollArt) {
@@ -4015,6 +4030,7 @@ function targetPointForShot(source, shot) {
 }
 
 function firePlayerShootingPlan() {
+  if (_fuelCrash) return false;   // the engine stopped: no more shots
   const plan = activeShootingPlan();
   const shots = Array.isArray(plan?.missiles) && plan.missiles.length
     ? plan.missiles
@@ -5175,6 +5191,11 @@ function onEnemyMissileHit() {
   if (playerImmune()) return;
   if (airdropShieldActive()) return;
   G.missileHitsReceived = (G.missileHitsReceived || 0) + 1;
+  fuelAlerts(hitFuel());   // a hit also costs fuel (game/fuel.js)
+  // A hit that empties the tank: that heart is the engine failure too (no
+  // second heart lost by a crash right after): back with half a tank.
+  if (fuelEmpty()) refuelTo(RESPAWN_FUEL);
+  setFuelGauge(fuelOn() ? fuelShare() : null);
   if (calloutsOn()) calloutHit();
   if (!G.practiceMode && G.currentLevel <= 30) {
     G.sr71MissileHits = (G.sr71MissileHits || 0) + 1;
@@ -5274,6 +5295,7 @@ function onMissileHit(enemy, missile) {
     else spawnMissileExplosion(G.particles, enemy.x, enemy.y, missile?.type || 'default', 18);
     enemy.active = false;
     if (calloutsOn() && !_cutsceneActive) calloutKill({ boss: enemy.type === 'boss' });
+    if (enemyDestroyed(enemy.x, enemy.y, { boss: enemy.type === 'boss' })) fuelCanTip();
     // Every aircraft destroyed by the player leaves a collectible coin at
     // its last position. The coin is awarded only if the player picks it up.
     spawnMapCoin(canvas.width, enemy.y, enemy.x, 1);
@@ -6206,6 +6228,7 @@ function leaveSpectator() {
 function reviveFromSpectator() {
   leaveSpectator();
   _playerDestroyed = false;
+  refuelTo(RESPAWN_FUEL);   // back with half a tank (game/fuel.js)
   G.lives = _maxLives;
   updateLivesHUD();
   _invincible = 180;
@@ -6425,6 +6448,109 @@ function comboOn() {
 // the shot coins. Only the teammate's shots (co-op, bot) do not count.
 function pilotShot(missile) {
   missile.byPilot = true;
+}
+
+// ── FUEL (rules: game/fuel.js + data/fuel.js, gauge: screens/fuel-gauge.js) ──
+// The tank burns only while the plane really flies: not while a question or
+// the correction is on screen, in pause (the loop is stopped), in cutscenes,
+// at the end of the level, while the player is down in co-op.
+const FUEL_CRASH_MS = 1300;
+let _fuelCrash = null;          // { start, x, y, booms } while the plane falls
+let _fuelTipsShown = false;
+
+function fuelModeOn() {
+  return !G.practiceMode && !G.mistakesReview && !isTutorialActive() && !_guidedRun;
+}
+
+function planeFlying() {
+  return !_cutsceneActive && !_levelEnding && !_playerDestroyed && !_spectating
+    && !answeringQuestion() && !_correctionWaiting && !_bossDialogueActive;
+}
+
+function updateFuel(frameMs) {
+  if (!fuelOn()) return;
+  if (!_fuelCrash && planeFlying()) {
+    fuelAlerts(burnFuel(frameMs));
+    if (fuelEmpty()) startFuelCrash();
+  }
+  setFuelGauge(fuelShare());
+}
+
+// Alerts from game/fuel.js: the sound, and a side callout (soft colour).
+function fuelAlerts(list) {
+  const fr = getLang() === 'fr';
+  for (const level of list || []) {
+    SFX.fuelLow(level);
+    if (calloutsOn()) callout({
+      title: level === 'critical' ? (fr ? 'RÉSERVE !' : 'RESERVE!') : (fr ? 'ESSENCE BASSE !' : 'LOW FUEL!'),
+      tone: 'soft', subs: [{ text: fr ? 'ATTRAPE UN BIDON' : 'GRAB A FUEL CAN' }], priority: 3,
+    });
+  }
+}
+
+// First games only: a tip the first time a can drops.
+function fuelCanTip() {
+  if (_fuelTipsShown || !calloutsOn()) return;
+  const seen = Number(load('fuelTipGames', 0)) || 0;
+  if (seen >= 3) return;
+  _fuelTipsShown = true;
+  save('fuelTipGames', seen + 1);
+  callout({ title: getLang() === 'fr' ? 'RAMASSE LE BIDON !' : 'GRAB THE FUEL CAN!', priority: 2 });
+}
+
+function updateAndDrawFuelCans(frameMs) {
+  if (!fuelOn()) return;
+  const picked = updateAndDrawCans(ctx, {
+    now: performance.now(), ms: frameMs, step: _frameStep, height: canvas.height,
+    player: G.player, playerRadius: Math.max(20, getPlayerSize() * 0.34), playerSize: getPlayerSize(),
+    frozen: !planeFlying(), noPickup: !!_fuelCrash || _playerDestroyed,
+  });
+  if (!picked) return;
+  SFX.fuelPickup();
+  const r = canvas.getBoundingClientRect();
+  fuelPickupFx(r.left + picked.x * r.width / canvas.width, r.top + picked.y * r.height / canvas.height);
+}
+
+// Empty tank: the engine stops, the plane blows up and falls, then a heart is
+// lost exactly like an enemy hit during the flight (same recovery), and the
+// plane comes back with half a tank.
+function startFuelCrash() {
+  _fuelCrash = { start: performance.now(), x: G.player.x, y: G.player.y, booms: 0 };
+  _invincible = Math.max(_invincible, Math.ceil(FUEL_CRASH_MS / (1000 / 60)) + 30);
+  stopShootingWindow();
+  SFX.engineCut();
+  spawnMissileExplosion(G.particles, G.player.x, G.player.y, 'default', 26);
+  spawnExplosion(G.particles, G.player.x, G.player.y, '#ff9a3c', 20);
+  shakeFrames = 16;
+  const sid = _sessionId;
+  setTimeout(() => {
+    if (_sessionId !== sid || !_fuelCrash) return;
+    _fuelCrash = null;
+    refuelTo(RESPAWN_FUEL);
+    setFuelGauge(fuelShare());
+    loseLife({ resumeDelayMs: MISSILE_HIT_RECOVERY_MS, fromEnemyHit: true });
+  }, FUEL_CRASH_MS);
+}
+
+// The plane falling: it spins and drops, with small explosions and smoke.
+function drawFuelCrash(now) {
+  const c = _fuelCrash;
+  const t = Math.min(1, (now - c.start) / FUEL_CRASH_MS);
+  const x = c.x + Math.sin(t * 5) * 6;
+  const y = c.y + t * t * canvas.height * 0.32;
+  const due = Math.floor(t * 7);
+  while (c.booms < due) {
+    c.booms++;
+    spawnExplosion(G.particles, x + (Math.random() - 0.5) * 20, y + (Math.random() - 0.5) * 20, c.booms % 2 ? '#ff7a2c' : '#555555', 10);
+    if (c.booms % 3 === 0) SFX.explode();
+  }
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(t * 2.6);
+  ctx.scale(1 - t * 0.35, 1 - t * 0.35);
+  ctx.globalAlpha = 1 - t * 0.7;
+  drawAircraftSprite(ctx, G.activeAircraft, 0, 0, _shipFrame, 1, 0);
+  ctx.restore();
 }
 
 // ── SHOT COINS (rules: systems/shot-coins.js, visuals: screens/shot-meter.js)
@@ -6828,6 +6954,13 @@ export function initGame(levelNum, onComplete) {
   resetComboFx();
   resetShotMeter();
   resetWingmen();
+  // Fuel (game/fuel.js): a full tank; none in practice, the tutorial or the
+  // beginner run; much gentler for the youngest players.
+  _fuelCrash = null;
+  _fuelTipsShown = false;
+  resetFuel(G.activeAircraft, { on: fuelModeOn(), gentle: gentleFx() });
+  resetFuelGauge();
+  setFuelGauge(fuelOn() ? fuelShare() : null);
   resetNukeReward({ keep: !!snap });   // nuke rewards (systems/nuke-reward.js)
   _shotCoinsShown = liveShotCoins();
   updateShotMeter();

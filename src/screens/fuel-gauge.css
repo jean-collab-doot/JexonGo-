@@ -1,0 +1,115 @@
+/* ============================ FUEL GAUGE ================================== */
+/* screens/fuel-gauge.js; rules in game/fuel.js. Top right, just under the
+   orange top bar (the shot meter sits on the left of the same row). */
+#s-game .fuel-gauge { display: none; }
+#s-game .fuel-gauge.is-on {
+  --fg: #5ee87a;
+  position: absolute; right: max(8px, env(safe-area-inset-right)); top: calc(100% + 14px); z-index: 5;
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 6px 10px 6px 7px;
+  border: 3px solid var(--fg); border-radius: 999px;
+  background: rgba(10, 14, 20, .78);
+  box-shadow: 0 0 6px color-mix(in srgb, var(--fg) 45%, transparent);
+  pointer-events: none;
+}
+/* Boss levels: under the boss health bar. */
+#s-game:has(#boss-health-wrap:not(.hidden)) .fuel-gauge.is-on { top: calc(100% + 64px); }
+#s-game .fuel-gauge-icon {
+  width: 16px; height: 16px; flex: none;
+  image-rendering: pixelated; image-rendering: crisp-edges;
+}
+#s-game .fuel-gauge-bar {
+  position: relative; width: 96px; height: 12px; border-radius: 3px;
+  background: rgba(255, 255, 255, .16); box-shadow: inset 0 -2px 0 rgba(0, 0, 0, .4);
+  overflow: hidden;
+}
+#s-game .fuel-gauge-fill {
+  position: absolute; left: 0; top: 0; bottom: 0; width: 100%;
+  background: var(--fg); box-shadow: inset 0 -3px 0 rgba(0, 0, 0, .25), inset 0 2px 0 rgba(255, 255, 255, .35);
+}
+/* Pixel segments over the bar. */
+#s-game .fuel-gauge-bar::after {
+  content: ''; position: absolute; inset: 0;
+  background: repeating-linear-gradient(90deg, transparent 0 10px, rgba(0, 0, 0, .35) 10px 12px);
+}
+#s-game .fuel-gauge.is-yellow { --fg: #ffd84d; }
+#s-game .fuel-gauge.is-red { --fg: #ff5a4a; }
+#s-game .fuel-gauge.is-low { animation: fuelBlink .55s steps(1) infinite; }
+@keyframes fuelBlink { 50% { border-color: #ffffff; box-shadow: 0 0 14px #ff5a4a; } }
+#s-game .fuel-gauge.is-low .fuel-gauge-fill { animation: fuelFillBlink .55s steps(1) infinite; }
+@keyframes fuelFillBlink { 50% { opacity: .35; } }
+/* A can picked up: the gauge flashes, the bar slides up. */
+#s-game .fuel-gauge.is-refill { animation: fuelRefill .5s ease-out; }
+@keyframes fuelRefill { 30% { transform: scale(1.14); box-shadow: 0 0 18px #ffffff; } }
+#s-game .fuel-gauge.is-filling .fuel-gauge-fill { transition: width .6s ease-out; }
+@media (max-width: 420px) {
+  #s-game .fuel-gauge.is-on { gap: 5px; padding: 5px 8px 5px 6px; }
+  #s-game .fuel-gauge-bar { width: 70px; }
+}
+/* Narrow screens: the shot meter / combo row wraps instead of running under
+   the gauge. */
+#s-game #hud-under { max-width: calc(100vw - 150px); flex-wrap: wrap; row-gap: 6px; }
+
+/* Where the can was: a small white flash, then "+ESSENCE" jumping up. */
+.fuel-flash {
+  position: fixed; left: 0; top: 0; z-index: 8999; pointer-events: none;
+  width: 70px; height: 70px; margin: -35px 0 0 -35px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 255, 255, .95) 0 20%, rgba(255, 240, 160, .6) 45%, transparent 70%);
+  animation: fuelFlash .45s ease-out forwards;
+}
+@keyframes fuelFlash { from { transform: scale(.3); opacity: 1; } to { transform: scale(1.4); opacity: 0; } }
+.fuel-pop {
+  position: fixed; left: 0; top: 0; z-index: 9000; pointer-events: none;
+  transform: translate(-50%, -50%);
+  font-family: 'Press Start 2P', monospace; font-size: clamp(14px, 3.6vw, 22px); white-space: nowrap;
+  color: #9effa1;
+  text-shadow: 0 3px 0 #1d4a2a, 2px 0 0 #1d4a2a, -2px 0 0 #1d4a2a, 0 -2px 0 #1d4a2a;
+  animation: fuelPop 1.25s cubic-bezier(.2, 1.4, .4, 1) forwards;
+}
+@keyframes fuelPop {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(.4); }
+  18% { opacity: 1; transform: translate(-50%, -110%) scale(1.25); }
+  35% { transform: translate(-50%, -120%) scale(1); }
+  80% { opacity: 1; }
+  100% { opacity: 0; transform: translate(-50%, -230%) scale(.95); }
+}
+.fuel-pop.is-gentle span {
+  background: linear-gradient(90deg, #ff5fa2, #ffb13b, #ffe14d, #5ee87a, #4cc9ff, #9b7bff, #ff5fa2);
+  background-size: 200% 100%;
+  -webkit-background-clip: text; background-clip: text; color: transparent; text-shadow: none;
+  filter: drop-shadow(0 3px 0 #5a2a00) drop-shadow(2px 0 0 #5a2a00);
+  animation: comboRainbowSlide 1s linear infinite;
+}
+.fuel-pop i {
+  position: absolute; left: 50%; top: 50%;
+  width: 6px; height: 6px; margin: -3px 0 0 -3px;
+  background: var(--c); box-shadow: 0 0 6px var(--c);
+  animation: comboGlitter .9s ease-out .1s both;
+}
+@media (prefers-reduced-motion: reduce) {
+  #s-game .fuel-gauge.is-low, #s-game .fuel-gauge.is-low .fuel-gauge-fill, #s-game .fuel-gauge.is-refill { animation: none; }
+  .fuel-pop { animation: comboFade 1.2s linear both; transform: translate(-50%, -120%); }
+  .fuel-pop i, .fuel-flash { display: none; }
+}
+
+/* How-to-play page TON ESSENCE (intro-briefing.js): the can at 2x, no
+   smoothing, and a gauge that empties then refills. */
+.ht-fuel-art { align-items: center; gap: 18px; }
+.ht-fuel-can { width: 64px; height: 64px; image-rendering: pixelated; image-rendering: crisp-edges; }
+.ht-fuel-bar {
+  position: relative; width: 150px; height: 20px; border-radius: 6px; overflow: hidden;
+  border: 3px solid #3a1d00; background: rgba(0, 0, 0, .25);
+}
+.ht-fuel-bar i {
+  position: absolute; left: 0; top: 0; bottom: 0; width: 100%;
+  animation: htFuel 4s steps(16) infinite;
+  background: repeating-linear-gradient(90deg, transparent 0 14px, rgba(0, 0, 0, .3) 14px 16px), #5ee87a;
+}
+@keyframes htFuel {
+  0% { width: 100%; background-color: #5ee87a; }
+  45% { width: 45%; background-color: #ffd84d; }
+  70% { width: 18%; background-color: #ff5a4a; }
+  80% { width: 48%; background-color: #ffd84d; }
+  100% { width: 100%; background-color: #5ee87a; }
+}
+@media (prefers-reduced-motion: reduce) { .ht-fuel-bar i { animation: none; width: 70%; } }

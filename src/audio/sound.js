@@ -1130,6 +1130,27 @@ export const SFX = {
       [1047, 1319, 1568, 2093].forEach(f => _tone(_ac(), f, type, 0.5, 0.16));
     });
   },
+  // Fuel (game/fuel.js). Low tank: two short warning beeps (level 'low'
+  // under 25 %, 'critical' under 10 %: higher and three beeps).
+  fuelLow(level = 'low') {
+    const crit = level === 'critical';
+    const f = crit ? 1046 : 880;
+    [0, 160, ...(crit ? [320] : [])].forEach(ms =>
+      _after(ms, () => _tone(_ac(), f, 'square', 0.09, 0.16)));
+  },
+  // A can picked up: a rising "glug" sweep, then a bright chime.
+  fuelPickup() {
+    const type = gentleFx() ? 'sine' : 'triangle';
+    _tone(_ac(), 660, type, 0.22, 0.22, 220);
+    _after(140, () => _tone(_ac(), 990, type, 0.12, 0.24));
+    _after(220, () => _tone(_ac(), 1320, type, 0.22, 0.22));
+  },
+  // Empty tank: the engine sputters and dies, then the plane blows up.
+  engineCut() {
+    [0, 120, 260].forEach((ms, i) =>
+      _after(ms, () => _tone(_ac(), 140 - i * 25, 'sawtooth', 0.1, 0.22, 220 - i * 30)));
+    _after(420, () => _tone(_ac(), 90, 'sawtooth', 0.7, 0.24, 180));
+  },
   // Shot coins step (systems/shot-coins.js): a shower of quick coin pings,
   // then a bright two-note chime. Bell-like sine notes for the youngest.
   shotStep() {

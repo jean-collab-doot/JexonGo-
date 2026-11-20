@@ -13,6 +13,7 @@ const IMG = {
   star: '/assets/Image intro/04_Etoile.png',
   coin: '/assets/fx/Caisse/JexonGo_Coin_frame_01.png',
   crate: '/assets/fx/Parachut%20anime/JexonGo_Parachute_Crate_12_Frames/frames/plan_01.png',
+  fuel: '/assets/fx/Fuel/bidon.png',
 };
 
 /** Downloads the how-to-play pictures in advance (main.js), so they show at once. */
@@ -78,6 +79,20 @@ function pages(fr) {
         ['heart', 'You start with 3 lives.'],
         ['x', 'Wrong answer or enemy hit: -1 life.'],
         ['warning', 'No lives left = mission failed.'],
+      ],
+    },
+    {
+      // Fuel (game/fuel.js): the gauge empties while flying, cans refill it.
+      art: 'fuel',
+      title: fr ? 'TON ESSENCE' : 'YOUR FUEL',
+      tips: fr ? [
+        ['plane', 'Ton avion consomme de l’essence en volant (pas pendant les questions).'],
+        ['crate', 'Certains avions ennemis abattus lâchent un bidon : passe dessus pour faire le plein!'],
+        ['warning', 'Jauge à zéro : le moteur s’arrête et tu perds une vie.'],
+      ] : [
+        ['plane', 'Your plane burns fuel while flying (not during the questions).'],
+        ['crate', 'Some enemy planes you shoot down drop a fuel can: fly over it to refuel!'],
+        ['warning', 'Empty gauge: the engine stops and you lose a life.'],
       ],
     },
     {
@@ -159,6 +174,9 @@ function artHtml(kind) {
       </div>`;
     case 'lives':
       return `<div class="ht-art-row">${[0, 1, 2].map(i => `<img class="ht-bounce" style="--i:${i}" src="${IMG.heart}" alt="">`).join('')}</div>`;
+    case 'fuel':
+      // The gauge emptying then refilling, and the can bouncing beside it.
+      return `<div class="ht-art-row ht-fuel-art"><img class="ht-bounce ht-fuel-can" style="--i:0" src="${IMG.fuel}" alt=""><span class="ht-fuel-bar"><i></i></span></div>`;
     case 'bonus':
       return `<div class="ht-art-row"><img class="ht-bounce ht-coin" style="--i:0" src="${IMG.coin}" alt=""><div class="ht-bounce ht-crate" style="--i:1;background-image:url('${IMG.crate}')"></div><img class="ht-bounce ht-coin" style="--i:2" src="${IMG.coin}" alt=""></div>`;
     default:
