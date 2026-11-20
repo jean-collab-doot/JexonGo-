@@ -1,21 +1,21 @@
 // Fuel of each playable plane (validated table, 2026-11-20): tank size and
 // burn rate per second of flight. Small light planes: small tank, low burn;
-// big heavy ones: big tank, high burn. Every plane flies 85 s on a full tank
-// (72 s in the first version, made slower on 2026-11-20), plus a little more
-// the rarer it is (+4 % uncommon … +20 % secret).
+// big heavy ones: big tank, high burn. Every plane flies 60 s on a full tank
+// (72 s, then 85 s in the first versions; 60 s asked on 2026-11-20), plus a
+// little more the rarer it is (+4 % uncommon … +20 % secret).
 //   plane   size / weight          rarity            tank  burn/s  flight
-//   t6      small, 2.9 t           common (free)       60   0.71    85 s
-//   pc21    small, 4.2 t           common (800)        70   0.82    85 s
-//   c130    very big, 70 t         uncommon (2000)    160   1.81    88 s
-//   a10     medium-heavy, 23 t     uncommon (3800)    110   1.24    88 s
-//   f16     medium, 19 t           rare (6000)        100   1.09    92 s
-//   f18     medium-heavy, 23 t     rare (8800)        110   1.20    92 s
-//   f22     heavy, 38 t            epic (12000)       130   1.37    95 s
-//   f35     heavy, 32 t            epic (14400)       120   1.26    95 s
-//   b2      giant, 170 t           legendary (22000)  200   2.03    99 s
-//   sr71    big, 78 t              legendary (30000)  170   1.72    99 s
-//   f117    medium-heavy, 24 t     secret             110   1.08   102 s
-export const BASE_FLIGHT_S = 85;
+//   t6      small, 2.9 t           common (free)       60   1.00    60 s
+//   pc21    small, 4.2 t           common (800)        70   1.17    60 s
+//   c130    very big, 70 t         uncommon (2000)    160   2.56    62 s
+//   a10     medium-heavy, 23 t     uncommon (3800)    110   1.76    62 s
+//   f16     medium, 19 t           rare (6000)        100   1.54    65 s
+//   f18     medium-heavy, 23 t     rare (8800)        110   1.70    65 s
+//   f22     heavy, 38 t            epic (12000)       130   1.93    67 s
+//   f35     heavy, 32 t            epic (14400)       120   1.79    67 s
+//   b2      giant, 170 t           legendary (22000)  200   2.87    70 s
+//   sr71    big, 78 t              legendary (30000)  170   2.44    70 s
+//   f117    medium-heavy, 24 t     secret             110   1.53    72 s
+export const BASE_FLIGHT_S = 60;
 export const RARITY_BONUS = { common: 0, uncommon: 0.04, rare: 0.08, epic: 0.12, legendary: 0.16, secret: 0.2 };
 
 export const PLANE_FUEL = {
