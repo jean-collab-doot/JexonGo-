@@ -13,6 +13,7 @@ import { initHangar, renderHangar } from './screens/hangar.js';
 import { initShop, renderShop } from './screens/shop.js';
 import { initTraining, renderTraining, practiceLevelNumber } from './screens/training.js';
 import { initMistakesLobby } from './screens/mistakes-lobby.js';
+import { initGrades } from './screens/grades.js';
 import { initGame, leaveCoopLink, warmUpGame } from './screens/game.js';
 import { initResult, showResult } from './screens/result.js';
 import { initChest, showChest, setChestReturn } from './screens/chest.js';
@@ -665,6 +666,7 @@ document.getElementById('btn-lobby-multi')?.addEventListener('click', () => {
   else nav.toMulti();
 });
 // ERREURS: a practice game with the player's old mistakes (game.js).
+initGrades();   // lobby GRADES button and page
 initMistakesLobby(() => {
   G.mistakesReview = true;
   nav.toGame(practiceLevelNumber(), true);

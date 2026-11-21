@@ -17,6 +17,7 @@ import {
   TANK_BIG_PRICES, TANK_SIZE_MULT, TANK_STRONG_PRICES, LEAK_CHANCE,
 } from '../data/upgrades.js';
 import { CAN_DROP_CHANCE, planeFuel } from '../data/fuel.js';
+import { freeUpgradesLeft, useFreeUpgrade } from '../systems/grade-rewards.js';
 
 let _hangarTab = 'planes';   // 'planes' | 'missiles' | 'upgrades'
 const _panelScopes = new Set(['#s-hangar']);   // every place the hangar panel lives
@@ -526,10 +527,14 @@ function renderUpgradesTab(body) {
     `<span class="upg-pips">${Array.from({ length: max }, (_, i) => `<i class="${i < level ? 'on' : ''}"></i>`).join('')}</span>`;
   const price = amount => `${amount.toLocaleString(numLocale())} ${coinIcon('jg-coin-icon-small')}`;
 
+  // Free upgrades from the pilot grades (screens/grades.js): every buy button
+  // of an owned plane says GRATUIT while some are left.
+  const free = unlocked ? freeUpgradesLeft() : 0;
   const levelRow = (kind, icon, name, desc, level, prices) => {
     const maxed = level >= prices.length;
     const cost = prices[level];
-    const canBuy = unlocked && !maxed && coins >= cost;
+    const isFree = free > 0 && !maxed;
+    const canBuy = unlocked && !maxed && (isFree || coins >= cost);
     return `
       <div class="pi-ability upg-row">
         <span class="pi-ability-icon upg-icon upg-icon-${kind}">${icon}</span>
@@ -538,8 +543,8 @@ function renderUpgradesTab(body) {
           <p>${desc}</p>
           ${pips(level, prices.length)}
         </div>
-        <button class="upg-buy ${maxed ? 'is-max' : ''}" type="button" data-upgrade="${kind}" ${canBuy ? '' : 'disabled'}>
-          ${maxed ? 'MAX' : price(cost)}
+        <button class="upg-buy ${maxed ? 'is-max' : ''}${isFree ? ' is-free' : ''}" type="button" data-upgrade="${kind}" ${canBuy ? '' : 'disabled'}>
+          ${maxed ? 'MAX' : isFree ? (fr ? 'GRATUIT' : 'FREE') : price(cost)}
         </button>
       </div>`;
   };
@@ -599,6 +604,9 @@ function renderUpgradesTab(body) {
       </div>
       </div>
       <div class="upg-scroll">
+        ${free ? `<p class="upg-free-note">${uiIcon('upgrade')}<span>${fr
+          ? `${free} amélioration${free > 1 ? 's' : ''} gratuite${free > 1 ? 's' : ''} (tes grades) : touche GRATUIT sur celle que tu veux.`
+          : `${free} free upgrade${free > 1 ? 's' : ''} (your grades): tap FREE on the one you want.`}</span></p>` : ''}
         <h4 class="pi-bar">${fr ? 'VIES SUPPLÉMENTAIRES' : 'EXTRA LIVES'}</h4>
         ${levelRow('lives', `<img class="upg-heart" src="${HEART_IMG}" alt="">`, fr ? `+1 VIE (${up.lives}/3)` : `+1 LIFE (${up.lives}/3)`,
           fr ? 'Une vie de plus au début de chaque mission.' : 'One more life at the start of every mission.',
@@ -739,9 +747,13 @@ function buyLevelUpgrade(planeId, kind) {
   if (!prices || (dropItem && !(dropItem in record.dropChance))) return;
   const level = dropItem ? record.dropChance[dropItem] : record[kind];
   if (level >= prices.length) return;
-  if ((G.coins || 0) < prices[level]) { SFX.noMoney(); return; }
-  SFX.buy();
-  G.coins = Math.max(0, (G.coins || 0) - prices[level]);
+  // A free upgrade from the pilot grades is used first (no coins).
+  if (useFreeUpgrade()) SFX.buy();
+  else {
+    if ((G.coins || 0) < prices[level]) { SFX.noMoney(); return; }
+    SFX.buy();
+    G.coins = Math.max(0, (G.coins || 0) - prices[level]);
+  }
   if (dropItem) record.dropChance[dropItem] = level + 1;
   else record[kind] = level + 1;
   saveUpgradePurchase(planeId, record);

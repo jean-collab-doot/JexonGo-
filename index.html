@@ -389,6 +389,14 @@
           <path d="M26.4 23.4l5.2 5.2M31.6 23.4l-5.2 5.2" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/>
         </svg><span id="jx-mistakes-label">ERREURS</span><b id="jx-mistakes-count" class="jx-mistakes-count hidden">0</b>
       </button>
+      <!-- GRADES (src/screens/grades.js): the pilot grades and their rewards. -->
+      <button id="btn-lobby-grades" class="jx-multi-btn jx-grades-btn" type="button" aria-label="Grades">
+        <span id="jx-grades-ico" class="jx-grades-ico" aria-hidden="true"></span><span id="jx-grades-label">GRADES</span><b id="jx-grades-count" class="jx-mistakes-count hidden">0</b>
+      </button>
+      <div id="lobby-grades" class="top20-panel grades-panel hidden" role="dialog" aria-label="Grades">
+        <button id="btn-grades-close" class="top20-close" type="button" aria-label="Fermer"><svg class="ui-icon ui-icon-x" viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+        <div id="grades-body" class="top20-body grades-body"></div>
+      </div>
       <div id="lobby-top20" class="top20-panel hidden" role="dialog" aria-label="Top 20">
         <button id="btn-top20-close" class="top20-close" type="button" aria-label="Fermer"><svg class="ui-icon ui-icon-x" viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
         <div id="top20-body" class="top20-body"></div>

@@ -7,6 +7,7 @@ import { saveProgress } from '../systems/progression.js';
 import { rollChest, skinChest } from '../systems/chest.js';
 import { trackMission } from '../systems/daily.js';
 import { getPilotGrade, getNextGrade } from '../data/pilots.js';
+import { gradeName, gradeReward } from '../systems/grade-rewards.js';
 import { t, getLang, numLocale } from '../i18n.js';
 import { AIRCRAFT } from '../data/aircraft.js';
 import { coinIcon, expIcon, uiIcon } from '../utils/icons.js';
@@ -311,7 +312,10 @@ export function showResult(won) {
     const prevGrade = getPilotGrade(_prevHighestLevel);
     const newGrade  = getPilotGrade(G.highestLevel);
     if (prevGrade.name !== newGrade.name) {
-      promoBanner.textContent = `${t('promoted')}: ${newGrade.name}!`;
+      // Its reward waits in the lobby's GRADES page (screens/grades.js).
+      const fr = getLang() === 'fr';
+      promoBanner.textContent = `${t('promoted')} : ${gradeName(newGrade)} !${gradeReward(newGrade)
+        ? (fr ? ' Ta récompense t’attend dans GRADES.' : ' Your reward waits in GRADES.') : ''}`;
       promoBanner.style.color = newGrade.color;
       promoBanner.classList.remove('hidden');
       SFX.promoted?.();
