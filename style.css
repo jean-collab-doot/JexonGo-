@@ -8626,8 +8626,23 @@ html.np-boot .np-intro.np-static { display: block; }
   position: absolute; top: 50%; right: 6px; transform: translateY(-50%);
   width: 36px; height: 36px; border: 0; border-radius: 10px; cursor: pointer;
   background: #ffe9a8; font-size: 18px; line-height: 1;
+  display: grid; place-items: center; color: #7a3a00;
+  transition: background-color .15s ease;
 }
 .ea-eye[aria-pressed="true"] { background: #ffc94d; }
+/* The eye icon (email-auth.js EYE_ICON): crossed out while the password is
+   hidden; the slash slides away and the pupil opens when it is shown. */
+.ea-eye-ico { display: block; overflow: visible; }
+.ea-eye-pupil { transform-origin: 12px 12px; transform: scale(.55); transition: transform .22s ease; }
+.ea-eye-slash { stroke-dasharray: 1; stroke-dashoffset: 0; transition: stroke-dashoffset .25s ease; }
+.ea-eye[aria-pressed="true"] .ea-eye-pupil { transform: scale(1); }
+.ea-eye[aria-pressed="true"] .ea-eye-slash { stroke-dashoffset: 1; }
+.ea-eye.is-blink .ea-eye-ico { animation: eaEyeBlink .28s ease-in-out; transform-origin: 12px 12px; }
+@keyframes eaEyeBlink { 45% { transform: scaleY(.15); } }
+@media (prefers-reduced-motion: reduce) {
+  .ea-eye-pupil, .ea-eye-slash { transition: none; }
+  .ea-eye.is-blink .ea-eye-ico { animation: none; }
+}
 .ea .pnp-error { min-height: 1.4em; text-align: center; }
 .ea .cp-btn { justify-content: center; margin-top: 2px; }
 .ea .ea-main {

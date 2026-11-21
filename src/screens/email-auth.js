@@ -35,6 +35,14 @@ const isEmail = v => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
 const cleanEmail = v => String(v || '').trim().toLowerCase();
 const emailLocal = email => [String(email || '').split('@')[0]];
 
+// Show / hide password button: a drawn eye (no emoji). Password hidden: the
+// eye is crossed out; shown: the slash slides away and the pupil opens
+// (style.css .ea-eye). Pixel-free strokes so it stays sharp at any size.
+const EYE_ICON = `<svg class="ea-eye-ico" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+  <path class="ea-eye-lid" d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/>
+  <circle class="ea-eye-pupil" cx="12" cy="12" r="3"/>
+  <path class="ea-eye-slash" d="M4 4l16 16" pathLength="1"/>
+</svg>`;
 const EXISTING_EMAIL_CODES = ['user_already_exists', 'email_exists'];
 
 // Supabase's answer -> a message for the player.
@@ -71,7 +79,7 @@ function errorMessage(error) {
 
 function field(id, label, type, attrs = '', hint = '') {
   const eye = type === 'password'
-    ? `<button type="button" class="ea-eye" data-eye="${id}" aria-pressed="false" aria-label="${tr('Afficher le mot de passe', 'Show password')}">👁</button>`
+    ? `<button type="button" class="ea-eye" data-eye="${id}" aria-pressed="false" aria-label="${tr('Afficher le mot de passe', 'Show password')}">${EYE_ICON}</button>`
     : '';
   return `
     <label class="ea-field" for="${id}">
@@ -325,6 +333,8 @@ export function openEmailAuth({ view = 'login', email = '', onSignedIn, onGoogle
       const show = input.type === 'password';
       input.type = show ? 'text' : 'password';
       btn.setAttribute('aria-pressed', String(show));
+      // A quick blink while the slash slides away / comes back (CSS).
+      btn.classList.remove('is-blink'); void btn.offsetWidth; btn.classList.add('is-blink');
       btn.setAttribute('aria-label', show ? tr('Cacher le mot de passe', 'Hide password') : tr('Afficher le mot de passe', 'Show password'));
     }));
     card.querySelectorAll('[data-go]').forEach(btn => btn.addEventListener('click', () => {
