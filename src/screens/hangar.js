@@ -16,7 +16,7 @@ import {
   REFUEL_FAST_PRICES, REFUEL_SECONDS, SHIELD_LONG_PRICES, REFUEL_SHIELD_SECONDS,
   TANK_BIG_PRICES, TANK_SIZE_MULT, TANK_STRONG_PRICES, LEAK_CHANCE,
 } from '../data/upgrades.js';
-import { CAN_DROP_CHANCE } from '../data/fuel.js';
+import { CAN_DROP_CHANCE, planeFuel } from '../data/fuel.js';
 
 let _hangarTab = 'planes';   // 'planes' | 'missiles' | 'upgrades'
 const _panelScopes = new Set(['#s-hangar']);   // every place the hangar panel lives
@@ -107,6 +107,17 @@ function setText(id, text) { const el = $(id); if (el) el.textContent = text; }
 // Level needed for a plane: "NIV 16" in French, "LV 16" in English.
 function levelTag(n) { return `${getLang() === 'fr' ? 'NIV' : 'LV'} ${n}`; }
 
+// Fuel of a plane (data/fuel.js): its tank and the flight time on a full
+// tank, with the hangar's RÉSERVOIR AGRANDI upgrade of that plane counted.
+function fuelSpec(id, fr) {
+  const f = planeFuel(id);
+  const mult = TANK_SIZE_MULT[planeUpgrades(id).tankBig] || 1;
+  const tank = Math.round(f.tank * mult);
+  const secs = Math.round(f.flight * mult);
+  const plus = mult > 1 ? ` (+${Math.round((mult - 1) * 100)} %)` : '';
+  return fr ? `Réservoir ${tank}${plus} · ${secs} s de vol` : `Tank ${tank}${plus.replace(' %', '%')} · ${secs} s of flight`;
+}
+
 function openPlaneInfo(id) {
   const plane = AIRCRAFT[id];
   if (!plane) return;
@@ -154,6 +165,7 @@ function openPlaneInfo(id) {
       [fr ? 'TYPE' : 'TYPE', hide(typeLabel)],
       [fr ? 'COÛT' : 'COST', plane.starter ? t('starter') : hide(`${planeCost(plane).toLocaleString(numLocale())} XP`)],
       [fr ? 'NIVEAU REQUIS' : 'LEVEL REQUIRED', plane.gradeRequired ? `${plane.gradeRequired}${plane.gradeLabel ? ` · ${plane.gradeLabel}` : ''}` : '—'],
+      [fr ? 'ESSENCE' : 'FUEL', hide(fuelSpec(id, fr))],
       [fr ? 'STATUT' : 'STATUS', status],
     ];
     specs.innerHTML = rows.map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join('');
