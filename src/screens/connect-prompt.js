@@ -24,8 +24,10 @@ const REASON_SUB = {
   daily: ['Connecte-toi pour récupérer ta récompense!', 'Sign in to claim your reward!'],
   skin: ['Connecte-toi pour obtenir ton skin Halloween 2026!', 'Sign in to get your Halloween 2026 skin!'],
   signin: ['Choisis comment te connecter.', 'Choose how to sign in.'],
+  feedback: ['Connecte-toi pour envoyer ton avis!', 'Sign in to send your feedback!'],
 };
-const ACCOUNT_NEEDED = ['multi', 'top20', 'daily'];
+// reason 'feedback': ENVOYER UN AVIS in the RÉGLAGE drawer (main.js).
+const ACCOUNT_NEEDED = ['multi', 'top20', 'daily', 'feedback'];
 
 // Envelope of the "continue with an e-mail" buttons (also menu.js).
 export const EMAIL_ICON = `<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="5" width="19" height="14" rx="2.5" fill="#ff9d00"/><path d="M3.5 7l8.5 6 8.5-6" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
@@ -38,8 +40,8 @@ export function showConnectPrompt({ onGoogle, onEmail, onLater, onLegal, reason 
   const fr = getLang() === 'fr';
   // What an account gives: everything else is open to every player.
   const perks = fr
-    ? [['swords', 'Le multijoueur'], ['crown', 'Ton nom dans le TOP 20'], ['save', 'Ta progression, tes pièces et tes avions sauvegardés'], ['phone', 'Joue sur tous tes appareils']]
-    : [['swords', 'Multiplayer'], ['crown', 'Your name in the TOP 20'], ['save', 'Your progress, coins and planes saved'], ['phone', 'Play on all your devices']];
+    ? [['swords', 'Le multijoueur'], ['crown', 'Ton nom dans le TOP 20'], ['save', 'Ta progression, tes pièces et tes avions sauvegardés'], ['phone', 'Joue sur tous tes appareils'], ['star', 'Envoie ton avis sur le jeu']]
+    : [['swords', 'Multiplayer'], ['crown', 'Your name in the TOP 20'], ['save', 'Your progress, coins and planes saved'], ['phone', 'Play on all your devices'], ['star', 'Send your feedback about the game']];
   const overlay = document.createElement('div');
   overlay.id = 'connect-prompt';
   overlay.className = 'cp';

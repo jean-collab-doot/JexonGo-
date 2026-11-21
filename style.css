@@ -8868,10 +8868,16 @@ html.touch-phone .briefing-mission-title {
     padding: 12px 16px;
     max-height: calc(100dvh - 24px);
   }
-  .cp-perks { grid-template-columns: 1fr 1fr; column-gap: 16px; row-gap: 4px; }
-  #connect-prompt .cp-actions { grid-template-columns: 1fr 1fr; width: 100%; }
   .pnp .pnp-card { gap: 8px; padding-top: 14px; padding-bottom: 12px; }
 }
+/* Side by side only when the screen is wider than tall: on a small phone
+   held upright (360 x 640) two columns ran off the card's right edge. */
+@media (max-height: 640px) and (min-aspect-ratio: 1/1) {
+  .cp-perks { grid-template-columns: 1fr 1fr; column-gap: 16px; row-gap: 4px; }
+  #connect-prompt .cp-actions { grid-template-columns: 1fr 1fr; width: 100%; }
+}
+#connect-prompt .cp-card { overflow-x: hidden; }
+.cp-perks li { min-width: 0; }
 
 /* ── Computers of every size (mouse, no touch classes) ────────────────────
    Shorter / smaller screens (1366x657, 1280x609, 1024x600...). */

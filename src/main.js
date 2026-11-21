@@ -781,6 +781,12 @@ function initFeedback() {
     const errEl = document.getElementById('feedback-error');
     if (!_fbRating) { errEl.textContent = t('feedbackErrRating'); return; }
     errEl.textContent = '';
+    // Signed out while the form was open: the sign-in invitation instead.
+    if (!G.playerRegistered) {
+      document.getElementById('feedback-overlay').classList.add('hidden');
+      openConnectPrompt('feedback');
+      return;
+    }
 
     // Already sent today — show thanks without re-sending
     if (!canSendFeedback()) {
@@ -831,6 +837,9 @@ function initFeedback() {
 }
 
 function showFeedbackPopup() {
+  // Sending feedback needs an account: without one, the sign-in invitation
+  // (screens/connect-prompt.js, reason 'feedback') instead of the form.
+  if (!G.playerRegistered) { openConnectPrompt('feedback'); return; }
   _fbRating = 0;
   document.querySelectorAll('.fb-star').forEach(s => s.classList.remove('fb-star-on'));
   document.getElementById('feedback-comment').value    = '';
