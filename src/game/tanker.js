@@ -6,6 +6,8 @@
 // player on the basket, no enemy fire, refill, shield, co-op).
 // Picture: assets/planes/Fuel plane/mrtt.png (120 x 138, nose up, made from
 // the player's art), drawn at an integer scale without smoothing.
+import { accent } from '../utils/accent.js';
+
 const SRC = '/assets/planes/Fuel%20plane/mrtt.png';
 const PIC_W = 120, PIC_H = 138;
 // Baskets and hose tops in the picture (pixels).
@@ -182,7 +184,8 @@ export function drawTanker(ctx, { now, playerSize, targets = [], flowing = [], a
     const pulse = 1 + Math.sin(now / 180) * 0.12;
     ctx.save();
     ctx.lineWidth = Math.max(3, T.k * 1.5);
-    ctx.strokeStyle = gentle ? RAINBOW[Math.floor(now / 140) % RAINBOW.length] : (blink ? '#ffd84d' : '#ffffff');
+    // Accent cyan (utils/accent.js); rainbow for the youngest players.
+    ctx.strokeStyle = gentle ? RAINBOW[Math.floor(now / 140) % RAINBOW.length] : (blink ? accent().main : accent().hover);
     ctx.globalAlpha = blink ? 1 : 0.55;
     ctx.beginPath();
     ctx.arc(b.x, b.y, b.r * pulse, 0, Math.PI * 2);
@@ -219,8 +222,8 @@ export function drawTanker(ctx, { now, playerSize, targets = [], flowing = [], a
       ctx.save();
       ctx.translate(ax, ay);
       ctx.rotate(ang);
-      ctx.fillStyle = gentle ? RAINBOW[Math.floor(now / 140) % RAINBOW.length] : '#ffd84d';
-      ctx.strokeStyle = '#3a1d00';
+      ctx.fillStyle = gentle ? RAINBOW[Math.floor(now / 140) % RAINBOW.length] : accent().main;
+      ctx.strokeStyle = gentle ? '#3a1d00' : accent().edge;
       ctx.lineWidth = 2;
       ctx.globalAlpha = blink ? 1 : 0.7;
       ctx.beginPath();

@@ -1555,6 +1555,13 @@ html:not(.touch-phone):not(.touch-tablet):not(.touch-mobile) #s-levelmap #levelm
   .upg-pips i { width: 22px; height: 9px; }
   .upg-buy { min-width: 120px; padding: 11px 12px; font-size: 12px; }
 }
+/* The full HANGAR screen on a computer is a narrow panel (460 px): there the
+   two-column AMÉLIORER layout above squeezed the texts into a thin column.
+   One column, like on phones (the wide lobby sheet keeps two). */
+@media (min-width: 900px) and (hover: hover) and (pointer: fine) {
+  #s-hangar .pi-card.upg-card { display: flex; flex-direction: column; align-items: stretch; }
+  #s-hangar .upg-left { display: contents; position: static; }
+}
 /* Real game heart art (assets/fx/Iteam/heart-full.png) in the UPGRADE tab. */
 .upg-heart { width: 70%; height: 70%; object-fit: contain; image-rendering: pixelated; filter: drop-shadow(0 2px 0 rgba(0,0,0,.35)); }
 .upg-heart-mini { width: 1.2em; height: 1.2em; object-fit: contain; image-rendering: pixelated; vertical-align: -0.25em; }

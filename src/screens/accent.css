@@ -1,0 +1,195 @@
+/* =============================================================================
+   ACCENT COLOUR: electric cyan, about 10 % of the screen next to the yellow
+   (about 60 %) and the orange (about 30 %). Only for what must catch the eye
+   or the tap: the main action of a screen, a choice made, a link, a reward to
+   take, a progress bar. Never for errors (red), alerts (orange / yellow), the
+   fuel gauge, the coins or the youngest players' rainbow.
+   Defined here only; the canvas drawings read the same variables
+   (utils/accent.js). Loaded after every other stylesheet.
+   ========================================================================== */
+:root {
+  --jx-accent:       #1EC8FF;   /* the cyan */
+  --jx-accent-hover: #6FDDFF;   /* pointer over it */
+  --jx-accent-press: #0A9FD1;   /* pressed; also the cyan text on light backgrounds */
+  --jx-accent-edge:  #0B5E80;   /* 2 px outline and the pixel shadow under it */
+  --jx-accent-glow:  rgba(30, 200, 255, .5);
+  --jx-accent-ink:   #10182F;   /* text on the cyan: night blue, never white or yellow */
+
+  /* Smooth waves (not animated) for the big flat yellow / orange surfaces:
+     orange layers with one cyan wave and its thin crest line, at the bottom. */
+  --jx-waves-yellow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 240' preserveAspectRatio='none'%3E%3Cpath d='M0 120C240 60 480 175 720 125S1200 70 1440 110V240H0Z' fill='%23F5931E' fill-opacity='.26'/%3E%3Cpath d='M0 165C300 118 560 212 840 166S1260 128 1440 158V240H0Z' fill='%231EC8FF' fill-opacity='.2'/%3E%3Cpath d='M0 165C300 118 560 212 840 166S1260 128 1440 158' fill='none' stroke='%231EC8FF' stroke-opacity='.55' stroke-width='3' vector-effect='non-scaling-stroke'/%3E%3Cpath d='M0 202C260 176 600 232 900 201S1320 186 1440 206V240H0Z' fill='%23E67612' fill-opacity='.32'/%3E%3C/svg%3E");
+  --jx-waves-card: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 120' preserveAspectRatio='none'%3E%3Cpath d='M0 58C120 30 240 88 360 60S520 40 600 56V120H0Z' fill='%23E67612' fill-opacity='.45'/%3E%3Cpath d='M0 82C150 58 280 108 430 82S560 70 600 80V120H0Z' fill='%231EC8FF' fill-opacity='.2'/%3E%3Cpath d='M0 82C150 58 280 108 430 82S560 70 600 80' fill='none' stroke='%231EC8FF' stroke-opacity='.5' stroke-width='2' vector-effect='non-scaling-stroke'/%3E%3Cpath d='M0 104C140 90 300 118 460 102S570 98 600 104V120H0Z' fill='%23C85F0C' fill-opacity='.35'/%3E%3C/svg%3E");
+  /* The same waves, lighter, hanging from the top edge. */
+  --jx-waves-top: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 160' preserveAspectRatio='none'%3E%3Cpath d='M0 0H1440V52C1200 92 960 30 720 62S240 104 0 58Z' fill='%23F5931E' fill-opacity='.16'/%3E%3Cpath d='M0 0H1440V28C1180 64 940 8 700 36S260 70 0 30Z' fill='%23FFD84D' fill-opacity='.35'/%3E%3Cpath d='M1440 52C1200 92 960 30 720 62S240 104 0 58' fill='none' stroke='%231EC8FF' stroke-opacity='.35' stroke-width='2' vector-effect='non-scaling-stroke'/%3E%3C/svg%3E");
+}
+
+/* ---- Waves on the big flat surfaces ---------------------------------------- */
+/* Hangar / shop / training pull-up sheets and the full hangar screen. */
+html body .jx-sheet-content,
+html body #s-hangar .jx-panel {
+  background: var(--jx-waves-top) center top / 100% 90px no-repeat,
+    var(--jx-waves-yellow) center bottom / 100% 130px no-repeat, var(--jx-yellow);
+}
+/* RÉGLAGE drawer. */
+html body #settings-panel .jx-drawer {
+  background: var(--jx-waves-top) center top / 100% 110px no-repeat,
+    var(--jx-waves-yellow) center bottom / 100% 150px no-repeat, var(--jx-yellow);
+}
+/* TOP 20 and GRADES pages (the scrolling body keeps the waves in place). */
+html body .top20-body {
+  background: var(--jx-waves-top) center top / 100% 120px no-repeat,
+    var(--jx-waves-yellow) center bottom / 100% 140px no-repeat,
+    linear-gradient(180deg, var(--jx-yellow-hi), var(--jx-yellow) 45%, #F0A500);
+}
+/* Plane / missile cards of the hangar. */
+html body .jx-slot {
+  background: var(--jx-waves-card) center bottom / 100% 42% no-repeat, var(--jx-slot);
+}
+
+/* ---- Accent buttons: the main action of a screen --------------------------- */
+html body #s-menu #btn-play.jx-cta,
+html body #btn-lobby-plane-buy:not(.is-disabled),
+html body #connect-prompt .cp-btn.cp-email,
+html body .ea .ea-main:not(.ea-second),
+html body #s-result #btn-result-continue,
+html body #s-gameover #btn-retry,
+html body .correction-continue-btn,
+html body .briefing-fly-btn,
+html body #btn-plane-info-action:not(:disabled):not(.is-equipped),
+html body .upg-buy:not(:disabled):not(.is-max):not(.is-free),
+html body .gr-claim,
+html body .jx-mission button:not([disabled]),
+html body #btn-daily-claim:not(:disabled),
+html body .mp-sheet .mp-go:not(:disabled),
+html body #btn-age-gate-continue,
+html body #btn-jx-connect {
+  background: var(--jx-accent) !important;
+  color: var(--jx-accent-ink) !important;
+  text-shadow: none !important;
+  border-color: var(--jx-accent-edge) !important;
+  /* 2 px dark pixel outline inside, a 4 px pixel shadow under it, no blur. */
+  box-shadow: inset 0 0 0 2px var(--jx-accent-edge), 0 4px 0 var(--jx-accent-edge) !important;
+  transition: background-color .15s ease, box-shadow .15s ease, transform .15s ease;
+}
+html body .gr-claim { animation: none; }
+@media (hover: hover) and (pointer: fine) {
+  html body #s-menu #btn-play.jx-cta:hover,
+  html body #btn-lobby-plane-buy:not(.is-disabled):hover,
+  html body #connect-prompt .cp-btn.cp-email:hover,
+  html body .ea .ea-main:not(.ea-second):hover,
+  html body #s-result #btn-result-continue:hover,
+  html body #s-gameover #btn-retry:hover,
+  html body .correction-continue-btn:hover,
+  html body .briefing-fly-btn:hover,
+  html body #btn-plane-info-action:not(:disabled):not(.is-equipped):hover,
+  html body .upg-buy:not(:disabled):not(.is-max):not(.is-free):hover,
+  html body .gr-claim:hover,
+  html body .jx-mission button:not([disabled]):hover,
+  html body #btn-daily-claim:not(:disabled):hover,
+  html body .mp-sheet .mp-go:not(:disabled):hover,
+  html body #btn-age-gate-continue:hover,
+  html body #btn-jx-connect:hover { background: var(--jx-accent-hover) !important; }
+}
+html body #connect-prompt .cp-btn.cp-email:active,
+html body .ea .ea-main:not(.ea-second):active,
+html body #s-result #btn-result-continue:active,
+html body #s-gameover #btn-retry:active,
+html body .correction-continue-btn:active,
+html body .briefing-fly-btn:active,
+html body #btn-plane-info-action:not(:disabled):not(.is-equipped):active,
+html body .upg-buy:not(:disabled):not(.is-max):not(.is-free):active,
+html body .gr-claim:active,
+html body .jx-mission button:not([disabled]):active,
+html body #btn-daily-claim:not(:disabled):active,
+html body .mp-sheet .mp-go:not(:disabled):active,
+html body #btn-age-gate-continue:active,
+html body #btn-jx-connect:active {
+  background: var(--jx-accent-press) !important;
+  box-shadow: inset 0 0 0 2px var(--jx-accent-edge), 0 2px 0 var(--jx-accent-edge) !important;
+  transform: translateY(2px) !important;
+}
+/* JOUER and the plane buy button are centred with a translateX(-50%). */
+html body #s-menu #btn-play.jx-cta:hover { transform: translateX(-50%); }
+html body #s-menu #btn-play.jx-cta:active,
+html body #btn-lobby-plane-buy:not(.is-disabled):active {
+  background: var(--jx-accent-press) !important;
+  box-shadow: inset 0 0 0 2px var(--jx-accent-edge), 0 2px 0 var(--jx-accent-edge) !important;
+  transform: translateX(-50%) translateY(2px) !important;
+}
+
+/* The main button of a screen glows softly, every 2 s (a filter: the
+   pixel shadow above stays fixed). */
+@keyframes jxAccentPulse {
+  0%, 100% { filter: drop-shadow(0 0 2px var(--jx-accent-glow)); }
+  50%      { filter: drop-shadow(0 0 12px var(--jx-accent-glow)); }
+}
+html body #s-menu #btn-play.jx-cta,
+html body .ea .ea-main:not(.ea-second),
+html body .briefing-fly-btn { animation: jxAccentPulse 2s ease-in-out infinite; }
+/* The invitation's e-mail button pops in first, then glows. */
+html body #connect-prompt .cp-btn.cp-email {
+  animation: cpPop .45s cubic-bezier(.2,1.6,.4,1) 2.75s both, jxAccentPulse 2s ease-in-out 3.3s infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  html body #s-menu #btn-play.jx-cta,
+  html body .ea .ea-main:not(.ea-second),
+  html body .briefing-fly-btn,
+  html body #connect-prompt .cp-btn.cp-email { animation: none; }
+}
+
+/* ---- Links on light cards (dark cyan stays readable) ---------------------- */
+html body .ea .ea-link:not(:disabled) { color: var(--jx-accent-press); }
+html body .ea .ea-link:not(:disabled):hover { color: var(--jx-accent-edge); }
+
+/* ---- Badges: something new / to take -------------------------------------- */
+html body .jx-new-alert,
+html body #jx-grades-count,
+html body .missions-badge {
+  background: var(--jx-accent) !important;
+  color: var(--jx-accent-ink) !important;
+  text-shadow: none !important;
+}
+
+/* ---- Progress bars --------------------------------------------------------- */
+html body .jx-daytab-fill,
+html body #week-overlay .jx-week-goal-fill,
+html body .gr-progress i,
+html body #tutorial-progress-fill {
+  background: var(--jx-accent) !important;
+  box-shadow: inset 0 -2px 0 var(--jx-accent-press) !important;
+}
+
+/* ---- What is chosen: tabs, plane, equipped, my row, the next level ---------- */
+html body .jx-tabs::before {
+  background: var(--jx-accent);
+  box-shadow: 0 3px 0 var(--jx-accent-edge), inset 0 0 0 2px var(--jx-accent-edge);
+}
+html body .jx-tab.is-active { color: var(--jx-accent-ink); text-shadow: none; }
+html body .top20-tab.is-active {
+  background: var(--jx-accent); color: var(--jx-accent-ink); text-shadow: none;
+  box-shadow: 0 3px 0 var(--jx-accent-edge), inset 0 0 0 2px var(--jx-accent-edge);
+}
+html body .jx-slot.is-active {
+  box-shadow: inset 0 0 0 4px var(--jx-accent), 0 0 16px var(--jx-accent-glow);
+}
+html body .upg-row.is-equipped { box-shadow: inset 0 0 0 2px var(--jx-accent); }
+/* My row in the TOP 20 and my grade: the orange row, outlined in cyan. */
+html body .top20-row.is-me,
+html body .gr-row.is-current {
+  background: linear-gradient(180deg, #ffab3d, var(--jx-orange) 55%, var(--jx-orange-deep));
+  box-shadow: 0 5px 0 var(--jx-orange-dk), inset 0 0 0 3px var(--jx-accent), 0 0 14px var(--jx-accent-glow);
+}
+html body .top20-podium-col.is-me { box-shadow: inset 0 0 0 3px var(--jx-accent), 0 0 14px var(--jx-accent-glow); }
+html body .top20-podium-col.is-me .top20-podium-name { color: var(--jx-accent-ink); }
+/* Level map: the next level to play. */
+html body #s-levelmap #levelmap-nodes .tmap-node.available .map-node-art {
+  filter: drop-shadow(0 0 2px var(--jx-accent)) drop-shadow(0 0 8px var(--jx-accent-glow));
+}
+/* RÉGLAGE switches turned on. */
+html body .sett-toggle.sett-on {
+  background: var(--jx-accent); border-color: var(--jx-accent-edge); color: var(--jx-accent-ink);
+  text-shadow: none; box-shadow: 0 3px 0 var(--jx-accent-edge);
+}
+
+/* ---- Keyboard focus, everywhere ------------------------------------------ */
+:focus-visible { outline: 2px solid var(--jx-accent) !important; outline-offset: 2px; }

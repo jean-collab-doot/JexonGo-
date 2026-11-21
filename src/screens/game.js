@@ -62,6 +62,7 @@ import {
 } from '../game/airdrop.js';
 import { trackMission } from '../systems/daily.js';
 import { getPilotGrade } from '../data/pilots.js';
+import { accent, accentRgba } from '../utils/accent.js';
 import { applyAgeModifiers } from '../systems/age-modifiers.js';
 import { calcSpeedXP } from '../systems/xp.js';
 import { resetShotCoins, countHit, shotProgress, liveShotCoins, shotCoinsResult } from '../systems/shot-coins.js';
@@ -3774,15 +3775,15 @@ function frame(ts = 0) {
       const pulse = 0.5 + 0.5 * Math.sin(tick * 0.13);
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
-      ctx.strokeStyle = `rgba(56,189,248,${0.55 + pulse * 0.35})`;
+      ctx.strokeStyle = accentRgba(0.55 + pulse * 0.35);   // accent cyan (utils/accent.js)
       ctx.lineWidth = 3;
-      ctx.shadowColor = '#38bdf8';
+      ctx.shadowColor = accent().main;
       ctx.shadowBlur = 16;
       ctx.beginPath();
       ctx.arc(playerDrawX, playerDrawY, radius * (0.95 + pulse * 0.05), 0, Math.PI * 2);
       ctx.stroke();
       ctx.globalAlpha = 0.2;
-      ctx.fillStyle = '#38bdf8';
+      ctx.fillStyle = accent().main;
       ctx.fill();
       ctx.restore();
     }
@@ -4724,7 +4725,7 @@ function updateAndDrawCoop(now) {
   }
   ctx.globalAlpha = 1;
   if (skillOn && _coop.ability?.skill === 'evade') {
-    ctx.strokeStyle = `rgba(125,211,252,${0.45 + 0.3 * Math.sin(now / 120)})`;
+    ctx.strokeStyle = accentRgba(0.45 + 0.3 * Math.sin(now / 120));
     ctx.lineWidth = 3;
     ctx.beginPath();
     ctx.arc(_coop.x, _coop.y, size * 0.6, 0, Math.PI * 2);
@@ -4736,7 +4737,7 @@ function updateAndDrawCoop(now) {
   drawCoopHearts(_coop.x, heartsY, size);
   ctx.textAlign = 'center';
   ctx.font = `bold ${isTouchMobile() ? 8 : 10}px 'Press Start 2P', monospace`;
-  ctx.fillStyle = '#7dd3fc';
+  ctx.fillStyle = accent().main;   // the teammate's name: accent cyan
   ctx.shadowColor = '#000';
   ctx.shadowBlur = 5;
   ctx.fillText(_coop.name, _coop.x, heartsY - Math.max(5, size * 0.07) * 2.2);
