@@ -2110,3 +2110,11 @@ html:not(.touch-phone):not(.touch-tablet):not(.touch-mobile) #s-levelmap #levelm
 .jx-chip.is-wallet-bump b { display: inline-block; animation: walletBump .55s ease-out; }
 @keyframes walletBump { 35% { transform: scale(1.3); color: #fff3a0; } }
 @media (prefers-reduced-motion: reduce) { .jx-chip.is-wallet-bump b { animation: none; } }
+
+/* Lobby: a plane not unlocked yet is on show, JOUER is off (menu.js). */
+html body #s-menu #btn-play.jx-cta.is-plane-locked { filter: grayscale(.9) brightness(.82) !important; animation: none !important; }
+#btn-lobby-plane-buy.is-nudge { animation: lobbyBuyNudge .45s ease-in-out; }
+@keyframes lobbyBuyNudge {
+  20% { translate: -6px 0; } 40% { translate: 6px 0; } 60% { translate: -4px 0; } 80% { translate: 3px 0; }
+}
+@media (prefers-reduced-motion: reduce) { #btn-lobby-plane-buy.is-nudge { animation: none; } }

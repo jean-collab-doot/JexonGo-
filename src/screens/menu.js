@@ -328,6 +328,9 @@ function renderLobbyPlane() {
     img.dataset.plane = id;
     img.classList.toggle('is-locked', !!_lobbyPreview);
   }
+  // JOUER looks off while a plane not unlocked yet is on show (menu.js
+  // initMenu: pressing it then only explains why).
+  $('btn-play')?.classList.toggle('is-plane-locked', !!_lobbyPreview);
   if (!btn) return;
   btn.classList.toggle('hidden', !_lobbyPreview);
   if (!_lobbyPreview) return;
@@ -455,7 +458,18 @@ export function initMenu(nav) {
   window._jexongoNav = nav;
 
   $('btn-play').onclick = () => {
-    // Leave with the active plane on show, not a grey one being looked at.
+    // A plane not unlocked yet is on show: no flight with it. A message, and
+    // the buy button above JOUER gives a little shake.
+    if (_lobbyPreview && !G.unlockedAircraft.includes(_lobbyPreview)) {
+      const fr = getLang() === 'fr';
+      const name = AIRCRAFT[_lobbyPreview]?.name || '';
+      SFX.noMoney();
+      _showToast(fr ? `${name} n’est pas encore débloqué ! Débloque-le ou choisis un autre avion.`
+        : `${name} is not unlocked yet! Unlock it or pick another plane.`);
+      const buy = $('btn-lobby-plane-buy');
+      if (buy) { buy.classList.remove('is-nudge'); void buy.offsetWidth; buy.classList.add('is-nudge'); }
+      return;
+    }
     if (_lobbyPreview) { _lobbyPreview = null; renderLobbyPlane(); }
     if (isMultiLobby()) openMultiChoices(); else nav.toMap();
   };
