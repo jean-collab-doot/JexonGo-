@@ -115,4 +115,15 @@
 @media (prefers-reduced-motion: reduce) { .ht-fuel-bar i { animation: none; width: 70%; } }
 
 /* Hangar AMÉLIORER: PLUS DE BIDONS icon (the can at 2x, no smoothing). */
-.upg-fuel { width: 64px; height: 64px; max-width: 78%; max-height: 78%; object-fit: contain; image-rendering: pixelated; image-rendering: crisp-edges; }
+/* Hangar AMÉLIORER: the can in the 46 px icon box (58 px on a computer).
+   Fixed sizes: a percentage max-height does not apply in that grid box, so
+   the 64 px picture used to overflow it downwards on phones. Nudged left a
+   little: the can's picture leans right in its 32 px frame. */
+.upg-fuel {
+  display: block; width: 32px; height: 32px; object-fit: contain;
+  transform: translateX(-2px);
+  image-rendering: pixelated; image-rendering: crisp-edges;
+}
+@media (min-width: 900px) and (hover: hover) and (pointer: fine) {
+  .upg-fuel { width: 44px; height: 44px; transform: translateX(-3px); }
+}
