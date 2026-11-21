@@ -45,6 +45,9 @@ const STEPS = [
   { sel: '#btn-lobby-mistakes',
     fr: ['ERREURS', 'Tes anciennes erreurs sont gardées ici. Rejoue-les pour t’entraîner : une question réussie sort du carnet.'],
     en: ['MISTAKES', 'Your old mistakes are kept here. Play them again to practise: a question you get right leaves the notebook.'] },
+  { sel: '#btn-lobby-grades',
+    fr: ['GRADES', 'Ton grade de pilote, de CADET à AS DE L’AIR. Gagne des niveaux pour monter en grade : chaque nouveau grade te donne des pièces, de l’EXP ou des améliorations gratuites à réclamer ici.'],
+    en: ['GRADES', 'Your pilot grade, from CADET to AIR ACE. Win levels to move up: every new grade gives you coins, EXP or free upgrades to claim here.'] },
   { sel: '#btn-jx-menu',
     fr: ['MENU', 'Ton compte, les réglages, la langue et le son.'],
     en: ['MENU', 'Your account, settings, language and sound.'] },
@@ -55,7 +58,7 @@ const BLOCKERS = [
   '#np-intro', '#np-loader', '#connect-prompt', '#brief-overlay', '#onboarding-overlay',
   '#pilot-name-prompt', '#world-cup-intro', '#gsi-fallback-overlay:not(.hidden)',
   '#daily-reward-overlay:not(.hidden)', '#missions-panel:not(.hidden)',
-  '#settings-panel:not(.hidden)', '#lobby-top20:not(.hidden)', '#mp-sheet:not(.hidden)',
+  '#settings-panel:not(.hidden)', '#lobby-top20:not(.hidden)', '#lobby-grades:not(.hidden)', '#mp-sheet:not(.hidden)',
   '.sett-backdrop:not(.hidden)', '#lobby-sheet:not(.is-collapsed)', '#lobby-tour',
 ];
 
