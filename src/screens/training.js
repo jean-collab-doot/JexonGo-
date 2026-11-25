@@ -9,6 +9,7 @@ import { makeBottomSheet } from '../utils/bottomsheet.js';
 import { BIOMES, BIOME_META } from '../data/levels.js';
 import { weatherOptionsForBiome } from '../data/weather.js';
 import { schoolYearOfLevel, topicFromSchoolYear, numberRangeMaxForYear } from '../systems/school-questions.js';
+import { decimalSettings } from '../game/decimals.js';
 
 // Same 4 operations/colors the old standalone "PRATIQUE" popup
 // (#practice-select in index.html, now retired) used to show.
@@ -25,6 +26,9 @@ const PRACTICE_OPS = [
   // (game/fractions.js, game/percentages.js), same order as the topic screen.
   { op: 'frac', symbol: '1/2', color: '#eab308', labelKey: 'fractions' },
   { op: 'pct', symbol: '%', color: '#ec4899', labelKey: 'percentages' },
+  // Decimal numbers (game/decimals.js), from CM2 / 5e année: their own
+  // settings open under the grid when ticked (renderDecimalPanel).
+  { op: 'dec', symbol: '3,5', color: '#22d3ee', labelKey: 'decimals' },
   { op: '^', symbol: 'x²', color: '#f43f5e', labelKey: 'expo' },
   { op: 'alg', symbol: 'x=?', color: '#14b8a6', labelKey: 'algebra' },
 ];
@@ -134,6 +138,7 @@ function renderTrainingSheet() {
     <div class="practice-subtitle">${t('chooseOps')}</div>
     <div class="practice-ops-grid" id="training-ops"></div>
     <button class="practice-all-btn" id="btn-training-all">${t('selectAll')}</button>
+    <div class="practice-dec-panel" id="training-dec-panel" hidden></div>
 
     <div class="practice-hearts-row">
       <span class="practice-hearts-label">${t('heartsLives')}</span>
@@ -185,7 +190,8 @@ function renderTrainingSheet() {
     btn.type = 'button';
     btn.className = `practice-op-btn${G.practiceOps.includes(op) ? ' pob-active' : ''}`;
     btn.style.setProperty('--op-color', color);
-    btn.innerHTML = `<span class="pob-symbol">${symbol}</span><span class="pob-label">${t(labelKey)}</span>`;
+    const shown = op === 'dec' && getLang() !== 'fr' ? '3.5' : symbol;
+    btn.innerHTML = `<span class="pob-symbol">${shown}</span><span class="pob-label">${t(labelKey)}</span>`;
     btn.addEventListener('click', () => {
       const idx = G.practiceOps.indexOf(op);
       if (idx === -1) {
@@ -196,6 +202,8 @@ function renderTrainingSheet() {
         G.practiceOps.splice(idx, 1);
         btn.classList.remove('pob-active');
       }
+      save('practiceOps', G.practiceOps);
+      renderDecimalPanel();
     });
     opsGrid.appendChild(btn);
   });
@@ -203,7 +211,10 @@ function renderTrainingSheet() {
   body.querySelector('#btn-training-all').addEventListener('click', () => {
     G.practiceOps = ops.map(item => item.op);
     opsGrid.querySelectorAll('.practice-op-btn').forEach(b => b.classList.add('pob-active'));
+    save('practiceOps', G.practiceOps);
+    renderDecimalPanel();
   });
+  renderDecimalPanel();
 
   const heartsBtn = body.querySelector('#btn-training-hearts');
   const syncHearts = () => {
@@ -313,4 +324,47 @@ export function renderTraining() {
   const sheet = $('training-sheet');
   if (sheet) { sheet.style.transform = ''; sheet.classList.add('is-collapsed'); sheet.classList.remove('is-open'); }
   applyI18n();
+}
+
+// Decimal-number settings (game/decimals.js), shown while "Nombres à
+// virgule" is ticked: operations (one or more), digits after the point
+// (1 or 2) and size (up to 10 or 100). Saved (G.decimalSettings) and used
+// in the levels too.
+function renderDecimalPanel() {
+  const panel = $('training-dec-panel');
+  if (!panel) return;
+  const on = (G.practiceOps || []).includes('dec');
+  panel.hidden = !on;
+  if (!on) return;
+  const fr = getLang() === 'fr';
+  const s = decimalSettings(G.decimalSettings);
+  const opBtn = (op, sym) => `<button type="button" class="practice-timer-btn${s.ops.includes(op) ? ' ptb-active' : ''}" data-dec-op="${op}">${sym}</button>`;
+  const oneBtn = (key, val, label) => `<button type="button" class="practice-timer-btn${s[key] === val ? ' ptb-active' : ''}" data-dec-${key}="${val}">${label}</button>`;
+  panel.innerHTML = `
+    <div class="practice-dec-title">${fr ? 'NOMBRES À VIRGULE' : 'DECIMALS'}</div>
+    <div class="practice-timer-row">
+      <span class="practice-timer-label">${fr ? 'OPÉRATIONS' : 'OPERATIONS'}</span>
+      <div class="practice-timer-btns">${opBtn('+', '+')}${opBtn('-', '−')}${opBtn('*', '×')}${opBtn('/', '÷')}</div>
+    </div>
+    <div class="practice-timer-row">
+      <span class="practice-timer-label">${fr ? 'APRÈS LA VIRGULE' : 'AFTER THE POINT'}</span>
+      <div class="practice-timer-btns">${oneBtn('places', 1, fr ? '1 chiffre (3,5)' : '1 digit (3.5)')}${oneBtn('places', 2, fr ? '2 chiffres (3,25)' : '2 digits (3.25)')}</div>
+    </div>
+    <div class="practice-timer-row">
+      <span class="practice-timer-label">${fr ? 'TAILLE' : 'SIZE'}</span>
+      <div class="practice-timer-btns">${oneBtn('max', 10, fr ? 'jusqu’à 10' : 'up to 10')}${oneBtn('max', 100, fr ? 'jusqu’à 100' : 'up to 100')}</div>
+    </div>`;
+  const store = next => {
+    G.decimalSettings = decimalSettings(next);
+    save('decimalSettings', G.decimalSettings);
+    renderDecimalPanel();
+  };
+  panel.querySelectorAll('[data-dec-op]').forEach(b => b.addEventListener('click', () => {
+    const op = b.dataset.decOp;
+    const ops = s.ops.includes(op) ? s.ops.filter(o => o !== op) : [...s.ops, op];
+    if (!ops.length) return;   // at least one operation stays ticked
+    store({ ...s, ops });
+  }));
+  panel.querySelectorAll('[data-dec-places]').forEach(b => b.addEventListener('click', () => store({ ...s, places: Number(b.dataset.decPlaces) })));
+  panel.querySelectorAll('[data-dec-max]').forEach(b => b.addEventListener('click', () => store({ ...s, max: Number(b.dataset.decMax) })));
 }

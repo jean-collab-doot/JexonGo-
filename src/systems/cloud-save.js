@@ -63,7 +63,7 @@ const PERSIST_KEYS = [
   'dailyMissionDate', 'playMinutesByDay', 'monthlyChallenge', 'claimedRanks', 'rankedLP', 'rankedWins', 'rankedLosses',
   'rankedWinStreak', 'rankedGamesPlayed', 'rankedSeasonStart', 'rankedFirstWinToday',
   'playerName', 'pilotNameChosen', 'playerEmail', 'playerPhoto', 'playerAge', 'consentAge', 'parentConsentAt', 'playerGrade',
-  'pilotEmblem', 'pilotMotto', 'profileTheme', 'practiceTimeLimit',
+  'pilotEmblem', 'pilotMotto', 'profileTheme', 'practiceTimeLimit', 'decimalSettings', 'practiceOps',
   'hasSeenOnboarding', 'likesMath', 'onboardingAgeGroup', 'onboardingGrade',
   'focusOperation', 'focusOperations', 'focusTopics', 'schoolLevel', 'playerCountry', 'numberRangeMax', 'pendingPlacement', 'tutorialMode',
   'onboardingStartMode', 'onboardingLevelLength', 'dailyGoalMinutes',

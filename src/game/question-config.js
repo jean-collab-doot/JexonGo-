@@ -57,7 +57,7 @@ export function applyGradeToQuestion(ops, cap, mCap, grade) {
 // practice setup (G.practiceOps). Not part of any level's own op set, so they
 // are mixed in on top of it (see nextQuestion).
 export function selectedExtraTopicOps({ tutorial = false } = {}) {
-  if (G.practiceMode) return (G.practiceOps || []).filter(op => ['^', 'alg', 'frac', 'pct'].includes(op));
+  if (G.practiceMode) return (G.practiceOps || []).filter(op => ['^', 'alg', 'frac', 'pct', 'dec'].includes(op));
   if (tutorial) return [];   // placement rounds stay on + - x /
   return chosenExtraOps();
 }

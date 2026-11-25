@@ -32,6 +32,7 @@ const TOPICS = {
   exposant: 'exponent', exponent: 'exponent', puissance: 'exponent', power: 'exponent',
   fraction: 'fractions',
   pourcentage: 'percentages', percentage: 'percentages', pourcent: 'percentages', percent: 'percentages',
+  virgule: 'decimals', decimaux: 'decimals', decimal: 'decimals', decimals: 'decimals',
   algebre: 'algebra', algebra: 'algebra', equation: 'algebra',
 };
 

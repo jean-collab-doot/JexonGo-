@@ -77,11 +77,13 @@ function topicTaught(value, year) {
 
 function topicSections(answers, fr) {
   const year = answers.ageGroup_schoolYear || 0;
-  // Fractions / percentages side by side; alone, the button takes the row.
+  // Fractions / percentages / decimals two by two; the one left alone takes
+  // the row.
   const newTopics = [
     { label: 'Fractions', value: 'fractions' },
     { label: fr ? 'Pourcentages' : 'Percentages', value: 'percentages' },
-  ].filter(c => topicTaught(c.value, year)).map((choice, i, all) => (all.length === 1 ? { ...choice, wide: true } : choice));
+    { label: fr ? 'Nombres à virgule' : 'Decimals', value: 'decimals' },
+  ].filter(c => topicTaught(c.value, year)).map((choice, i, all) => (all.length % 2 === 1 && i === all.length - 1 ? { ...choice, wide: true } : choice));
   const sections = [{
     title: fr ? 'PRIMAIRE' : 'PRIMARY',
     choices: [

@@ -8,9 +8,7 @@ import { TEST_UNLOCK, FULL_UNLOCK } from './utils/test-mode.js';
 const DEV_TEST = FULL_UNLOCK;   // + the "test-debloque" deployment
 
 // Every aircraft on the dev server and the Vercel preview (utils/test-mode.js).
-const DEFAULT_UNLOCKED_AIRCRAFT = TEST_UNLOCK
-  ? ['t6', 'pc21', 'c130', 'a10', 'f16', 'f18', 'f22', 'f35', 'b2', 'sr71', 'f117']
-  : ['t6'];
+const DEFAULT_UNLOCKED_AIRCRAFT = ['t6']; // TEMP video capture — restore with git checkout
 
 function withDefaultUnlockedAircraft(list) {
   const unlocked = Array.isArray(list) ? [...list] : [];
@@ -22,8 +20,8 @@ function withDefaultUnlockedAircraft(list) {
 
 export const MAX_COINS = 99999;
 const MAX_XP = 999999;
-const STARTING_COINS = DEV_TEST ? MAX_COINS : 0;
-const STARTING_XP = DEV_TEST ? MAX_XP : 0;
+const STARTING_COINS = 0; // TEMP video capture — restore with git checkout
+const STARTING_XP = 0;
 
 export function clampCoins(value) {
   const n = Number(value) || 0;
@@ -169,6 +167,7 @@ export const G = {
   practiceTimeLimit: 10,   // seconds per question; null = unlimited
   practiceDifficulty: 'normal', // 'easy' | 'normal' | 'hard'
   practiceNumberMax: 0,         // typed "numbers from 1 to N" in practice; 0 = difficulty default
+  decimalSettings: null,        // decimal numbers (game/decimals.js): { ops, places: 1|2, max: 10|100 }
   practiceBiome:     'ocean',
   practiceWeather:   null,  // weather id; null = the level's own weather
   continueState: null,
@@ -213,6 +212,9 @@ export function loadSave() {
   G.practiceTimeLimit = load('practiceTimeLimit', 10);
   G.practiceDifficulty = load('practiceDifficulty', 'normal');
   G.practiceNumberMax = Number(load('practiceNumberMax', 0)) || 0;
+  G.decimalSettings = load('decimalSettings', null);
+  // Practice operations ticked in the Entraînement drawer (kept between visits).
+  { const ops = load('practiceOps', null); if (Array.isArray(ops) && ops.length) G.practiceOps = ops; }
   G.practiceBiome     = load('practiceBiome', 'ocean');
   G.practiceWeather   = load('practiceWeather', null);
   G.hasSeenOnboarding = load('hasSeenOnboarding', false);
@@ -237,7 +239,7 @@ export function loadSave() {
   G.tutorialCompleted = load('tutorialCompleted', false);
   G.postTutorialConnectPrompt = load('postTutorialConnectPrompt', false);
 
-  if (!G.playerRegistered) {
+  if (!G.playerRegistered && false) { // TEMP video capture — restore with git checkout
     // Guest — reset all progression to zero, never load saved progress
     G.xp = STARTING_XP; G.totalXpEarned = STARTING_XP; G.coins = STARTING_COINS;
     G.blueprints = {}; G.chestsWithoutEpic = 0; G.levelStars = {};
@@ -442,6 +444,8 @@ export function saveAll() {
   save('practiceTimeLimit', G.practiceTimeLimit);
   save('practiceDifficulty', G.practiceDifficulty);
   save('practiceNumberMax', G.practiceNumberMax || 0);
+  if (G.decimalSettings) save('decimalSettings', G.decimalSettings);
+  save('practiceOps', G.practiceOps || ['+', '-', '*', '/']);
   save('practiceBiome',     G.practiceBiome);
   save('practiceWeather',   G.practiceWeather);
   save('dailyLastLogin',    G.dailyLastLogin);

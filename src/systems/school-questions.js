@@ -29,6 +29,7 @@ import { makeSchoolAlgebraQuestion } from '../game/algebra.js';
 import { makeNegativeQuestion, NEGATIVES_FROM_SCHOOL_YEAR, SIGN_RULES_FROM_SCHOOL_YEAR } from '../game/negatives.js';
 import { makeFractionQuestion } from '../game/fractions.js';
 import { makePercentQuestion } from '../game/percentages.js';
+import { makeDecimalQuestion } from '../game/decimals.js';
 
 // School year 1-12 from the onboarding class (qc-prim3, fr-2nde, us-10...);
 // 0 when unknown.
@@ -68,13 +69,15 @@ const FULL_SIZE_LEVEL = 30;
 const ALGEBRA_RANGE = [30, 100];
 // From CM2, share of + − (and from 5e also × ÷) questions with negative numbers.
 const NEGATIVE_SHARE = 0.25;
-const TOPIC_OPS = { '+': '+', '-': '-', '*': '*', '/': '/', exponent: '^', algebra: 'alg', fractions: 'frac', percentages: 'pct' };
+const TOPIC_OPS = { '+': '+', '-': '-', '*': '*', '/': '/', exponent: '^', algebra: 'alg', fractions: 'frac', percentages: 'pct', decimals: 'dec' };
 // First school year a topic can be chosen (onboarding, BRIFING, practice).
 // Before it the button is hidden and an old choice is ignored: × ÷ and
 // fractions from CE2 / 3e année / 3rd grade, percentages from CM2 / 5e
 // année, exponent from 6e année / 6th grade, algebra from 5e / secondaire 1
 // / 7th grade.
-const TOPIC_FROM_SCHOOL_YEAR = { '*': 3, '/': 3, frac: 3, pct: 5, '^': 6, alg: 7 };
+// Decimals (game/decimals.js) from CM2 / 5e année / 5th grade: never for the
+// youngest players (gentle mode stops at year 4).
+const TOPIC_FROM_SCHOOL_YEAR = { '*': 3, '/': 3, frac: 3, pct: 5, dec: 5, '^': 6, alg: 7 };
 
 // Topic name (fractions...) or op (frac...): its first school year.
 export function topicFromSchoolYear(topic) {
@@ -115,7 +118,8 @@ export function schoolQuestionPlan(state, levelNum = 1) {
     mCap = Math.max(2, Math.min(limit, p.mCap[1]));
     algLimit = limit;
   }
-  return { year, ops, cap, mCap, mins: { add: p.min[0], table: p.min[1] }, tier: p.tier, algLimit, limit };
+  return { year, ops, cap, mCap, mins: { add: p.min[0], table: p.min[1] }, tier: p.tier, algLimit, limit,
+    decimalSettings: state.decimalSettings };
 }
 
 export function planOps(plan) {
@@ -133,6 +137,8 @@ function makeOne(plan) {
   // Fractions and percentages (chosen topics only): numbers inside the range.
   if (op === 'frac') return makeFractionQuestion(plan.year, plan.cap);
   if (op === 'pct') return makePercentQuestion(plan.year, plan.cap);
+  // Decimals: the player's own settings (operations, places, size).
+  if (op === 'dec') return makeDecimalQuestion(plan.decimalSettings);
   // Negative numbers inside the topic: + − from CM2 (thermometer), × ÷ from 5e.
   const negOps = plan.year >= SIGN_RULES_FROM_SCHOOL_YEAR ? ['+', '-', '*', '/']
     : plan.year >= NEGATIVES_FROM_SCHOOL_YEAR ? ['+', '-'] : [];

@@ -196,3 +196,10 @@ html body .sett-toggle.sett-on {
 
 /* ---- Keyboard focus, everywhere ------------------------------------------ */
 :focus-visible { outline: 2px solid var(--jx-accent) !important; outline-offset: 2px; }
+
+/* Practice drawer (Entraînement): the chosen option of each row (difficulty,
+   biome, weather, timer, decimal settings) was a faint orange outline. */
+html body .practice-timer-btn.ptb-active {
+  background: var(--jx-accent); color: var(--jx-accent-ink); border-color: var(--jx-accent-edge);
+  text-shadow: none; box-shadow: 0 3px 0 var(--jx-accent-edge); opacity: 1;
+}

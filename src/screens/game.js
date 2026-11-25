@@ -30,6 +30,7 @@ import { makeSchoolExponent } from '../game/arithmetic.js';
 import { tipFor, tipLines } from '../game/tips.js';
 import { makeFractionQuestion } from '../game/fractions.js';
 import { makePercentQuestion } from '../game/percentages.js';
+import { makeDecimalQuestion, sameDecimal } from '../game/decimals.js';
 import { startSessionReport, recordAnswer, mistakesToReplay, markReplayed } from '../systems/session-report.js';
 import { spawnEnemy, updateEnemies, hitEnemy, KAMIKAZE_LOCK_FRAMES, calmKamikazes } from '../game/enemies.js';
 import {
@@ -5488,12 +5489,15 @@ function nextQuestion() {
         // Fractions / percentages: at the school year's level (6e if unknown).
         : extraOp === 'frac' ? makeFractionQuestion(year || 6, extraCap)
         : extraOp === 'pct' ? makePercentQuestion(year || 6, extraCap)
+        // Decimals: the player's own settings (practice drawer).
+        : extraOp === 'dec' ? makeDecimalQuestion(G.decimalSettings)
         : newQuestion(extraOps, extraCap, rawMCap);
     }
     $('question-text').textContent = localDecimals(questionText(G.question));
     // Negative answers can be typed too (minus key). Decimal answers are
-    // always choices (the keypad has no comma).
-    G.question.typed = typedQuestionAllowed() && Number.isInteger(G.question.answer)
+    // choices, except the decimal-number topic (game/decimals.js): its
+    // keypad has a comma key instead of the minus.
+    G.question.typed = typedQuestionAllowed() && (Number.isInteger(G.question.answer) || G.question.op === 'dec')
       && Math.random() < TYPED_QUESTION_SHARE;
     const btns = $('answer-buttons');
     btns.innerHTML = '';
@@ -5674,13 +5678,14 @@ function questionCheck(q) {
 
 // Practice (Entraînement) asks the school-year questions of its own choices:
 // the operations ticked in its setup (G.practiceOps) and its "de 0 à N".
-const PRACTICE_TOPIC_OF_OP = { '^': 'exponent', alg: 'algebra', frac: 'fractions', pct: 'percentages' };
+const PRACTICE_TOPIC_OF_OP = { '^': 'exponent', alg: 'algebra', frac: 'fractions', pct: 'percentages', dec: 'decimals' };
 function practiceQuestionState() {
   return {
     schoolLevel: G.schoolLevel,
     playerGrade: G.playerGrade,
     focusTopics: (G.practiceOps || []).map(op => PRACTICE_TOPIC_OF_OP[op] || op),
     numberRangeMax: G.practiceNumberMax || 0,
+    decimalSettings: G.decimalSettings,
   };
 }
 
@@ -5695,12 +5700,15 @@ function renderTypedAnswer(btns) {
   // The minus key is always there (every class, levels and practice), so
   // its presence never gives the answer's sign away.
   keypad.className = 'typed-keypad has-minus';
-  ['1', '2', '3', '4', '5', 'neg', 'del', '6', '7', '8', '9', '0', 'ok'].forEach(key => {
+  // Decimal numbers (never negative here): a comma / point key in its place.
+  const dec = G.question?.op === 'dec';
+  ['1', '2', '3', '4', '5', dec ? 'dot' : 'neg', 'del', '6', '7', '8', '9', '0', 'ok'].forEach(key => {
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = `answer-btn typed-key${key === 'ok' ? ' typed-ok' : key === 'del' ? ' typed-del' : key === 'neg' ? ' typed-neg' : ''}`;
     btn.dataset.key = key;
-    btn.textContent = key === 'ok' ? 'OK' : key === 'del' ? '⌫' : key === 'neg' ? '−' : key;
+    btn.textContent = key === 'ok' ? 'OK' : key === 'del' ? '⌫' : key === 'neg' ? '−' : key === 'dot' ? (fr ? ',' : '.') : key;
+    if (key === 'dot') { btn.classList.add('typed-neg', 'typed-dot'); btn.setAttribute('aria-label', fr ? 'Virgule' : 'Decimal point'); }
     if (key === 'del') btn.setAttribute('aria-label', fr ? 'Effacer' : 'Erase');
     if (key === 'neg') btn.setAttribute('aria-label', fr ? 'Signe moins' : 'Minus sign');
     btn.addEventListener('click', () => typedPress(key));
@@ -5713,21 +5721,30 @@ function renderTypedAnswer(btns) {
 function updateTypedDisplay() {
   const display = document.querySelector('#answer-buttons .typed-display');
   if (display) {
-    display.textContent = _typedValue.replace('-', '−') || (getLang() === 'fr' ? 'ÉCRIS TA RÉPONSE' : 'TYPE YOUR ANSWER');
+    display.textContent = localDecimals(_typedValue.replace('-', '−')).replace(/\.$/, getLang() === 'fr' ? ',' : '.') || (getLang() === 'fr' ? 'ÉCRIS TA RÉPONSE' : 'TYPE YOUR ANSWER');
     display.classList.toggle('is-empty', !_typedValue);
   }
   const ok = document.querySelector('#answer-buttons .typed-ok');
-  if (ok && !G.answerLocked) ok.disabled = !_typedValue || _typedValue === '-';
+  if (ok && !G.answerLocked) ok.disabled = !_typedValue || _typedValue === '-' || _typedValue === '.';
 }
 
 function typedPress(key) {
   if (tankerHold()) return;   // the question waits during the refuel
   if (G.answerLocked || !G.question?.typed) return;
   if (key === 'ok') {
-    if (!_typedValue || _typedValue === '-') return;
+    if (!_typedValue || _typedValue === '-' || _typedValue === '.') return;
     handleAnswer(Number(_typedValue), document.querySelector('#answer-buttons .typed-ok'));
     return;
   }
+  // Decimal point (kept as "." inside, shown as a comma in French): once,
+  // and at most 2 digits after it.
+  if (key === 'dot') {
+    if (!_typedValue.includes('.') && _typedValue.length < 6) _typedValue = `${_typedValue || '0'}.`;
+    SFX.click?.();
+    updateTypedDisplay();
+    return;
+  }
+  if (_typedValue.includes('.') && /^\d$/.test(key) && _typedValue.split('.')[1].length >= 2) return;
   // Minus key: puts the sign in front of the number, or takes it away.
   if (key === 'neg') _typedValue = _typedValue.startsWith('-') ? _typedValue.slice(1) : `-${_typedValue}`;
   else if (key === 'del') _typedValue = _typedValue.slice(0, -1);
@@ -5745,6 +5762,8 @@ function typedAnswerKey(e) {
     : e.key === 'Backspace' ? 'del'
     : e.key === 'Enter' ? 'ok'
     : e.key === '-' || e.key === 'Subtract' ? 'neg'
+    // Decimal questions: the comma and the point both put the decimal point.
+    : (e.key === ',' || e.key === '.' || e.key === 'Decimal') && G.question?.op === 'dec' ? 'dot'
     : null;
   if (!key) return false;
   e.preventDefault();
@@ -5766,7 +5785,8 @@ function handleAnswer(choice, btn) {
     b.style.pointerEvents = 'none';
   });
 
-  const correct = choice === G.question.answer;
+  // Decimal numbers: 3.5, 3,5 and 3.50 are the same answer.
+  const correct = G.question.op === 'dec' ? sameDecimal(choice, G.question.answer) : choice === G.question.answer;
   recordAnswer(G.question, correct ? 'correct' : 'wrong', answerSeconds());
   if (_mistakesRun && correct) markReplayed(G.question, true);   // it leaves the notebook
   G.sessionResponseTimeTotal = (G.sessionResponseTimeTotal || 0) + Math.max(0, _timerTotal - G.timeLeft);

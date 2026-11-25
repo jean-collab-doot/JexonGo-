@@ -2347,6 +2347,11 @@ body::after {
 .practice-hearts-btn:active { transform: translate(1px,1px); box-shadow: none; }
 
 /* ── PRACTICE TIMER SELECTOR ── */
+/* Decimal-number settings under the practice operations (training.js). */
+.practice-dec-panel { margin: 10px 0 4px; padding: 10px 10px 4px; border-radius: 16px; background: rgba(0,0,0,.12); }
+.practice-dec-panel[hidden] { display: none; }
+.practice-dec-title { margin-bottom: 4px; text-align: center; font-family: var(--jx-font, monospace); font-size: 12px; color: #fff; text-shadow: 2px 2px 0 var(--jx-ink, #7a3a00); }
+
 .practice-timer-row {
   display: flex;
   align-items: center;
@@ -7916,6 +7921,8 @@ html.np-boot .np-intro.np-static { display: block; }
 .obn-grid .obn-btn { font-size: clamp(8px, 2.5vw, 12px); min-height: clamp(38px, 6vh, 50px); }
 .obn-grid .obn-btn.obn-symbol { font-size: clamp(18px, 6vw, 28px); }
 .obn-grid .obn-btn.obn-wide { grid-column: 1 / -1; justify-self: center; width: 50%; }
+/* A label on two lines ("Nombres à virgule") keeps its lines apart. */
+.obn-grid .obn-btn { line-height: 1.45; }
 .obn-btn:hover { border-color: #fff3c4; }
 .obn-btn.obn-selected {
   background: #ff9d00;

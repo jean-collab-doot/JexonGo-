@@ -161,6 +161,7 @@ const OP_NAMES = {
   '*': ['multiplication', 'multiplication'], '/': ['division', 'division'],
   '^': ['exposant', 'exponent'], alg: ['algèbre', 'algebra'],
   frac: ['fractions', 'fractions'], pct: ['pourcentages', 'percentages'],
+  dec: ['nombres à virgule', 'decimals'],
 };
 // Level where each operation first appears (data/levels.js opsForLevel).
 const OP_FIRST_LEVEL = { '-': 16, '*': 26, '/': 36 };
