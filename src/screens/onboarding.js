@@ -129,7 +129,9 @@ function buildCopy(lang) {
       },
       {
         key: 'country',
-        question: fr ? 'Tu vis dans quel pays ou territoire?' : 'Which country or territory do you live in?',
+        // Where the player goes to school: it picks the school system (grades,
+        // programme) of the questions; the answer choices stay the same.
+        question: fr ? 'Où vas-tu à l’école ?' : 'Where do you go to school?',
         choices: (fr ? ['QUÉBEC', 'FRANCE', 'USA', 'AUTRES'] : ['QUEBEC', 'FRANCE', 'USA', 'OTHER'])
           .map((label, i) => ({ label, flag: COUNTRY_VALUES[i] })),
       },
