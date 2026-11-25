@@ -1,0 +1,165 @@
+/* ENDLESS MODE (screens/endless.js): lobby button, screens, in-game counter. */
+
+/* Lobby: a round-cornered button on the right, under the menu button. */
+.jx-endless-btn {
+  left: auto; right: 12px; top: 72px;
+  background: linear-gradient(180deg, #2b3a66, #1a2447 55%, #10182F);
+  box-shadow: 0 5px 0 #0b1024, 0 0 18px var(--jx-accent-glow, rgba(30,200,255,.5)), inset 0 3px 0 rgba(255,255,255,.25);
+}
+.jx-endless-btn:active { box-shadow: 0 2px 0 #0b1024; }
+.jx-endless-ico {
+  font-family: 'Segoe UI', system-ui, sans-serif; font-weight: 900; font-size: 30px; line-height: 30px;
+  color: var(--jx-accent, #1EC8FF); text-shadow: 0 0 10px var(--jx-accent-glow, rgba(30,200,255,.5)), 2px 2px 0 #0b1024;
+}
+@media (min-width: 700px) { .jx-endless-btn { top: 72px; right: 14px; } }
+@media (max-width: 699.98px) and (max-height: 829.98px) and (orientation: portrait) {
+  html body .jx-endless-btn { top: 70px; transform-origin: 100% 0; }
+}
+@media (max-width: 699.98px) and (max-height: 699.98px) and (orientation: portrait) {
+  html body .jx-endless-btn { top: 68px; }
+}
+#s-menu.is-multi .jx-endless-btn { display: none; }
+
+/* Full-screen windows (before / after a game, leaderboard). */
+.endless-overlay {
+  position: fixed; inset: 0; z-index: 9000;
+  display: grid; place-items: center; padding: 16px;
+  background: rgba(8, 12, 28, .72); backdrop-filter: blur(2px);
+  font-family: var(--jx-font, 'Pixelify Sans', monospace);
+}
+.endless-card {
+  position: relative; width: min(100%, 440px); max-height: calc(100dvh - 32px); overflow-y: auto;
+  display: grid; gap: 12px; justify-items: center; text-align: center;
+  padding: 22px 18px 18px; border-radius: 22px; box-sizing: border-box;
+  background: var(--jx-waves-top, none) center top / 100% 90px no-repeat,
+    var(--jx-waves-yellow, none) center bottom / 100% 110px no-repeat,
+    linear-gradient(180deg, var(--jx-yellow-hi, #FFD84D), var(--jx-yellow, #FFC21A));
+  border: 6px solid var(--jx-orange, #F5931E);
+  box-shadow: 0 8px 0 rgba(0,0,0,.3);
+  color: #5a2a00;
+}
+.endless-card.is-wide { width: min(100%, 640px); }
+.endless-x {
+  position: absolute; top: 10px; right: 10px; width: 36px; height: 36px; border: 0; border-radius: 50%;
+  display: grid; place-items: center; cursor: pointer; color: #fff; background: rgba(0,0,0,.2);
+}
+.endless-x .ui-icon { width: 18px; height: 18px; }
+.endless-logo {
+  font-family: 'Segoe UI', system-ui, sans-serif; font-weight: 900; font-size: 56px; line-height: 1;
+  color: var(--jx-accent, #1EC8FF); text-shadow: 3px 3px 0 var(--jx-accent-edge, #0B5E80);
+}
+.endless-title { margin: 0; font-size: clamp(18px, 5.4vw, 26px); color: #fff; text-shadow: 3px 3px 0 #7a3a00; }
+.endless-goal { margin: 0; font-size: clamp(10px, 2.9vw, 13px); line-height: 1.5; }
+.endless-box {
+  width: 100%; box-sizing: border-box; display: grid; gap: 4px; justify-items: center;
+  padding: 10px 12px; border-radius: 16px; color: #fff;
+  background: var(--jx-slot, #F2913A); box-shadow: inset 0 0 0 3px rgba(0,0,0,.08), 0 4px 0 rgba(0,0,0,.18);
+  text-shadow: 2px 2px 0 #7a3a00;
+}
+.endless-box small { font-size: 10px; color: #fff3dc; text-shadow: 1px 1px 0 #7a3a00; }
+.endless-box b { font-size: clamp(13px, 3.8vw, 17px); font-weight: normal; }
+.endless-box span { font-size: 11px; }
+.endless-box.is-small b { font-size: clamp(18px, 5vw, 24px); }
+.endless-hearts { display: flex; gap: 4px; }
+.endless-hearts img { width: 24px; height: 24px; image-rendering: pixelated; }
+.endless-row { width: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.endless-row.is-three { grid-template-columns: 1fr 1fr 1fr; }
+.endless-link {
+  margin-top: 2px; border: 0; background: none; cursor: pointer; font: inherit; font-size: 11px;
+  color: #10182F; text-decoration: underline; text-shadow: none;
+}
+.endless-guest, .endless-status { margin: 0; font-size: 11px; line-height: 1.5; }
+.endless-guest { color: var(--jx-accent-press, #0A9FD1); font-weight: bold; }
+.endless-actions { width: 100%; display: flex; gap: 10px; }
+.endless-btn {
+  flex: 1; min-height: 50px; border: 0; border-radius: 16px; cursor: pointer;
+  font: inherit; font-size: clamp(11px, 3.2vw, 15px); color: #fff; text-shadow: 2px 2px 0 #7a3a00;
+  background: linear-gradient(180deg, #ffab3d, var(--jx-orange, #F5931E) 55%, var(--jx-orange-deep, #E67612));
+  box-shadow: 0 5px 0 var(--jx-orange-dk, #C85F0C);
+}
+.endless-btn:active { transform: translateY(2px); box-shadow: 0 3px 0 var(--jx-orange-dk, #C85F0C); }
+/* The main button (JOUER / REJOUER): cyan accent, slow glow. */
+.endless-btn.is-go {
+  flex: 1.4; color: var(--jx-accent-ink, #10182F); text-shadow: none;
+  background: var(--jx-accent, #1EC8FF);
+  box-shadow: inset 0 0 0 2px var(--jx-accent-edge, #0B5E80), 0 4px 0 var(--jx-accent-edge, #0B5E80);
+  animation: jxAccentPulse 2s ease-in-out infinite;
+}
+@media (hover: hover) and (pointer: fine) { .endless-btn.is-go:hover { background: var(--jx-accent-hover, #6FDDFF); } }
+.endless-btn.is-go:active { background: var(--jx-accent-press, #0A9FD1); box-shadow: inset 0 0 0 2px var(--jx-accent-edge, #0B5E80), 0 2px 0 var(--jx-accent-edge, #0B5E80); }
+.endless-score { display: grid; justify-items: center; }
+.endless-score b {
+  font-size: clamp(64px, 20vw, 110px); line-height: 1; font-weight: normal; color: #fff;
+  text-shadow: 5px 5px 0 #7a3a00;
+}
+.endless-score small { font-size: 12px; }
+.endless-record {
+  padding: 6px 14px; border-radius: 12px; font-size: clamp(14px, 4.2vw, 20px); color: var(--jx-accent-ink, #10182F);
+  background: var(--jx-accent, #1EC8FF); box-shadow: 0 3px 0 var(--jx-accent-edge, #0B5E80);
+  animation: endlessRecord .7s cubic-bezier(.2,1.6,.4,1) both;
+}
+@keyframes endlessRecord { from { transform: scale(.4); opacity: 0; } }
+
+/* Leaderboard rows. */
+.endless-list { width: 100%; display: grid; gap: 8px; }
+.eb-row {
+  display: grid; grid-template-columns: 2em minmax(0, 1.3fr) minmax(0, .8fr) minmax(0, 1.4fr) 2.6em 2em;
+  gap: 6px; align-items: center; padding: 9px 10px; border-radius: 14px;
+  font-size: clamp(9px, 2.6vw, 12px); color: #fff; text-align: left; text-shadow: 1px 1px 0 #7a3a00;
+  background: linear-gradient(180deg, #ffab3d, var(--jx-orange, #F5931E) 55%, var(--jx-orange-deep, #E67612));
+  box-shadow: 0 3px 0 var(--jx-orange-dk, #C85F0C);
+}
+.eb-row > * { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.eb-head { background: none; box-shadow: none; color: #7a3a00; text-shadow: none; font-size: 9px; padding: 0 10px; }
+.eb-row.is-me { box-shadow: 0 3px 0 var(--jx-orange-dk, #C85F0C), inset 0 0 0 3px var(--jx-accent, #1EC8FF), 0 0 12px var(--jx-accent-glow, rgba(30,200,255,.5)); }
+.eb-correct { font-weight: normal; font-size: 1.15em; }
+
+/* In the game: the number of correct answers, big, at the top. */
+#s-game .endless-hud {
+  /* Under the shot meter / fuel gauge row (they end at about 96 px). */
+  position: absolute; z-index: 60; left: 50%; top: calc(max(6px, env(safe-area-inset-top)) + 102px);
+  transform: translateX(-50%); display: grid; justify-items: center; gap: 0; pointer-events: none;
+  font-family: 'Press Start 2P', monospace; text-align: center;
+}
+#s-game .endless-hud.hidden { display: none; }
+#s-game .eh-correct { font-weight: normal; font-size: clamp(22px, 7vw, 34px); color: #fff; text-shadow: 3px 3px 0 #10182F, 0 0 10px var(--jx-accent-glow, rgba(30,200,255,.5)); }
+#s-game .eh-correct.is-bump { animation: ehBump .35s ease-out; }
+@keyframes ehBump { 40% { transform: scale(1.3); color: var(--jx-accent, #1EC8FF); } }
+#s-game .eh-sub { font-size: clamp(7px, 2vw, 9px); color: #fff; text-shadow: 2px 2px 0 #10182F; }
+#s-game .endless-hud.is-gentle .eh-correct {
+  background: linear-gradient(90deg, #ff5fa2, #ffb13b, #ffe14d, #5ee87a, #4cc9ff, #9b7bff);
+  -webkit-background-clip: text; background-clip: text; color: transparent; text-shadow: none;
+  filter: drop-shadow(2px 2px 0 #10182F);
+}
+/* "+10 !" step. */
+#s-game .endless-step {
+  position: absolute; z-index: 70; left: 50%; top: 34%; transform: translateX(-50%);
+  display: grid; justify-items: center; gap: 6px; pointer-events: none;
+  font-family: 'Press Start 2P', monospace; color: #fff; text-shadow: 3px 3px 0 #10182F;
+  animation: endlessStep 1.9s ease-out forwards;
+}
+#s-game .endless-step b { font-weight: normal; font-size: clamp(28px, 9vw, 48px); color: var(--jx-accent, #1EC8FF); }
+#s-game .endless-step.is-gentle b {
+  background: linear-gradient(90deg, #ff5fa2, #ffb13b, #ffe14d, #5ee87a, #4cc9ff, #9b7bff);
+  -webkit-background-clip: text; background-clip: text; color: transparent; text-shadow: none;
+}
+#s-game .endless-step span { display: flex; align-items: center; gap: 6px; font-size: 11px; }
+#s-game .endless-step span img { width: 18px; height: 18px; image-rendering: pixelated; }
+#s-game .endless-step em { font-style: normal; font-size: 10px; }
+@keyframes endlessStep {
+  0% { opacity: 0; transform: translateX(-50%) scale(.5); }
+  15% { opacity: 1; transform: translateX(-50%) scale(1.1); }
+  25% { transform: translateX(-50%) scale(1); }
+  80% { opacity: 1; }
+  100% { opacity: 0; transform: translateX(-50%) translateY(-30px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .endless-btn.is-go, .endless-record, #s-game .eh-correct.is-bump, #s-game .endless-step { animation: none; }
+}
+
+/* The tanker banner goes under the Endless counter. */
+#s-game.is-endless .tanker-banner.is-on { top: calc(max(6px, env(safe-area-inset-top)) + 166px); }
+@media (min-aspect-ratio: 1/1) and (max-height: 500px) {
+  #s-game .endless-hud { top: calc(max(6px, env(safe-area-inset-top)) + 84px); }
+  #s-game.is-endless .tanker-banner.is-on { top: calc(max(6px, env(safe-area-inset-top)) + 136px); }
+}

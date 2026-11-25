@@ -76,6 +76,7 @@
   <link rel="stylesheet" href="src/screens/fuel-gauge.css">
   <link rel="stylesheet" href="src/screens/tanker.css">
   <link rel="stylesheet" href="src/screens/credits-page.css">
+  <link rel="stylesheet" href="src/screens/endless.css">
   <!-- Accent colour (cyan), waves: after every other stylesheet. -->
   <link rel="stylesheet" href="src/screens/accent.css">
 </head>
@@ -224,6 +225,7 @@
       <button id="btn-menu-terms" class="jx-pill" type="button" data-i18n="jxTermsOfService">Conditions d'utilisation</button>
       <button id="btn-feedback-menu" class="jx-pill" type="button" data-i18n="jxReview">AVIS</button>
       <button id="btn-replay-briefing" class="jx-pill" type="button" data-i18n="jxBriefingShort">BRIFING</button>
+      <button id="btn-edit-level" class="jx-pill" type="button" data-i18n="jxEditLevel">MODIFIER MON NIVEAU ET MES EXERCICES</button>
       <button id="btn-share-game" class="jx-pill" type="button" data-i18n="jxShareGame">LIEN DU JEU</button>
       <button class="jx-pill" type="button" data-jx-sub="drawer-follow" data-i18n="jxFollowMe">SUIS-MOI</button>
       <div id="drawer-follow" class="jx-sub">
@@ -390,6 +392,10 @@
           <circle cx="29" cy="26" r="7" fill="#e04848" stroke="#fff" stroke-width="1.6"/>
           <path d="M26.4 23.4l5.2 5.2M31.6 23.4l-5.2 5.2" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/>
         </svg><span id="jx-mistakes-label">ERREURS</span><b id="jx-mistakes-count" class="jx-mistakes-count hidden">0</b>
+      </button>
+      <!-- MODE INFINI (src/screens/endless.js): endless game, its own leaderboard. -->
+      <button id="btn-lobby-endless" class="jx-multi-btn jx-endless-btn" type="button" aria-label="Mode infini">
+        <span class="jx-endless-ico" aria-hidden="true">∞</span><span id="jx-endless-label">INFINI</span>
       </button>
       <!-- GRADES (src/screens/grades.js): the pilot grades and their rewards. -->
       <button id="btn-lobby-grades" class="jx-multi-btn jx-grades-btn" type="button" aria-label="Grades">

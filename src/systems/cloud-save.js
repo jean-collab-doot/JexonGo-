@@ -137,6 +137,9 @@ function _applyPilotConfig(out, source) {
     'onboardingStartMode', 'onboardingLevelLength', 'dailyGoalMinutes',
     'tutorialPlan', 'tutorialProgress', 'tutorialCompleted', 'postTutorialConnectPrompt',
     'practiceTimeLimit', 'currentLevel',
+    // The exercise choices go with the questionnaire answers (a guest who
+    // creates an account keeps them).
+    'decimalSettings', 'practiceOps',
   ];
   for (const key of keys) {
     if (source[key] !== undefined) out[key] = source[key];

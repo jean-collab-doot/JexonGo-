@@ -206,6 +206,14 @@ export function initSettings() {
     }
   });
 
+  // MODIFIER MON NIVEAU ET MES EXERCICES: country, class, exercises and
+  // numbers (same screens as the questionnaire), saved in the account, then
+  // back to the lobby (main.js window._editLevelAndExercises).
+  document.getElementById('btn-edit-level')?.addEventListener('click', () => {
+    _closeDrawer();
+    window._editLevelAndExercises?.();
+  });
+
   // LIEN DU JEU: the game's address to copy or share (share-game.js).
   document.getElementById('btn-share-game')?.addEventListener('click', () => {
     _closeDrawer();

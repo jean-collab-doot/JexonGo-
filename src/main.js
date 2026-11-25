@@ -14,6 +14,9 @@ import { initShop, renderShop } from './screens/shop.js';
 import { initTraining, renderTraining, practiceLevelNumber } from './screens/training.js';
 import { initMistakesLobby } from './screens/mistakes-lobby.js';
 import { initGrades } from './screens/grades.js';
+import { initEndless, showEndlessResult } from './screens/endless.js';
+import { startEndlessRun } from './systems/endless-board.js';
+import { ENDLESS_BASE_LEVEL } from './data/endless.js';
 import { initGame, leaveCoopLink, warmUpGame } from './screens/game.js';
 import { initResult, showResult } from './screens/result.js';
 import { initChest, showChest, setChestReturn } from './screens/chest.js';
@@ -243,6 +246,36 @@ const nav = {
       }
     });
   },
+  // ENDLESS MODE (screens/endless.js): the enemies of level 5 as wave 1,
+  // questions from the player's own exercises, no end until 0 hearts; its
+  // own end screen and leaderboard. Solo only (never with a teammate).
+  toEndless() {
+    cleanup();
+    G.coopSession = null;
+    G.coopRetry = false;
+    leaveCoopLink();
+    G.practiceMode = false;
+    G.endlessMode = true;
+    const levelBefore = G.currentLevel;
+    showScreen('s-game');
+    trackVirtualPage('/endless/game');
+    trackAnalytics('Game Started', { level: 0, mode: 'endless' });
+    SFX.stopMusic();
+    startEndlessRun(G.activeAircraft);   // signed in: the server notes the start
+    _cleanup = initGame(ENDLESS_BASE_LEVEL, () => {
+      cleanup();
+      G.currentLevel = levelBefore;   // the map keeps the player's real level
+      save('currentLevel', levelBefore);
+      const result = G.endlessResult;
+      G.endlessResult = null;
+      renderMenu();
+      showScreen('s-menu');
+      SFX.stopMusic();
+      SFX.gameOver?.();
+      trackAnalytics('Game Finished', { level: 0, won: false, mode: 'endless', correct: result?.correct || 0 });
+      showEndlessResult(result, nav);
+    });
+  },
   toHangar(dir) {
     cleanup();
     renderHangar();
@@ -401,6 +434,14 @@ window._nav = nav;
 // No account: tapping MULTI or TOP 20 opens the sign-in invitation (menu.js).
 window._openConnectPrompt = (reason = '') => openConnectPrompt(reason);
 window._showFeedbackPopup  = () => showFeedbackPopup();
+// RÉGLAGE "Modifier mon niveau et mes exercices" (and the Endless screen's
+// "change my exercises"): the questionnaire's country / class / exercises /
+// numbers screens, saved (and in the account), then back.
+window._editLevelAndExercises = (onDone) => showBriefingEquationOptions(() => {
+  saveAll();
+  if (onDone) onDone();
+  else { renderMenu(); showScreen('s-menu'); }
+});
 window._resetNewPlayer     = _resetNewPlayer;
 window._testEmailNow       = _testEmailNow;
 window._resetIntroBriefing = resetIntroBriefing;
@@ -667,6 +708,7 @@ document.getElementById('btn-lobby-multi')?.addEventListener('click', () => {
 });
 // ERREURS: a practice game with the player's old mistakes (game.js).
 initGrades();   // lobby GRADES button and page
+initEndless(nav);   // lobby MODE INFINI button
 initMistakesLobby(() => {
   G.mistakesReview = true;
   nav.toGame(practiceLevelNumber(), true);

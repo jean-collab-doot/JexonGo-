@@ -17,7 +17,7 @@ import { RESPAWN_FUEL } from '../data/fuel.js';
 import { setFuelGauge, fuelPickupFx, resetFuelGauge } from './fuel-gauge.js';
 import {
   resetTanker, rollTanker, callTankerNow, tankerPhase, tankerOnScreen, tankerWaitLeft, updateTanker,
-  startRefuel, leaveTanker, holdPointFor, basketTouched, drawTanker,
+  startRefuel, leaveTanker, holdPointFor, basketTouched, drawTanker, scheduleTanker,
 } from '../game/tanker.js';
 import { setTankerBanner } from './tanker-ui.js';
 import { coopRole } from '../online/coop-realtime.js';
@@ -31,6 +31,8 @@ import { tipFor, tipLines } from '../game/tips.js';
 import { makeFractionQuestion } from '../game/fractions.js';
 import { makePercentQuestion } from '../game/percentages.js';
 import { makeDecimalQuestion, sameDecimal } from '../game/decimals.js';
+import { endlessHearts, endlessWave, ENDLESS_WAVE_ANSWERS, ENDLESS_STEP_COINS, ENDLESS_STEP_XP, ENDLESS_MIN_ANSWER_S } from '../data/endless.js';
+import { showEndlessHud, updateEndlessHud, endlessStepFx, hideEndlessHud, endlessExercisesLabel } from './endless.js';
 import { startSessionReport, recordAnswer, mistakesToReplay, markReplayed } from '../systems/session-report.js';
 import { spawnEnemy, updateEnemies, hitEnemy, KAMIKAZE_LOCK_FRAMES, calmKamikazes } from '../game/enemies.js';
 import {
@@ -2355,6 +2357,13 @@ function onKeyDown(e) {
   if (_gameCheatHeld(['f', 'u']) && !/(^|\.)jexongo\.app$/.test(location.hostname)) {
     _gameCT.delete('f'); _gameCT.delete('u');
     if (leakForTest()) fuelAlerts(['leak']);
+  }
+  // Test version only (not jexongo.app): I + N in Endless mode jumps to the
+  // next 10 correct answers (the next wave and its reward).
+  if (_endless && _gameCheatHeld(['i', 'n']) && !/(^|\.)jexongo\.app$/.test(location.hostname)) {
+    _gameCT.delete('i'); _gameCT.delete('n');
+    G.correctAnswers += 10 - (G.correctAnswers % 10);
+    endlessOnCorrect();
   }
   if (_gameCheatHeld(['q', 'w', 'e']))        _killBoss();
   if (_gameCheatHeld(['r', 'm', 'h', 'u']))   _winLevel();
@@ -5589,6 +5598,8 @@ function startTimer(resetTime = true) {
   const typedBonus = G.question?.typed ? TYPED_QUESTION_EXTRA_S : 0;
   if (resetTime) {
     G.timeLeft  = Math.max(3, adjustedBaseTime + typedBonus);
+    // Endless: a little less time each wave, never under 5 s.
+    if (_endless) G.timeLeft = Math.max(ENDLESS_MIN_ANSWER_S, Math.round(G.timeLeft * endlessWave(_endless.wave, gentleFx()).time * 10) / 10);
     _timerTotal = G.timeLeft;
   }
   const currentPct = resetTime ? 100 : Math.max(0, G.timeLeft / _timerTotal) * 100;
@@ -5818,6 +5829,7 @@ function handleAnswer(choice, btn) {
     }
     G.correctAnswers++;
     coopOnCorrectAnswer();
+    if (_endless) endlessOnCorrect();
     // Coins are earned only by answering correctly. A missed, timed-out, or
     // incorrect question never releases a collectible coin.
     releaseCorrectAnswerCoins();
@@ -5835,6 +5847,7 @@ function handleAnswer(choice, btn) {
     const xpBefore = gameXpBreakdown().total;   // for the callout's "+N EXP"
     G.sessionXP += answerXp;
     G.streak++;
+    if (_endless) _endless.best = Math.max(_endless.best, G.streak);
     G.bestAnswerStreak = Math.max(G.bestAnswerStreak || 0, G.streak);
     save('bestAnswerStreak', G.bestAnswerStreak);
     updateStreakHUD();
@@ -5854,6 +5867,7 @@ function handleAnswer(choice, btn) {
   } else {
     SFX.wrong();
     G.questionsAnswered++;
+    if (_endless) { _endless.errors++; updateEndlessHud({ correct: G.correctAnswers, errors: _endless.errors, wave: _endless.wave }); }
     recordTutorialAnswer(G.question.op, false);
     showTutorialFeedback(false);
     G.streak = 0;
@@ -5861,7 +5875,7 @@ function handleAnswer(choice, btn) {
     comboAfterMistake({ seconds: answerSeconds(), questionXp: calcSpeedXP(G.timeLeft, _timerTotal) });
     // Wrong answer breaks the SR-71 run — reset all cube progress
     revealCorrectAnswer(choice);
-    if (!G.practiceMode && G.currentLevel <= 30) {
+    if (!G.practiceMode && !_endless && G.currentLevel <= 30) {
       G.sr71WrongAnswers = (G.sr71WrongAnswers || 0) + 1;
       G.sr71CleanLevels  = [];
       save('sr71WrongAnswers', G.sr71WrongAnswers);
@@ -6209,6 +6223,7 @@ function handleTimeout() {
   G.answerLocked = true;
   _answerImmuneUntil = performance.now() + ANSWER_IMMUNE_MS;
   G.questionsAnswered++;
+  if (_endless) { _endless.errors++; updateEndlessHud({ correct: G.correctAnswers, errors: _endless.errors, wave: _endless.wave }); }
   recordAnswer(G.question, 'timeout', answerSeconds());
   recordTutorialAnswer(G.question?.op || '+', false, true);
   showTutorialFeedback(false, true);
@@ -6464,6 +6479,42 @@ function updateStreakHUD() {
   $('hud-streak').textContent = '';
 }
 
+// ── ENDLESS MODE ─────────────────────────────────────────────────────────────
+let _endless = null;   // { wave, errors, best, base } during an Endless game
+
+// The wave's enemies: more of them, sooner, faster (data/endless.js).
+function applyEndlessWave() {
+  if (!_endless) return;
+  const w = endlessWave(_endless.wave, gentleFx());
+  baseSpawnRate = Math.max(20, Math.round(_endless.base.spawnRate / w.count));
+  baseMaxEnemies = _endless.base.maxEnemies > 0 ? Math.round(_endless.base.maxEnemies * w.count) : _endless.base.maxEnemies;
+  spawnRate = adaptiveSpawnRate();
+  maxEnemies = adaptiveMaxEnemies();
+  levelCfg = { ...levelCfg, enemySpeedMult: _endless.base.speed * w.speed };
+}
+
+// Every 10 correct answers: a reward step (+10 !, coins, EXP) and the next
+// wave; the tanker every 2 waves.
+function endlessOnCorrect() {
+  const n = G.correctAnswers;
+  if (n > 0 && n % ENDLESS_WAVE_ANSWERS === 0) {
+    G.coins = clampCoins((G.coins || 0) + ENDLESS_STEP_COINS);
+    G.xp = (G.xp || 0) + ENDLESS_STEP_XP;
+    G.totalXpEarned = (G.totalXpEarned || 0) + ENDLESS_STEP_XP;
+    addLifetimeXp(ENDLESS_STEP_XP);
+    save('coins', G.coins);
+    save('xp', G.xp);
+    save('totalXpEarned', G.totalXpEarned);
+    _endless.wave += 1;
+    applyEndlessWave();
+    endlessStepFx({ coins: ENDLESS_STEP_COINS, xp: ENDLESS_STEP_XP, wave: _endless.wave, gentle: gentleFx() });
+    if (fuelOn() && _endless.wave % 2 === 0 && tankerPhase() === 'idle' && !tankerIsGuest()) {
+      scheduleTanker(8000 + Math.random() * 8000);
+    }
+  }
+  updateEndlessHud({ correct: n, errors: _endless.errors, wave: _endless.wave });
+}
+
 // ── LEVEL END ────────────────────────────────────────────────────────────────
 function finishLevel(won) {
   if (_coop?.mode === 'online' && !_coop.left) wsSend({ type: 'coop_done', won: !!won });
@@ -6475,10 +6526,19 @@ function finishLevel(won) {
   // Won with a real teammate (even if they left before the end): this game's
   // EXP also counts for the MULTIJOUEUR TOP 20 (state.js addLifetimeXp).
   G.coopWinXp = !!(won && !G.practiceMode && G.coopSession?.mode === 'online');
+  // Endless: the game always ends on 0 hearts, so what was picked up is kept;
+  // its result is left for screens/endless.js (main.js shows it).
+  if (_endless) {
+    G.endlessResult = {
+      correct: G.correctAnswers || 0, errors: _endless.errors, bestStreak: _endless.best,
+      wave: _endless.wave, aircraft: G.activeAircraft, exercises: endlessExercisesLabel(),
+    };
+    G.continueState = null;   // no "continue" in Endless mode
+  }
   // Coins and EXP earned in gameplay are temporary until victory. Losing or
   // leaving the level discards the session counters without changing the
   // player's saved account balance.
-  if (won) {
+  if (won || _endless) {
     // Coins picked up during play + the shot coins (steps of hits).
     // + the nuke rewards (systems/nuke-reward.js).
     const nuke = comboOn() ? nukeRewardTotal() : { xp: 0, coins: 0 };
@@ -7238,7 +7298,7 @@ export function initGame(levelNum, onComplete) {
   // Training rounds only for a placement asked on purpose (equation settings
   // "see my level"); an old tutorialMode flag (e.g. from a cloud save) alone
   // no longer turns real levels into training.
-  _tutorialActive = !!G.tutorialMode && !G.practiceMode && G.onboardingStartMode === 'placement';
+  _tutorialActive = !!G.tutorialMode && !G.practiceMode && !G.endlessMode && G.onboardingStartMode === 'placement';
   _nukeReadyAt = hasNukePlanEquipped() && !_tutorialActive ? performance.now() + NUKE_COOLDOWN_MS : 0;
   updateNukeButton();
   const savedTutorial = _tutorialActive ? getStoredTutorialProgress() : null;
@@ -7410,6 +7470,26 @@ export function initGame(levelNum, onComplete) {
   spawnRate = baseSpawnRate;
   maxEnemies = baseMaxEnemies;
   spawnTimer = isTouchMobile() ? 22 : 60;
+  // ENDLESS MODE (screens/endless.js, data/endless.js): questions without
+  // end from the player's own exercises, the plane's hearts, a wave every
+  // 10 correct answers (more and faster enemies, a little less time).
+  _endless = G.endlessMode ? {
+    wave: 1, errors: 0, best: 0,
+    base: { spawnRate: baseSpawnRate, maxEnemies: baseMaxEnemies, speed: levelCfg.enemySpeedMult ?? 1 },
+  } : null;
+  G.endlessMode = false;
+  G.endlessResult = null;
+  if (_endless) {
+    levelCfg = { ...levelCfg, questionCount: 1e9, isBossLevel: false };
+    G.lives = endlessHearts(G.activeAircraft);
+    _maxLives = G.lives;
+    updateLivesHUD();
+    applyEndlessWave();
+    // The tanker comes about every 2 waves (first one ~40 s in).
+    if (fuelOn()) { resetTankerState(); scheduleTanker(40000); }
+    $('hud-level').textContent = getLang() === 'fr' ? 'MODE INFINI' : 'ENDLESS';
+    showEndlessHud({ correct: 0, errors: 0, wave: 1, gentle: gentleFx() });
+  } else hideEndlessHud();
 
   loadControlSensitivity();
   _aimAngle = _aimTarget = 0;
