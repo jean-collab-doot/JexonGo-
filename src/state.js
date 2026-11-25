@@ -8,7 +8,9 @@ import { TEST_UNLOCK, FULL_UNLOCK } from './utils/test-mode.js';
 const DEV_TEST = FULL_UNLOCK;   // + the "test-debloque" deployment
 
 // Every aircraft on the dev server and the Vercel preview (utils/test-mode.js).
-const DEFAULT_UNLOCKED_AIRCRAFT = ['t6']; // TEMP video capture — restore with git checkout
+const DEFAULT_UNLOCKED_AIRCRAFT = TEST_UNLOCK
+  ? ['t6', 'pc21', 'c130', 'a10', 'f16', 'f18', 'f22', 'f35', 'b2', 'sr71', 'f117']
+  : ['t6'];
 
 function withDefaultUnlockedAircraft(list) {
   const unlocked = Array.isArray(list) ? [...list] : [];
@@ -20,8 +22,8 @@ function withDefaultUnlockedAircraft(list) {
 
 export const MAX_COINS = 99999;
 const MAX_XP = 999999;
-const STARTING_COINS = 0; // TEMP video capture — restore with git checkout
-const STARTING_XP = 0;
+const STARTING_COINS = DEV_TEST ? MAX_COINS : 0;
+const STARTING_XP = DEV_TEST ? MAX_XP : 0;
 
 export function clampCoins(value) {
   const n = Number(value) || 0;
@@ -239,7 +241,7 @@ export function loadSave() {
   G.tutorialCompleted = load('tutorialCompleted', false);
   G.postTutorialConnectPrompt = load('postTutorialConnectPrompt', false);
 
-  if (!G.playerRegistered && false) { // TEMP video capture — restore with git checkout
+  if (!G.playerRegistered) {
     // Guest — reset all progression to zero, never load saved progress
     G.xp = STARTING_XP; G.totalXpEarned = STARTING_XP; G.coins = STARTING_COINS;
     G.blueprints = {}; G.chestsWithoutEpic = 0; G.levelStars = {};
