@@ -250,6 +250,8 @@ const nav = {
   // questions from the player's own exercises, no end until 0 hearts; its
   // own end screen and leaderboard. Solo only (never with a teammate).
   toEndless() {
+    // Endless mode needs an account (also its REJOUER after signing out).
+    if (!G.playerRegistered && !import.meta.env?.DEV) { openConnectPrompt('endless'); return; }
     cleanup();
     G.coopSession = null;
     G.coopRetry = false;

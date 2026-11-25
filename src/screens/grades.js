@@ -119,7 +119,8 @@ export function updateGradesButton() {
   if (ico) ico.innerHTML = rankInsigniaSVG(getPilotGradeRank(cur), cur.name === 'CADET' ? '#e2e8f0' : cur.color);
   const label = $('jx-grades-label');
   if (label) label.textContent = 'GRADES';
-  const waiting = claimableGrades().length;
+  // Grades need an account (menu.js lock): no waiting badge for a guest.
+  const waiting = G.playerRegistered ? claimableGrades().length : 0;
   const badge = $('jx-grades-count');
   if (badge) { badge.textContent = String(waiting); badge.classList.toggle('hidden', !waiting); }
   btn.setAttribute('aria-label', fr() ? `Grades : ${gradeName(cur)}` : `Grades: ${gradeName(cur)}`);

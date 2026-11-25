@@ -628,11 +628,14 @@ function _updateLobbyHud() {
 // Before that the button is greyed with a padlock and a tap explains why.
 // Both also need an account (the rest of the game is open to everyone):
 // without one the padlock reads COMPTE and a tap opens the sign-in invitation.
+// GRADES and ∞ INFINI (Endless mode) need an account too (no level).
 export const MULTI_UNLOCK_LEVEL = 3;
 export const TOP20_UNLOCK_LEVEL = 5;
 const FEATURE_LOCKS = [
   { id: 'btn-lobby-multi', level: MULTI_UNLOCK_LEVEL, reason: 'multi', fr: 'Le multijoueur se débloque au niveau', en: 'Multiplayer unlocks at level' },
   { id: 'btn-lobby-top20', level: TOP20_UNLOCK_LEVEL, reason: 'top20', fr: 'Le TOP 20 se débloque au niveau', en: 'The TOP 20 unlocks at level' },
+  { id: 'btn-lobby-grades', level: 0, reason: 'grades', fr: '', en: '' },
+  { id: 'btn-lobby-endless', level: 0, reason: 'endless', fr: '', en: '' },
 ];
 
 function featureLevelLocked(lock) {
@@ -672,7 +675,7 @@ function _updateFeatureLocks() {
 // Capture phase: runs before the buttons' own handlers (main.js /
 // leaderboard.js) and stops them while the feature is locked.
 document.addEventListener('click', e => {
-  const btn = e.target.closest?.('#btn-lobby-multi, #btn-lobby-top20');
+  const btn = e.target.closest?.('#btn-lobby-multi, #btn-lobby-top20, #btn-lobby-grades, #btn-lobby-endless');
   if (!btn) return;
   const lock = FEATURE_LOCKS.find(l => l.id === btn.id);
   if (!lock) return;
