@@ -41,7 +41,21 @@ function schoolSections(country, fr) {
       { title: 'HIGH SCHOOL', choices: [9, 10, 11, 12].map(us) },
     ];
   }
-  // Quebec (and "other"): primaire 1-6, secondaire 1-5.
+  // "Other": years 1 to 12 numbered like the US grades, with the age beside
+  // each one so everyone finds theirs; year n gives the same questions as
+  // the same age elsewhere (1re année = CP = 1st grade ... 12e année =
+  // Terminale = 12th grade).
+  if (country === 'other') {
+    const year = n => ({
+      ...lvl(fr ? `${n}${n === 1 ? 're' : 'e'} année` : `Grade ${n}`, `intl-${n}`, n),
+      sub: fr ? `(${n + 5}-${n + 6} ans)` : `(${n + 5}-${n + 6} y/o)`,
+    });
+    return [
+      { title: fr ? 'ANNÉES 1 À 6' : 'GRADES 1–6', choices: [1, 2, 3, 4, 5, 6].map(year) },
+      { title: fr ? 'ANNÉES 7 À 12' : 'GRADES 7–12', choices: [7, 8, 9, 10, 11, 12].map(year) },
+    ];
+  }
+  // Quebec: primaire 1-6, secondaire 1-5.
   return [
     { title: fr ? 'PRIMAIRE' : 'PRIMARY', choices: [1, 2, 3, 4, 5, 6].map(n =>
       lvl(fr ? `${n}${n === 1 ? 're' : 'e'} année` : `Grade ${n}`, `qc-prim${n}`, n)) },
@@ -245,7 +259,12 @@ export function showBriefingEquationOptions(onComplete) {
   };
   // Pre-select the saved school level in the list for the player's country.
   const levels = schoolSections(COUNTRY_VALUES[answers.country], getLang() === 'fr').flatMap(sec => sec.choices);
-  const levelIndex = levels.findIndex(choice => choice.level === G.schoolLevel);
+  let levelIndex = levels.findIndex(choice => choice.level === G.schoolLevel);
+  // A class saved in another system (an "other" player from before the
+  // 1-12 list, with a Quebec class): the year of the same age.
+  if (levelIndex < 0 && answers.ageGroup_schoolYear) {
+    levelIndex = levels.findIndex(choice => choice.schoolYear === answers.ageGroup_schoolYear);
+  }
   if (levelIndex >= 0) {
     answers.ageGroup = levelIndex;
     answers.ageGroup_level = levels[levelIndex].level;
@@ -423,6 +442,11 @@ function showQuestionSteps(onComplete, options = {}) {
       const selected = current.multi ? answers[current.key]?.includes(index) : answers[current.key] === index;
       if (selected) btn.classList.add('obn-selected');
       btn.textContent = choiceLabel(choice);
+      if (typeof choice === 'object' && choice.sub) {
+        // "Other" country classes: the year, and the age under it.
+        btn.classList.add('obn-has-sub');
+        btn.innerHTML = `<span class="obn-btn-text">${choiceLabel(choice)}</span><small class="obn-sub">${choice.sub}</small>`;
+      }
       if (typeof choice === 'object' && choice.flag) {
         // Country: the flag on both sides of the name.
         const flag = `<span class="obn-flag">${FLAG_SVG[choice.flag]}</span>`;

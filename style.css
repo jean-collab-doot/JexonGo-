@@ -7975,6 +7975,14 @@ html.np-boot .np-intro.np-static { display: block; }
 .np-intro.np-to-questions .np-title { animation: npTitleOut .38s ease-in forwards; }
 @keyframes npTitleOut { to { opacity: 0; transform: translateY(-24px) scale(.94); } }
 
+/* "Other" country classes (onboarding.js): the year, the age under it. */
+.obn-btn.obn-has-sub {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 3px; padding: 6px 8px; line-height: 1.2;
+}
+.obn-btn.obn-has-sub .obn-btn-text { flex: 0 0 auto; }
+.obn-sub { font-size: .78em; opacity: .9; white-space: nowrap; }
+
 /* Country buttons: flag on both sides of the name (onboarding.js FLAG_SVG). */
 .obn-btn.obn-has-flags {
   display: flex;

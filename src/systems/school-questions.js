@@ -37,6 +37,9 @@ export function schoolYearOfLevel(level = '') {
   if (qc) return qc[1] === 'sec' ? 6 + Number(qc[2]) : Number(qc[2]);
   const us = level.match(/^us-(\d+)/);
   if (us) return Number(us[1]);
+  // "Other" country: years 1-12 numbered like the US grades (intl-1..intl-12).
+  const intl = level.match(/^intl-(\d+)/);
+  if (intl) return Number(intl[1]);
   const fr = { 'fr-cp': 1, 'fr-ce1': 2, 'fr-ce2': 3, 'fr-cm1': 4, 'fr-cm2': 5, 'fr-6e': 6, 'fr-5e': 7, 'fr-4e': 8, 'fr-3e': 9, 'fr-2nde': 10, 'fr-1re': 11, 'fr-term': 12 };
   return fr[level] || 0;
 }
