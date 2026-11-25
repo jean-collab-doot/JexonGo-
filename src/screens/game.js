@@ -6614,8 +6614,15 @@ const FUEL_CRASH_MS = 1300;
 let _fuelCrash = null;          // { start, x, y, booms } while the plane falls
 let _fuelTipsShown = false;
 
+// Fuel: in the levels; in practice only when its PLEIN D'ESSENCE setting is
+// NON (training.js); never in the mistakes review, the tutorial or the
+// beginner run.
+function practiceFullFuel() {
+  if (G.practiceFullFuel === undefined) G.practiceFullFuel = load('practiceFullFuel', true) !== false;
+  return G.practiceFullFuel;
+}
 function fuelModeOn() {
-  return !G.practiceMode && !G.mistakesReview && !isTutorialActive() && !_guidedRun;
+  return (!G.practiceMode || !practiceFullFuel()) && !G.mistakesReview && !isTutorialActive() && !_guidedRun;
 }
 
 function planeFlying() {

@@ -34,6 +34,33 @@ export function endlessExercisesLabel() {
   return parts.length ? `${parts.join(' ')}${range}` : (fr() ? `Mon niveau${range}` : `My level${range}`);
 }
 
+// A saved label ("+ − · ≤20", "1/2 0,5 (+−)", "Mon niveau · ≤20") in real
+// words in the reader's language, for the leaderboard: "Addition,
+// soustraction — nombres jusqu'à 20". No symbols.
+export function exercisesLabelToWords(label, F = fr()) {
+  const [main = '', ...rest] = String(label || '').split(' · ');
+  const WORDS = {
+    '+': F ? 'addition' : 'addition', '−': F ? 'soustraction' : 'subtraction',
+    '×': F ? 'multiplication' : 'multiplication', '÷': F ? 'division' : 'division',
+    '1/2': F ? 'fractions' : 'fractions', '%': F ? 'pourcentages' : 'percentages',
+    'x²': F ? 'exposants' : 'exponents', 'x=?': F ? 'algèbre' : 'algebra', '0,5': F ? 'nombres à virgule' : 'decimals',
+  };
+  const isLevel = /^(Mon niveau|My level)/.test(main);
+  // (the operations in brackets belong to the decimals: not topics of their own)
+  const tokens = isLevel ? [] : (main.replace(/\([^)]*\)/g, '').match(/0,5|1\/2|x=\?|x²|[+−×÷%]/g) || []);
+  const list = isLevel ? [F ? 'exercices de son niveau' : 'exercises of their level'] : [...new Set(tokens.map(t => WORDS[t]).filter(Boolean))];
+  const range = rest.join(' ').match(/(\d+)/);
+  let text = list.join(', ');
+  if (text) text = text[0].toUpperCase() + text.slice(1);
+  if (range) text += F ? ` — nombres jusqu’à ${range[1]}` : ` — numbers up to ${range[1]}`;
+  return text || (F ? 'Exercices de son niveau' : 'Exercises of their level');
+}
+
+// "12 bonnes réponses" / "1 bonne réponse".
+export function correctAnswersText(n, F = fr()) {
+  return F ? `${n} ${n === 1 ? 'bonne réponse' : 'bonnes réponses'}` : `${n} ${n === 1 ? 'correct answer' : 'correct answers'}`;
+}
+
 // Same, in words, for the player.
 function exercisesInWords() {
   const topics = (G.focusTopics?.length ? G.focusTopics : (G.focusOperations || []));
@@ -222,17 +249,16 @@ export async function openEndlessBoard() {
   if (!rows.length) { list.innerHTML = `<p class="endless-status">${F ? 'Personne encore. Sois le premier !' : 'Nobody yet. Be the first!'}</p>`; return; }
   const myId = session?.user?.id || null;
   list.innerHTML = `
-    <div class="eb-row eb-head"><span>#</span><span>${F ? 'PILOTE' : 'PILOT'}</span><span>${F ? 'AVION' : 'PLANE'}</span><span>${F ? 'EXERCICES' : 'EXERCISES'}</span><span>✓</span><span>✕</span></div>
     ${rows.map(r => `
       <div class="eb-row${r.id && r.id === myId ? ' is-me' : ''}">
-        <span class="eb-rank">${r.rank}</span><span class="eb-name">${esc(r.name)}</span>
-        <span class="eb-plane">${esc(planeShort(r.aircraft))}</span><span class="eb-ex">${esc(r.exercises)}</span>
-        <b class="eb-correct">${r.correct}</b><span class="eb-errors">${r.errors}</span>
+        <span class="eb-rank">${r.rank}</span>
+        <span class="eb-name">${esc(r.name)}<small>${esc(exercisesLabelToWords(r.exercises, F))}</small></span>
+        <b class="eb-correct">${esc(correctAnswersText(r.correct, F))}</b>
       </div>`).join('')}`;
   const me = el.querySelector('[data-me]');
   if (me && !rows.some(r => r.id === myId)) {
     const best = await fetchEndlessMyBest();
-    if (best && el.isConnected) me.textContent = F ? `Ta place : ${best.rank}e · ${best.correct} bonnes réponses, ${best.errors} erreurs` : `Your place: #${best.rank} · ${best.correct} correct, ${best.errors} errors`;
+    if (best && el.isConnected) me.textContent = F ? `Ta place : ${best.rank}e, ${correctAnswersText(best.correct, F)}` : `Your place: number ${best.rank}, ${correctAnswersText(best.correct, F)}`;
   }
 }
 

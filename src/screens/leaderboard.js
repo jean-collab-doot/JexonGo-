@@ -13,7 +13,7 @@ import { getLang, numLocale } from '../i18n.js';
 import { getSupabaseClient, getSupabaseSession } from '../systems/supabase-client.js';
 import { pushLeaderboardScore } from '../systems/leaderboard-sync.js';
 import { fetchEndlessBoard } from '../systems/endless-board.js';
-import { AIRCRAFT } from '../data/aircraft.js';
+import { exercisesLabelToWords, correctAnswersText } from './endless.js';
 
 const TOP_COUNT = 20;
 const REFRESH_MS = 20000;
@@ -80,15 +80,16 @@ function render(rows, note = '') {
     <div class="top20-podium-col top20-place-${place}${row && row.id === _myId ? ' is-me' : ''}">
       <b class="top20-podium-num">${place}</b>
       <span class="top20-podium-name">${row ? escapeHtml(row.name) : '—'}</span>
-      ${row ? `<span class="top20-podium-xp">${row.score.toLocaleString(numLocale())}</span>` : ''}
+      ${row ? `<span class="top20-podium-xp">${_board === 'endless' ? correctAnswersText(row.score, f) : row.score.toLocaleString(numLocale())}</span>` : ''}
     </div>`;
   const endless = _board === 'endless';
-  const plane = id => (AIRCRAFT[id]?.name || String(id || '')).split(' ')[0];
+  // INFINI: the player, their exercises in words, the correct answers
+  // (no plane, no errors shown).
   const list = rows.map(row => endless ? `
     <div class="top20-row top20-row-endless${row.id === _myId ? ' is-me' : ''}">
       <span class="top20-rank">${row.rank}</span>
-      <span class="top20-name">${escapeHtml(row.name)}<small>${escapeHtml(plane(row.aircraft))} · ${escapeHtml(row.exercises)}</small></span>
-      <span class="top20-xp top20-endless-score"><b>${row.correct}</b>✓ <em>${row.errors}✕</em></span>
+      <span class="top20-name">${escapeHtml(row.name)}<small>${escapeHtml(exercisesLabelToWords(row.exercises, f))}</small></span>
+      <span class="top20-endless-score"><b>${row.correct}</b><small>${escapeHtml(correctAnswersText(row.correct, f).replace(/^\d+\s/, ''))}</small></span>
     </div>` : `
     <div class="top20-row${row.id === _myId ? ' is-me' : ''}">
       <span class="top20-rank">${row.rank}</span>

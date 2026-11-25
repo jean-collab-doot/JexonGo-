@@ -2,7 +2,7 @@ import { $ } from '../utils/dom.js';
 import { uiIcon } from '../utils/icons.js';
 import { G } from '../state.js';
 import { applyI18n, t, getLang, numLocale } from '../i18n.js';
-import { save } from '../utils/storage.js';
+import { save, load } from '../utils/storage.js';
 import { updateSelectedPlaneShowcase, lobbyPlanes } from './menu.js';
 import { AIRCRAFT } from '../data/aircraft.js';
 import { makeBottomSheet } from '../utils/bottomsheet.js';
@@ -146,6 +146,14 @@ function renderTrainingSheet() {
     </div>
 
     <div class="practice-timer-row">
+      <span class="practice-timer-label">${getLang() === 'fr' ? 'PLEIN D’ESSENCE' : 'FULL TANK'}</span>
+      <div class="practice-timer-btns" id="training-fuel-btns">
+        <button class="practice-timer-btn" type="button" data-full-fuel="1">${getLang() === 'fr' ? 'OUI' : 'YES'}</button>
+        <button class="practice-timer-btn" type="button" data-full-fuel="0">${getLang() === 'fr' ? 'NON' : 'NO'}</button>
+      </div>
+    </div>
+
+    <div class="practice-timer-row">
       <span class="practice-timer-label">${t('practiceDifficulty')}</span>
       <div class="practice-timer-btns" id="training-diff-btns">
         ${PRACTICE_DIFFICULTIES.map(d => `<button class="practice-timer-btn" type="button" data-value="${d.id}">${t(d.labelKey)}</button>`).join('')}
@@ -224,6 +232,18 @@ function renderTrainingSheet() {
   };
   syncHearts();
   heartsBtn.addEventListener('click', () => { G.practiceHearts = !G.practiceHearts; syncHearts(); });
+
+  // PLEIN D'ESSENCE: OUI = the tank never empties (no gauge, as before);
+  // NON = the fuel works as in the levels (gauge, cans, leaks, tanker).
+  if (G.practiceFullFuel === undefined) G.practiceFullFuel = load('practiceFullFuel', true) !== false;
+  const fuelBtns = [...body.querySelectorAll('[data-full-fuel]')];
+  const syncFuel = () => fuelBtns.forEach(b => b.classList.toggle('ptb-active', (b.dataset.fullFuel === '1') === G.practiceFullFuel));
+  syncFuel();
+  fuelBtns.forEach(b => b.addEventListener('click', () => {
+    G.practiceFullFuel = b.dataset.fullFuel === '1';
+    save('practiceFullFuel', G.practiceFullFuel);
+    syncFuel();
+  }));
 
   const timerBtns = [...body.querySelectorAll('#training-timer-btns .practice-timer-btn')];
   const syncTimerBtns = () => {
