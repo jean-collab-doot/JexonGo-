@@ -99,7 +99,7 @@ export function openEndlessIntro(nav) {
     </div>`;
   el.querySelector('.endless-x').onclick = () => el.remove();
   el.querySelector('[data-play]').onclick = () => { el.remove(); nav.toEndless(); };
-  el.querySelector('[data-board]').onclick = () => openEndlessBoard();
+  el.querySelector('[data-board]').onclick = () => { el.remove(); openEndlessTab(); };
   el.querySelector('[data-change]').onclick = () => {
     el.remove();
     window._editLevelAndExercises?.(() => openEndlessIntro(nav));
@@ -183,7 +183,7 @@ export function showEndlessResult(result, nav) {
       </div>
     </div>`;
   el.querySelector('[data-menu]').onclick = () => el.remove();
-  el.querySelector('[data-board]').onclick = () => openEndlessBoard();
+  el.querySelector('[data-board]').onclick = () => { el.remove(); openEndlessTab(); };
   el.querySelector('[data-again]').onclick = () => { el.remove(); nav.toEndless(); };
   if (G.playerRegistered) {
     finishEndlessRun(result).then(status => {
@@ -196,7 +196,13 @@ export function showEndlessResult(result, nav) {
   }
 }
 
-// ── Leaderboard (its own page) ─────────────────────────────────────────────
+// CLASSEMENT: the TOP 20 MONDIAL page, on its INFINI tab (leaderboard.js).
+function openEndlessTab() {
+  if (window._openTop20) window._openTop20('endless');
+  else openEndlessBoard();
+}
+
+// ── Leaderboard (own page: fallback when the TOP 20 page is not there) ─────
 export async function openEndlessBoard() {
   const F = fr();
   const el = overlay('endless-board', 'is-board');

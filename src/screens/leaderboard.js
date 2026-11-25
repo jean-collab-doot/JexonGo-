@@ -2,6 +2,9 @@
 // Supabase table "leaderboard" (supabase/migrations/005). Two boards:
 //   EXP TOTAL    EXP earned since the start of the game
 //   MULTIJOUEUR  EXP of games won with a real player (not the bot)
+//   INFINI       ENDLESS MODE: its own board (systems/endless-board.js,
+//                migration 011): most correct answers, then fewest errors,
+//                then first reached; the two boards above are not changed
 // Podium for the top 3, then one orange row per player; the player's own row
 // is blue. While the panel is open it follows the table live (Supabase
 // Realtime), with a slow refresh as a fallback.
@@ -9,6 +12,8 @@ import { G } from '../state.js';
 import { getLang, numLocale } from '../i18n.js';
 import { getSupabaseClient, getSupabaseSession } from '../systems/supabase-client.js';
 import { pushLeaderboardScore } from '../systems/leaderboard-sync.js';
+import { fetchEndlessBoard } from '../systems/endless-board.js';
+import { AIRCRAFT } from '../data/aircraft.js';
 
 const TOP_COUNT = 20;
 const REFRESH_MS = 20000;
@@ -36,7 +41,15 @@ function escapeHtml(text) {
   return String(text).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 
+// ENDLESS board rows: score = correct answers, plus errors, plane, exercises.
+async function fetchEndlessTop() {
+  const rows = await fetchEndlessBoard(TOP_COUNT);
+  if (!rows) throw new Error('offline');
+  return rows.map(r => ({ ...r, score: r.correct }));
+}
+
 async function fetchTop(board) {
+  if (board === 'endless') return fetchEndlessTop();
   if (_tableMissing) throw Object.assign(new Error('missing'), { missing: true });
   const supabase = await getSupabaseClient();
   if (!supabase) throw new Error('offline');
@@ -69,7 +82,14 @@ function render(rows, note = '') {
       <span class="top20-podium-name">${row ? escapeHtml(row.name) : '—'}</span>
       ${row ? `<span class="top20-podium-xp">${row.score.toLocaleString(numLocale())}</span>` : ''}
     </div>`;
-  const list = rows.map(row => `
+  const endless = _board === 'endless';
+  const plane = id => (AIRCRAFT[id]?.name || String(id || '')).split(' ')[0];
+  const list = rows.map(row => endless ? `
+    <div class="top20-row top20-row-endless${row.id === _myId ? ' is-me' : ''}">
+      <span class="top20-rank">${row.rank}</span>
+      <span class="top20-name">${escapeHtml(row.name)}<small>${escapeHtml(plane(row.aircraft))} · ${escapeHtml(row.exercises)}</small></span>
+      <span class="top20-xp top20-endless-score"><b>${row.correct}</b>✓ <em>${row.errors}✕</em></span>
+    </div>` : `
     <div class="top20-row${row.id === _myId ? ' is-me' : ''}">
       <span class="top20-rank">${row.rank}</span>
       <span class="top20-name">${escapeHtml(row.name)}</span>
@@ -83,6 +103,7 @@ function render(rows, note = '') {
     <div class="top20-tabs" role="tablist">
       <button class="top20-tab${_board === 'solo' ? ' is-active' : ''}" type="button" data-board="solo">${f ? 'EXP TOTAL' : 'TOTAL EXP'}</button>
       <button class="top20-tab${_board === 'multi' ? ' is-active' : ''}" type="button" data-board="multi">${f ? 'MULTIJOUEUR' : 'MULTIPLAYER'}</button>
+      <button class="top20-tab${_board === 'endless' ? ' is-active' : ''}" type="button" data-board="endless">${f ? 'INFINI' : 'ENDLESS'}</button>
     </div>
     <div class="top20-podium">${slot(rows[1], 2)}${slot(rows[0], 1)}${slot(rows[2], 3)}</div>
     ${note ? `<p class="top20-note">${note}</p>` : ''}
@@ -90,6 +111,9 @@ function render(rows, note = '') {
     ${_board === 'multi' ? `<p class="top20-note">${f
       ? 'EXP des parties gagnées avec un vrai joueur (pas avec le bot).'
       : 'EXP from games won with a real player (not the bot).'}</p>` : ''}
+    ${endless ? `<p class="top20-note">${f
+      ? 'Mode Infini : le plus de bonnes réponses ; à égalité, le moins d’erreurs ; puis le premier arrivé.'
+      : 'Endless mode: most correct answers; on a tie, fewest errors; then whoever got there first.'}</p>` : ''}
     ${G.playerRegistered ? '' : `<p class="top20-note">${f
       ? 'Connecte-toi avec ton compte pour apparaître dans le classement.'
       : 'Sign in with your account to appear in the leaderboard.'}</p>`}`;
@@ -147,9 +171,11 @@ async function unsubscribeLive() {
   try { (await getSupabaseClient())?.removeChannel(channel); } catch (_) {}
 }
 
-export async function openLeaderboard() {
+// board: 'solo' | 'multi' | 'endless' (the Endless screens open their tab).
+export async function openLeaderboard(board) {
   const panel = $('lobby-top20');
   if (!panel) return;
+  if (typeof board === 'string' && (board === 'endless' || BOARDS[board])) _board = board;
   panel.classList.remove('hidden');
   _open = true;
   pushLeaderboardScore();   // our latest EXP goes up first
@@ -168,7 +194,8 @@ export function closeLeaderboard() {
 }
 
 export function initLeaderboard() {
-  $('btn-lobby-top20')?.addEventListener('click', openLeaderboard);
+  $('btn-lobby-top20')?.addEventListener('click', () => openLeaderboard());
+  window._openTop20 = board => openLeaderboard(board);
   $('btn-top20-close')?.addEventListener('click', closeLeaderboard);
   // A signed-in player's score is published at start-up too.
   pushLeaderboardScore();

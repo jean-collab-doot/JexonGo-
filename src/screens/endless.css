@@ -163,3 +163,11 @@
   #s-game .endless-hud { top: calc(max(6px, env(safe-area-inset-top)) + 84px); }
   #s-game.is-endless .tanker-banner.is-on { top: calc(max(6px, env(safe-area-inset-top)) + 136px); }
 }
+
+/* TOP 20 MONDIAL page, INFINI tab (leaderboard.js): plane and exercises under
+   the name, correct answers and errors on the right. */
+.top20-row-endless .top20-name { display: grid; gap: 3px; }
+.top20-row-endless .top20-name small { font-size: .7em; opacity: .9; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.top20-endless-score { gap: 4px; white-space: nowrap; }
+.top20-endless-score b { font-weight: normal; font-size: 1.15em; }
+.top20-endless-score em { font-style: normal; font-size: .8em; opacity: .85; margin-left: 4px; }
