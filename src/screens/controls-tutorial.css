@@ -1,0 +1,118 @@
+/* CONTROL TUTORIAL (game.js startCtlTutorial) and TWO-HANDS HELP bubbles. */
+
+/* Cards: buttons can be pressed (the card itself lets touches through). */
+html body #s-game .ctl-row { display: flex; gap: 10px; justify-content: center; align-items: center; flex-wrap: wrap; }
+html body #s-game .ctl-go, html body #s-game .ctl-skip { pointer-events: auto; cursor: pointer; font-family: var(--jx-font); border: 0; }
+html body #s-game .ctl-go {
+  padding: 10px 18px; border-radius: 14px; font-size: clamp(13px, 3.8vw, 16px);
+  color: var(--jx-accent-ink, #10182F); background: var(--jx-accent, #1EC8FF);
+  box-shadow: inset 0 0 0 2px var(--jx-accent-edge, #0B5E80), 0 4px 0 var(--jx-accent-edge, #0B5E80);
+}
+html body #s-game .ctl-go:active { transform: translateY(2px); background: var(--jx-accent-press, #0A9FD1); }
+html body #s-game .ctl-skip {
+  padding: 6px 12px; border-radius: 10px; font-size: 11px; color: var(--jx-ink);
+  background: rgba(122,58,0,.14); text-decoration: underline;
+}
+html body #s-game .ctl-flash { color: #c41a10; font-weight: bold; }
+html body #s-game .ctl-bravo { color: #fff; text-shadow: 2px 2px 0 #3f8a1f; animation: ctl-bravo .45s cubic-bezier(.2,1.6,.4,1); }
+@keyframes ctl-bravo { from { transform: scale(.5); opacity: 0; } }
+html body #s-game .ctl-thumbs-card { top: 10%; }
+
+/* Tags BOUGER / VISER. */
+html body #s-game .ctl-tag {
+  display: inline-block; padding: 3px 8px; border-radius: 8px; font-size: 11px; font-weight: normal;
+  color: #fff; background: #5b3410; box-shadow: 0 2px 0 #2c1806;
+}
+html body #s-game .ctl-tag-aim { background: var(--jx-orange-deep); box-shadow: 0 2px 0 var(--jx-orange-dk); }
+
+/* Phone held in both hands: left thumb slides (BOUGER), right thumb pushes
+   the orange cursor (VISER). Swapped when the cursor is on the left. */
+html body #s-game .ctl-phone { position: relative; width: 220px; height: 150px; margin: 4px auto 18px; }
+html body #s-game .ctl-phone-screen {
+  position: absolute; left: 40px; right: 40px; top: 0; bottom: 18px; border-radius: 14px;
+  background: linear-gradient(180deg, #3a78c9, #2a5da8); border: 5px solid #1d2433; box-sizing: border-box; overflow: hidden;
+}
+html body #s-game .ctl-phone-plane {
+  position: absolute; left: 50%; bottom: 26px; width: 0; height: 0; translate: -50% 0;
+  border-left: 9px solid transparent; border-right: 9px solid transparent; border-bottom: 18px solid #fff;
+  animation: ctl-plane 2s ease-in-out infinite;
+}
+@keyframes ctl-plane { 0%, 100% { margin-left: -22px; } 50% { margin-left: 22px; } }
+html body #s-game .ctl-phone-pad {
+  position: absolute; right: 8px; bottom: 8px; width: 34px; height: 34px; border-radius: 50%;
+  background: linear-gradient(180deg, #ffab3d, var(--jx-orange)); display: grid; place-items: center;
+}
+html body #s-game .ctl-phone-pad i { width: 14px; height: 14px; border-radius: 50%; background: var(--jx-yellow-hi); animation: ctl-padknob 2s ease-in-out infinite; }
+@keyframes ctl-padknob { 0%, 100% { transform: translate(-5px, -5px); } 50% { transform: translate(5px, -6px); } }
+html body #s-game .ctl-thumb {
+  position: absolute; bottom: 4px; width: 30px; height: 58px; border-radius: 15px 15px 12px 12px;
+  background: linear-gradient(180deg, #f2c8a0, #d9a273); box-shadow: inset 0 3px 0 rgba(255,255,255,.4), 0 2px 0 rgba(0,0,0,.25);
+}
+html body #s-game .ctl-thumb-move { left: 26px; transform-origin: 50% 100%; rotate: 30deg; animation: ctl-thumb-move 2s ease-in-out infinite; }
+html body #s-game .ctl-thumb-aim { right: 22px; transform-origin: 50% 100%; rotate: -30deg; animation: ctl-thumb-aim 2s ease-in-out infinite; }
+@keyframes ctl-thumb-move { 0%, 100% { translate: -6px 0; } 50% { translate: 14px -6px; } }
+@keyframes ctl-thumb-aim { 0%, 100% { translate: 0 0; } 50% { translate: 4px -4px; } }
+html body #s-game .ctl-phone .ctl-tag { position: absolute; bottom: -18px; }
+html body #s-game .ctl-phone .ctl-tag-move { left: 0; }
+html body #s-game .ctl-phone .ctl-tag-aim { right: 0; }
+/* Cursor on the left: mirror the hands. */
+html body #s-game .ctl-phone.is-swapped .ctl-phone-pad { right: auto; left: 8px; }
+html body #s-game .ctl-phone.is-swapped .ctl-thumb-move { left: auto; right: 22px; rotate: -30deg; }
+html body #s-game .ctl-phone.is-swapped .ctl-thumb-aim { right: auto; left: 26px; rotate: 30deg; }
+html body #s-game .ctl-phone.is-swapped .ctl-tag-move { left: auto; right: 0; }
+html body #s-game .ctl-phone.is-swapped .ctl-tag-aim { right: auto; left: 0; }
+
+/* Computer: left hand keys, right hand mouse. */
+html body #s-game .ctl-desk { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; width: 100%; }
+html body #s-game .ctl-desk-hand {
+  display: grid; justify-items: center; gap: 6px; padding: 8px; border-radius: 12px; background: rgba(122,58,0,.1);
+}
+html body #s-game .ctl-desk-hand small { font-size: 10px; }
+html body #s-game .ctl-desk-hand em { font-style: normal; font-size: 11px; min-height: 1em; }
+html body #s-game .ctl-desk-keys { display: grid; grid-template-columns: repeat(3, 26px); gap: 3px; }
+html body #s-game .ctl-desk-keys .ctl-key { width: 26px; height: 24px; font-size: 11px; }
+html body #s-game .ctl-desk-keys .ctl-key:first-child { grid-column: 2; }
+html body #s-game .ctl-desk-keys .ctl-key:nth-child(2) { grid-column: 1; animation: ctl-press 1.2s ease-in-out infinite; }
+html body #s-game .ctl-desk-keys .ctl-key:nth-child(4) { animation: ctl-press 1.2s ease-in-out .6s infinite; }
+html body #s-game .ctl-desk-mouse {
+  position: relative; width: 30px; height: 44px; border-radius: 15px; background: #fff; border: 3px solid #5b3410;
+  animation: ctl-mouse 2s ease-in-out infinite;
+}
+html body #s-game .ctl-desk-mouse i { position: absolute; left: 50%; top: 6px; width: 3px; height: 9px; margin-left: -1.5px; background: #5b3410; border-radius: 2px; }
+@keyframes ctl-mouse { 0%, 100% { translate: -14px 0; } 50% { translate: 14px 0; } }
+
+/* Stuck 6 s: a small version of the thumbs comes back for a moment. */
+html body #s-game .ctl-help {
+  left: 50%; top: 44%; transform: translateX(-50%); padding: 8px 10px 4px; border-radius: 14px;
+  background: rgba(255,250,240,.94); box-shadow: 0 6px 18px rgba(0,0,0,.3); animation: ctl-pop .25s ease-out;
+}
+html body #s-game .ctl-phone.is-mini { transform: scale(.75); margin: -14px auto 0; }
+html body #s-game .ctl-desk.is-mini { width: 260px; transform: scale(.9); }
+
+/* The orange cursor during the tutorial: "VISER" above it, a soft pulse,
+   never pale. */
+html body #s-game .aim-pad.ctl-viser { opacity: 1 !important; filter: none !important; animation: ctl-pad-pulse 1.6s ease-in-out infinite; }
+html body #s-game .aim-pad.ctl-viser::after {
+  content: attr(data-label); position: absolute; left: 50%; bottom: calc(100% + 8px); translate: -50% 0;
+  padding: 3px 9px; border-radius: 8px; font-family: var(--jx-font); font-size: 12px; color: #fff;
+  background: var(--jx-orange-deep); box-shadow: 0 2px 0 var(--jx-orange-dk); white-space: nowrap; pointer-events: none;
+}
+@keyframes ctl-pad-pulse { 0%, 100% { box-shadow: 0 4px 0 var(--jx-orange-dk), 0 0 0 0 rgba(255,171,61,.6); } 50% { box-shadow: 0 4px 0 var(--jx-orange-dk), 0 0 0 12px rgba(255,171,61,0); } }
+/* The plane flies behind the cursor: the cursor fades, the plane shows. */
+html body #s-game .aim-pad.is-under-plane { opacity: .3 !important; }
+
+/* Two-hands help bubbles (first 3 games). */
+html body #s-game .ctl-bubble {
+  display: flex; align-items: center; gap: 8px; max-width: min(70vw, 280px);
+  padding: 8px 12px; border-radius: 14px; font-size: clamp(11px, 3.2vw, 14px); line-height: 1.35;
+  background: #fffaf0; border: 3px solid var(--jx-orange); box-shadow: 0 4px 0 var(--jx-orange-dk);
+  bottom: calc(max(22px, env(safe-area-inset-bottom) + 14px) + 104px); animation: ctl-pop .25s ease-out;
+}
+html body #s-game .ctl-bubble .ui-icon { flex: 0 0 auto; width: 20px; height: 20px; color: var(--jx-orange-deep); }
+html body #s-game .ctl-bubble.is-right { right: 12px; }
+html body #s-game .ctl-bubble.is-left { left: 12px; }
+html body #s-game .ctl-bubble.is-desk { left: 50%; transform: translateX(-50%); bottom: auto; top: 22%; }
+
+@media (prefers-reduced-motion: reduce) {
+  html body #s-game .ctl-phone *, html body #s-game .ctl-desk *, html body #s-game .aim-pad.ctl-viser, html body #s-game .ctl-bravo { animation: none !important; }
+}

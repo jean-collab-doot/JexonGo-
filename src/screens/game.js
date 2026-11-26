@@ -2004,7 +2004,7 @@ function releaseAimLessonPlane(lesson) {
 // No enemy fires from the first lesson shot until the player's turn is over
 // (between the two lessons too).
 function aimLessonHoldsFire() {
-  return !!_aimLesson || (_guidedRun && _aimLessonShots === 1);
+  return !!_ctl || !!_aimLesson || (_guidedRun && _aimLessonShots === 1);
 }
 
 function aimLessonTargetValid(e) {
@@ -2155,10 +2155,379 @@ function clearAimLesson() {
 }
 
 function clearControlHints() {
+  clearCtlTutorial();
   _introFly?.el?.remove(); _introFly = null;
   _introAnswerEl?.remove(); _introAnswerEl = null;
   clearAimLesson();
   _introSlowBlend = 1;
+}
+
+
+// ── CONTROL TUTORIAL (beginner practice, _guidedRun) ─────────────────────────
+// Replaces the 4 directions and the self-aiming EXAMPLE: it teaches to play
+// with both hands (phone: left thumb moves, right thumb on the orange aim
+// cursor; computer: keys move, the mouse aims) in 3 steps that one hand
+// cannot finish:
+//   0) a card "Joue avec tes 2 pouces !" (phone) / the two hands' controls
+//      (computer), a few seconds or C'EST PARTI;
+//   1) BOUGE: fly the plane into a glowing zone;
+//   2) VISE: the game fires by itself, aim at a still plane with the cursor;
+//   3) LES DEUX: aim at a plane while dodging harmless missiles; it only
+//      counts if the plane moved and aimed at the same time for 1 s.
+// "Bien joué !" after each step; stuck 6 s: the thumbs come back. PASSER skips.
+// Then the first question (its answer shown) and the run goes on as before.
+const CTL_HELP_MS = 6000;
+const CTL_BRAVO_MS = 1000;
+const CTL_BOTH_MS = 1000;
+let _ctl = null;
+let _lastAimInputAt = 0;
+
+function ctlMoveInput() {
+  return !!(keys.ArrowRight || keys.ArrowLeft || keys.ArrowUp || keys.ArrowDown || keys.d || keys.a || keys.w || keys.s)
+    || Math.abs(_jsVelX) > 0.05 || Math.abs(_jsVelY) > 0.05;
+}
+function ctlAimInput(now = performance.now()) {
+  return _aimPadTouch != null || now - _lastAimInputAt < 350;
+}
+function ctlPadLeft() {
+  return !!document.getElementById('aim-pad')?.classList.contains('aim-pad-left');
+}
+
+// The two thumbs on a phone held in both hands (left: BOUGER, right on the
+// orange cursor: VISER; swapped when the cursor is on the left), or the two
+// hands' controls on a computer.
+function ctlThumbsHtml(mini = false) {
+  const fr = _ctlFr();
+  const kid = gentleFx();
+  if (!isTouchMobile()) {
+    return `<div class="ctl-desk${mini ? ' is-mini' : ''}" aria-hidden="true">
+      <div class="ctl-desk-hand"><small>${fr ? 'MAIN GAUCHE' : 'LEFT HAND'}</small>
+        <div class="ctl-desk-keys"><span class="ctl-key">▲</span><span class="ctl-key">◀</span><span class="ctl-key">▼</span><span class="ctl-key">▶</span></div>
+        <em>${fr ? 'ou W A S D' : 'or W A S D'}</em><b class="ctl-tag ctl-tag-move">${fr ? 'BOUGER' : 'MOVE'}</b></div>
+      <div class="ctl-desk-hand"><small>${fr ? 'MAIN DROITE' : 'RIGHT HAND'}</small>
+        <span class="ctl-desk-mouse"><i></i></span>
+        <em>${kid ? '&nbsp;' : (fr ? 'sans cliquer' : 'no click')}</em><b class="ctl-tag ctl-tag-aim">${fr ? 'VISER' : 'AIM'}</b></div>
+    </div>`;
+  }
+  const swap = ctlPadLeft();
+  return `<div class="ctl-phone${mini ? ' is-mini' : ''}${swap ? ' is-swapped' : ''}" aria-hidden="true">
+    <div class="ctl-phone-screen"><span class="ctl-phone-plane"></span><span class="ctl-phone-pad"><i></i></span></div>
+    <span class="ctl-thumb ctl-thumb-move"></span><span class="ctl-thumb ctl-thumb-aim"></span>
+    <b class="ctl-tag ctl-tag-move">${fr ? 'BOUGER' : 'MOVE'}</b><b class="ctl-tag ctl-tag-aim">${fr ? 'VISER' : 'AIM'}</b>
+  </div>`;
+}
+
+function ctlStepText(phase) {
+  const fr = _ctlFr();
+  const kid = gentleFx();
+  const touch = isTouchMobile();
+  if (phase === 'move') {
+    return kid ? { t: fr ? 'BOUGE !' : 'MOVE!', p: fr ? 'Va dans le cercle.' : 'Go to the circle.' }
+      : { t: fr ? '1/3 · BOUGE' : '1/3 · MOVE', p: touch ? (fr ? 'Pouce gauche : glisse pour amener l’avion dans le cercle.' : 'Left thumb: slide to fly the plane into the circle.')
+        : (fr ? 'Flèches ou W A S D : amène l’avion dans le cercle.' : 'Arrows or W A S D: fly the plane into the circle.') };
+  }
+  if (phase === 'aim') {
+    return kid ? { t: fr ? 'VISE !' : 'AIM!', p: touch ? (fr ? 'Pousse VISER vers l’avion.' : 'Push AIM toward the plane.') : (fr ? 'La souris vers l’avion.' : 'Mouse toward the plane.') }
+      : { t: fr ? '2/3 · VISE' : '2/3 · AIM', p: touch ? (fr ? 'Pouce droit : pousse le curseur VISER vers l’avion rouge.' : 'Right thumb: push the AIM cursor toward the red plane.')
+        : (fr ? 'Souris : bouge-la vers l’avion rouge (sans cliquer).' : 'Mouse: move it toward the red plane (no click).') };
+  }
+  return kid ? { t: fr ? 'LES DEUX !' : 'BOTH!', p: fr ? 'Bouge ET vise.' : 'Move AND aim.' }
+    : { t: fr ? '3/3 · LES DEUX' : '3/3 · BOTH', p: touch ? (fr ? 'Évite les missiles avec le pouce gauche ET vise avec le pouce droit.' : 'Dodge the missiles with your left thumb AND aim with your right thumb.')
+      : (fr ? 'Évite les missiles avec le clavier ET vise avec la souris.' : 'Dodge the missiles with the keys AND aim with the mouse.') };
+}
+
+function ctlSkipButton() {
+  return `<button class="ctl-skip" type="button" data-ctl-skip>${_ctlFr() ? 'PASSER' : 'SKIP'}</button>`;
+}
+
+function startCtlTutorial() {
+  if (_ctl) return;
+  G.enemies = [];
+  G.enemyMissiles = [];
+  const fr = _ctlFr();
+  const card = _ctlHintEl('ctl-move ctl-thumbs-card', '');
+  _ctl = { sid: _sessionId, phase: 'thumbs', el: card, help: null, helpUntil: 0, start: performance.now(),
+    stepStart: 0, lastProgressAt: 0, bravoUntil: 0, next: '', zone: null, target: null, obstacles: [],
+    nextObstacleAt: 0, bothMs: 0, lastTs: 0, flash: '' };
+  card.innerHTML = `<p><strong class="ctl-title">${isTouchMobile() ? (fr ? 'JOUE AVEC TES 2 POUCES !' : 'PLAY WITH BOTH THUMBS!')
+    : (fr ? 'JOUE AVEC TES 2 MAINS !' : 'PLAY WITH BOTH HANDS!')}</strong></p>${ctlThumbsHtml()}
+    <div class="ctl-row"><button class="ctl-go" type="button" data-ctl-go>${fr ? 'C’EST PARTI !' : 'LET’S GO!'}</button>${ctlSkipButton()}</div>`;
+  ctlBindButtons(card);
+  const pad = document.getElementById('aim-pad');
+  if (pad) { pad.dataset.label = fr ? 'VISER' : 'AIM'; pad.classList.add('ctl-viser'); }
+}
+
+function ctlBindButtons(el) {
+  el.querySelector('[data-ctl-go]')?.addEventListener('click', e => { e.stopPropagation(); if (_ctl?.phase === 'thumbs') ctlBeginStep('move'); });
+  el.querySelector('[data-ctl-skip]')?.addEventListener('click', e => { e.stopPropagation(); finishCtlTutorial(); });
+  el.querySelectorAll('button').forEach(b => {
+    b.addEventListener('touchstart', e => e.stopPropagation(), { passive: true });
+    b.addEventListener('pointerdown', e => e.stopPropagation());
+  });
+}
+
+function ctlRenderCard() {
+  const c = _ctl;
+  if (!c?.el) return;
+  const s = ctlStepText(c.phase);
+  c.el.classList.remove('ctl-done', 'ctl-thumbs-card');
+  c.el.innerHTML = `<p><strong class="ctl-title">${s.t}</strong></p><p>${s.p}</p>${c.flash ? `<p class="ctl-flash">${c.flash}</p>` : ''}<div class="ctl-row">${ctlSkipButton()}</div>`;
+  ctlBindButtons(c.el);
+}
+
+function ctlBeginStep(phase) {
+  const c = _ctl;
+  if (!c) return;
+  const now = performance.now();
+  c.phase = phase; c.stepStart = now; c.lastProgressAt = now; c.flash = ''; c.bothMs = 0;
+  ctlRemoveTarget();
+  c.obstacles = [];
+  c.zone = null;
+  _shootingWindowUntil = 0;
+  if (phase === 'move') {
+    const left = G.player.x > canvas.width / 2;
+    c.zone = { x: canvas.width * (left ? 0.24 : 0.76), y: G.player.y, r: getPlayerSize() * 0.75 };
+  } else if (phase === 'aim' || phase === 'both') {
+    ctlSpawnTarget(G.player.x > canvas.width / 2 ? 'left' : 'right');
+    c.nextObstacleAt = now + 900;
+  }
+  ctlRenderCard();
+}
+
+// A still enemy plane to shoot (speed 0), high on one side.
+function ctlSpawnTarget(side) {
+  const c = _ctl;
+  if (!c) return;
+  const e = spawnEnemy(canvas.width, 'basic');
+  e.x = canvas.width * (side === 'left' ? 0.24 : 0.76);
+  e.y = Math.min(canvas.height * 0.48, G.player.y - getPlayerSize() * 2.6);   // under the step card
+  e.speed = 0;
+  e.ctlTarget = true;
+  G.enemies.push(e);
+  c.target = e;
+}
+function ctlRemoveTarget() {
+  const c = _ctl;
+  if (c?.target) { c.target.active = false; c.target = null; }
+}
+
+// A player missile shot a plane down (onMissileHit).
+function ctlTargetDown(enemy) {
+  const c = _ctl;
+  if (!c || enemy !== c.target || c.bravoUntil) return;
+  c.target = null;
+  if (c.phase === 'aim') { ctlBravo('both'); return; }
+  if (c.phase === 'both') {
+    if (c.bothMs >= CTL_BOTH_MS) { ctlBravo('done'); return; }
+    // Hit with one hand only: again, both at once.
+    c.flash = _ctlFr() ? 'Bouge ET vise en même temps !' : 'Move AND aim at the same time!';
+    ctlRenderCard();
+    ctlSpawnTarget(G.player.x > canvas.width / 2 ? 'left' : 'right');
+  }
+}
+
+function ctlBravo(next) {
+  const c = _ctl;
+  if (!c) return;
+  c.bravoUntil = performance.now() + CTL_BRAVO_MS;
+  c.next = next;
+  c.obstacles = [];
+  c.zone = null;
+  _shootingWindowUntil = 0;
+  SFX.streak?.();
+  c.el.classList.add('ctl-done');
+  c.el.innerHTML = `<p><strong class="ctl-title ctl-bravo">${_ctlFr() ? 'BIEN JOUÉ !' : 'WELL DONE!'}</strong></p>`;
+  ctlHideHelp();
+}
+
+function ctlShowHelp(now) {
+  const c = _ctl;
+  if (!c || c.help) return;
+  c.help = _ctlHintEl('ctl-help', ctlThumbsHtml(true));
+  c.helpUntil = now + 3500;
+}
+function ctlHideHelp() {
+  _ctl?.help?.remove();
+  if (_ctl) { _ctl.help = null; _ctl.helpUntil = 0; }
+}
+
+function finishCtlTutorial() {
+  const c = _ctl;
+  if (!c) return;
+  const sid = c.sid;
+  ctlRemoveTarget();
+  c.el?.remove();
+  c.help?.remove();
+  _ctl = null;
+  _shootingWindowUntil = 0;
+  document.getElementById('aim-pad')?.classList.remove('ctl-viser');
+  _introFlyDone = true;
+  _aimLessonShots = 2;   // the old aiming lessons are not needed any more
+  setTimeout(() => { if (_sessionId === sid) nextQuestion(); }, 0);
+}
+
+function clearCtlTutorial() {
+  if (!_ctl) return;
+  ctlRemoveTarget();
+  _ctl.el?.remove();
+  _ctl.help?.remove();
+  _ctl = null;
+  document.getElementById('aim-pad')?.classList.remove('ctl-viser');
+}
+
+function updateCtlTutorial(now) {
+  const c = _ctl;
+  if (!c) return;
+  const ms = c.lastTs ? Math.min(100, now - c.lastTs) : 16;
+  c.lastTs = now;
+  if (c.help && now > c.helpUntil) ctlHideHelp();
+  if (c.phase === 'thumbs') {
+    if (now - c.start > 6000) ctlBeginStep('move');
+    return;
+  }
+  if (c.bravoUntil) {
+    if (now < c.bravoUntil) return;
+    c.bravoUntil = 0;
+    if (c.next === 'done') { finishCtlTutorial(); return; }
+    ctlBeginStep(c.next);
+    return;
+  }
+  const move = ctlMoveInput();
+  const aim = ctlAimInput(now);
+  if (c.phase === 'move') {
+    if (move) c.lastProgressAt = now;
+    if (Math.hypot(G.player.x - c.zone.x, G.player.y - c.zone.y) < c.zone.r) { ctlBravo('aim'); return; }
+  } else {
+    // The game fires by itself during the aiming steps.
+    _shootingWindowUntil = now + 1500;
+    if (!c.target || !c.target.active) ctlSpawnTarget(G.player.x > canvas.width / 2 ? 'left' : 'right');
+    if (c.phase === 'aim' && aim) c.lastProgressAt = now;
+    if (c.phase === 'both') {
+      if (move && aim) { c.bothMs += ms; c.lastProgressAt = now; }
+      // Harmless missiles fall at the plane: dodge them.
+      if (now >= c.nextObstacleAt) {
+        c.nextObstacleAt = now + 1300;
+        c.obstacles.push({ x: G.player.x, y: -20 });
+      }
+      const speed = canvas.height / 2300;   // about 2.3 s to fall
+      const hitR = getPlayerSize() * 0.38;
+      for (const o of c.obstacles) {
+        o.y += speed * ms;
+        if (!o.hit && Math.abs(o.x - G.player.x) < hitR && Math.abs(o.y - G.player.y) < hitR) {
+          o.hit = true;
+          shakeFrames = 8;
+          c.bothMs = 0;
+          c.flash = _ctlFr() ? 'Touché ! Évite les missiles en bougeant.' : 'Hit! Dodge the missiles by moving.';
+          ctlRenderCard();
+        }
+      }
+      c.obstacles = c.obstacles.filter(o => !o.hit && o.y < canvas.height + 30);
+    }
+  }
+  if (now - c.lastProgressAt > CTL_HELP_MS) { ctlShowHelp(now); c.lastProgressAt = now; }
+}
+
+// The zone to reach (with an arrow from the plane), the target's ring, the
+// falling missiles.
+function drawCtlTutorial(fromX, fromY) {
+  const c = _ctl;
+  if (!c || c.bravoUntil) return;
+  const unit = Math.max(1, canvas.width / (canvas.clientWidth || canvas.width));
+  const pulse = (performance.now() % 900) / 900;
+  ctx.save();
+  if (c.zone) {
+    const z = c.zone;
+    ctx.lineWidth = 5 * unit;
+    ctx.strokeStyle = `rgba(30,200,255,${0.95 - pulse * 0.45})`;
+    ctx.fillStyle = 'rgba(30,200,255,.18)';
+    ctx.beginPath(); ctx.arc(z.x, z.y, z.r * (1 + pulse * 0.08), 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    // Arrow from the plane toward the zone.
+    const dx = Math.sign(z.x - fromX) || 1;
+    const x0 = fromX + dx * getPlayerSize() * 0.7, x1 = x0 + dx * (40 + pulse * 18) * unit;
+    ctx.strokeStyle = '#1EC8FF'; ctx.lineWidth = 7 * unit; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(x0, fromY); ctx.lineTo(x1, fromY); ctx.stroke();
+    ctx.fillStyle = '#1EC8FF';
+    ctx.beginPath(); ctx.moveTo(x1 + dx * 16 * unit, fromY); ctx.lineTo(x1, fromY - 12 * unit); ctx.lineTo(x1, fromY + 12 * unit); ctx.closePath(); ctx.fill();
+  }
+  const e = c.target;
+  if (e?.active) {
+    const r = getEnemyDrawSize(e) * 0.62 + pulse * 6 * unit;
+    ctx.lineWidth = 4 * unit;
+    ctx.strokeStyle = `rgba(255,59,48,${0.95 - pulse * 0.4})`;
+    ctx.beginPath(); ctx.arc(e.x, e.y, r, 0, Math.PI * 2); ctx.stroke();
+  }
+  // Falling missiles: a white body, a red nose pointing down, a flame on top.
+  for (const o of c.obstacles) {
+    const w = 9 * unit, h = 24 * unit;
+    const flick = 0.7 + Math.random() * 0.3;
+    ctx.fillStyle = '#ffb13b';
+    ctx.beginPath(); ctx.moveTo(o.x - w * 0.35, o.y - h); ctx.lineTo(o.x + w * 0.35, o.y - h); ctx.lineTo(o.x, o.y - h - 12 * unit * flick); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#f2f2f2';
+    ctx.strokeStyle = '#3a3a3a';
+    ctx.lineWidth = 1.5 * unit;
+    ctx.fillRect(o.x - w / 2, o.y - h, w, h - 6 * unit);
+    ctx.strokeRect(o.x - w / 2, o.y - h, w, h - 6 * unit);
+    ctx.fillStyle = '#ff3b30';
+    ctx.beginPath(); ctx.moveTo(o.x - w / 2, o.y - 6 * unit); ctx.lineTo(o.x + w / 2, o.y - 6 * unit); ctx.lineTo(o.x, o.y + 4 * unit); ctx.closePath(); ctx.fill(); ctx.stroke();
+  }
+  ctx.restore();
+}
+
+// ── TWO-HANDS HELP (first 3 games) ──────────────────────────────────────────
+// A player who never aims (or never moves) for a while gets a small bubble:
+// "Utilise ton pouce droit pour viser" / "... gauche pour bouger" (computer:
+// the mouse / the keys). It goes away with the right move, and never comes
+// back once the player has moved and aimed together (saved).
+const HAND_HELP_GAMES = 3;
+const HAND_AIM_IDLE_MS = 12000;
+const HAND_MOVE_IDLE_MS = 15000;
+let _hand = null;   // { aimIdle, moveIdle, lastMove, lastAim, kind, el, lastTs }
+
+function startHandHelp() {
+  _hand?.el?.remove();
+  _hand = null;
+  if (_guidedRun || _tutorialActive || load('twoHandsLearned', false)) return;
+  const n = Number(load('twoHandsGames', 0)) || 0;
+  if (n >= HAND_HELP_GAMES) return;
+  save('twoHandsGames', n + 1);
+  _hand = { aimIdle: 0, moveIdle: 0, lastMove: 0, lastAim: 0, kind: '', el: null, lastTs: 0 };
+}
+
+function handBubble(kind) {
+  const fr = _ctlFr();
+  const touch = isTouchMobile();
+  const text = kind === 'aim'
+    ? (touch ? (fr ? 'Utilise ton pouce droit pour viser' : 'Use your right thumb to aim') : (fr ? 'Bouge la souris pour viser' : 'Move the mouse to aim'))
+    : (touch ? (fr ? 'Utilise ton pouce gauche pour bouger' : 'Use your left thumb to move') : (fr ? 'Flèches ou W A S D pour bouger' : 'Arrows or W A S D to move'));
+  const icon = kind === 'aim' ? uiIcon('target') : uiIcon('plane');
+  const side = kind === 'aim' ? (ctlPadLeft() ? 'is-left' : 'is-right') : (ctlPadLeft() ? 'is-right' : 'is-left');
+  return _ctlHintEl(`ctl-bubble ctl-bubble-${kind} ${touch ? side : 'is-desk'}`, `${icon}<span>${text}</span>`);
+}
+
+function updateHandHelp(now) {
+  const h = _hand;
+  if (!h) return;
+  const ms = h.lastTs ? Math.min(250, now - h.lastTs) : 16;
+  h.lastTs = now;
+  const move = ctlMoveInput();
+  const aim = ctlAimInput(now);
+  if (move) h.lastMove = now;
+  if (aim) h.lastAim = now;
+  // Moved and aimed together: learned for good.
+  if (h.lastMove && h.lastAim && Math.abs(h.lastMove - h.lastAim) < 1500) {
+    save('twoHandsLearned', true);
+    h.el?.remove();
+    _hand = null;
+    return;
+  }
+  if (manualAimEnabled() && aimVisible(now) && !aim) h.aimIdle += ms;
+  if (!move && planeFlying() && G.enemies.some(e => e.active)) h.moveIdle += ms;
+  if (h.kind === 'aim' && aim) { h.el?.remove(); h.el = null; h.kind = ''; h.aimIdle = 0; }
+  if (h.kind === 'move' && move) { h.el?.remove(); h.el = null; h.kind = ''; h.moveIdle = 0; }
+  if (!h.kind) {
+    if (manualAimEnabled() && h.aimIdle > HAND_AIM_IDLE_MS) { h.kind = 'aim'; h.el = handBubble('aim'); }
+    else if (h.moveIdle > HAND_MOVE_IDLE_MS) { h.kind = 'move'; h.el = handBubble('move'); }
+  }
 }
 
 function updateControlHints(now) {
@@ -2246,7 +2615,18 @@ function updateAim() {
     if (pad.classList.contains('is-idle') === show) pad.classList.toggle('is-idle', !show);
   }
   if (canvas) canvas.classList.toggle('aiming', show && !isTouchMobile());
+  // The cursor never hides the plane: it fades while the plane is behind it.
+  if (pad && isTouchMobile() && (tick % 6 === 0) && canvas && G.player) {
+    const pr = pad.getBoundingClientRect();
+    const cr = _canvasRect || canvas.getBoundingClientRect();
+    const k = cr.width / (canvas.width || 1);
+    const px = cr.left + G.player.x * k, py = cr.top + G.player.y * k, half = getPlayerSize() * k * 0.45;
+    const under = px + half > pr.left && px - half < pr.right && py + half > pr.top && py - half < pr.bottom;
+    if (pad.classList.contains('is-under-plane') !== under) pad.classList.toggle('is-under-plane', under);
+  }
   if (_introFly || _aimLesson) updateControlHints(now);
+  if (_ctl) updateCtlTutorial(now);
+  updateHandHelp(now);
 }
 
 // The extra angle every player shot gets (0 with homing weapons).
@@ -2289,6 +2669,7 @@ function canvasAimMove(e) {
   if (isTouchMobile()) return;
   const r = _canvasRect || (_canvasRect = canvas.getBoundingClientRect());
   _aimCursor = _cssToCanvas(e.clientX - r.left, e.clientY - r.top);
+  _lastAimInputAt = performance.now();
 }
 function canvasAimLeave() { _aimCursor = null; }
 
@@ -2310,6 +2691,7 @@ function aimPadTouch(e) {
   const k = Math.min(dist, max) / (dist || 1);
   if (knob) knob.style.transform = `translate(${dx * k}px, ${dy * k}px)`;
   if (dist > 8) _aimTarget = aimAngleTo(dx, dy);
+  _lastAimInputAt = performance.now();
 }
 function aimPadRelease(e) {
   if ([...(e.changedTouches || [])].some(t => t.identifier === _aimPadTouch)) {
@@ -2364,6 +2746,13 @@ function onKeyDown(e) {
     _gameCT.delete('i'); _gameCT.delete('n');
     G.correctAnswers += 10 - (G.correctAnswers % 10);
     endlessOnCorrect();
+  }
+  // Test version only (not jexongo.app): H + M starts the two-hands help
+  // again, as for a new player (3 games, bubbles).
+  if (_gameCheatHeld(['h', 'm']) && !/(^|\.)jexongo\.app$/.test(location.hostname)) {
+    _gameCT.delete('h'); _gameCT.delete('m');
+    save('twoHandsLearned', false); save('twoHandsGames', 0);
+    window._showToast?.(getLang() === 'fr' ? 'Aide 2 mains remise à zéro' : 'Two-hands help reset');
   }
   if (_gameCheatHeld(['q', 'w', 'e']))        _killBoss();
   if (_gameCheatHeld(['r', 'm', 'h', 'u']))   _winLevel();
@@ -3836,6 +4225,7 @@ function frame(ts = 0) {
   updateAim();
   if (!_playerDestroyed) drawAimLine(playerDrawX, playerDrawY);
   if (!_playerDestroyed && _introFly) drawIntroFlyArrow(playerDrawX, playerDrawY);
+  if (!_playerDestroyed && _ctl) drawCtlTutorial(playerDrawX, playerDrawY);
   if (_aimLesson) drawAimLessonTarget();
 
   // ── Weather (rain, storm, fog, snow…) over the whole playfield ──────────
@@ -4803,7 +5193,9 @@ function updatePlayerAutoFire(now = performance.now()) {
   const plan = activeShootingPlan();
   const xrayActive = airdropWeaponActive(now);
   const machineGunActive = xrayActive && G.airdropWeapon === 'machinegun';
-  const cadenceMs = machineGunActive ? 300 : xrayActive ? 500 : Math.max(0.35, shotDelaySeconds(Number(plan?.cadence || 5) * (activeAircraftAbility().fireRate || 1))) * 1000;
+  const cadenceMs = machineGunActive ? 300 : xrayActive ? 500
+    : _ctl ? 650   // control tutorial: quick shots while the player aims
+    : Math.max(0.35, shotDelaySeconds(Number(plan?.cadence || 5) * (activeAircraftAbility().fireRate || 1))) * 1000;
   const inShootingWindow = xrayActive || _shootingWindowUntil > now;
 
   if (G.airdropXrayShotReset) {
@@ -5330,6 +5722,7 @@ function onMissileHit(enemy, missile) {
   if (enemy.type === 'boss' && missile?.type === 'player-gau8') damage = A10_BOSS_SHELL_DAMAGE;
   const destroyed = hitEnemy(enemy, damage);
   if (destroyed) aimLessonTargetDown(enemy);   // tutorial: the marked plane
+  if (destroyed) ctlTargetDown(enemy);         // control tutorial: its target
   if (enemy.type === 'boss') updateBossHealthBar(enemy);
   if (destroyed) {
     if (enemy.type === 'boss') startBossDeath(enemy);
@@ -5362,7 +5755,7 @@ function nextQuestion() {
   if (G.question && !G.answerLocked) return;
   stopShootingWindow();
   // Tutorial: 10 s of flying lessons before the first question.
-  if (_guidedRun && !_introFlyDone && G.questionsAnswered === 0) { startIntroFly(); return; }
+  if (_guidedRun && !_introFlyDone && G.questionsAnswered === 0) { startCtlTutorial(); return; }
   const questionTarget = isTutorialActive() ? tutorialQuestionTarget()
     : _guidedRun ? GUIDED_QUESTIONS : levelCfg.questionCount;
   if (!levelCfg.isBossLevel && G.questionsAnswered >= questionTarget) {
@@ -7313,6 +7706,7 @@ export function initGame(levelNum, onComplete) {
   // New-player practice run (main.js startPracticeFromOnboarding): 10
   // questions, 1-5 free (no timer, infinite lives), 6-10 timed with 3 lives.
   _guidedRun = !!G.practiceMode && !!G.onboardingPracticeRun;
+  startHandHelp();   // first 3 games: "use your right thumb to aim" bubbles
   G.coopWinXp = false;   // a new game: nothing won with a teammate yet
   G.onboardingPracticeRun = false;
   _guidedLives = GUIDED_LIVES;
