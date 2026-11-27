@@ -31,6 +31,7 @@ import { tipFor, tipLines } from '../game/tips.js';
 import { makeFractionQuestion } from '../game/fractions.js';
 import { makePercentQuestion } from '../game/percentages.js';
 import { makeDecimalQuestion, sameDecimal } from '../game/decimals.js';
+import { exerciseQuestion, getExerciseChoice, choiceLabel, resetExerciseSequence } from '../systems/exercise-choice.js';
 import { endlessHearts, endlessWave, ENDLESS_WAVE_ANSWERS, ENDLESS_STEP_COINS, ENDLESS_STEP_XP, ENDLESS_MIN_ANSWER_S } from '../data/endless.js';
 import { showEndlessHud, updateEndlessHud, endlessStepFx, hideEndlessHud, endlessExercisesLabel } from './endless.js';
 import { startSessionReport, recordAnswer, mistakesToReplay, markReplayed } from '../systems/session-report.js';
@@ -5847,10 +5848,16 @@ function nextQuestion() {
     const practiceRun = G.practiceMode && !_guidedRun;
     const schoolPlan = !isTutorialActive()
       ? schoolQuestionPlan(practiceRun ? practiceQuestionState() : G, _guidedRun ? 1 : levelCfg.num) : null;
+    // "Mes exercices" (systems/exercise-choice.js): the category and kinds
+    // the player picked; "Tout mélanger" gives null (the level's own mix).
+    const choiceQ = !_mistakesRun && !isTutorialActive() ? exerciseQuestion() : null;
+    syncExerciseLabel(!!choiceQ);
     if (_mistakesRun) {
       // Old mistake, with its choices in a new order.
       const old = _mistakesQueue[Math.min(G.questionsAnswered, _mistakesQueue.length - 1)];
       G.question = { ...old, choices: [...(old.choices || [old.answer])].sort(() => Math.random() - 0.5) };
+    } else if (choiceQ) {
+      G.question = choiceQ;
     } else if (schoolPlan) {
       G.question = questionFromPlan(schoolPlan);
     } else {
@@ -6065,6 +6072,16 @@ function typedQuestionAllowed() {
 
 // Numbers as the player reads them: real minus sign (−15) and, in French,
 // a decimal comma (2,5).
+// Small line above the equation: what the player works on ("Table de 7",
+// "Mélange : 6, 7, 8", "Virgules : multiplication").
+function syncExerciseLabel(on) {
+  const el = $('exercise-label');
+  if (!el) return;
+  const text = on ? choiceLabel(getExerciseChoice(), getLang() === 'fr') : '';
+  el.textContent = text;
+  el.classList.toggle('hidden', !text);
+}
+
 function localDecimals(text) {
   return getLang() === 'fr' ? String(text).replace(/(\d)\.(\d)/g, '$1,$2') : String(text);
 }
@@ -6471,10 +6488,11 @@ function buildClearCorrectionSteps(q, picked = null) {
   // and exponent (game/arithmetic.js): the question, the tip and solving
   // steps, then the check.
   if (q.steps?.length) {
-    const alg = q.op === 'alg';
+    // (substitute / expand: a calculation, no x to get alone)
+    const alg = q.op === 'alg' && q.form !== 'substitute' && q.form !== 'expand';
     return [
       buildCorrectionIntro(q, picked),
-      alg ? `${isFr ? "ÉTAPE 1 — L'ÉQUATION" : 'STEP 1 — THE EQUATION'}\n${q.text}`
+      alg ? `${isFr ? "ÉTAPE 1 — L'ÉQUATION" : 'STEP 1 — THE EQUATION'}\n${questionText(q)}`
         : `${isFr ? 'ÉTAPE 1 — LE CALCUL' : 'STEP 1 — THE CALCULATION'}\n${questionText(q)}`,
       alg ? `${isFr ? 'ÉTAPE 2 — ISOLE x' : 'STEP 2 — GET x ALONE'}\n${tip}${q.steps.join('\n')}`
         : `${isFr ? 'ÉTAPE 2 — ASTUCE' : 'STEP 2 — TIP'}\n${tip}${q.steps.join('\n')}`,
@@ -7650,6 +7668,7 @@ export function initGame(levelNum, onComplete) {
   _gamePausedFromQuit = false;
   G.pausedGameResume = null;
   G.question = null;
+  resetExerciseSequence();   // "Dans l'ordre": each game starts at × 1
   _transitioning = false;
   _correctionWaiting = false;
   _correctionSnapshot = null;

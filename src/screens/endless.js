@@ -12,6 +12,8 @@ import { endlessHearts, ENDLESS_STEP_COINS, ENDLESS_STEP_XP } from '../data/endl
 import { decimalSettings } from '../game/decimals.js';
 import { coinIcon, expIcon, uiIcon } from '../utils/icons.js';
 import { getSupabaseSession } from '../systems/supabase-client.js';
+import { getExerciseChoice, choiceCode, choiceFromCode, choiceLabel } from '../systems/exercise-choice.js';
+import { showExercisePicker } from './exercise-picker.js';
 import {
   endlessRecord, saveEndlessRecord, finishEndlessRun, fetchEndlessBoard, fetchEndlessMyBest,
 } from '../systems/endless-board.js';
@@ -23,6 +25,9 @@ const planeShort = id => (AIRCRAFT[id]?.name || String(id || '').toUpperCase()).
 // The player's exercises in a short label that reads the same in French and
 // English (for the leaderboard): "+ − × ÷ · ≤100", "1/2 % 3,5"...
 export function endlessExercisesLabel() {
+  // "Mes exercices": a short code, put back in words for each reader.
+  const code = choiceCode(getExerciseChoice());
+  if (code) return code;
   const topics = (G.focusTopics?.length ? G.focusTopics : (G.focusOperations || []));
   const SYM = { '+': '+', '-': '−', '*': '×', '/': '÷', fractions: '1/2', percentages: '%', exponent: 'x²', algebra: 'x=?', decimals: '0,5' };
   const parts = topics.map(t => SYM[t]).filter(Boolean);
@@ -38,6 +43,8 @@ export function endlessExercisesLabel() {
 // words in the reader's language, for the leaderboard: "Addition,
 // soustraction — nombres jusqu'à 20". No symbols.
 export function exercisesLabelToWords(label, F = fr()) {
+  const picked = choiceFromCode(label);
+  if (picked) return choiceLabel(picked, F) || (F ? 'Exercices de son niveau' : 'Exercises of their level');
   const [main = '', ...rest] = String(label || '').split(' · ');
   const WORDS = {
     '+': F ? 'addition' : 'addition', '−': F ? 'soustraction' : 'subtraction',
@@ -63,6 +70,8 @@ export function correctAnswersText(n, F = fr()) {
 
 // Same, in words, for the player.
 function exercisesInWords() {
+  const picked = choiceLabel(getExerciseChoice(), fr());
+  if (picked) return { list: [picked], range: '' };
   const topics = (G.focusTopics?.length ? G.focusTopics : (G.focusOperations || []));
   const F = fr();
   const NAMES = {
@@ -129,7 +138,7 @@ export function openEndlessIntro(nav) {
   el.querySelector('[data-board]').onclick = () => { el.remove(); openEndlessTab(); };
   el.querySelector('[data-change]').onclick = () => {
     el.remove();
-    window._editLevelAndExercises?.(() => openEndlessIntro(nav));
+    showExercisePicker({ onDone: () => openEndlessIntro(nav) });
   };
 }
 

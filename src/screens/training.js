@@ -10,6 +10,8 @@ import { BIOMES, BIOME_META } from '../data/levels.js';
 import { weatherOptionsForBiome } from '../data/weather.js';
 import { schoolYearOfLevel, topicFromSchoolYear, numberRangeMaxForYear } from '../systems/school-questions.js';
 import { decimalSettings } from '../game/decimals.js';
+import { getExerciseChoice, choiceLabel, categoryName } from '../systems/exercise-choice.js';
+import { showExercisePicker } from './exercise-picker.js';
 
 // Same 4 operations/colors the old standalone "PRATIQUE" popup
 // (#practice-select in index.html, now retired) used to show.
@@ -134,11 +136,16 @@ function renderTrainingSheet() {
     save('practiceNumberMax', numberMax);
   }
 
+  // "Tout mélanger": the practice operations of the class (as before).
+  const exChoice = getExerciseChoice();
+  const exLabel = choiceLabel(exChoice, getLang() === 'fr') || categoryName('mix', getLang() === 'fr');
+  if (exChoice.cat === 'mix') G.practiceOps = ops.map(item => item.op);
   body.innerHTML = `
-    <div class="practice-subtitle">${t('chooseOps')}</div>
-    <div class="practice-ops-grid" id="training-ops"></div>
-    <button class="practice-all-btn" id="btn-training-all">${t('selectAll')}</button>
-    <div class="practice-dec-panel" id="training-dec-panel" hidden></div>
+    <div class="practice-subtitle">${getLang() === 'fr' ? 'MES EXERCICES' : 'MY EXERCISES'}</div>
+    <div class="practice-ex-row">
+      <span class="practice-ex-label">${exLabel}</span>
+      <button id="btn-training-exercises" class="practice-timer-btn ptb-active" type="button">${getLang() === 'fr' ? 'CHANGER' : 'CHANGE'}</button>
+    </div>
 
     <div class="practice-hearts-row">
       <span class="practice-hearts-label">${t('heartsLives')}</span>
@@ -160,7 +167,7 @@ function renderTrainingSheet() {
       </div>
     </div>
 
-    <div class="practice-timer-row">
+    <div class="practice-timer-row"${exChoice.cat === 'mix' ? '' : ' hidden'}>
       <span class="practice-timer-label">${getLang() === 'fr' ? 'NOMBRES' : 'NUMBERS'}</span>
       <label class="practice-number-field">
         <span>${getLang() === 'fr' ? 'de 0 à' : 'from 0 to'}</span>
@@ -192,37 +199,10 @@ function renderTrainingSheet() {
     <button id="btn-training-start" class="btn btn-primary practice-start-btn" type="button">${t('start')}</button>
   `;
 
-  const opsGrid = body.querySelector('#training-ops');
-  ops.forEach(({ op, symbol, color, labelKey }) => {
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = `practice-op-btn${G.practiceOps.includes(op) ? ' pob-active' : ''}`;
-    btn.style.setProperty('--op-color', color);
-    const shown = op === 'dec' && getLang() !== 'fr' ? '3.5' : symbol;
-    btn.innerHTML = `<span class="pob-symbol">${shown}</span><span class="pob-label">${t(labelKey)}</span>`;
-    btn.addEventListener('click', () => {
-      const idx = G.practiceOps.indexOf(op);
-      if (idx === -1) {
-        G.practiceOps.push(op);
-        btn.classList.add('pob-active');
-      } else {
-        if (G.practiceOps.length === 1) return;
-        G.practiceOps.splice(idx, 1);
-        btn.classList.remove('pob-active');
-      }
-      save('practiceOps', G.practiceOps);
-      renderDecimalPanel();
-    });
-    opsGrid.appendChild(btn);
+  // MES EXERCICES: what practice asks (screens/exercise-picker.js).
+  body.querySelector('#btn-training-exercises').addEventListener('click', () => {
+    showExercisePicker({ onDone: () => renderTrainingSheet() });
   });
-
-  body.querySelector('#btn-training-all').addEventListener('click', () => {
-    G.practiceOps = ops.map(item => item.op);
-    opsGrid.querySelectorAll('.practice-op-btn').forEach(b => b.classList.add('pob-active'));
-    save('practiceOps', G.practiceOps);
-    renderDecimalPanel();
-  });
-  renderDecimalPanel();
 
   const heartsBtn = body.querySelector('#btn-training-hearts');
   const syncHearts = () => {

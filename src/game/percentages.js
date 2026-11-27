@@ -109,9 +109,12 @@ function ok(q, L) {
   return Number.isInteger(q.answer) && q.answer > 0 && q.answer <= L && q.nums.every(n => Number.isInteger(n) && n > 0 && n <= L);
 }
 
-export function makePercentQuestion(year, limit) {
+// onlyForms: the kinds the player chose in "Mes exercices" (e.g. ['change']).
+export function makePercentQuestion(year, limit, onlyForms = null) {
   const L = Math.max(10, limit);
-  const { forms, pcts } = plan(year || 6);
+  const yearPlan = plan(year || 6);
+  const forms = onlyForms?.length ? onlyForms.filter(f => FORMS[f]) : yearPlan.forms;
+  const pcts = onlyForms?.length ? [...TENS, 25, 75] : yearPlan.pcts;
   for (let i = 0; i < 80; i++) {
     const form = pick(forms);
     const q = FORMS[form](L, pcts);

@@ -63,7 +63,7 @@ const PERSIST_KEYS = [
   'dailyMissionDate', 'playMinutesByDay', 'monthlyChallenge', 'claimedRanks', 'rankedLP', 'rankedWins', 'rankedLosses',
   'rankedWinStreak', 'rankedGamesPlayed', 'rankedSeasonStart', 'rankedFirstWinToday',
   'playerName', 'pilotNameChosen', 'playerEmail', 'playerPhoto', 'playerAge', 'consentAge', 'parentConsentAt', 'playerGrade',
-  'pilotEmblem', 'pilotMotto', 'profileTheme', 'practiceTimeLimit', 'decimalSettings', 'practiceOps',
+  'pilotEmblem', 'pilotMotto', 'profileTheme', 'practiceTimeLimit', 'decimalSettings', 'practiceOps', 'exerciseChoice',
   'hasSeenOnboarding', 'likesMath', 'onboardingAgeGroup', 'onboardingGrade',
   'focusOperation', 'focusOperations', 'focusTopics', 'schoolLevel', 'playerCountry', 'numberRangeMax', 'pendingPlacement', 'tutorialMode',
   'onboardingStartMode', 'onboardingLevelLength', 'dailyGoalMinutes',
@@ -139,7 +139,7 @@ function _applyPilotConfig(out, source) {
     'practiceTimeLimit', 'currentLevel',
     // The exercise choices go with the questionnaire answers (a guest who
     // creates an account keeps them).
-    'decimalSettings', 'practiceOps',
+    'decimalSettings', 'practiceOps', 'exerciseChoice',
   ];
   for (const key of keys) {
     if (source[key] !== undefined) out[key] = source[key];

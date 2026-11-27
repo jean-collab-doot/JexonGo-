@@ -168,9 +168,10 @@ function ok(q, L) {
   return q.nums.every(n => Number.isInteger(n) && n <= L);
 }
 
-export function makeFractionQuestion(year, limit) {
+// onlyForms: the kinds the player chose in "Mes exercices" (e.g. ['simplify']).
+export function makeFractionQuestion(year, limit, onlyForms = null) {
   const L = Math.max(10, limit);
-  const forms = YEAR_FORMS[Math.max(1, Math.min(12, year || 6))];
+  const forms = onlyForms?.length ? onlyForms.filter(f => FORMS[f]) : YEAR_FORMS[Math.max(1, Math.min(12, year || 6))];
   for (let i = 0; i < 80; i++) {
     const form = pick(forms);
     const q = FORMS[form](L);

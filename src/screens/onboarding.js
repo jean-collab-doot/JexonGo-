@@ -4,6 +4,7 @@ import { getLang, setLang } from '../i18n.js';
 import { SFX } from '../audio/sound.js';
 import { schoolYearOfLevel as yearOfLevel, topicFromSchoolYear, numberRangeMaxForYear } from '../systems/school-questions.js';
 import { readDirectLink, clearDirectLink } from '../systems/direct-link.js';
+import { showExercisePicker } from './exercise-picker.js';
 
 function introLang() {
   return getLang();
@@ -160,6 +161,9 @@ function buildCopy(lang) {
       },
       {
         key: 'hardTopic',
+        // Replaced by the "Mes exercices" chooser (screens/exercise-picker.js),
+        // shown after the questionnaire; kept for direct links / old flows.
+        onboarding: false,
         question: fr ? 'Dans quoi veux-tu travailler le plus?' : 'What do you want to work on the most?',
         multi: true,
         grid: true,
@@ -168,6 +172,7 @@ function buildCopy(lang) {
       },
       {
         key: 'numberRange',
+        onboarding: false,
         question: fr ? 'Avec quels nombres veux-tu travailler?' : 'Which numbers do you want to work with?',
         // Built from the class (see rangeChoices).
         sectionsFor: answers => [{ choices: rangeChoices(answers, fr) }],
@@ -201,9 +206,10 @@ let _directLink = load('hasSeenOnboarding', false) ? null : readDirectLink();
 export function showOnboarding(onComplete, { skipWelcome = false } = {}) {
   const link = _directLink?.level || _directLink?.topics.length ? _directLink : null;
   _directLink = null;
+  // Then "Mes exercices": the category and the kinds of calculation.
   const done = () => {
     if (link) clearDirectLink();
-    onComplete?.();
+    showExercisePicker({ onDone: () => onComplete?.() });
   };
   if (skipWelcome) showQuestionSteps(done, { link });
   else showWelcome(() => showQuestionSteps(done, { link }));
@@ -237,12 +243,9 @@ function answeredByLink(link, key, answers) {
   return true;
 }
 
+// CHANGER LES ÉQUATIONS (RÉGLAGE): the "Mes exercices" chooser.
 export function showEquationConfig(onComplete) {
-  showQuestionSteps(onComplete, {
-    keys: ['hardTopic', 'startMode'],
-    initialAnswers: currentEquationConfigAnswers(),
-    apply: applyEquationConfigAnswers,
-  });
+  showExercisePicker({ onDone: () => onComplete?.() });
 }
 
 // BRIFING button: change the equations first (topics + number range, same
@@ -278,8 +281,9 @@ export function showBriefingEquationOptions(onComplete) {
   answers.hardTopic = topics.map(v => topicChoices.findIndex(c => c.value === v)).filter(i => i >= 0);
   // Saved range pre-selected by value (its button depends on the class).
   if (RANGE_PRESETS.includes(G.numberRangeMax)) answers.numberRange_max = G.numberRangeMax;
-  showQuestionSteps(onComplete, {
-    keys: ['country', 'ageGroup', 'hardTopic', 'numberRange'],
+  // School, class, then "Mes exercices" (screens/exercise-picker.js).
+  showQuestionSteps(() => showExercisePicker({ onDone: () => onComplete?.() }), {
+    keys: ['country', 'ageGroup'],
     initialAnswers: answers,
     apply: applyBriefingEquationAnswers,
   });

@@ -179,8 +179,9 @@ function finish(q, L, form) {
   return out;
 }
 
-export function makeSchoolAlgebraQuestion(year, limit) {
-  const forms = YEAR_FORMS[Math.max(6, Math.min(12, year))]
+// onlyForms: the kinds the player chose in "Mes exercices" (one / two steps).
+export function makeSchoolAlgebraQuestion(year, limit, onlyForms = null) {
+  const forms = (onlyForms?.length ? onlyForms.filter(f => FORMS[f]) : YEAR_FORMS[Math.max(6, Math.min(12, year))])
     .filter(f => year >= SIGN_RULES_FROM_SCHOOL_YEAR || !f.endsWith('Neg'));
   const L = Math.max(10, limit);
   for (let i = 0; i < 60; i++) {
