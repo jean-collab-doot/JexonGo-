@@ -1,8 +1,8 @@
 -- Endless leaderboard: two notes of the Supabase security advisor after 011.
 -- Only the Endless functions are changed (TOP 20 / multiplayer untouched).
 --  1. endless_hearts: a fixed search_path (like the other functions).
---  2. get_endless_my_best: only for signed-in players (a guest has no best
---     game; anon could call it, it just returned nothing).
+--  2. get_endless_my_best and get_endless_leaderboard: only for signed-in
+--     players (in the game TOP 20 and INFINI already need an account).
 -- The other notes are expected: the Endless table has no policy on purpose
 -- (no direct read / write, only through these functions), and its functions
 -- are SECURITY DEFINER on purpose (they check the player themselves).
@@ -21,3 +21,6 @@ $$;
 
 revoke execute on function public.get_endless_my_best() from public, anon;
 grant execute on function public.get_endless_my_best() to authenticated;
+
+revoke execute on function public.get_endless_leaderboard(int) from public, anon;
+grant execute on function public.get_endless_leaderboard(int) to authenticated;
