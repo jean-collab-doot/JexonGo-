@@ -103,6 +103,10 @@ function schedule() {
 }
 
 export function initLobbyColumn() {
+  // MULTI / SOLO (and any other lobby mode) hides or shows buttons: placed
+  // again each time the lobby's class changes.
+  const menu = document.getElementById('s-menu');
+  if (menu && window.MutationObserver) new MutationObserver(schedule).observe(menu, { attributes: true, attributeFilter: ['class'] });
   // The main page never scrolls: if anything moves it (a focus, a drag),
   // it goes straight back.
   for (const sel of ['#s-menu .menu-content', '#s-menu', '#s-shop', '#s-training']) {

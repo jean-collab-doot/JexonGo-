@@ -2288,3 +2288,13 @@ html body .jx-slot-shot-price { font-size: 17px; }
    inside). The pages stay sealed on phones and tablets. */
 html body #s-menu .menu-content,
 html body #s-menu, html body #s-shop, html body #s-training { overflow: hidden !important; overscroll-behavior: none; }
+
+/* MULTI mode: no ◀ ▶ plane arrows (the plane is chosen in the HANGAR
+   drawer). Phones: the two planes a little to the right, away from the
+   left buttons, never touching each other or the big arrows. */
+html body #s-menu.is-multi #btn-lobby-plane-prev,
+html body #s-menu.is-multi #btn-lobby-plane-next { display: none !important; }
+@media (max-width: 600px) {
+  html body #s-menu.is-multi .jx-plane-wrap { left: 48%; }
+  html body #s-menu.is-multi .mp-lobby-p2 { left: 65%; }
+}
