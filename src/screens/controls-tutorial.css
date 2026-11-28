@@ -25,42 +25,80 @@ html body #s-game .ctl-tag {
 }
 html body #s-game .ctl-tag-aim { background: var(--jx-orange-deep); box-shadow: 0 2px 0 var(--jx-orange-dk); }
 
-/* Phone held in both hands: left thumb slides (BOUGER), right thumb pushes
-   the orange cursor (VISER). Swapped when the cursor is on the left. */
-html body #s-game .ctl-phone { position: relative; width: 220px; height: 150px; margin: 4px auto 18px; }
-html body #s-game .ctl-phone-screen {
-  position: absolute; left: 40px; right: 40px; top: 0; bottom: 18px; border-radius: 14px;
-  background: linear-gradient(180deg, #3a78c9, #2a5da8); border: 5px solid #1d2433; box-sizing: border-box; overflow: hidden;
+/* Phone held in both hands (game.js ctlThumbsHtml): a real JexonGo screen
+   (ocean, the player's plane, an enemy, the orange cursor), two pixel-art
+   hands in orange sleeves. Left thumb slides the plane (BOUGER), right thumb
+   pushes the cursor and the aiming line follows (VISER). */
+html body #s-game .ctl-phone2 { position: relative; width: 270px; height: 222px; margin: 6px auto 50px; }
+html body #s-game .ctl-ph-body {
+  position: absolute; left: 60px; top: 0; width: 150px; height: 214px;
+  box-sizing: border-box; padding: 9px 7px 14px; border-radius: 20px;
+  background: linear-gradient(180deg, #2b3346, #1a2030); border: 3px solid #0d111b;
+  box-shadow: inset 0 2px 0 rgba(255,255,255,.18), 0 5px 0 #0d111b, 0 8px 16px rgba(0,0,0,.35);
 }
-html body #s-game .ctl-phone-plane {
-  position: absolute; left: 50%; bottom: 26px; width: 0; height: 0; translate: -50% 0;
-  border-left: 9px solid transparent; border-right: 9px solid transparent; border-bottom: 18px solid #fff;
-  animation: ctl-plane 2s ease-in-out infinite;
+html body #s-game .ctl-ph-body::after {   /* home bar */
+  content: ''; position: absolute; left: 50%; bottom: 5px; width: 34px; height: 3px; translate: -50% 0;
+  border-radius: 2px; background: rgba(255,255,255,.35);
 }
-@keyframes ctl-plane { 0%, 100% { margin-left: -22px; } 50% { margin-left: 22px; } }
-html body #s-game .ctl-phone-pad {
-  position: absolute; right: 8px; bottom: 8px; width: 34px; height: 34px; border-radius: 50%;
-  background: linear-gradient(180deg, #ffab3d, var(--jx-orange)); display: grid; place-items: center;
+html body #s-game .ctl-ph-screen {
+  position: relative; width: 100%; height: 100%; overflow: hidden; border-radius: 11px;
+  background: #1d6fa8 url('/assets/Maps/JexonGo_Map_Ocean/levels/ocean-lv01.webp') center 0 / 100% auto repeat-y;
+  animation: ctl-ph-sea 9s linear infinite;
+  box-shadow: inset 0 0 0 2px rgba(0,0,0,.35);
 }
-html body #s-game .ctl-phone-pad i { width: 14px; height: 14px; border-radius: 50%; background: var(--jx-yellow-hi); animation: ctl-padknob 2s ease-in-out infinite; }
-@keyframes ctl-padknob { 0%, 100% { transform: translate(-5px, -5px); } 50% { transform: translate(5px, -6px); } }
-html body #s-game .ctl-thumb {
-  position: absolute; bottom: 4px; width: 30px; height: 58px; border-radius: 15px 15px 12px 12px;
-  background: linear-gradient(180deg, #f2c8a0, #d9a273); box-shadow: inset 0 3px 0 rgba(255,255,255,.4), 0 2px 0 rgba(0,0,0,.25);
+@keyframes ctl-ph-sea { to { background-position: center 600px; } }
+html body #s-game .ctl-ph-enemy {
+  position: absolute; left: 50%; top: 16px; width: 36px; height: 36px; margin-left: -18px;
+  background: url('/assets/enemies/planes/enemy-basic-normalized-v2.png') 0 0 / 400% 300% no-repeat;
+  animation: ctl-ph-enemy 2.4s ease-in-out infinite;
 }
-html body #s-game .ctl-thumb-move { left: 26px; transform-origin: 50% 100%; rotate: 30deg; animation: ctl-thumb-move 2s ease-in-out infinite; }
-html body #s-game .ctl-thumb-aim { right: 22px; transform-origin: 50% 100%; rotate: -30deg; animation: ctl-thumb-aim 2s ease-in-out infinite; }
-@keyframes ctl-thumb-move { 0%, 100% { translate: -6px 0; } 50% { translate: 14px -6px; } }
-@keyframes ctl-thumb-aim { 0%, 100% { translate: 0 0; } 50% { translate: 4px -4px; } }
-html body #s-game .ctl-phone .ctl-tag { position: absolute; bottom: -18px; }
-html body #s-game .ctl-phone .ctl-tag-move { left: 0; }
-html body #s-game .ctl-phone .ctl-tag-aim { right: 0; }
-/* Cursor on the left: mirror the hands. */
-html body #s-game .ctl-phone.is-swapped .ctl-phone-pad { right: auto; left: 8px; }
-html body #s-game .ctl-phone.is-swapped .ctl-thumb-move { left: auto; right: 22px; rotate: -30deg; }
-html body #s-game .ctl-phone.is-swapped .ctl-thumb-aim { right: auto; left: 26px; rotate: 30deg; }
-html body #s-game .ctl-phone.is-swapped .ctl-tag-move { left: auto; right: 0; }
-html body #s-game .ctl-phone.is-swapped .ctl-tag-aim { right: auto; left: 0; }
+@keyframes ctl-ph-enemy { 0%, 100% { translate: -16px 0; } 50% { translate: 16px 0; } }
+html body #s-game .ctl-ph-player {
+  position: absolute; left: 50%; top: 92px; width: 38px; height: 38px; margin-left: -19px;
+  animation: ctl-ph-move 2.4s ease-in-out infinite;
+}
+html body #s-game .ctl-ph-player img { position: relative; width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 3px 0 rgba(0,0,0,.3)); }
+@keyframes ctl-ph-move { 0%, 100% { translate: -30px 0; } 50% { translate: 30px 0; } }
+/* Aiming line from the plane, swinging with the right thumb. */
+html body #s-game .ctl-ph-line {
+  position: absolute; left: 50%; bottom: 60%; width: 3px; height: 64px; margin-left: -1.5px;
+  transform-origin: 50% 100%;
+  background: repeating-linear-gradient(0deg, #fff 0 6px, transparent 6px 11px);
+  filter: drop-shadow(0 0 2px rgba(30,200,255,.9));
+  animation: ctl-ph-aim 2.4s ease-in-out infinite;
+}
+@keyframes ctl-ph-aim { 0%, 100% { rotate: 24deg; } 50% { rotate: -24deg; } }
+html body #s-game .ctl-ph-pad {
+  position: absolute; right: 6px; bottom: 8px; width: 38px; height: 38px; border-radius: 50%;
+  display: grid; place-items: center;
+  background: radial-gradient(circle, rgba(122,58,0,.35) 0 50%, transparent 52%), linear-gradient(180deg, #ffab3d, var(--jx-orange) 55%, var(--jx-orange-deep));
+  box-shadow: 0 2px 0 var(--jx-orange-dk), inset 0 1px 0 rgba(255,255,255,.35);
+}
+html body #s-game .ctl-ph-pad i {
+  width: 16px; height: 16px; border-radius: 50%;
+  background: linear-gradient(180deg, var(--jx-yellow-hi), var(--jx-yellow) 50%, #F0A500); box-shadow: 0 2px 0 #A56A00;
+  animation: ctl-ph-knob 2.4s ease-in-out infinite;
+}
+@keyframes ctl-ph-knob { 0%, 100% { translate: 5px -5px; } 50% { translate: -5px -6px; } }
+/* Hands: turned around the thumb tip (on the screen / on the cursor), the
+   palm and the orange sleeve go out past the phone's lower corners. */
+html body #s-game .ctl-ph-hand { position: absolute; width: 54px; height: 77px; transform-origin: 50% 0; }
+html body #s-game .ctl-ph-hand svg { display: block; width: 100%; height: 100%; filter: drop-shadow(0 3px 0 rgba(0,0,0,.25)); }
+html body #s-game .ctl-ph-hand-move { left: 68px; top: 142px; rotate: 24deg; animation: ctl-ph-thumb-move 2.4s ease-in-out infinite; }
+html body #s-game .ctl-ph-hand-aim { left: 154px; top: 172px; transform: scaleX(-1); rotate: -24deg; animation: ctl-ph-thumb-aim 2.4s ease-in-out infinite; }
+@keyframes ctl-ph-thumb-move { 0%, 100% { translate: -10px 0; } 50% { translate: 12px -2px; } }
+@keyframes ctl-ph-thumb-aim { 0%, 100% { translate: -3px -2px; } 50% { translate: 3px -4px; } }
+html body #s-game .ctl-phone2 .ctl-tag { position: absolute; top: 236px; white-space: nowrap; }
+html body #s-game .ctl-phone2 .ctl-tag-move { left: 0; }
+html body #s-game .ctl-phone2 .ctl-tag-aim { right: 6px; }
+/* Cursor on the left: everything mirrored. */
+html body #s-game .ctl-phone2.is-swapped .ctl-ph-body { transform: scaleX(-1); }
+html body #s-game .ctl-phone2.is-swapped .ctl-ph-player img, html body #s-game .ctl-phone2.is-swapped .ctl-ph-enemy { transform: scaleX(-1); }
+html body #s-game .ctl-phone2.is-swapped .ctl-ph-hand-move { left: 148px; transform: scaleX(-1); rotate: -24deg; }
+html body #s-game .ctl-phone2.is-swapped .ctl-ph-hand-aim { left: 62px; transform: none; rotate: 24deg; }
+html body #s-game .ctl-phone2.is-swapped .ctl-tag-move { left: auto; right: 0; }
+html body #s-game .ctl-phone2.is-swapped .ctl-tag-aim { right: auto; left: 6px; }
+html body #s-game .ctl-phone2.is-mini { transform: scale(.7); margin: -32px auto -30px; }
 
 /* Computer: left hand keys, right hand mouse. */
 html body #s-game .ctl-desk { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; width: 100%; }
@@ -86,7 +124,6 @@ html body #s-game .ctl-help {
   left: 50%; top: 44%; transform: translateX(-50%); padding: 8px 10px 4px; border-radius: 14px;
   background: rgba(255,250,240,.94); box-shadow: 0 6px 18px rgba(0,0,0,.3); animation: ctl-pop .25s ease-out;
 }
-html body #s-game .ctl-phone.is-mini { transform: scale(.75); margin: -14px auto 0; }
 html body #s-game .ctl-desk.is-mini { width: 260px; transform: scale(.9); }
 
 /* The orange cursor during the tutorial: "VISER" above it, a soft pulse,
@@ -114,5 +151,5 @@ html body #s-game .ctl-bubble.is-left { left: 12px; }
 html body #s-game .ctl-bubble.is-desk { left: 50%; transform: translateX(-50%); bottom: auto; top: 22%; }
 
 @media (prefers-reduced-motion: reduce) {
-  html body #s-game .ctl-phone *, html body #s-game .ctl-desk *, html body #s-game .aim-pad.ctl-viser, html body #s-game .ctl-bravo { animation: none !important; }
+  html body #s-game .ctl-phone2 *, html body #s-game .ctl-desk *, html body #s-game .aim-pad.ctl-viser, html body #s-game .ctl-bravo { animation: none !important; }
 }

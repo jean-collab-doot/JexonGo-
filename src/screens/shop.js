@@ -3,7 +3,7 @@ import { $ } from '../utils/dom.js';
 import { G, saveAll, clampCoins } from '../state.js';
 import { load, save } from '../utils/storage.js';
 import { t, applyI18n, getLang, numLocale } from '../i18n.js';
-import { coinIcon } from '../utils/icons.js';
+import { coinIcon, coinPrice } from '../utils/icons.js';
 import { AIRCRAFT } from '../data/aircraft.js';
 import { AIRCRAFT_SPRITE, drawFrame, getImage, preloadSprite } from '../game/sprites.js';
 import { makeBottomSheet } from '../utils/bottomsheet.js';
@@ -150,7 +150,7 @@ export function renderShotPlanMiniCard(plan, lang) {
   const count = Array.isArray(plan.missiles) ? plan.missiles.length : 1;
   const label = owned
     ? (active ? (lang === 'fr' ? 'ÉQUIPÉ' : 'EQUIPPED') : (lang === 'fr' ? 'CHOISIR' : 'SELECT'))
-    : `${(plan.price || 0).toLocaleString(numLocale())} ${coinIcon('jg-coin-icon-small')}`;
+    : coinPrice((plan.price || 0).toLocaleString(numLocale()));
   return `<button class="jx-slot jx-slot-shot ${active ? 'is-active' : ''} ${owned ? '' : 'is-locked'}" type="button" data-plan-id="${plan.id}">
     <canvas class="shop-plan-mini-canvas" data-mini-plan="${plan.id}"></canvas>
     <span class="jx-slot-shot-name">${count}× ${plan.title[lang]}</span>
@@ -256,7 +256,7 @@ function renderMissileButton(m, lang, specialWeapon) {
   const active = !specialWeapon && G.activeMissileType === m.id;
   const label  = owned
     ? (active ? (lang === 'fr' ? 'ÉQUIPÉ' : 'EQUIPPED') : (lang === 'fr' ? 'CHOISIR' : 'SELECT'))
-    : m.price.toLocaleString(numLocale());
+    : coinPrice(m.price.toLocaleString(numLocale()));
   const pos = MISSILE_BUTTON_POS[m.id] || { fx: 0.5, fy: 0.5 };
   return `
     <button class="jx-arsenal-btn" type="button" data-fx="${pos.fx}" data-fy="${pos.fy}"
@@ -430,7 +430,7 @@ function renderPlanCard(plan, lang) {
         <button class="shop-plan-action ${owned ? 'shop-action-bought' : ''}" type="button" data-plan-action="${plan.id}" ${disabled ? 'disabled' : ''}>
           ${owned
             ? `<b>${lang === 'fr' ? 'ACHETE' : 'BOUGHT'}</b>`
-            : `<b>${plan.price ? plan.price.toLocaleString(numLocale()) : '0'}</b>${coinIcon('jg-coin-icon-small')}`}
+            : coinPrice(plan.price ? plan.price.toLocaleString(numLocale()) : '0')}
         </button>
       </div>
       <p>${specialWeapon
@@ -466,7 +466,7 @@ function renderMissileCard(missile, lang) {
         <button class="shop-missile-action ${owned ? 'shop-action-bought' : ''}" type="button" data-missile-action="${missile.id}" ${disabled ? 'disabled' : ''}>
           ${owned
             ? `<b>${lang === 'fr' ? 'ACHETE' : 'BOUGHT'}</b>`
-            : `<b>${missile.price.toLocaleString(numLocale())}</b>${coinIcon('jg-coin-icon-small')}`}
+            : coinPrice(missile.price.toLocaleString(numLocale()))}
         </button>
         <span>${specialWeapon
           ? (lang === 'fr' ? 'Indisponible : arme speciale de cet avion' : 'Unavailable: this aircraft uses a special weapon')

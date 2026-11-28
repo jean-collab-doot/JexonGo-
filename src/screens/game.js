@@ -41,6 +41,7 @@ import {
   REFUEL_SECONDS, REFUEL_SHIELD_SECONDS, TANK_SIZE_MULT, LEAK_CHANCE,
 } from '../data/upgrades.js';
 import { createMissile, updateMissiles, drawMissiles } from '../game/missiles.js';
+import { aircraftArt } from '../data/skins.js';
 import { spawnExplosion, spawnHitSpark, spawnMissileExplosion, updateParticles, drawParticles } from '../game/particles.js';
 import {
   drawAircraftSprite,
@@ -2210,13 +2211,65 @@ function ctlThumbsHtml(mini = false) {
         <em>${kid ? '&nbsp;' : (fr ? 'sans cliquer' : 'no click')}</em><b class="ctl-tag ctl-tag-aim">${fr ? 'VISER' : 'AIM'}</b></div>
     </div>`;
   }
+  // A real JexonGo screen in the phone (ocean, the player's plane, an enemy,
+  // the orange cursor) held by two pixel-art hands in the pilot's orange
+  // sleeves: the left thumb slides the plane, the right thumb pushes the
+  // cursor and the aiming line follows. Mirrored when the cursor is on the left.
   const swap = ctlPadLeft();
-  return `<div class="ctl-phone${mini ? ' is-mini' : ''}${swap ? ' is-swapped' : ''}" aria-hidden="true">
-    <div class="ctl-phone-screen"><span class="ctl-phone-plane"></span><span class="ctl-phone-pad"><i></i></span></div>
-    <span class="ctl-thumb ctl-thumb-move"></span><span class="ctl-thumb ctl-thumb-aim"></span>
-    <b class="ctl-tag ctl-tag-move">${fr ? 'BOUGER' : 'MOVE'}</b><b class="ctl-tag ctl-tag-aim">${fr ? 'VISER' : 'AIM'}</b>
+  const plane = aircraftArt(G.activeAircraft || 't6');
+  return `<div class="ctl-phone2${mini ? ' is-mini' : ''}${swap ? ' is-swapped' : ''}" aria-hidden="true">
+    <div class="ctl-ph-body">
+      <div class="ctl-ph-screen">
+        <span class="ctl-ph-enemy"></span>
+        <span class="ctl-ph-player"><span class="ctl-ph-line"></span><img src="${plane}" alt=""></span>
+        <span class="ctl-ph-pad"><i></i></span>
+      </div>
+    </div>
+    <span class="ctl-ph-hand ctl-ph-hand-move">${CTL_HAND_SVG}</span>
+    <span class="ctl-ph-hand ctl-ph-hand-aim">${CTL_HAND_SVG}</span>
+    <b class="ctl-tag ctl-tag-move">${fr ? '◀ BOUGER ▶' : '◀ MOVE ▶'}</b><b class="ctl-tag ctl-tag-aim">${fr ? 'VISER' : 'AIM'}</b>
   </div>`;
 }
+
+// Pixel-art left hand (the right one is the same, mirrored), thumb up:
+// o outline, h light, s skin, d shade, n nail, w cuff, c / C orange sleeve.
+const CTL_HAND = [
+  '......ooo.....',
+  '.....ohnno....',
+  '.....ohnno....',
+  '.....ohsso....',
+  '....ohssdo....',
+  '....ohssdo....',
+  '...ohssdo.....',
+  '...ohssdo.....',
+  '..ohsssdoooo..',
+  '.ohssssssssdo.',
+  'ohsssssssssdo.',
+  'ohssssssssddo.',
+  'ohsssssssssdo.',
+  'ohssssssssddo.',
+  '.ossssssssddo.',
+  '.oossssssddoo.',
+  '..owwwwwwwwo..',
+  '..occcccccCo..',
+  '..occcccccCo..',
+  '..occcccccCo..',
+];
+const CTL_HAND_COLORS = { o: '#3a1d00', h: '#ffd9b0', s: '#f2bf8c', d: '#d4925e', n: '#ffe9da', w: '#fff3cf', c: '#F5931E', C: '#E67612' };
+const CTL_HAND_SVG = (() => {
+  let rects = '';
+  CTL_HAND.forEach((row, y) => {
+    let x = 0;
+    while (x < row.length) {
+      const ch = row[x];
+      let n = 1;
+      while (row[x + n] === ch) n++;
+      if (CTL_HAND_COLORS[ch]) rects += `<rect x="${x}" y="${y}" width="${n}" height="1" fill="${CTL_HAND_COLORS[ch]}"/>`;
+      x += n;
+    }
+  });
+  return `<svg viewBox="0 0 ${CTL_HAND[0].length} ${CTL_HAND.length}" shape-rendering="crispEdges">${rects}</svg>`;
+})();
 
 function ctlStepText(phase) {
   const fr = _ctlFr();
@@ -2408,12 +2461,14 @@ function updateCtlTutorial(now) {
       // Harmless missiles fall at the plane: dodge them.
       if (now >= c.nextObstacleAt) {
         c.nextObstacleAt = now + 1300;
-        c.obstacles.push({ x: G.player.x, y: -20 });
+        // The game's real enemy missile (animated sprite), pointing down.
+        c.obstacles.push({ x: G.player.x, y: -30, vx: 0, vy: 1, boltFrame: 0 });
       }
       const speed = canvas.height / 2300;   // about 2.3 s to fall
       const hitR = getPlayerSize() * 0.38;
       for (const o of c.obstacles) {
         o.y += speed * ms;
+        o.boltFrame = ((o.boltFrame || 0) + 0.38 * ms / 16.7) % 12;
         if (!o.hit && Math.abs(o.x - G.player.x) < hitR && Math.abs(o.y - G.player.y) < hitR) {
           o.hit = true;
           shakeFrames = 8;
@@ -2457,20 +2512,8 @@ function drawCtlTutorial(fromX, fromY) {
     ctx.strokeStyle = `rgba(255,59,48,${0.95 - pulse * 0.4})`;
     ctx.beginPath(); ctx.arc(e.x, e.y, r, 0, Math.PI * 2); ctx.stroke();
   }
-  // Falling missiles: a white body, a red nose pointing down, a flame on top.
-  for (const o of c.obstacles) {
-    const w = 9 * unit, h = 24 * unit;
-    const flick = 0.7 + Math.random() * 0.3;
-    ctx.fillStyle = '#ffb13b';
-    ctx.beginPath(); ctx.moveTo(o.x - w * 0.35, o.y - h); ctx.lineTo(o.x + w * 0.35, o.y - h); ctx.lineTo(o.x, o.y - h - 12 * unit * flick); ctx.closePath(); ctx.fill();
-    ctx.fillStyle = '#f2f2f2';
-    ctx.strokeStyle = '#3a3a3a';
-    ctx.lineWidth = 1.5 * unit;
-    ctx.fillRect(o.x - w / 2, o.y - h, w, h - 6 * unit);
-    ctx.strokeRect(o.x - w / 2, o.y - h, w, h - 6 * unit);
-    ctx.fillStyle = '#ff3b30';
-    ctx.beginPath(); ctx.moveTo(o.x - w / 2, o.y - 6 * unit); ctx.lineTo(o.x + w / 2, o.y - 6 * unit); ctx.lineTo(o.x, o.y + 4 * unit); ctx.closePath(); ctx.fill(); ctx.stroke();
-  }
+  // Falling missiles: the real enemy missiles of the game (game/missiles.js).
+  if (c.obstacles.length) drawMissiles(ctx, c.obstacles, true);
   ctx.restore();
 }
 

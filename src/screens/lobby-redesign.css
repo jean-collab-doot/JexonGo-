@@ -2256,3 +2256,29 @@ html body #btn-lobby-grades   { top: 282px; }
   html body #btn-lobby-mistakes { top: 170px; }
   html body #btn-lobby-grades   { top: 221px; }
 }
+
+/* Prices in coins (utils/icons.js coinPrice): the number and the coin on one
+   straight line, centred on each other, never split onto two lines; the
+   number a bit bigger and spaced so it reads easily (shot choice, missiles,
+   upgrades, shop). */
+html body .jx-price {
+  display: inline-flex; align-items: center; justify-content: center; gap: .3em;
+  white-space: nowrap; vertical-align: middle; line-height: 1;
+}
+html body .jx-price b {
+  font-weight: inherit; font-size: 1.14em; letter-spacing: .05em;
+  font-variant-numeric: tabular-nums;
+}
+html body .jx-price .jg-coin-icon {
+  flex: 0 0 auto; width: 1.25em; height: 1.25em; margin: 0 !important; vertical-align: 0 !important;
+  position: relative; top: 0;
+}
+/* Missile cards (hangar TIR DE MISSILE): the name and the price bigger and
+   clear; a missile not bought yet only greys its picture, not its price. */
+html body .jx-list .jx-slot-missile.is-locked { filter: none; }
+html body .jx-list .jx-slot-missile.is-locked .jx-slot-thumb { filter: grayscale(.55) brightness(.8); }
+html body .jx-slot-missile-copy strong { font-size: 15px; }
+html body .jx-slot-missile-copy em {
+  font-size: 16px; color: var(--jx-yellow-hi); text-shadow: 2px 2px 0 var(--jx-ink);
+}
+html body .jx-slot-shot-price { font-size: 17px; }

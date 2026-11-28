@@ -3,6 +3,12 @@ export function coinIcon(extraClass = '') {
   return `<img class="${cls}" src="/assets/fx/Caisse/JexonGo_Coin_frame_01.png" alt="" aria-hidden="true">`;
 }
 
+// A price in coins: the number and the coin on one straight line, never
+// split (the coin used to drop under the number in narrow cards).
+export function coinPrice(text) {
+  return `<span class="jx-price"><b>${text}</b>${coinIcon('jg-coin-icon-small')}</span>`;
+}
+
 export function expIcon(extraClass = '') {
   const cls = ['jg-exp-icon', extraClass].filter(Boolean).join(' ');
   return `<img class="${cls}" src="/assets/fx/Caisse/JexonGo_EXP_frame_01.png" alt="EXP">`;

@@ -6,7 +6,7 @@ import { AIRCRAFT, AIRCRAFT_ORDER } from '../data/aircraft.js';
 import { paintPlaneInfoFisheye } from './plane-info-fisheye.js';
 import { t, getLang, numLocale, applyI18n } from '../i18n.js';
 import { MISSILE_TYPES, SHOOTING_PLANS, renderShotPlanMiniCard, startShopPreview, stopShopPreview, buyOrEquipPlan, buyOrEquipMissile } from './shop.js';
-import { coinIcon, uiIcon } from '../utils/icons.js';
+import { coinIcon, coinPrice, uiIcon } from '../utils/icons.js';
 import { isMultiLobby, renderBotPanel, onHangarTabShown } from './multiplayer.js';
 import { visibleSkins, ownsSkin, activeSkin, setActiveSkin, skinEventOpen, aircraftArt, hasNewSkin, markSkinsSeen } from '../data/skins.js';
 import {
@@ -435,7 +435,7 @@ function renderMissileOption(type, lang, activeMissileType, ownedMissiles) {
   const status = active
     ? (lang === 'fr' ? 'ÉQUIPÉ' : 'EQUIPPED')
     : owned ? (lang === 'fr' ? 'CHOISIR' : 'SELECT')
-      : `${type.price.toLocaleString(numLocale())} ${coinIcon('jg-coin-icon-small')}`;
+      : coinPrice(type.price.toLocaleString(numLocale()));
   return `
     <button class="jx-slot jx-slot-missile ${active ? 'is-active' : ''} ${owned ? '' : 'is-locked'}" type="button" data-hangar-missile="${type.id}">
       <span class="jx-slot-thumb" style="background-image:url('${type.sprite}')"></span>
@@ -525,7 +525,7 @@ function renderUpgradesTab(body) {
   const typeLabel = TYPE_LABELS[plane.type]?.[lang] || (plane.type || '').toUpperCase();
   const pips = (level, max) =>
     `<span class="upg-pips">${Array.from({ length: max }, (_, i) => `<i class="${i < level ? 'on' : ''}"></i>`).join('')}</span>`;
-  const price = amount => `${amount.toLocaleString(numLocale())} ${coinIcon('jg-coin-icon-small')}`;
+  const price = amount => coinPrice(amount.toLocaleString(numLocale()));
 
   // Free upgrades from the pilot grades (screens/grades.js): every buy button
   // of an owned plane says GRATUIT while some are left.

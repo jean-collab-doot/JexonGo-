@@ -18,7 +18,7 @@ import { publicPilotName } from '../utils/pilot-name.js';
 import { AIRCRAFT, AIRCRAFT_ORDER } from '../data/aircraft.js';
 import { save } from '../utils/storage.js';
 import { paintPlaneInfoFisheye } from './plane-info-fisheye.js';
-import { coinIcon, uiIcon } from '../utils/icons.js';
+import { coinIcon, coinPrice, uiIcon } from '../utils/icons.js';
 import { TYPE_LABELS } from './hangar.js';
 
 // Bot UPGRADE costs (coins) to reach each level.
@@ -197,7 +197,7 @@ export function renderBotPanel(body) {
   const typeLabel = TYPE_LABELS[plane.type]?.[lang] || (plane.type || '').toUpperCase();
   const pips = (level, max) =>
     `<span class="upg-pips">${Array.from({ length: max }, (_, i) => `<i class="${i < level ? 'on' : ''}"></i>`).join('')}</span>`;
-  const coinPrice = amount => `${amount.toLocaleString(numLocale())} ${coinIcon('jg-coin-icon-small')}`;
+  const coinPriceOf = amount => coinPrice(amount.toLocaleString(numLocale()));
   const levelRow = (kind, icon, name, desc, level, max, cost) => {
     const maxed = cost === undefined;
     return `
@@ -209,7 +209,7 @@ export function renderBotPanel(body) {
           ${pips(level, max)}
         </div>
         <button class="upg-buy ${maxed ? 'is-max' : ''}" type="button" data-buy="${kind}" ${!maxed && coins >= cost ? '' : 'disabled'}>
-          ${maxed ? 'MAX' : coinPrice(cost)}
+          ${maxed ? 'MAX' : coinPriceOf(cost)}
         </button>
       </div>`;
   };
