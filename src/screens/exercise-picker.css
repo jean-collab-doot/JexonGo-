@@ -16,6 +16,24 @@
   box-shadow: 0 10px 30px rgba(0, 0, 0, .4);
   color: var(--jx-ink, #7a3a00);
 }
+/* Kinds page: the card fills the height; only the middle scrolls, VALIDER
+   stays stuck at the bottom and never moves. */
+.xp-card.xp-card-full {
+  display: flex; flex-direction: column; height: 100%; overflow: hidden;
+  padding-bottom: 0;
+}
+.xp-card-full .xp-head { flex: 0 0 auto; }
+.xp-scroll {
+  flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain;
+  padding: 4px 6px 12px; margin: 0 -6px;
+}
+.xp-foot {
+  flex: 0 0 auto; margin: 0 -16px; padding: 12px 16px max(14px, env(safe-area-inset-bottom));
+  background: var(--jx-yellow, #FFC21A);
+  border-top: 3px solid var(--jx-orange, #F5931E);
+  box-shadow: 0 -6px 12px rgba(122, 58, 0, .15);
+}
+@media (max-width: 420px) { .xp-foot { margin: 0 -10px; padding-left: 10px; padding-right: 10px; } }
 .xp-head { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
 .xp-title {
   flex: 1; margin: 0; text-align: center;
@@ -124,8 +142,7 @@
 }
 .xp-ex i { font-style: normal; color: var(--jx-accent-press, #0A9FD1); }
 .xp-validate {
-  position: sticky; bottom: 0; z-index: 2;
-  display: block; width: min(100%, 360px); margin: 16px auto 0; min-height: 56px; cursor: pointer;
+  display: block; width: min(100%, 360px); margin: 0 auto; min-height: 56px; cursor: pointer;
   border: 3px solid var(--jx-accent-edge, #0B5E80); border-radius: 16px;
   background: var(--jx-accent, #1EC8FF); color: var(--jx-accent-ink, #10182F);
   box-shadow: 0 5px 0 var(--jx-accent-edge, #0B5E80);

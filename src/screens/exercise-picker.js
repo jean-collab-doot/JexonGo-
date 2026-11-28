@@ -113,8 +113,9 @@ export function showExercisePicker({ onDone, startAt = null } = {}) {
     const single = choice.tables.length === 1;
     const tNum = single ? choice.tables[0] : 7;
     const tSym = OP_SYM[ticked.includes('*') ? '*' : ticked[0]] || '×';
-    root.innerHTML = `<div class="xp-card">
+    root.innerHTML = `<div class="xp-card xp-card-full">
       ${header(categoryName(cat, fr).toUpperCase(), true)}
+      <div class="xp-scroll">
       <p class="xp-guide">${fr ? (all.length > 1 ? 'Coche un ou plusieurs types de calcul.' : 'Voici le type de calcul de ton niveau.') : (all.length > 1 ? 'Tick one or more kinds of calculation.' : 'Here is the kind of calculation for your level.')}</p>
       <div class="xp-types">
         ${all.length > 1 ? `<button type="button" class="xp-type xp-type-all${!choice.types.length || choice.types.length === all.length ? ' is-on' : ''}" data-all>
@@ -173,7 +174,10 @@ export function showExercisePicker({ onDone, startAt = null } = {}) {
           return `<span class="xp-ex">${at < 0 ? `${esc(txt)} → ${ans}` : `${esc(txt.slice(0, at))}${ans}${esc(txt.slice(at + 1))}`}</span>`;
         }).join('')}
       </div>
-      <button type="button" class="xp-validate" data-validate>${fr ? 'VALIDER' : 'CONFIRM'}</button>
+      </div>
+      <div class="xp-foot">
+        <button type="button" class="xp-validate" data-validate>${fr ? 'VALIDER' : 'CONFIRM'}</button>
+      </div>
     </div>`;
 
     root.querySelector('[data-all]')?.addEventListener('click', () => { choice.types = []; render(); });
@@ -229,7 +233,11 @@ export function showExercisePicker({ onDone, startAt = null } = {}) {
   }
 
   function render() {
+    // Same scroll place after a tap (the page is drawn again).
+    const keep = step === 2 ? root.querySelector('.xp-scroll')?.scrollTop || 0 : 0;
     if (step === 1) renderCategories(); else renderTypes();
+    const sc = root.querySelector('.xp-scroll');
+    if (sc && keep) sc.scrollTop = keep;
     root.querySelector('[data-close]')?.addEventListener('click', () => close(false));
     root.querySelector('[data-back]')?.addEventListener('click', () => { step = 1; render(); });
   }
