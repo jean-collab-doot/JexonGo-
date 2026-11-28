@@ -209,7 +209,7 @@ export function showOnboarding(onComplete, { skipWelcome = false } = {}) {
   // Then "Mes exercices": the category and the kinds of calculation.
   const done = () => {
     if (link) clearDirectLink();
-    showExercisePicker({ onDone: () => onComplete?.() });
+    showExercisePicker({ required: true, onDone: () => onComplete?.() });
   };
   if (skipWelcome) showQuestionSteps(done, { link });
   else showWelcome(() => showQuestionSteps(done, { link }));

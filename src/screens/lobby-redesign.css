@@ -2282,3 +2282,9 @@ html body .jx-slot-missile-copy em {
   font-size: 16px; color: var(--jx-yellow-hi); text-shadow: 2px 2px 0 var(--jx-ink);
 }
 html body .jx-slot-shot-price { font-size: 17px; }
+
+/* Main page, shop and practice: never scroll (the closed HANGAR / shot /
+   practice drawer hangs below the screen; scrolling showed its yellow
+   inside). The pages stay sealed on phones and tablets. */
+html body #s-menu .menu-content,
+html body #s-menu, html body #s-shop, html body #s-training { overflow: hidden !important; overscroll-behavior: none; }

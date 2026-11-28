@@ -445,7 +445,7 @@ let _reopenConnectPrompt = false;
 // questions first: those are in RÉGLAGE > MODIFIER MON NIVEAU ET MES EXERCICES).
 window._startBriefingPractice = () =>
   showIntroBriefing(() =>
-    startPracticeFromOnboarding({ skipConnectPrompt: true }));   // no Google invitation here
+    startPracticeFromOnboarding({ skipConnectPrompt: true }), { replay: true });   // no Google invitation here
 function openConnectPrompt(reason = '') {
   showConnectPrompt({
     reason,

@@ -197,7 +197,9 @@ export function resetIntroBriefing() {
   save('hasSeenBriefing', false);
 }
 
-export function showIntroBriefing(onDone) {
+// replay: opened again from RÉGLAGE > COMMENT JOUER (the ◀︎ button is hidden
+// on the first page: there is nothing before it).
+export function showIntroBriefing(onDone, { replay = false } = {}) {
   const sessionId = ++briefingSessionId;
   const fr = getLang() === 'fr';
   const list = pages(fr);
@@ -246,6 +248,7 @@ export function showIntroBriefing(onDone) {
     index = to;
     dots.forEach((dot, i) => dot.classList.toggle('on', i === index));
     back.disabled = index === 0;
+    back.style.visibility = replay && index === 0 ? 'hidden' : '';
     const last = index === list.length - 1;
     nextBtn.textContent = last ? (fr ? 'DÉCOLLER!' : 'TAKE OFF!') : (fr ? 'SUIVANT ▶︎' : 'NEXT ▶︎');
     nextBtn.classList.toggle('ht-go', last);

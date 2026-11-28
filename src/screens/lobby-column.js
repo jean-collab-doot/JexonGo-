@@ -103,6 +103,12 @@ function schedule() {
 }
 
 export function initLobbyColumn() {
+  // The main page never scrolls: if anything moves it (a focus, a drag),
+  // it goes straight back.
+  for (const sel of ['#s-menu .menu-content', '#s-menu', '#s-shop', '#s-training']) {
+    const el = document.querySelector(sel);
+    el?.addEventListener('scroll', () => { if (el.scrollTop || el.scrollLeft) { el.scrollTop = 0; el.scrollLeft = 0; } }, { passive: true });
+  }
   window.addEventListener('resize', schedule);
   window.addEventListener('orientationchange', () => setTimeout(schedule, 250));
   window.visualViewport?.addEventListener('resize', schedule);

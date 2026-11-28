@@ -32,7 +32,9 @@ const shownAnswer = (a, fr) => {
 
 let _open = null;
 
-export function showExercisePicker({ onDone, startAt = null } = {}) {
+// required: the new player's first setup (after the questionnaire): no X,
+// a choice must be made to go on. Later (RÉGLAGE, practice, Endless): X.
+export function showExercisePicker({ onDone, startAt = null, required = false } = {}) {
   _open?.remove();
   const fr = getLang() === 'fr';
   const year = playerYear();
@@ -57,7 +59,7 @@ export function showExercisePicker({ onDone, startAt = null } = {}) {
     return `<div class="xp-head">
       ${back ? `<button class="xp-back" type="button" data-back aria-label="${fr ? 'Retour' : 'Back'}">‹</button>` : '<span class="xp-back-space"></span>'}
       <h2 class="xp-title">${esc(title)}</h2>
-      <button class="xp-close" type="button" data-close aria-label="${fr ? 'Fermer' : 'Close'}">${uiIcon('x')}</button>
+      ${required ? '<span class="xp-back-space"></span>' : `<button class="xp-close" type="button" data-close aria-label="${fr ? 'Fermer' : 'Close'}">${uiIcon('x')}</button>`}
     </div>`;
   }
 
