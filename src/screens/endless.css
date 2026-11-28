@@ -203,3 +203,9 @@ html body #btn-lobby-endless { top: 72px; right: 12px; transform-origin: 100% 0;
 
 .eb-name { display: grid; gap: 3px; }
 .eb-name small { font-size: .75em; opacity: .9; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Left column and INFINI placed from the real screen (screens/lobby-column.js):
+   its top and size win over the fixed numbers above. */
+html body #s-menu .jx-multi-btn.col-fit { transform: scale(var(--col-scale, 1)); transform-origin: 0 0; }
+html body #s-menu .jx-multi-btn.col-fit:active { transform: scale(var(--col-scale, 1)) translateY(3px); }
+html body #s-menu #btn-lobby-endless.col-fit { transform-origin: 100% 0; }

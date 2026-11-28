@@ -2030,16 +2030,18 @@ html:not(.touch-phone):not(.touch-tablet):not(.touch-mobile) #s-levelmap #levelm
   transition: left .3s ease, top .3s ease;
 }
 .lt-bubble.lt-pop { animation: ltPop .3s cubic-bezier(.2,1.4,.4,1) both; }
-.lt-count { font-size: 8px; color: #a0651b; letter-spacing: 1px; }
-.lt-title { font-size: clamp(13px, 4vw, 16px); color: #ff8a00; text-shadow: 1px 1px 0 rgba(122,58,0,.25); }
-.lt-text { font-size: clamp(8px, 2.5vw, 10px); line-height: 1.7; }
+.lt-count { font-size: 12px; color: #a0651b; letter-spacing: 1px; }
+.lt-title { font-size: clamp(17px, 4.6vw, 21px); color: #ff8a00; text-shadow: 1px 1px 0 rgba(122,58,0,.25); }
+.lt-text { font-size: clamp(14px, 3.8vw, 16px); line-height: 1.45; }
 .lt-next {
-  margin-top: 4px; padding: 10px 22px; border: 0; border-radius: 14px; cursor: pointer;
-  font-family: var(--jx-font); font-size: 11px; color: #fff; text-shadow: 1px 1px 0 var(--jx-ink);
+  margin-top: 4px; width: 100%; min-height: 48px; padding: 10px 22px; border: 0; border-radius: 14px; cursor: pointer;
+  font-family: var(--jx-font); font-size: 16px; color: #fff; text-shadow: 1px 1px 0 var(--jx-ink);
   background: linear-gradient(180deg, #ffb347, #ff8a00 55%, #e06a00);
   box-shadow: 0 4px 0 #9a4a00;
 }
 .lt-next:active { transform: translateY(3px); box-shadow: 0 1px 0 #9a4a00; }
+/* While a drawer / page opens or closes: only that is seen. */
+.lt.lt-busy .lt-light, .lt.lt-busy .lt-bubble { opacity: 0; transition: opacity .15s; }
 @keyframes ltIn { from { opacity: 0; } }
 @keyframes ltOut { to { opacity: 0; } }
 @keyframes ltPop { from { opacity: 0; transform: scale(.85); } }

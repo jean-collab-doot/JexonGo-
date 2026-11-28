@@ -1,3 +1,4 @@
+import { initLobbyColumn, scheduleLobbyColumn } from './lobby-column.js';
 import { $, showScreen } from '../utils/dom.js';
 import { TEST_UNLOCK, FULL_UNLOCK, DEV_SERVER } from '../utils/test-mode.js';
 import { rollChestTier } from '../systems/chest.js';
@@ -456,6 +457,7 @@ function _doReset() {
 
 // ── PUBLIC API ───────────────────────────────────────────────────────────────
 export function initMenu(nav) {
+  initLobbyColumn();   // MULTI / TOP 20 / ERREURS / GRADES fitted to the screen
   initLobbyTour();   // new players: the lobby's buttons, one by one
   window._jexongoNav = nav;
 
@@ -573,6 +575,7 @@ export function initMenu(nav) {
 }
 
 export function renderMenu() {
+  scheduleLobbyColumn();
   _updateLobbyHud();
   setTimeout(updateSkinAlerts, 0);   // after the labels are translated below
   // An event skin earned during the last game (e.g. end of the tutorial) and
