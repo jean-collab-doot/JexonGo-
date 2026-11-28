@@ -128,6 +128,22 @@ export function openEndlessIntro(nav) {
         <div class="endless-box is-small"><small>${F ? 'TON RECORD' : 'YOUR RECORD'}</small><b>${endlessRecord()}</b></div>
       </div>
       ${G.playerRegistered ? '' : `<p class="endless-guest">${F ? 'Crée ton compte pour entrer au classement' : 'Create your account to enter the leaderboard'}</p>`}
+      <details class="endless-rules">
+        <summary>${F ? 'RÈGLEMENT DU DÉFI INFINI' : 'ENDLESS CHALLENGE RULES'}</summary>
+        <ul>${(F ? [
+          'Tous les avions ont 3 vies, même ceux qui en ont plus dans les niveaux.',
+          'Le +1 VIE du hangar ne compte pas ici. Les autres améliorations (tirs plus rapides, missile qui suit, EXP…) sont permises.',
+          'Une erreur, un missile ennemi ou un réservoir vide fait perdre une vie. Plus de vies : la partie est finie.',
+          'Toutes les 10 bonnes réponses : une nouvelle vague, plus difficile (plus d’ennemis, plus rapides, moins de temps), et des pièces et de l’EXP.',
+          'Le classement garde ta meilleure partie : le plus de bonnes réponses, puis le moins d’erreurs.',
+        ] : [
+          'Every plane has 3 lives, even those with more in the levels.',
+          'The hangar’s +1 LIFE does not count here. The other upgrades (faster shots, homing missile, EXP…) are allowed.',
+          'A mistake, an enemy missile or an empty tank costs one life. No lives left: the game is over.',
+          'Every 10 correct answers: a new, harder wave (more enemies, faster, less time), plus coins and EXP.',
+          'The leaderboard keeps your best game: most correct answers, then fewest mistakes.',
+        ]).map(r => `<li>${r}</li>`).join('')}</ul>
+      </details>
       <div class="endless-actions">
         <button class="endless-btn is-alt" type="button" data-board>${F ? 'CLASSEMENT' : 'LEADERBOARD'}</button>
         <button class="endless-btn is-go" type="button" data-play>${F ? 'JOUER' : 'PLAY'}</button>
@@ -151,7 +167,7 @@ function hud() {
   el = document.createElement('div');
   el.id = 'endless-hud';
   el.className = 'endless-hud hidden';
-  el.innerHTML = '<b class="eh-correct">0</b><span class="eh-sub"></span>';
+  el.innerHTML = '<span class="eh-sub"></span><b class="eh-correct">1</b>';
   host.appendChild(el);
   return el;
 }
@@ -167,12 +183,13 @@ export function updateEndlessHud({ correct = 0, errors = 0, wave = 1 }) {
   const el = document.getElementById('endless-hud');
   if (!el) return;
   const F = fr();
+  // Only the wave is shown (big), it bumps when a new one starts.
   const b = el.querySelector('.eh-correct');
-  if (b.textContent !== String(correct)) {
-    b.textContent = String(correct);
+  if (b.textContent !== String(wave)) {
+    b.textContent = String(wave);
     b.classList.remove('is-bump'); void b.offsetWidth; b.classList.add('is-bump');
   }
-  el.querySelector('.eh-sub').textContent = `${F ? 'VAGUE' : 'WAVE'} ${wave} · ✕ ${errors}`;
+  el.querySelector('.eh-sub').textContent = F ? 'VAGUE' : 'WAVE';
   el.setAttribute('aria-label', F ? `${correct} bonnes réponses, ${errors} erreurs, vague ${wave}` : `${correct} correct, ${errors} errors, wave ${wave}`);
 }
 export function hideEndlessHud() {

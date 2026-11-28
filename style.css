@@ -56,6 +56,9 @@
 
 html, body {
   width: 100%; height: 100%;
+  /* The game is stuck to the screen on phones and tablets (Safari, Chrome):
+     no page bounce or pull that shows an empty area above or below. */
+  overscroll-behavior: none;
   background: var(--bg);
   color: var(--text);
   font-family: 'Press Start 2P', monospace;
@@ -9033,3 +9036,10 @@ html:not(.touch-phone):not(.touch-tablet):not(.touch-mobile) #s-briefing .briefi
   80%, 90%  { transform: translate(45%, -25%); }
   100%      { transform: translate(0, -45%); }
 }
+
+/* Page stuck to the screen (see also main.js: touch moves that would move
+   the page are stopped). The body never scrolls: every page scrolls inside
+   its own box. */
+html { position: fixed; inset: 0; }
+body { position: fixed; inset: 0; overflow: hidden; }
+#s-game, #s-game canvas, #aim-pad { touch-action: none; overscroll-behavior: none; }

@@ -42,6 +42,39 @@ import { applyDeviceClasses } from './utils/device.js';
 import { isLevelUnlocked } from './systems/progression.js';
 import { showPilotNamePrompt } from './screens/pilot-name-prompt.js';
 
+// Phones and tablets: the page stays stuck to the screen. A finger that
+// slides (aiming hard, moving the plane...) must never drag the whole page and
+// show an empty area above or below it (iOS Safari bounce, Chrome pull). Only
+// a box that really scrolls (a list, a panel) keeps its own scrolling.
+function _canScroll(el, dx, dy) {
+  for (; el && el !== document.body && el !== document.documentElement; el = el.parentElement) {
+    const st = getComputedStyle(el);
+    const y = /(auto|scroll)/.test(st.overflowY) && el.scrollHeight > el.clientHeight + 1;
+    const x = /(auto|scroll)/.test(st.overflowX) && el.scrollWidth > el.clientWidth + 1;
+    if (y && Math.abs(dy) >= Math.abs(dx)) {
+      // At the top pulling down, or at the bottom pushing up: the page would move.
+      if (dy > 0 && el.scrollTop <= 0) return false;
+      if (dy < 0 && el.scrollTop + el.clientHeight >= el.scrollHeight - 1) return false;
+      return true;
+    }
+    if (x && Math.abs(dx) > Math.abs(dy)) return true;
+  }
+  return false;
+}
+let _touchY = 0, _touchX = 0;
+document.addEventListener('touchstart', e => {
+  if (e.touches.length === 1) { _touchY = e.touches[0].clientY; _touchX = e.touches[0].clientX; }
+}, { passive: true });
+document.addEventListener('touchmove', e => {
+  if (e.touches.length > 1) { e.preventDefault(); return; }   // no pinch zoom of the page
+  const t = e.target;
+  if (t?.closest?.('input, textarea, select')) return;          // sliders, text fields
+  const dy = e.touches[0].clientY - _touchY, dx = e.touches[0].clientX - _touchX;
+  if (t?.closest?.('#s-game') && !t.closest('#correct-answer-reveal')) { if (e.cancelable) e.preventDefault(); return; }
+  if (!_canScroll(t, dx, dy) && e.cancelable) e.preventDefault();
+}, { passive: false });
+
+
 const ANALYTICS_OPT_OUT_KEY = 'jexongoAnalyticsOptOut';
 let _analyticsTrack = null;
 let _analyticsPageview = null;

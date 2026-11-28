@@ -209,3 +209,17 @@ html body #btn-lobby-endless { top: 72px; right: 12px; transform-origin: 100% 0;
 html body #s-menu .jx-multi-btn.col-fit { transform: scale(var(--col-scale, 1)); transform-origin: 0 0; }
 html body #s-menu .jx-multi-btn.col-fit:active { transform: scale(var(--col-scale, 1)) translateY(3px); }
 html body #s-menu #btn-lobby-endless.col-fit { transform-origin: 100% 0; }
+
+/* In the game: "VAGUE" and the wave number only. */
+#s-game .endless-hud .eh-sub { font-size: clamp(10px, 2.8vw, 13px); letter-spacing: 2px; }
+/* Endless screen: the rules of the challenge (tap to open). */
+.endless-rules {
+  width: 100%; box-sizing: border-box; text-align: left;
+  padding: 8px 12px; border-radius: 14px; background: rgba(255,255,255,.55);
+  color: var(--jx-ink, #7a3a00); font-size: 13px; line-height: 1.4;
+}
+.endless-rules summary { cursor: pointer; font-weight: bold; text-align: center; list-style: none; }
+.endless-rules summary::-webkit-details-marker { display: none; }
+.endless-rules summary::after { content: ' ▾'; }
+.endless-rules[open] summary::after { content: ' ▴'; }
+.endless-rules ul { margin: 8px 0 2px; padding-left: 18px; display: grid; gap: 6px; }
