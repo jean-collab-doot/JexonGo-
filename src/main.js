@@ -441,9 +441,11 @@ let _reopenConnectPrompt = false;
 // Lobby BRIFING button (settings.js): briefing, then the beginner practice
 // (5 free questions, 5 s break, 5 timed questions with 3 lives, then the
 // Google invitation for guests) — the same run as new players get.
+// COMMENT JOUER goes straight to the game's rules (no school / class
+// questions first: those are in RÉGLAGE > MODIFIER MON NIVEAU ET MES EXERCICES).
 window._startBriefingPractice = () =>
-  showBriefingEquationOptions(() => showIntroBriefing(() =>
-    startPracticeFromOnboarding({ skipConnectPrompt: true })));   // no Google invitation here
+  showIntroBriefing(() =>
+    startPracticeFromOnboarding({ skipConnectPrompt: true }));   // no Google invitation here
 function openConnectPrompt(reason = '') {
   showConnectPrompt({
     reason,
